@@ -41,13 +41,18 @@ function schedule(h0, N) {
 	return { q, hBot, crustRows, fineRows, fineDepth };
 }
 
+// The 9 merge rows sit at round(k*(N-1)/9), k = 1..9, so the last merge lands ON the
+// last row and the bottom row is the single cell the design asks for. round(k*N/9) puts
+// the ninth merge past the last row and leaves 2 cells at the center (7186 at N = 64) —
+// measured and rejected. js/geom.js holds the one implementation; the F. section below
+// asserts this table against it.
 function fanCells(N, C0) {
-	const merges = Math.log2(C0); // 9 merge rows at round(k*N/9) -> bottom row is 1 cell
+	const merges = Math.log2(C0);
 	let cells = 0, C = C0;
 	for (let i = 0; i < N; i++) {
 		cells += C;
 		for (let k = 1; k <= merges; k++) {
-			if (i + 1 === Math.round(k * N / merges) && C > 1) C = (C / 2) | 0;
+			if (i + 1 === Math.round(k * (N - 1) / merges) && C > 1) C >>= 1;
 		}
 	}
 	return cells;
@@ -159,3 +164,47 @@ const [ow, oh] = edificePx(mapA, oTop, oBot, 40, 4);
 line('  y=0 scale ' + Math.round(LAMBDA_Y * duPxO) + ' m/px, center scale ' +
 	(R * duPxO / 1e3).toFixed(0) + ' km/px (' + Math.round(R / LAMBDA_Y) + ':1 compression)');
 line('  40 km x 4 km cone -> ' + ow.toFixed(1) + ' x ' + oh.toFixed(1) + ' px (still small but square)');
+
+// --- F. assertions against the shipped code ------------------------------------
+// Everything above derives the design's numbers from first principles; this section
+// checks the shipped js/ modules produce them, so the table cannot drift from the code.
+const { mods, check } = require('./lib.js');
+const P = mods.params, GEO = mods.geom, SURF = mods.surface, S = mods.state;
+
+line('');
+line('F. shipped code vs the tables above');
+check.near('q solves sum(h_i) = R', GEO.hTop[GEO.N], R, 1, 'm');
+check.near('q', GEO.q, q0, 5e-5);
+check.near('center row h_63', P.R - GEO.hTop[GEO.N - 1], 1006e3, 1e3, 'm');
+check.ok('sky rows = 34', GEO.skyN === 34, 'got ' + GEO.skyN);
+check.near('w0 = wrap/nCols', P.w0, 78.184e3, 1, 'm');
+check.ok('fan cells = ' + fanCells(P.nRows, P.nCols), GEO.fanOff[GEO.N] === fanCells(P.nRows, P.nCols),
+	'got ' + GEO.fanOff[GEO.N]);
+check.ok('bottom fan band is 1 cell', GEO.fanN[GEO.N - 1] === 1, 'got ' + GEO.fanN[GEO.N - 1]);
+check.ok('band 0 has nCols cells', GEO.fanN[0] === P.nCols, 'got ' + GEO.fanN[0]);
+check.near('4.6x cheaper than uniform', P.nRows * P.nCols / GEO.fanOff[GEO.N], 4.588, 0.005);
+
+// isostasy calibration points (reference §7.1) through the shipped surface.js
+function elev(hFel, hMaf, hSed, age) {
+	S.hFel[0] = hFel; S.hMaf[0] = hMaf; S.hSed[0] = hSed; S.colAge[0] = age; S.zDyn[0] = 0;
+	return SURF.elev(0);
+}
+check.near('7 km mafic age 0 -> -2600 m', elev(0, 7e3, 0, 0), -2600, 5, 'm');
+check.near('7 km mafic age 80 -> -5730 m', elev(0, 7e3, 0, 80), -5730, 5, 'm');
+check.near('35 km felsic -> +400 m', elev(35e3, 0, 0, 300), 400, 5, 'm');
+check.near('70 km felsic -> +6234 m', elev(70e3, 0, 0, 300), 6234, 5, 'm');
+check.near('15 km felsic + 7 km mafic age 80 ~ -2.5 km', elev(15e3, 7e3, 0, 80), -2460, 60, 'm');
+
+// display map: the cone and bed numbers of sections C/E, from the shipped LUTs
+GEO.setPreset('def'); GEO.sync();
+check.near('default 2.34 km/px horizontal', GEO.kx / 1e3, 2.34375, 1e-6);
+check.near('247 m/px at y = 0', Math.sqrt(P.yLin * P.yLin) * GEO.duPx, 247, 1, 'm');
+check.near('cone 40 km wide = 17.1 px', 40e3 / GEO.kx, 17.1, 0.05, 'px');
+check.near('cone 4 km tall = 16.1 px',
+	(GEO.u(0) - GEO.u(-4e3)) / GEO.duPx, 16.1, 0.05, 'px');
+check.near('50 m bed = 0.20 px at x1', 50 / (Math.sqrt(P.yLin * P.yLin + 25e6) * GEO.duPx), 0.2, 0.005, 'px');
+GEO.setPreset('ovw'); GEO.sync();
+check.near('overview 465 m/px at y = 0', Math.sqrt(P.yLin * P.yLin) * GEO.duPx, 465, 1, 'm');
+check.near('overview cone still 17.1 px wide', 40e3 / GEO.kx, 17.1, 0.05, 'px');
+
+check.done();

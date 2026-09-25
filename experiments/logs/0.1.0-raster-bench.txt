@@ -1,0 +1,47 @@
+
+A. layer stacks (design §2.2)
+PASS  push grew the stack   12 layers
+PASS  the bed is exactly 50 m   rel 0.00e+0  got 50 m  want 50
+PASS  lith is sed
+PASS  flags kept   flags=5
+PASS  a zero-thickness push is refused
+PASS  a negative-thickness push is refused
+PASS  sums() total matches the stack   rel 0.00e+0  got 50297.97841595574 m  want 50297.97841595574
+PASS  sums() splits fel+maf+sed   rel 0.00e+0  got 50297.97841595574 m  want 50297.97841595574
+PASS  layerAt(25 m) finds the new bed   layer 11
+PASS  layerAt(below the stack) = -1
+PASS  a 50 m bed stays exactly 50 m through 1e5 frames   rel 0.00e+0  got 50 m  want 50
+PASS  and it is still the same layer index   12 layers
+PASS  1e5 frames at 50 kyr/f = 5000 Myr   rel 9.42e-9  got 5000.000000009424 Myr  want 5000
+PASS  50 m bed reads back at ~2.0 px in the crust preset   rel 4.87e-3  got 2.0048699724362447 px  want 2
+PASS  and 10 m at ~0.40 px   rel 9.74e-4  got 0.40097399448724896 px  want 0.4
+
+B. stack compaction and erosion intake
+PASS  stack fills to layerCap   96/96
+PASS  pushing past layerCap compacts instead of overflowing   96/96
+PASS  compaction conserves the total thickness   rel 0.00e+0  got 9700 m  want 9700
+PASS  an all-alternating stack records its cross-lith merges   ledMix 0 -> 1
+PASS  compact prefers the thinnest same-lith pair   3 layers, ledMix 0
+PASS  the merged bed carries both thicknesses   rel 0.00e+0  got 300 m  want 300
+PASS  removeTop takes what was asked   rel 0.00e+0  got 150 m  want 150
+PASS  ...from the felsic layer first   rel 0.00e+0  got 150 m  want 150
+PASS  leaving 50 m of felsic   rel 0.00e+0  got 50 m  want 50
+PASS  and the sediment bed untouched
+PASS  removeTop past the bottom empties the stack   got 150
+
+C. body raster (design §7, budget 6 ms at 1280x560, min of 15 runs)
+  default window          3.553 ms  (median 3.721, max 4.018)
+PASS  default window body raster <= 6 ms   3.553 ms
+  overview (full depth)   3.569 ms  (median 4.182, max 4.583)
+PASS  overview (full depth) body raster <= 6 ms   3.569 ms
+  crust x10               3.402 ms  (median 3.440, max 3.545)
+PASS  crust x10 body raster <= 6 ms   3.402 ms
+  basin x40               3.449 ms  (median 3.524, max 4.275)
+PASS  basin x40 body raster <= 6 ms   3.449 ms
+PASS  every pixel is painted   716800/716800
+  buildColLUT (512 cols, 1280 px)  0.0045 ms per frame
+  GEO.rebuild (both LUT sets)      0.0180 ms, view change only
+  sim.step with the M1 kernels     0.05 us
+PASS  the body raster leaves headroom for the overlay   3.553 ms of a 6 ms budget
+
+ALL PASS (32 checks)

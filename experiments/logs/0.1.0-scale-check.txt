@@ -1,0 +1,77 @@
+A. geometric rows (h0 = 20 m at the 0 m band, sum = R = 6371 km)
+N     q        hBot    crustRows  rows<=100m (depth)   fanCells(512->1)  uniformCells
+48    1.26676  1342     26          7 (317 m)             5247               24576
+64    1.18748  1006     33          10 (488 m)            7155               32768
+80    1.14354  800      41          12 (557 m)            9063               40960
+96    1.11576  661      48          15 (721 m)            10903              49152
+128   1.08278  487      62          21 (1042 m)           14341              65536
+
+B. default schedule N = 64 (the "20 m at surface -> 1000 km at center" pair)
+i     topY      h
+0     0 km      20 m
+5     0 km      47 m
+10    0 km      112 m
+15    1 km      263 m
+20    3 km      622 m
+25    8 km      1.5 km
+30    18 km     3.5 km
+33    31 km     5.8 km
+40    103 km    19.3 km
+45    243 km    45.6 km
+50    575 km    107.7 km
+55    1357 km   254.4 km
+60    3204 km   600.7 km
+63    5365 km   1005.9 km
+sky rows mirrored upward to +33 km: 34
+
+C. display maps at the default window (3000 km wide, +33 .. -300 km, 1280x560)
+asinh(y / 40 km): u/px = 0.00619
+  dy/dpx at y = 0 km    = 247 m/px
+  dy/dpx at y = 5 km    = 249 m/px
+  dy/dpx at y = 20 km   = 277 m/px
+  dy/dpx at y = -20 km  = 277 m/px
+  dy/dpx at y = -70 km  = 499 m/px
+  dy/dpx at y = -200 km = 1.26 km/px
+  cone sizes as [width px, height px]:
+    2 km x 0.5 km  -> 0.9 x 2.0
+    20 km x 2 km   -> 8.5 x 8.1
+    40 km x 4 km   -> 17.1 x 16.1   in the 10-30 px band
+    60 km x 8 km   -> 25.6 x 31.9
+  bed pixels (50 m / 10 m) at y = -5 km:
+    zoom x1   0.20 / 0.04 px
+    zoom x10  2.01 / 0.40 px
+    zoom x30  6.02 / 1.20 px
+
+D. rejected display maps, same window and same cone (40 km x 4 km):
+  row-uniform over the graded rows -> 17.1 x 71.3 px  (needle, 4.2:1)
+  linear vertical              -> 17.1 x 6.7 px  (pancake, 2.5:1); 10 m bed = 0.017 px at zoom x1
+  signed log (20 m kink at 0)   -> 17.1 x 35.9 px  (needle, 2.1:1), slope kink at sea level
+
+E. overview check (full depth -6371 .. +33 km, same asinh map)
+  y=0 scale 465 m/px, center scale 74 km/px (159:1 compression)
+  40 km x 4 km cone -> 17.1 x 8.5 px (still small but square)
+
+F. shipped code vs the tables above
+PASS  q solves sum(h_i) = R   abs 0.00e+0  got 6371000 m  want 6371000
+PASS  q   rel 0.00e+0  got 1.1874826734239257  want 1.1874826734239257
+PASS  center row h_63   abs 1.14e+2  got 1005885.9292150354 m  want 1006000
+PASS  sky rows = 34   got 34
+PASS  w0 = wrap/nCols   abs 6.72e-2  got 78183.93279695536 m  want 78184
+PASS  fan cells = 7155   got 7155
+PASS  bottom fan band is 1 cell   got 1
+PASS  band 0 has nCols cells   got 512
+PASS  4.6x cheaper than uniform   rel 8.27e-3  got 4.579734451432564  want 4.588
+PASS  7 km mafic age 0 -> -2600 m   abs 4.24e-1  got -2599.5757575757575 m  want -2600
+PASS  7 km mafic age 80 -> -5730 m   abs 7.09e-2  got -5730.070926075463 m  want -5730
+PASS  35 km felsic -> +400 m   abs 3.33e-1  got 400.33333333333303 m  want 400
+PASS  70 km felsic -> +6234 m   abs 3.33e-1  got 6233.666666666666 m  want 6234
+PASS  15 km felsic + 7 km mafic age 80 ~ -2.5 km   abs 7.45e-2  got -2460.07450496457 m  want -2460
+PASS  default 2.34 km/px horizontal   rel 0.00e+0  got 2.34375  want 2.34375
+PASS  247 m/px at y = 0   abs 4.67e-1  got 247.4668907100962 m  want 247
+PASS  cone 40 km wide = 17.1 px   rel 3.33e-2  got 17.066666666666666 px  want 17.1
+PASS  cone 4 km tall = 16.1 px   rel 3.70e-2  got 16.136959350438797 px  want 16.1
+PASS  50 m bed = 0.20 px at x1   rel 4.87e-4  got 0.20048699724362448 px  want 0.2
+PASS  overview 465 m/px at y = 0   abs 4.19e-1  got 465.41860485035653 m  want 465
+PASS  overview cone still 17.1 px wide   rel 3.33e-2  got 17.066666666666666 px  want 17.1
+
+ALL PASS (21 checks)

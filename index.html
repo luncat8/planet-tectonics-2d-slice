@@ -27,16 +27,19 @@
 		<button data-v="cru">crust x10</button>
 		<button data-v="bas">basin x40</button>
 	</span>
+	<button id="bMesh">mesh</button>
 </div>
 <div id="wrap">
 	<canvas id="c" width="1280" height="560"></canvas>
 	<div id="hud"></div>
 </div>
-<div id="help">drag = pan &middot; wheel = zoom (cursor-anchored) &middot; debug view: row edges, fan bands, nominal column grid, asinh depth grid</div>
+<div id="help">drag = pan &middot; wheel = zoom (cursor-anchored) &middot; space = pause &middot; m = mesh (row edges, fan bands, column grid, plate boundaries) &middot; 1-4 = presets &middot; hover = geology probe</div>
 <script src="js/params.js"></script>
 <script src="js/rng.js"></script>
 <script src="js/geom.js"></script>
 <script src="js/state.js"></script>
+<script src="js/surface.js"></script>
+<script src="js/columns.js"></script>
 <script src="js/perf.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/render.js"></script>

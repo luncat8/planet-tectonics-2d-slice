@@ -1,0 +1,80 @@
+
+A. row schedule (design §1.2)
+PASS  q closed form   rel 2.67e-6  got 1.1874826734239257  want 1.18748
+PASS  hTop[N] = R   abs 0.00e+0  got 6371000 m  want 6371000
+PASS  row 0 = h0 = 20 m   rel 0.00e+0  got 20 m  want 20
+PASS  bottom row 1006 km   abs 1.14e+2  got 1005885.9292150354 m  want 1006000
+PASS  sky rows = 34   got 34
+PASS  hTop strictly increasing
+PASS  rowH is geometric with ratio q
+PASS  rowOf brackets its altitude over 4000 samples   4000/4000
+PASS  rowOf(0) = 0 (the 0 m band)   got 0
+PASS  rowOf(+1 km) = -1 (sky has no row)   got -1
+PASS  rowCy lies inside its row
+
+B. fan budget (design §1.3)
+PASS  fan cells = 7155   got 7155
+PASS  design table fanCells N=48   got 5247
+PASS  design table fanCells N=64   got 7155
+PASS  design table fanCells N=80   got 9063
+PASS  design table fanCells N=96   got 10903
+PASS  design table fanCells N=128   got 14341
+PASS  bottom band is exactly 1 cell   got 1
+PASS  band 0 has nCols cells   got 512
+PASS  exactly 9 halvings, each exactly /2   9 halvings
+PASS  bandOf covers every row   last band ends at 64
+PASS  cellOf(centre) = cell for all 7155 cells   7155/7155
+
+C. fan neighbour stencil (design §1.3)
+PASS  neighbour links are symmetric (present both ways)   0 missing
+PASS  symmetric pairs carry the same face width   0 mismatches
+PASS  symmetric pairs carry the same centre distance   0 mismatches
+PASS  no cell is its own neighbour   0 self links
+PASS  every cell has left and right except the 1-cell bottom row   14308/14308
+PASS  coarse-fine faces conserve the own pitch   0 rows wrong
+PASS  symmetric link count   28616 directed links
+PASS  every interior cell has a down neighbour   7154/7154
+PASS  every interior cell has an up neighbour   6643/6643
+
+D. display map and LUTs (design §1.4)
+PASS  |y(u(y)) - y| < 1e-12 rel   max rel 6.27e-16
+PASS  lutY strictly decreasing top -> down
+PASS  lutY[0] = window top +33 km   abs 1.60e-1  got 32.83975092408298 km  want 33
+PASS  lutY[ch-1] = window bottom -300 km   abs 9.35e-1  got -299.06522042028314 km  want -300
+PASS  lutX filled across the full canvas width
+PASS  lutX wrapped into [0, wrap)   38531345.46704114 .. 1498828.125
+PASS  lutRow agrees with rowOf(lutY)
+PASS  per-row fan LUTs match the band tables
+
+E. presets and camera
+PASS  default kx = winW/cw   rel 0.00e+0  got 2343.75  want 2343.75
+PASS  overview keeps the default horizontal scale   rel 0.00e+0  got 2343.75  want 2343.75
+PASS  overview fits the full depth   abs 9.31e-10  got -6371000.000000001 m  want -6371000
+PASS  overview top is the sky band   abs 7.28e-12  got 32999.99999999999 m  want 33000
+PASS  crust preset is x10   rel 0.00e+0  got 234.375  want 234.375
+PASS  basin preset is x40   rel 0.00e+0  got 58.59375  want 58.59375
+PASS  zoom keeps the cursor world x fixed   rel 0.00e+0  got 0 m  want 0
+PASS  zoom keeps the cursor world y fixed   rel 3.64e-12  got -3.637978807091713e-12 m  want 0
+PASS  pan moves x by -37 px   rel 1.16e-10  got -1.1641532182693481e-10 m  want 0
+PASS  sync clears the dirty flag
+PASS  lookAt marks the view dirty
+PASS  lookAt moved the window centre   rel 0.00e+0  got 1234  want 1234
+
+F. column LUT vs brute-force owner
+PASS  default window   0/1280 wrong owners
+PASS  overview   0/1280 wrong owners
+PASS  crust x10   0/1280 wrong owners
+PASS  basin x40   0/1280 wrong owners
+PASS  seam window #0 (cx = 0.000e+0)   0/1280 wrong owners
+PASS  seam window #1 (cx = 1.000e+0)   0/1280 wrong owners
+PASS  seam window #2 (cx = 4.003e+7)   0/1280 wrong owners
+PASS  seam window #3 (cx = 2.002e+7)   0/1280 wrong owners
+PASS  seam window #4 (cx = -1.334e+7)   0/1280 wrong owners
+PASS  seam window #5 (cx = 1.201e+8)   0/1280 wrong owners
+PASS  window exactly one wrap wide   0/1280 wrong owners
+PASS  non-uniform perturbed columns   0/1280 wrong owners
+PASS  non-uniform perturbed columns x40   0/1280 wrong owners
+PASS  a single column   0/1280 wrong owners
+PASS  zero columns -> every pixel unowned
+
+ALL PASS (66 checks)
