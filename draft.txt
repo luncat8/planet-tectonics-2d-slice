@@ -1,0 +1,19 @@
+
+make plans to build simulation and rendering engine.
+
+think what vertical and horizontal scale we should use. i suggest smooth vertical log scale 
+for example: from 20m at surface to 1000km in planet center. and something like 512 horizontal cells at surface and single at center.
+good for sediments and deposits, fast and efficient.
+because volcano are small compared to surface width, probably better to use some toy scale for eruptive mechanics to have visually good looking volcanos with size like 10-30px width and height
+
+think about double time scales:
+i suggest 2 sliders one for plate and plume speed of time and second for lava, eruptions
+
+read
+https://github.com/luncat8/planet-geotectonics
+for physics and deposits references
+
+
+
+
+
