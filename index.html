@@ -3,11 +3,43 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title></title>
+<title>planet tectonics — 2d slice</title>
+<style>
+	body { margin: 0; background: #05070c; color: #9aa7bd; font: 12px/1.5 monospace; display: flex; flex-direction: column; align-items: center; }
+	#bar { width: 1280px; display: flex; gap: 18px; align-items: center; padding: 6px 0; flex-wrap: wrap; }
+	#bar label { white-space: nowrap; }
+	input[type=range] { width: 150px; vertical-align: middle; }
+	button { background: #121826; color: #9aa7bd; border: 1px solid #2a3550; font: 11px monospace; padding: 1px 7px; cursor: pointer; }
+	button:hover { color: #dfe7f5; }
+	#wrap { position: relative; width: 1280px; height: 560px; }
+	canvas { display: block; border: 1px solid #1c2438; cursor: crosshair; }
+	#hud { position: absolute; left: 8px; top: 8px; white-space: pre; pointer-events: none; color: #9fd6b8; text-shadow: 0 0 3px #000; }
+	#help { width: 1280px; color: #55637d; font-size: 11px; padding: 4px 0 12px; }
+</style>
 </head>
 <body>
-<div id="app">
-  <canvas id="c"></canvas>
+<div id="bar">
+	<label>Plates &amp; plumes <input id="sGeo" type="range" min="0" max="1000" value="0"> <span id="vGeo"></span></label>
+	<label>Lava &amp; eruptions <input id="sErupt" type="range" min="0" max="1000" value="0"> <span id="vErupt"></span></label>
+	<span id="presets">
+		<button data-v="def">default</button>
+		<button data-v="ovw">overview</button>
+		<button data-v="cru">crust x10</button>
+		<button data-v="bas">basin x40</button>
+	</span>
 </div>
+<div id="wrap">
+	<canvas id="c" width="1280" height="560"></canvas>
+	<div id="hud"></div>
+</div>
+<div id="help">drag = pan &middot; wheel = zoom (cursor-anchored) &middot; debug view: row edges, fan bands, nominal column grid, asinh depth grid</div>
+<script src="js/params.js"></script>
+<script src="js/rng.js"></script>
+<script src="js/geom.js"></script>
+<script src="js/state.js"></script>
+<script src="js/perf.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/render.js"></script>
+<script src="js/sim.js"></script>
 </body>
 </html>
