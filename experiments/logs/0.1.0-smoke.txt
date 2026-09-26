@@ -35,9 +35,9 @@ PASS  zoom clamped and came back   kx=117187.5
 
 D. probe, mesh, keys
 PASS  cursor readout built   "40027.8 km  -108 km | 2.34 km/px  713 m/px"
-PASS  geology probe built   "col 511  plate 7  age 927.3 Myr"
-PASS  probe names a layer or the mantle   fel 49.7  maf 0.0  sed 0.1 km
-PASS  probe in the sky reads air/water   fel 49.7  maf 0.0  sed 0.1 km
+PASS  geology probe built   "col 513  plate 7  age 830.3 Myr"
+PASS  probe names a layer or the mantle   fel 47.0  maf 0.0  sed 0.1 km
+PASS  probe in the sky reads air/water   fel 47.0  maf 0.0  sed 0.1 km
 PASS  m toggles the mesh overlay
 PASS  m toggles it back
 PASS  preset button 3 = crust x10   rel 0.00e+0  got 234.375  want 234.375
@@ -59,8 +59,8 @@ PASS  the checkbox turns the scale lines off
 PASS  g turns them back on and re-ticks the checkbox
 
 E. determinism
-PASS  two fresh 1000-frame runs are bit-identical   2384683372|3778018669,3219501952,3788145402,3620133688 vs 2384683372|3778018669,3219501952,3788145402,3620133688
-PASS  a different seed diverges   3224289907|609912025,1928876461,1656449407,1884274477
-PASS  the state hash is not degenerate   2384683372|3778018669,3219501952,3788145402,3620133688
+PASS  two fresh 1000-frame runs are bit-identical   816544722|3778018669,3219501952,3788145402,3620133688 vs 816544722|3778018669,3219501952,3788145402,3620133688
+PASS  a different seed diverges   253917652|609912025,1928876461,1656449407,1884274477
+PASS  the state hash is not degenerate   816544722|3778018669,3219501952,3788145402,3620133688
 
 ALL PASS (52 checks)

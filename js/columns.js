@@ -1,5 +1,5 @@
-// columns.js — the Lagrangian crust (design §2.2): layer stacks and the initial planet
-// (M1.1). Stacks are bottom-up in the fixed slot range col*layerCap + k, so a 20 m bed
+// columns.js — the Lagrangian crust (design §2.2): layer stacks, initial planet
+// and K3/K4 topology. Stacks are bottom-up in the fixed slot range col*layerCap + k, so a 20 m bed
 // stays exactly 20 m for as long as the run lasts — nothing is ever resampled.
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
@@ -63,6 +63,11 @@ COL.compact = function (c) {
 		S.layFl[b + j] = S.layFl[b + j + 1];
 	}
 	S.colNL[c] = n - 1;
+	for (j = 0; j < S.nDep; j++) {
+		if (S.depCol[j] !== c) continue;
+		if (S.depLay[j] === k0 + 1) S.depLay[j] = k0;
+		else if (S.depLay[j] > k0 + 1) S.depLay[j]--;
+	}
 };
 
 COL.sums = function (c) {
@@ -283,6 +288,344 @@ COL.lidFan = function () {
 			if (cov[j] > 0) S.Tf[off + j] = (acc[j] + (pitch - cov[j]) * S.Tf[off + j]) / pitch;
 		}
 	}
+};
+
+// --- K3/K4: gather-based Lagrangian topology ---------------------------------------
+// Only these fields travel with a column. Plate records, fan cells and entity tables
+// have their own lifetimes. All scratch is allocated once, including the sort comparator.
+COL.fields = 'colX colW colPlate colU ext edgeRelN edgePol edgeRPlate trenchDist oldW colAge hFel hMaf hSed hTot z slope wet noise damage zDyn fert oVms oMaf oArc oOro oBas oPla volc edge edgeAge edgeSlow colLoad colPla colNL'.split(' ');
+COL.oreFields = 'oVms oMaf oArc oOro oBas oPla'.split(' ');
+COL.scratch = COL.fields.map(function (key) { return new S[key].constructor(P.colCap); });
+COL.layerFields = ['layTh', 'layLi', 'layAg', 'layFl'];
+COL.layerScratch = COL.layerFields.map(function (key) { return new S[key].constructor(P.colCap * P.layerCap); });
+COL.orderViews = new Array(P.colCap + 1);
+COL.layerViews = [[], [], [], []];
+for (var size = 0; size <= P.colCap; size++) {
+	COL.orderViews[size] = S.sortOrder.subarray(0, size);
+	for (var field = 0; field < 4; field++)
+		COL.layerViews[field][size] = COL.layerScratch[field].subarray(0, size * P.layerCap);
+}
+COL.dead = new Uint8Array(P.colCap);
+COL.redirect = new Int32Array(P.colCap);
+COL.intent = new Int8Array(P.colCap);
+COL.histEdge = new Int8Array(P.colCap);
+COL.histPol = new Int8Array(P.colCap);
+COL.histRP = new Int32Array(P.colCap);
+COL.histLP = new Int32Array(P.colCap);
+COL.histAge = new Float64Array(P.colCap);
+COL.histSlow = new Float64Array(P.colCap);
+COL.map = new Int32Array(P.colCap);
+COL.sortCompare = function (a, b) { return S.colX[a] - S.colX[b] || a - b; };
+
+COL.orderView = function (n) {
+	return this.orderViews[n];
+};
+
+COL.gather = function (n) {
+	var order = S.sortOrder, inv = S.sortInverse, i, k, f, src, dst, LC = P.layerCap, from, to;
+	for (i = 0; i < n; i++) inv[order[i]] = i;
+	for (f = 0; f < this.fields.length; f++) {
+		src = S[this.fields[f]]; dst = this.scratch[f];
+		for (i = 0; i < n; i++) dst[i] = src[order[i]];
+		for (i = 0; i < n; i++) src[i] = dst[i];
+	}
+	for (f = 0; f < this.layerFields.length; f++) {
+		src = S[this.layerFields[f]]; dst = this.layerScratch[f];
+		for (i = 0; i < n; i++) {
+			from = order[i] * LC; to = i * LC;
+			for (k = 0; k < LC; k++) dst[to + k] = src[from + k];
+		}
+		src.set(this.layerViews[f][n]);
+	}
+	for (i = 0; i < S.nDep; i++) if (S.depCol[i] >= 0) S.depCol[i] = inv[S.depCol[i]];
+	for (i = 0; i < S.nVen; i++) if (S.venCol[i] >= 0) S.venCol[i] = inv[S.venCol[i]];
+	for (i = 0; i < n; i++) if (S.volc[i] >= 0) S.venCol[S.volc[i]] = i;
+};
+
+COL.plates = function () {
+	S.plN.fill(0);
+	for (var i = 0; i < S.nCol; i++) {
+		var p = S.colPlate[i];
+		if (S.plN[p]++ === 0) S.plX0[p] = S.colX[i];
+	}
+};
+
+COL.transport = function (st, dt) {
+	if (!(dt > 0)) return;
+	var n = st.nCol, i, oldRight = this.map;
+	for (i = 0; i < n; i++) {
+		st.oldW[i] = st.colW[i];
+		st.sortOrder[i] = i;
+		st.colX[i] += st.colU[i] * dt;
+		st.colX[i] -= Math.floor(st.colX[i] / P.wrap) * P.wrap;
+	}
+	this.orderView(n).sort(this.sortCompare);
+	this.gather(n);
+	// An edge's history is valid only if the same two records are still neighbours;
+	// the right plate id alone cannot distinguish a column overtaking its neighbour.
+	for (i = 0; i < n; i++) {
+		oldRight[i] = st.sortInverse[(st.sortOrder[i] + 1) % n];
+		if (oldRight[i] === (i + 1) % n) continue;
+		st.edge[i] = P.EDGE.neutral;
+		st.edgePol[i] = 0;
+		st.edgeAge[i] = 0; st.edgeSlow[i] = 0;
+		st.edgeRPlate[i] = -1;
+	}
+	st.widths();
+	this.plates();
+};
+
+COL.intents = function () {
+	var n = S.nCol, i, j, d, e;
+	this.intent.fill(0, 0, n);
+	for (i = 0; i < n; i++) {
+		j = (i + 1) % n;
+		d = S.colX[j] - S.colX[i];
+		if (d <= 0) d += P.wrap;
+		e = S.edge[i];
+		if (e === P.EDGE.open && d > 2 * P.rGap * P.w0) this.intent[i] = 1;
+		if ((e === P.EDGE.subduct || e === P.EDGE.collide) && d < P.rContact * P.w0 &&
+			S.edgeRelN[i] < -P.epsHi) this.intent[i] = 2;
+	}
+};
+
+// During K4, layTh stores volume (m3 per unit section depth), not thickness.
+// This lets every transfer and merge be exact before final Voronoi widths are known.
+COL.transfer = function (from, to, fraction, sedimentOnly) {
+	var b = from * P.layerCap, k, t, lith;
+	for (k = 0; k < S.colNL[from]; k++) {
+		lith = S.layLi[b + k];
+		if (sedimentOnly && this.CLASS[lith] !== 0) continue;
+		if (!sedimentOnly && this.CLASS[lith] === 2) continue;
+		t = S.layTh[b + k] * fraction;
+		S.layTh[b + k] -= t;
+		this.push(to, t, lith, S.layAg[b + k], S.layFl[b + k]);
+	}
+};
+
+COL.moveDeposits = function (from, layer, to, newLayer) {
+	for (var d = 0; d < S.nDep; d++) {
+		if (S.depCol[d] !== from || S.depLay[d] !== layer) continue;
+		S.depCol[d] = to; S.depLay[d] = newLayer;
+	}
+};
+
+COL.consume = function (i, j) {
+	var E = P.EDGE, left = i, right = j, loser, winner, b, k, lith, t;
+	if (S.edge[i] === E.collide) {
+		loser = S.hFel[left] <= S.hFel[right] ? left : right;
+		winner = loser === left ? right : left;
+		b = loser * P.layerCap;
+		for (k = 0; k < S.colNL[loser]; k++) {
+			this.push(winner, S.layTh[b + k], S.layLi[b + k], S.layAg[b + k], S.layFl[b + k]);
+			this.moveDeposits(loser, k, winner, S.colNL[winner] - 1);
+		}
+	} else {
+		loser = S.edgePol[i] < 0 ? left : right;
+		winner = loser === left ? right : left;
+		b = loser * P.layerCap;
+		for (k = 0; k < S.colNL[loser]; k++) {
+			lith = S.layLi[b + k]; t = S.layTh[b + k];
+			if (this.CLASS[lith] === 0) {
+				this.push(winner, t * 0.5, lith, S.layAg[b + k], S.layFl[b + k]);
+				this.moveDeposits(loser, k, winner, S.colNL[winner] - 1);
+				S.ledCons[lith] += t * 0.5;
+			} else {
+				this.moveDeposits(loser, k, -1, -1);
+				S.ledCons[lith] += t;
+			}
+		}
+	}
+	this.dead[loser] = 1;
+	this.redirect[loser] = winner;
+};
+
+COL.rift = function (i, j, birth, Tm) {
+	var n = S.nCol, d, a, b, o, v, leftFel = 0, rightFel = 0;
+	var donors = true, fraction = 1 / (P.K + 1), f;
+	for (d = 0; d < P.K; d++) {
+		a = (i - d + n) % n; b = (j + d) % n;
+		if (this.dead[a] || this.dead[b]) donors = false;
+		leftFel += S.hFel[a]; rightFel += S.hFel[b];
+	}
+	donors = donors && leftFel >= P.K * P.hRiftBreakup && rightFel >= P.K * P.hRiftBreakup;
+	for (var field = 0; field < this.fields.length; field++) S[this.fields[field]][birth] = 0;
+	S.colNL[birth] = 0;
+	S.colW[birth] = 1; // K4 stores layer volumes until final widths are known
+	S.colX[birth] = (S.colX[i] + (S.colX[j] + (j <= i ? P.wrap : 0))) * 0.5 % P.wrap;
+	S.colPlate[birth] = S.colPlate[i];
+	S.colU[birth] = S.colU[i];
+	S.colAge[birth] = 0;
+	S.damage[birth] = 0.6;
+	S.noise[birth] = (S.noise[i] + S.noise[j]) * 0.5;
+	S.fert[birth] = (S.fert[i] + S.fert[j]) * 0.5;
+	S.volc[birth] = -1;
+	S.oldW[birth] = 0;
+	S.edgeRPlate[birth] = -1;
+	S.edge[birth] = P.EDGE.neutral;
+	S.edgeAge[birth] = 0; S.edgeSlow[birth] = 0;
+	if (!donors) {
+		f = P.hMafNewBase * (1 + P.hMafNewTm * Math.max(0, Tm - 1));
+		// Half the opened gap is the newborn's initial width; final width is
+		// computed only after all births. The material is a mantle source.
+		f *= (S.colX[j] - S.colX[i] + (j <= i ? P.wrap : 0)) * 0.5;
+		this.push(birth, f, P.LITH.maf, 0, P.FLAG.wet);
+		S.ledProd[P.LITH.maf] += f;
+		S.oVms[birth] = (S.oVms[i] + S.oVms[j]) * 0.5;
+		return;
+	}
+	for (d = 0; d < P.K; d++) {
+		a = (i - d + n) % n; b = (j + d) % n;
+		this.transfer(a, birth, fraction, false);
+		this.transfer(b, birth, fraction, false);
+		for (o = 0; o < this.oreFields.length; o++) {
+			v = S[this.oreFields[o]];
+			v[birth] += (v[a] + v[b]) * fraction;
+			v[a] *= 1 - fraction; v[b] *= 1 - fraction;
+		}
+	}
+};
+
+COL.k4 = function (st, dt, t, Tm) {
+	var self = COL;
+	if (!(dt > 0)) return;
+	var n = st.nCol, i, j, k, b, count = 0, births = 0, appended = 0, freed = 0, reuse = 0, slot, oldN = n, any = false;
+	self.intents();
+	for (i = 0; i < n; i++) if (self.intent[i]) { any = true; break; }
+	if (!any) {
+		for (i = 0; i < n; i++) {
+			if (st.colW[i] === st.oldW[i]) continue;
+			b = i * P.layerCap;
+			for (k = 0; k < st.colNL[i]; k++) st.layTh[b + k] *= st.oldW[i] / st.colW[i];
+			self.sums(i);
+		}
+		SURF.profile();
+		return false;
+	}
+	self.dead.fill(0);
+	for (i = 0; i < n; i++) {
+		self.redirect[i] = i;
+		self.histEdge[i] = st.edge[i]; self.histPol[i] = st.edgePol[i];
+		self.histRP[i] = st.edgeRPlate[i]; self.histLP[i] = st.colPlate[i];
+		self.histAge[i] = st.edgeAge[i]; self.histSlow[i] = st.edgeSlow[i];
+	}
+	// Convert to volume once; compaction in COL.push now records volume, not thickness.
+	for (i = 0; i < n; i++) {
+		b = i * P.layerCap;
+		for (k = 0; k < st.colNL[i]; k++) st.layTh[b + k] *= st.oldW[i];
+		st.colW[i] = 1;
+	}
+	for (i = 0; i < n; i++) {
+		j = (i + 1) % n;
+		if (self.intent[i] !== 2 || self.dead[i] || self.dead[j]) continue;
+		self.consume(i, j);
+	}
+	for (i = 0; i < n; i++) freed += self.dead[i];
+	for (i = 0; i < n; i++) {
+		j = (i + 1) % n;
+		if (self.intent[i] !== 1 || self.dead[i] || self.dead[j]) continue;
+		if (n - freed + births >= P.colCap) { st.spawnSkipped++; continue; }
+		if (n + appended < P.colCap) slot = n + appended++;
+		else {
+			while (self.dead[reuse] !== 1) reuse++;
+			slot = reuse++;
+			self.dead[slot] = 2; // occupied by a birth, but still an old consumed record
+		}
+		self.rift(i, j, slot, Tm);
+		births++;
+	}
+	// Follow redirects before sorting. A consumed vent survives on the margin; a
+	// deposit tied to a destroyed bed loses its horizon instead of pointing into
+	// an unrelated stack on the margin.
+	for (i = 0; i < st.nDep; i++) if (st.depCol[i] >= 0 && self.dead[st.depCol[i]]) st.depCol[i] = -1;
+	for (i = 0; i < st.nVen; i++) {
+		if (st.venCol[i] < 0 || !self.dead[st.venCol[i]]) continue;
+		j = self.redirect[st.venCol[i]];
+		if (st.volc[j] < 0) { st.volc[j] = i; st.venCol[i] = j; }
+		else st.venCol[i] = -1;
+	}
+	for (i = 0; i < n + appended; i++) if (self.dead[i] !== 1) st.sortOrder[count++] = i;
+	self.orderView(count).sort(self.sortCompare);
+	self.gather(count);
+	st.nCol = count;
+	// Map pre-K4 indices into the final topology for edge-history hand-off.
+	self.map.fill(-1, 0, n + appended);
+	for (i = 0; i < count; i++) self.map[st.sortOrder[i]] = i;
+	// gather() already remapped deposits/vents using inverse; dead deposits are -1.
+	// For each old boundary, its new right column takes the edge from its new left
+	// neighbour (which may be the newborn at a ridge or the left of a consumed one).
+	for (i = 0; i < count; i++) {
+		st.edge[i] = P.EDGE.none;
+		st.edgeAge[i] = 0; st.edgeSlow[i] = 0;
+		st.edgePol[i] = 0; st.edgeRPlate[i] = -1;
+	}
+	for (i = 0; i < oldN; i++) {
+		j = (i + 1) % oldN;
+		if (self.dead[j] || self.map[j] < 0) continue;
+		k = (self.map[j] + count - 1) % count;
+		if (st.colPlate[k] !== self.histLP[i]) continue;
+		if (st.colPlate[self.map[j]] !== self.histRP[i]) continue;
+		st.edge[k] = self.histEdge[i]; st.edgePol[k] = self.histPol[i];
+		st.edgeAge[k] = self.histAge[i]; st.edgeSlow[k] = self.histSlow[i];
+		st.edgeRPlate[k] = self.histRP[i];
+	}
+	st.widths();
+	for (i = 0; i < count; i++) {
+		b = i * P.layerCap;
+		for (k = 0; k < st.colNL[i]; k++) st.layTh[b + k] /= st.colW[i];
+		self.sums(i);
+	}
+	self.plates();
+	SURF.profile();
+	return true;
+};
+
+// Due 1-Myr events: a slow C-C boundary sutures the smaller plate into the
+// larger after 20 Myr; a damaged corridor splits a plate only if both daughters
+// have enough columns. Called after K4, never while the sorted list is changing.
+COL.events = function (st) {
+	var n = st.nCol, i, j, a, b, small, large, last, p, start, k, c;
+	for (i = 0; i < n; i++) {
+		j = (i + 1) % n;
+		if (st.edge[i] !== P.EDGE.collide || st.edgeSlow[i] <= 20 ||
+			Math.abs(st.edgeRelN[i]) >= P.vSuture) continue;
+		a = st.colPlate[i]; b = st.colPlate[j];
+		if (a === b) continue;
+		small = st.plN[a] <= st.plN[b] ? a : b;
+		large = small === a ? b : a;
+		for (k = 0; k < n; k++) if (st.colPlate[k] === small) st.colPlate[k] = large;
+		last = --st.nPl;
+		if (small !== last) {
+			for (k = 0; k < n; k++) if (st.colPlate[k] === last) st.colPlate[k] = small;
+			st.plU[small] = st.plU[last]; st.plUP[small] = st.plUP[last];
+			st.plDmg[small] = st.plDmg[last];
+		}
+		for (k = 0; k < n; k++) st.colU[k] = st.plU[st.colPlate[k]];
+		st.edgeRPlate.fill(-1, 0, n);
+		COL.plates();
+		return true;
+	}
+	if (st.nPl >= P.plateCap) return false;
+	for (p = 0; p < st.nPl; p++) {
+		start = -1;
+		for (i = 0; i < n; i++) {
+			if (st.colPlate[i] === p && st.colPlate[(i + n - 1) % n] !== p) { start = i; break; }
+		}
+		if (start < 0 || st.plN[p] < 2 * P.minPlateCells) continue;
+		for (i = P.minPlateCells; i <= st.plN[p] - P.minPlateCells; i++) {
+			c = (start + i) % n;
+			if (st.damage[c] < P.splitDamage) continue;
+			b = st.nPl++;
+			st.plU[b] = st.plU[p]; st.plUP[b] = st.plUP[p];
+			st.plDmg[b] = st.plDmg[p];
+			for (k = i; k < st.plN[p]; k++) st.colPlate[(start + k) % n] = b;
+			st.damage[c] = 0.5;
+			st.edgeRPlate.fill(-1, 0, n);
+			COL.plates();
+			return true;
+		}
+	}
+	return false;
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = COL;

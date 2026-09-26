@@ -1,4 +1,4 @@
-// plates.js — K2 plate solve and the K3 boundary classifier (design §4.2).
+// plates.js — K2 plate solve and K3 transport/classifier (design §4.2).
 // A plate is rigid in 1D, so the reference's 3x3 force balance degenerates to a
 // width-weighted mean of (mantle drive + equivalent basal velocities w / cD) over its
 // columns, relaxed by dtGeo/tauOmega and clamped to vMax. Slab pull joins in M4.
@@ -6,6 +6,7 @@
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
 var MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.MNT;
+var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COL;
 
 var PLT = {
 	wB: new Float64Array(P.colCap),     // equivalent basal velocity, m/Myr
@@ -110,7 +111,7 @@ PLT.classify = function (S, dt) {
 		prevPol = same && prev === E.subduct ? S.edgePol[i] : 0;
 		S.edgeRPlate[i] = rp;
 		if (S.colPlate[i] === rp) {
-			S.edge[i] = E.none; S.edgePol[i] = 0; S.edgeAge[i] = 0;
+			S.edge[i] = E.none; S.edgePol[i] = 0; S.edgeAge[i] = 0; S.edgeSlow[i] = 0;
 			continue;
 		}
 		type = this.edgeType(prev, S.edgeRelN[i]);
@@ -118,6 +119,8 @@ PLT.classify = function (S, dt) {
 		S.edgePol[i] = 0;
 		if (type === E.subduct) this.polarity(S, i, j, prevPol);
 		S.edgeAge[i] = same && S.edge[i] === prev ? S.edgeAge[i] + dt : 0;
+		S.edgeSlow[i] = same && S.edge[i] === E.collide && prev === E.collide &&
+			Math.abs(S.edgeRelN[i]) < P.vSuture ? S.edgeSlow[i] + dt : 0;
 	}
 };
 
@@ -140,6 +143,7 @@ PLT.trench = function (S) {
 
 PLT.k3 = function (S, dt) {
 	if (!(dt > 0)) return;
+	COL.transport(S, dt);
 	PLT.classify(S, dt);
 	PLT.trench(S);
 };

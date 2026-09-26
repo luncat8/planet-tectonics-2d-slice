@@ -162,3 +162,18 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   the one skipped (canvas promotes a leading lineTo to a moveTo, silently).
 - the smoke DOM stub reads `checked` straight out of index.html, so the shipped default of a
   checkbox is what the headless run exercises — a flipped default fails the test, not the user.
+
+## M2.2 gather / mass bookkeeping
+
+- Transport gathers the *entire* column record and layer stack by the sorted permutation;
+  remap vent/deposit owners through its inverse and validate reciprocal indices. Widths
+  change even for mass-neutral plate movement: store old widths **with** their columns,
+  convert thickness × old width to volume, and divide by final width only after K4.
+- Newborns created while K4 uses layer volumes must have `colW=1` before `COL.push` can
+  compact their stacks; otherwise mixed-lithology ledger entries have zero volume.
+- A fixed-capacity scratch mark array must be cleared to capacity before appending
+  newborns. Clearing only the former `nCol` leaves stale marks at append slots after a
+  consume, causing an intermittent unaccounted birth in long runs. A 700 Myr ledger
+  fixture catches this whereas a 100 Myr fixture does not.
+- SIM invokes kernel/event function references without a receiver. Event functions that
+  call helpers must address their module explicitly, not rely on `this`.

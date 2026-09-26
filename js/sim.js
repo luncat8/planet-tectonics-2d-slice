@@ -15,12 +15,14 @@ var PLT = (typeof module !== 'undefined' && module.exports) ? require('./plates.
 
 var SIM = {
 	// kernel slots; each is (state, dtGeo Myr, t Myr, Tm) and must no-op at dtGeo = 0
-	k: [null, MNT.k1, PLT.k2, PLT.k3, null, null, null, null, null, null],
+	k: [null, MNT.k1, PLT.k2, PLT.k3, function (st, dt, t, Tm) {
+		if (COL.k4(st, dt, t, Tm)) { PLT.classify(st, 0); PLT.trench(st); }
+	}, null, null, null, null, null],
 	dG: 0,          // Myr per frame, from the plates slider
 	t: 0,           // Myr
 	tErupt: 0,      // s, the eruptive clock (the only seconds quantity)
 	Tm: 0, frame: 0, evT: 0, event: 0,
-	onEvent: null,  // post-K4 cadence hook: split/suture/compact (M2.2)
+	onEvent: COL.events,  // post-K4 cadence hook: split/suture
 
 	add: function (slot, fn) { this.k[slot] = fn; },
 
@@ -60,7 +62,9 @@ var SIM = {
 			var f = this.k[i];
 			if (f) f(S, this.dG, this.t, this.Tm);
 			if (i === 4 && this.dG > 0 && this.onEvent) {
-				for (var e = 0; e < this.event; e++) this.onEvent(S, this.dG);
+				for (var e = 0; e < this.event; e++) {
+					if (this.onEvent(S, this.dG)) { PLT.classify(S, 0); PLT.trench(S); }
+				}
 			}
 		}
 	},

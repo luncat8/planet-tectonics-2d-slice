@@ -10,6 +10,7 @@ var RNG = (typeof module !== 'undefined' && module.exports) ? require('./rng.js'
 var S = {
 	// columns (design §2.2), capacity colCap
 	nCol: 0,
+	spawnSkipped: 0,
 	colX: new Float64Array(P.colCap),
 	colW: new Float64Array(P.colCap),       // width from the neighbour gaps (S.widths)
 	colPlate: new Int32Array(P.colCap),
@@ -42,7 +43,8 @@ var S = {
 	oPla: new Float64Array(P.colCap),
 	volc: new Int32Array(P.colCap),         // vent slot or -1
 	edge: new Int8Array(P.colCap),          // boundary type with the right neighbour
-	edgeAge: new Float64Array(P.colCap),    // Myr in that state (suture timer)
+	edgeAge: new Float64Array(P.colCap),    // Myr in that boundary state
+	edgeSlow: new Float64Array(P.colCap),   // consecutive Myr of slow C-C contact
 	colLoad: new Float64Array(P.colCap),    // mobile sediment load, m (one-hop routing)
 	colPla: new Float64Array(P.colCap),     // placer load riding colLoad, m
 	// layer stacks: flat colCap x layerCap, bottom-up from col*layerCap
@@ -130,7 +132,7 @@ var S = {
 
 S.reset = function () {
 	this.nCol = 0; this.nPl = 0; this.nRib = 0; this.nPlm = 0; this.nVen = 0; this.nDep = 0;
-	this.ledMix = 0;
+	this.ledMix = 0; this.spawnSkipped = 0;
 	for (var k in this) {
 		var v = this[k];
 		if (v && v.fill) v.fill(0);

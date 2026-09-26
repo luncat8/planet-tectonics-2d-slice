@@ -54,13 +54,14 @@ invariants();
 // K0 must queue events, never execute topology before contact resolution.
 SIM.reset();
 var order = [];
+var savedContact = SIM.k[4];
 SIM.add(4, function () { order.push('contact'); });
 SIM.add(5, function () { order.push('surface'); });
 SIM.onEvent = function () { order.push('event'); };
 SIM.dG = P.eventCadence * 2;
 SIM.step();
 check.ok('all due events execute after K4 and before K5', order.join(',') === 'contact,event,event,surface');
-SIM.add(4, null); SIM.add(5, null); SIM.onEvent = null;
+SIM.add(4, savedContact); SIM.add(5, null); SIM.onEvent = COL.events;
 SIM.reset();
 var first = S.hash();
 SIM.reset();
@@ -132,7 +133,8 @@ check.ok('T stays finite and inside its initial bounds over 40 Myr', tBound, '['
 var uOk = true;
 for (var p = 0; p < S.nPl; p++) uOk = uOk && Math.abs(S.plU[p]) <= P.vMax && Number.isFinite(S.plU[p]);
 check.ok('plate speeds finite and within vMax', uOk, Array.from(S.plU.subarray(0, S.nPl), function (u) { return (u / 1e4).toFixed(2); }).join(' ') + ' cm/yr');
-check.ok('neutral contacts invent no transform damage', S.damage.every(function (d) { return d === 0; }));
+check.ok('only newborn ridges have damage (not neutral contacts)',
+	S.damage.every(function (d) { return d === 0 || d === 0.6; }));
 invariants();
 
 // --- M2.1 plate solve ---------------------------------------------------------------
@@ -206,6 +208,14 @@ setRel(-2.5e3); setRel(-2.5e3); setRel(-2.5e3);
 check.near('edgeAge accumulates in one state', S.edgeAge[bi], 0.1, 1e-12);
 setRel(0);
 check.ok('edgeAge resets on a state change', S.edgeAge[bi] === 0 && S.edge[bi] === E.neutral);
+bi = twoPlates();
+setRel(-5e4); setRel(-5e4);
+check.ok('fast collision never advances the slow suture timer', S.edgeSlow[bi] === 0);
+setRel(-2.5e3);
+check.near('a slow collision starts the consecutive suture timer', S.edgeSlow[bi], 0.05, 1e-12);
+setRel(-5e4);
+check.ok('fast convergence resets the consecutive slow timer', S.edgeSlow[bi] === 0);
+
 setRel(2.5e3);
 S.colPlate[bi + 1] = 2; S.nPl = 3;                // a different right plate: history is void
 setRel(1.5e3);
@@ -243,6 +253,226 @@ S.hFel[5] = 0; S.slope[5] = 1e-3;
 PLT.basal(S);
 check.ok('ridge push is downslope on oceanic columns only', PLT.wB[5] === -P.kRidge * 1e-3 && PLT.wB[6] === 0);
 
+// --- M2.2: rigid transport, wrap, volume contacts -------------------------------
+check.section('M2.2 transport and contact fixtures');
+function ledger(start, name) {
+	var now = S.mass(), valid = true, worst = 0;
+	for (var l = 0; l < P.LITH.n; l++) {
+		var lhs = now[l] + S.ledCons[l] + S.ledMixOut[l];
+		var rhs = start[l] + S.ledProd[l] + S.ledMixIn[l];
+		var err = Math.abs(lhs - rhs) / Math.max(1, rhs);
+		worst = Math.max(worst, err);
+		valid = valid && err < 1e-12;
+	}
+	check.ok(name + ' per-lith volume ledger', valid, 'max relative ' + worst.toExponential(2));
+}
+function boundary() {
+	check.planet(1);
+	for (var i = 0; i < S.nCol - 1; i++) if (S.colPlate[i] !== S.colPlate[i + 1]) return i;
+	throw Error('no interior boundary');
+}
+function contact(i, spacing, rel) {
+	var j = i + 1;
+	S.oldW.set(S.colW);
+	S.colX[j] = S.colX[i] + spacing * P.w0;
+	S.widths();
+	S.colU.fill(0); S.colU[j] = rel;
+	S.edge[i] = rel > 0 ? E.open : (S.hFel[i] >= P.hOceanic && S.hFel[j] >= P.hOceanic ? E.collide : E.subduct);
+	S.edgeRelN[i] = rel;
+	S.edgePol[i] = S.hFel[i] < P.hOceanic ? -1 : 1;
+	S.edgeRPlate[i] = S.colPlate[j];
+	COL.k4(S, 0.05, 0, 1.6);
+}
+bi = boundary();
+var firstX = S.colX[0];
+S.noise[0] = 0.12345;
+S.nDep = 1; S.depCol[0] = 0; S.depLay[0] = 0;
+S.nVen = 1; S.venCol[0] = 0; S.volc[0] = 0;
+var motionStart = S.mass().slice(), motionU = P.w0 * 2.25 / 0.05;
+S.colU.fill(motionU, 0, S.nCol);
+COL.transport(S, 0.05);
+COL.k4(S, 0.05, 0, 1.6);
+var owner = S.depCol[0];
+check.ok('wrap gather carries stack, marker, vent and deposit together',
+	owner === S.venCol[0] && S.volc[owner] === 0 && S.noise[owner] === 0.12345 &&
+	S.colX[owner] === (firstX + motionU * 0.05) % P.wrap && S.colNL[owner] > 0);
+check.ok('rigid movement retains every spacing through seam',
+	S.colW.subarray(0, S.nCol).every(function (w) { return Math.abs(w - P.w0) < 1e-7; }));
+ledger(motionStart, 'rigid wrap');
+invariants();
+
+// Three rigid columns cross the seam together. The empty rest of the wrap is
+// intentionally huge: the old-width volume rule must not fabricate crust there.
+check.planet(1);
+S.nCol = 3; S.nPl = 1;
+S.colX[0] = 0.1 * P.w0;
+S.colX[1] = 1.1 * P.w0;
+S.colX[2] = P.wrap - 0.9 * P.w0;
+S.colPlate.fill(0, 0, 3);
+S.colU.fill(5e4, 0, 3);
+S.noise[0] = 0.12345;
+S.widths();
+var rigidX = S.colX[0], rigidWidth = S.colW[0], rigidMass = S.mass().slice();
+for (var rStep = 0; rStep < 40; rStep++) { COL.transport(S, 1); COL.k4(S, 1, 0, 1.6); }
+var marker = S.noise.findIndex(function (v) { return v === 0.12345; });
+check.near('5 cm/yr rigid plate translates 2000 km including the wrap', S.colX[marker],
+	(rigidX + 2e6) % P.wrap, 1e-10);
+check.near('rigid plate carries its own width through 40 translations', S.colW[marker], rigidWidth, 1e-12);
+for (rStep = 0; rStep < 100000; rStep++) { COL.transport(S, 0.05); COL.k4(S, 0.05, 0, 1.6); }
+marker = S.noise.findIndex(function (v) { return v === 0.12345; });
+check.near('no rigid spacing drift after 1e5 frames', S.colW[marker], rigidWidth, 1e-12);
+ledger(rigidMass, 'rigid 2000 km + 1e5 frames');
+invariants();
+
+bi = boundary();
+var gapMass = S.mass().slice(), gapN = S.nCol, gapPlate = S.colPlate[bi];
+// Force oceanic donor sets; only the newborn mafic volume is sourced from mantle.
+for (var d = -P.K + 1; d <= P.K; d++) S.hFel[(bi + d + S.nCol) % S.nCol] = 0;
+contact(bi, 1.6, 5e4);
+check.ok('one opening creates one oceanic packet on the left plate', S.nCol === gapN + 1 &&
+	S.colPlate[bi + 1] === gapPlate && S.colAge[bi + 1] === 0 && S.damage[bi + 1] === 0.6 && S.hMaf[bi + 1] > 0);
+ledger(gapMass, 'oceanic ridge');
+invariants();
+
+bi = boundary();
+for (d = -P.K + 1; d <= P.K; d++) {
+	var donor = (bi + d + S.nCol) % S.nCol;
+	COL.push(donor, 35e3, P.LITH.fel, 100, 0);
+	COL.sums(donor);
+}
+gapMass = S.mass().slice(); gapN = S.nCol;
+var oldFel = S.hFel[bi];
+contact(bi, 1.6, 5e4);
+check.ok('continental opening shares felsic beds and thins donors', S.nCol === gapN + 1 &&
+	S.hFel[bi + 1] > 0 && S.hFel[bi] < oldFel && S.ledProd[P.LITH.maf] === 0);
+ledger(gapMass, 'continental rift');
+invariants();
+
+bi = boundary();
+// A full C-C stack goes into the thicker winner, with no prism/sink.
+COL.push(bi, 20e3, P.LITH.fel, 100, 0);
+COL.push(bi + 1, 40e3, P.LITH.fel, 100, 0);
+COL.sums(bi); COL.sums(bi + 1);
+var collisionMass = S.mass().slice(), collisionN = S.nCol;
+var loser = S.hFel[bi] <= S.hFel[bi + 1] ? bi : bi + 1;
+S.nDep = 1; S.depCol[0] = loser; S.depLay[0] = 0;
+S.nVen = 1; S.venCol[0] = loser; S.volc[loser] = 0;
+contact(bi, 0.5, -5e4);
+check.ok('C-C contact consumes exactly the thinner column', S.nCol === collisionN - 1 &&
+	S.ledCons.every(function (v) { return v === 0; }));
+check.ok('collision rehomes deposit horizon and vent to winner', S.depCol[0] >= 0 &&
+	S.depLay[0] < S.colNL[S.depCol[0]] && S.venCol[0] >= 0 && S.volc[S.venCol[0]] === 0);
+ledger(collisionMass, 'collision');
+invariants();
+
+bi = boundary();
+var subMass = S.mass().slice(), subN = S.nCol, sedBefore = S.ledCons[P.LITH.sed];
+S.hFel[bi] = 0; S.hFel[bi + 1] = 35e3;
+contact(bi, 0.5, -5e4);
+check.ok('subduction consumes ocean and leaves half sediment in prism', S.nCol === subN - 1 &&
+	S.ledCons[P.LITH.maf] > 0 && S.ledCons[P.LITH.sed] > sedBefore);
+ledger(subMass, 'subduction');
+invariants();
+
+// If the edge-carrying column is consumed, the left neighbour inherits its
+// running boundary with the same right plate, not the consumed column's slot.
+bi = boundary();
+S.edge[bi] = E.collide; S.edgeAge[bi] = 12;
+S.edgeRPlate[bi] = S.colPlate[bi + 1];
+S.edgeRelN[bi] = -5e4;
+S.hFel[bi] = 1; S.hFel[bi + 1] = 35e3;
+S.oldW.set(S.colW);
+S.colX[bi + 1] = S.colX[bi] + 0.5 * P.w0;
+S.widths();
+COL.k4(S, 0.05, 0, 1.6);
+check.ok('consumed left owner hands its edge history to new left neighbour',
+	S.edge[bi - 1] === E.collide && S.edgeAge[bi - 1] === 12);
+invariants();
+
+// Cadence events operate on the stable post-K4 list, not during a gather.
+bi = boundary();
+var nPlBefore = S.nPl;
+S.edge[bi] = E.collide; S.edgeAge[bi] = 21; S.edgeSlow[bi] = 0;
+S.edgeRelN[bi] = -2.5e3;
+check.ok('one newly slow frame cannot suture an old fast collision', !COL.events(S) &&
+	S.nPl === nPlBefore);
+S.edgeSlow[bi] = 21;
+check.ok('20-Myr slow C-C suture merges exactly one plate', COL.events(S) &&
+	S.nPl === nPlBefore - 1 && S.colPlate[bi] === S.colPlate[bi + 1]);
+invariants();
+bi = boundary();
+nPlBefore = S.nPl;
+var plate = S.colPlate[bi + 1];
+var splitAt = bi + 1 + P.minPlateCells;
+S.damage[splitAt] = P.splitDamage + 0.01;
+check.ok('damaged corridor splits two sufficiently large daughter plates', COL.events(S) &&
+	S.nPl === nPlBefore + 1 && S.damage[splitAt] === 0.5 &&
+	S.plN[plate] >= P.minPlateCells && S.plN[S.nPl - 1] >= P.minPlateCells);
+invariants();
+
+// A seam opening is the same event as an interior opening, including the left tie.
+bi = boundary();
+var seamI = S.nCol - 1;
+check.planet(1);
+seamI = S.nCol - 1;
+var seamPlate = S.colPlate[seamI], seamMass = S.mass().slice(), seamN = S.nCol;
+S.oldW.set(S.colW);
+S.colX[seamI] -= 0.6 * P.w0;
+S.widths();
+S.edge[seamI] = E.open; S.edgeRelN[seamI] = 5e4;
+COL.k4(S, 0.05, 0, 1.6);
+check.ok('wrapped last-to-first gap produces one left-plate packet', S.nCol === seamN + 1 &&
+	S.colPlate[S.nCol - 1] === seamPlate && S.colX[S.nCol - 1] > P.wrap - P.w0);
+ledger(seamMass, 'seam opening');
+invariants();
+
+// At capacity a failed birth leaves no ledger or donor side effects. A concurrent
+// consumption frees a slot, and the birth reuses it without exceeding the buffer.
+function fullFixture(consumption) {
+	check.planet(1);
+	S.nCol = P.colCap;
+	S.nPl = 3;
+	var pitch = (P.wrap - 250e3) / P.colCap;
+	for (var i = 0; i < S.nCol; i++) {
+		S.colX[i] = i * pitch;
+		S.colPlate[i] = i < 384 ? 0 : (i <= 500 ? 1 : 2);
+		S.colNL[i] = 0;
+		S.hFel[i] = 0; S.hSed[i] = 0; S.hMaf[i] = 0;
+		S.edge[i] = E.none; S.edgeRelN[i] = 0;
+		S.volc[i] = -1;
+	}
+	var open = 383;
+	for (i = 384; i < S.nCol; i++) S.colX[i] += 0.9 * P.w0;
+	S.edge[open] = E.open; S.edgeRelN[open] = 5e4;
+	if (consumption) {
+		S.colX[501] = S.colX[500] + 0.5 * P.w0;
+		S.edge[500] = E.collide; S.edgeRelN[500] = -5e4;
+		S.hFel[500] = 1; S.hFel[501] = 2;
+	}
+	S.widths(); S.oldW.set(S.colW);
+	COL.k4(S, 0.05, 0, 1.6);
+}
+fullFixture(false);
+check.ok('at colCap skipped birth is atomic', S.nCol === P.colCap && S.spawnSkipped === 1 &&
+	S.ledProd[P.LITH.maf] === 0);
+invariants();
+fullFixture(true);
+check.ok('a consumed slot is reused by a birth at colCap', S.nCol === P.colCap &&
+	S.spawnSkipped === 0 && S.ledProd[P.LITH.maf] > 0,
+	'n=' + S.nCol + ' skipped=' + S.spawnSkipped + ' prod=' + S.ledProd[P.LITH.maf]);
+invariants();
+
+check.planet(1);
+var longMass = S.mass().slice();
+SIM.setGeo(100e3);
+SIM.run(1000);
+ledger(longMass, '100 Myr evolving planet');
+invariants();
+SIM.setGeo(200e3);
+SIM.run(3000);
+ledger(longMass, '700 Myr mixed-rate evolving planet (repeated births)');
+invariants();
+
 check.section('M2.1 determinism and finite state at every kernel boundary');
 check.planet(3);
 SIM.setGeo(50e3);
@@ -277,5 +507,5 @@ for (var run = 0; run < 7; run++) {
 	SIM.run(20);
 	best = Math.min(best, Number(process.hrtime.bigint() - t0) / 1e6 / 20);
 }
-check.ok('sim frame (K0-K3 so far) within the 4 ms budget', best <= 4, best.toFixed(3) + ' ms/frame, min of 7x20');
+check.ok('sim frame (K0-K4) within the 4 ms budget', best <= 4, best.toFixed(3) + ' ms/frame, min of 7x20');
 check.done();
