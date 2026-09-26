@@ -62,6 +62,7 @@ var P = {
 	// noise space so it is seamless across the x wrap
 	maskScale: 1.6,
 	landFrac: 0.4,               // quantile threshold: continental fraction, seed free
+	marginCols: 3,              // landward passive-margin taper, columns
 	proxRange: 8,                // columns searched for the sediment-source proximity
 	hFelLand0: 35e3,             // 35 km felsic is the +400 m isostasy calibration point
 	hFelLandK: 32e3,             // mask cores reach 67 km: plateaus above hCollapse

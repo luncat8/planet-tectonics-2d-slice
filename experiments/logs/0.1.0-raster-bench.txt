@@ -30,18 +30,18 @@ PASS  and the sediment bed untouched
 PASS  removeTop past the bottom empties the stack   got 150
 
 C. body raster (design §7, budget 6 ms at 1280x560, min of 15 runs)
-  default window          3.553 ms  (median 3.721, max 4.018)
-PASS  default window body raster <= 6 ms   3.553 ms
-  overview (full depth)   3.569 ms  (median 4.182, max 4.583)
-PASS  overview (full depth) body raster <= 6 ms   3.569 ms
-  crust x10               3.402 ms  (median 3.440, max 3.545)
-PASS  crust x10 body raster <= 6 ms   3.402 ms
-  basin x40               3.449 ms  (median 3.524, max 4.275)
-PASS  basin x40 body raster <= 6 ms   3.449 ms
+  default window          3.794 ms  (median 3.813, max 3.914)
+PASS  default window body raster <= 6 ms   3.794 ms
+  overview (full depth)   4.167 ms  (median 4.203, max 4.515)
+PASS  overview (full depth) body raster <= 6 ms   4.167 ms
+  crust x10               3.011 ms  (median 3.018, max 3.116)
+PASS  crust x10 body raster <= 6 ms   3.011 ms
+  basin x40               3.010 ms  (median 3.130, max 4.678)
+PASS  basin x40 body raster <= 6 ms   3.010 ms
 PASS  every pixel is painted   716800/716800
-  buildColLUT (512 cols, 1280 px)  0.0045 ms per frame
-  GEO.rebuild (both LUT sets)      0.0180 ms, view change only
-  sim.step with the M1 kernels     0.05 us
-PASS  the body raster leaves headroom for the overlay   3.553 ms of a 6 ms budget
+  buildColLUT (512 cols, 1280 px)  0.0063 ms per frame
+  GEO.rebuild (both LUT sets)      0.0274 ms, view change only
+  sim.step with the M1 kernels     0.07 us
+PASS  the body raster leaves headroom for the overlay   3.794 ms of a 6 ms budget
 
 ALL PASS (32 checks)

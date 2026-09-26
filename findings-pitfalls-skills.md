@@ -99,3 +99,11 @@ notes and pitfalls for LLM agents. write here if found good way to do something.
   stored in ascending world altitude then have descending screen y, so label collision
   checks must traverse them in reverse (or compare absolute screen gaps). Test top/bottom,
   `yAt(sy(y))`, sea-level alignment and rendered label order—not only grid-array sorting.
+
+## Section geometry vs axis regressions
+
+A correct screen-y map can still show block-like crust if only the surface is interpolated:
+interpolate the rendered Moho with the same column fraction, use it for both raster and
+overlay, and invert any display-only stack stretch in the probe. Never write interpolated
+thicknesses back to geological state. Separately, quantile land selection needs a coastal
+thickness taper; a binary 0→35 km felsic jump creates artificial continent walls.

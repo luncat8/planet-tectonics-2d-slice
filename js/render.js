@@ -12,6 +12,7 @@ var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns
 
 var RNDR = {
 	ctx: null, img: null, px: null, w: 0, h: 0,
+	mohoY: null,
 	profY: null,          // profile altitude per screen column, rebuilt by body()
 	mesh: false,          // the M0 measuring-tool overlay, toggled from the UI
 	probe: '',            // geology under the cursor, rebuilt on mousemove only
@@ -97,6 +98,7 @@ RNDR.buildProfile = function (w) {
 		relief = P.reliefBase + P.reliefK * Math.abs(S.z[c1] - S.z[c0]);
 		n0 = S.noise[c0]; n1 = S.noise[c1];
 		profY[px] = z + relief * (n0 + (n1 - n0) * f);
+		this.mohoY[px] = profY[px] - (S.hTot[c0] + (S.hTot[c1] - S.hTot[c0]) * f);
 	}
 };
 
@@ -106,7 +108,10 @@ RNDR.body = function (px, w, h) {
 	if (!this.palLith) this.buildPalette();
 	// no columns yet: the whole window is sky (lutCol is all -1, nothing would paint)
 	if (S.nCol === 0) { px.fill(this.palAir[63]); return; }
-	if (!this.profY || this.profY.length < w) this.profY = new Float64Array(w);
+	if (!this.profY || this.profY.length < w) {
+		this.profY = new Float64Array(w);
+		this.mohoY = new Float64Array(w);
+	}
 	this.buildProfile(w);
 	var lutCol = GEO.lutCol, lutY = GEO.lutY, lutX = GEO.lutX;
 	var lutRow = GEO.lutRow, lutBase = GEO.lutRowBase, lutCnt = GEO.lutRowCnt, lutInvP = GEO.lutRowInvP;
@@ -120,10 +125,12 @@ RNDR.body = function (px, w, h) {
 		pY = profY[pxc];
 		nLay = S.colNL[c];
 		b = c * LC;
-		mohoY = pY - S.hTot[c];
+		mohoY = this.mohoY[pxc];
+		// Display-only stretch: stored beds and mass are never resampled.
+		var stretch = S.hTot[c] > 0 ? (pY - mohoY) / S.hTot[c] : 1;
 		wx = lutX[pxc];
 		layIdx = nLay - 1;
-		layBot = layIdx >= 0 ? pY - S.layTh[b + layIdx] : -Infinity;
+		layBot = layIdx >= 0 ? pY - S.layTh[b + layIdx] * stretch : -Infinity;
 		s = 0;
 		off = pxc;
 
@@ -143,7 +150,7 @@ RNDR.body = function (px, w, h) {
 			y = lutY[s];
 			while (layIdx > 0 && y < layBot) {
 				layIdx--;
-				layBot -= S.layTh[b + layIdx];
+				layBot -= S.layTh[b + layIdx] * stretch;
 			}
 			lith = layIdx >= 0 ? S.layLi[b + layIdx] : P.LITH.fel;
 			px[off] = palLith[(lith << 4) | (layIdx & 15)];
@@ -190,7 +197,7 @@ RNDR.overlayProfile = function () {
 	for (px = 0; px < this.w; px++) {
 		col = GEO.lutCol[px];
 		if (col < 0) continue;
-		s = GEO.sy(this.profY[px] - S.hTot[col]);
+		s = GEO.sy(this.mohoY[px]);
 		if (px === 0) c.moveTo(px + 0.5, s); else c.lineTo(px + 0.5, s);
 	}
 	c.strokeStyle = 'rgba(255,230,140,0.5)';
@@ -313,7 +320,12 @@ RNDR.updateProbe = function (mx, my) {
 	var c = GEO.lutCol[mx | 0];
 	if (c < 0 || S.nCol === 0) { this.probe = ''; return; }
 	var y = GEO.lutY[my | 0];
-	var top = S.z[c];
+	var next = c + 1 < S.nCol ? c + 1 : 0, f = GEO.lutFrac[mx | 0];
+	var top = S.z[c] + (S.z[next] - S.z[c]) * f;
+	var relief = P.reliefBase + P.reliefK * Math.abs(S.z[next] - S.z[c]);
+	top += relief * (S.noise[c] + (S.noise[next] - S.noise[c]) * f);
+	var height = S.hTot[c] + (S.hTot[next] - S.hTot[c]) * f;
+	var stretch = S.hTot[c] > 0 ? height / S.hTot[c] : 1;
 	var s = 'col ' + c + '  plate ' + S.colPlate[c] + '  age ' + S.colAge[c].toFixed(1) + ' Myr';
 	s += '\nz ' + (top / 1e3).toFixed(2) + ' km  hTot ' + (S.hTot[c] / 1e3).toFixed(1) + ' km';
 	s += '\nfel ' + (S.hFel[c] / 1e3).toFixed(1) + '  maf ' + (S.hMaf[c] / 1e3).toFixed(1) +
@@ -323,7 +335,7 @@ RNDR.updateProbe = function (mx, my) {
 		this.probe = s;
 		return;
 	}
-	var k = COL.layerAt(c, top - y);
+	var k = COL.layerAt(c, (top - y) / stretch);
 	if (k < 0) {
 		var r = GEO.rowOf(y);
 		var cell = r < 0 ? 0 : GEO.cellOf(r, GEO.lutX[mx | 0]);

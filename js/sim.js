@@ -17,7 +17,7 @@ var SIM = {
 	t: 0,           // Myr
 	tErupt: 0,      // s, the eruptive clock (the only seconds quantity)
 	Tm: 0, frame: 0, evT: 0, event: 0,
-	onEvent: null,  // the 1 Myr cadence hook (K0): split/suture/compact (M2.2)
+	onEvent: null,  // post-K4 cadence hook: split/suture/compact (M2.2)
 
 	add: function (slot, fn) { this.k[slot] = fn; },
 
@@ -45,8 +45,7 @@ var SIM = {
 		this.event = 0;
 		while (this.evT >= P.eventCadence) {
 			this.evT -= P.eventCadence;
-			this.event = 1;
-			if (this.onEvent) this.onEvent();
+			this.event++;
 		}
 	},
 
@@ -55,7 +54,10 @@ var SIM = {
 		this.k0();
 		for (var i = 1; i < 10; i++) {
 			var f = this.k[i];
-			if (f) f();
+			if (f) f(S, this.dG);
+			if (i === 4 && this.dG > 0 && this.onEvent) {
+				for (var e = 0; e < this.event; e++) this.onEvent(S, this.dG);
+			}
 		}
 	},
 

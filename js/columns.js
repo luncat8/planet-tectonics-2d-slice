@@ -45,7 +45,12 @@ COL.compact = function (c) {
 		if (S.layLi[b + k] === S.layLi[b + k + 1] && t < sameT) { sameT = t; sameK = k; }
 	}
 	var k0 = sameK >= 0 ? sameK : anyK;
-	if (sameK < 0) S.ledMix++;
+	if (sameK < 0) {
+		S.ledMix++;
+		var volume = S.layTh[b + k0 + 1] * S.colW[c];
+		S.ledMixOut[S.layLi[b + k0 + 1]] += volume;
+		S.ledMixIn[S.layLi[b + k0]] += volume;
+	}
 	S.layTh[b + k0] += S.layTh[b + k0 + 1];
 	S.layAg[b + k0] = Math.max(S.layAg[b + k0], S.layAg[b + k0 + 1]);
 	S.layFl[b + k0] |= S.layFl[b + k0 + 1];
@@ -149,7 +154,7 @@ COL.makePlanet = function (Tm) {
 		S.noise[i] = RNG.range(-1, 1);
 		S.fert[i] = 0.5 + 1.5 * RNG.fbm2(Math.cos(2 * Math.PI * i / n) * 3,
 			Math.sin(2 * Math.PI * i / n) * 3, 2, nSeed + 77);
-		if (this.mask[i] >= thr) this.continental(i, (this.mask[i] - thr) / mSpan);
+		if (this.mask[i] >= thr) this.continental(i, (this.mask[i] - thr) / mSpan, this.margin(i, thr), hMafNew);
 		else this.oceanic(i, this.ridgeAge(i, nRidge), hMafNew);
 		this.sums(i);
 	}
@@ -182,9 +187,24 @@ COL.splitBeds = function (total, parts) {
 	return w;
 };
 
-COL.continental = function (i, mm) {
+// Taper the landward three columns, including at the periodic seam. The quantile
+// still selects continental columns; only their margin thickness changes.
+COL.margin = function (i, thr) {
+	var n = S.nCol, nearest = P.marginCols;
+	for (var d = 1; d < P.marginCols; d++) {
+		if (this.mask[(i + d) % n] < thr || this.mask[(i - d + n) % n] < thr) {
+			nearest = d;
+			break;
+		}
+	}
+	return SURF.smoothstep(nearest, 0, P.marginCols);
+};
+
+COL.continental = function (i, mm, margin, hMafNew) {
 	var L = P.LITH;
 	var hFel = P.hFelLand0 + P.hFelLandK * Math.pow(mm, P.hFelLandPow);
+	hFel *= margin;
+	this.push(i, hMafNew * (1 - margin), L.maf, P.cratonAge0, 0);
 	var age = P.cratonAge0 + P.cratonAgeK * mm;
 	// split into a handful of beds so bedding is visible; the count scales with the
 	// total so a 60 km core gets more (thinner) beds than a 20 km shelf

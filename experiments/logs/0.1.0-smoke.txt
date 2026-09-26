@@ -37,7 +37,7 @@ D. probe, mesh, keys
 PASS  cursor readout built   "40027.8 km  -108 km | 2.34 km/px  713 m/px"
 PASS  geology probe built   "col 511  plate 1  age 927.3 Myr"
 PASS  probe names a layer or the mantle   mantle  108 km  dT -0.11
-PASS  probe in the sky reads air/water   air  29638 m above surface
+PASS  probe in the sky reads air/water   air  29541 m above surface
 PASS  m toggles the mesh overlay
 PASS  m toggles it back
 PASS  preset button 3 = crust x10   rel 0.00e+0  got 234.375  want 234.375
@@ -46,8 +46,8 @@ PASS  space resumes it   rel 0.00e+0  got 49906.84743614388 yr/f  want 49906.847
 PASS  the mesh button is wired in index.html
 
 E. determinism
-PASS  two fresh 1000-frame runs are bit-identical   4274465219|3547264217,1384006036,4229254291,1210344905 vs 4274465219|3547264217,1384006036,4229254291,1210344905
-PASS  a different seed diverges   2289314890|2340111570,1521480946,1170353247,2236989261
-PASS  the state hash is not degenerate   4274465219|3547264217,1384006036,4229254291,1210344905
+PASS  two fresh 1000-frame runs are bit-identical   264280530|3682030392,1847576574,2413940254,575771274 vs 264280530|3682030392,1847576574,2413940254,575771274
+PASS  a different seed diverges   213073790|1928876461,1656449407,1884274477,2160296369
+PASS  the state hash is not degenerate   264280530|3682030392,1847576574,2413940254,575771274
 
 ALL PASS (41 checks)

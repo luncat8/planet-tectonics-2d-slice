@@ -13,6 +13,15 @@ var S = {
 	colX: new Float64Array(P.colCap),
 	colW: new Float64Array(P.colCap),       // width from the neighbour gaps (S.widths)
 	colPlate: new Int32Array(P.colCap),
+	colU: new Float64Array(P.colCap),
+	ext: new Float64Array(P.colCap),
+	edgeRelN: new Float64Array(P.colCap),
+	edgePol: new Int8Array(P.colCap),        // -1 left subducts, +1 right, 0 neither
+	edgeRPlate: new Int32Array(P.colCap),
+	trenchDist: new Uint8Array(P.colCap),
+	oldW: new Float64Array(P.colCap),
+	sortOrder: new Int32Array(P.colCap),
+	sortInverse: new Int32Array(P.colCap),
 	colAge: new Float64Array(P.colCap),     // Myr, 0 at a ridge
 	hFel: new Float64Array(P.colCap),
 	hMaf: new Float64Array(P.colCap),
@@ -113,6 +122,8 @@ var S = {
 	// mass ledger (design §6): produced / consumed volume per LITH, m3
 	ledProd: new Float64Array(P.LITH.n),
 	ledCons: new Float64Array(P.LITH.n),
+	ledMixIn: new Float64Array(P.LITH.n),
+	ledMixOut: new Float64Array(P.LITH.n),
 	ledMix: 0,                              // cross-lithology stack merges (auditable loss)
 	massBy: new Float64Array(P.LITH.n)      // measured crust mass per LITH, m3
 };
@@ -124,6 +135,7 @@ S.reset = function () {
 		var v = this[k];
 		if (v && v.fill) v.fill(0);
 	}
+	this.edgeRPlate.fill(-1);
 	this.volc.fill(-1);
 	this.venCol.fill(-1);
 	RNG.seed(P.seed);

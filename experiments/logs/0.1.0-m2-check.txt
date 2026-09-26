@@ -1,0 +1,23 @@
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  plate counts agree
+PASS  zero geological time leaves tectonic state unchanged
+PASS  edge history starts invalid
+PASS  mixed merge ledger lith 0   rel 0.00e+0  got 50170583174.09892  want 50170583174.09892
+PASS  mixed merge ledger lith 1   rel 0.00e+0  got 714595282782.2251  want 714595282782.2251
+PASS  mixed merge ledger lith 2   rel 0.00e+0  got 335331177336.2627  want 335331177336.2627
+PASS  mixed merge ledger lith 3   rel 0.00e+0  got 0  want 0
+PASS  mixed merge ledger lith 4   rel 0.00e+0  got 0  want 0
+PASS  mixed merge ledger lith 5   rel 0.00e+0  got 0  want 0
+PASS  mixed merge records one event
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  plate counts agree
+PASS  all due events execute after K4 and before K5
+PASS  reset is deterministic, including new buffers
+
+ALL PASS (21 checks)
