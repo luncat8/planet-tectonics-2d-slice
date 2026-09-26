@@ -142,20 +142,23 @@ S.reset = function () {
 	this.layout();
 };
 
-// the geometry of the initial planet: nCols uniform columns in two plates, stacks
-// empty. The geology that fills the stacks is columns.js makePlanet (M1.1).
+// the geometry of the initial planet: nCols uniform columns in plates0 plates whose
+// boundaries sit at even spacing plus a seeded jitter; stacks empty. The first boundary
+// is jittered too, so the last plate usually wraps across x = 0 (a rotated interval
+// anchored at its own first column). The geology is columns.js makePlanet.
 S.layout = function () {
-	var n = P.nCols, i, half = n >> 1;
+	var n = P.nCols, np = P.plates0, i, k, b0, b1, first;
 	this.nCol = n;
-	for (i = 0; i < n; i++) {
-		this.colX[i] = i * P.w0;
-		this.colPlate[i] = i < half ? 0 : 1;
+	for (i = 0; i < n; i++) this.colX[i] = i * P.w0;
+	this.nPl = np;
+	b0 = first = RNG.i(P.plateJitter + 1);
+	for (k = 0; k < np; k++) {
+		b1 = k + 1 < np ? Math.round((k + 1) * n / np) + RNG.i(2 * P.plateJitter + 1) - P.plateJitter : first + n;
+		this.plX0[k] = this.colX[b0 % n];
+		this.plN[k] = b1 - b0;
+		for (i = b0; i < b1; i++) this.colPlate[i % n] = k;
+		b0 = b1;
 	}
-	this.nPl = 2;
-	this.plX0[0] = 0;
-	this.plX0[1] = half * P.w0;
-	this.plN[0] = half;
-	this.plN[1] = n - half;
 	this.widths();
 };
 

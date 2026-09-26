@@ -1,3 +1,5 @@
+
+M2.0 state, ledger, event order
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
@@ -5,7 +7,7 @@ PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  wan
 PASS  plate counts agree
 PASS  zero geological time leaves tectonic state unchanged
 PASS  edge history starts invalid
-PASS  mixed merge ledger lith 0   rel 0.00e+0  got 50170583174.09892  want 50170583174.09892
+PASS  mixed merge ledger lith 0   rel 0.00e+0  got 33120000784.307064  want 33120000784.307064
 PASS  mixed merge ledger lith 1   rel 0.00e+0  got 714595282782.2251  want 714595282782.2251
 PASS  mixed merge ledger lith 2   rel 0.00e+0  got 335331177336.2627  want 335331177336.2627
 PASS  mixed merge ledger lith 3   rel 0.00e+0  got 0  want 0
@@ -20,4 +22,51 @@ PASS  plate counts agree
 PASS  all due events execute after K4 and before K5
 PASS  reset is deterministic, including new buffers
 
-ALL PASS (21 checks)
+M2.1 mantle flow and fan T
+PASS  modes are integer harmonics of the wrap   6,10,13,16
+PASS  mode obliquity, precession and phase within the design ranges
+PASS  flow repeats after P.wrap to double precision   7.51e-9 m/Myr
+PASS  surface drive is u_x(x, 0)   0.00e+0
+PASS  streamfunction flow is divergence-free   max |div|/(|du/dx|+|dv/dy|) 4.48e-6
+PASS  flow speed bounded by the mode sum   8.51 cm/yr
+PASS  constant T is preserved (times the relaxation)   0.00e+0
+PASS  back-trace recurrence equals the closed-form flow   1.03e-14
+PASS  T stays finite and inside its initial bounds over 40 Myr   [-0.550, 0.000]
+PASS  plate speeds finite and within vMax   -1.21 0.26 1.55 -0.08 -1.58 0.63 0.78 -0.09 cm/yr
+PASS  neutral contacts invent no transform damage
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  plate counts agree
+
+M2.1 plate solve
+PASS  dt = tauOmega gives the width-weighted mean fit   0.00e+0
+PASS  columns carry their plate velocity
+PASS  relaxation moves u by dt/tauOmega of the gap   rel 1.82e-11  got 30208.654108897226  want 30208.654108897244
+PASS  speed clamps at vMax
+PASS  cD grows as the mantle cools (stagnant lid)
+
+M2.1 boundary classifier (prescribed two plates)
+PASS  epsHi enters / epsLo leaves opening and closing (C–C collides)   1,2,2,1,1,4,4,1,2,4,2
+PASS  the seam edge (last -> first) is the mirrored boundary
+PASS  same-plate edges are interior
+PASS  edgeAge accumulates in one state   rel 0.00e+0  got 0.1  want 0.1
+PASS  edgeAge resets on a state change
+PASS  history is kept only for the same ordered plate pair
+PASS  O–C: the oceanic side subducts
+PASS  trenchDist 1..3 on the overriding (right) side
+PASS  O–O: the older side subducts
+PASS  trenchDist 1..3 on the overriding (left) side
+PASS  O–O polarity holds while the trench runs
+PASS  O–C overrides a held O–O polarity
+PASS  continent arriving at the trench turns it into collision
+PASS  collision resistance pushes both sides apart, equal and opposite   -20.00 cm/yr
+PASS  ridge push is downslope on oceanic columns only
+
+M2.1 determinism and finite state at every kernel boundary
+PASS  all buffers finite after every kernel (20 frames)
+PASS  same seed and dtGeo are bitwise deterministic (300 frames)
+PASS  sim frame (K0-K3 so far) within the 4 ms budget   0.822 ms/frame, min of 7x20
+
+ALL PASS (60 checks)

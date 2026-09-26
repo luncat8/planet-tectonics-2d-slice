@@ -145,6 +145,19 @@ var UI = {
 		RNDR.updateProbe(this.mx, this.my);
 	},
 
+	// boundary census and the fastest plate (2 Hz, from the HUD only)
+	tectonics: function () {
+		var E = P.EDGE, open = 0, sub = 0, col = 0, i, uMax = 0;
+		for (i = 0; i < S.nCol; i++) {
+			if (S.edge[i] === E.open) open++;
+			else if (S.edge[i] === E.subduct) sub++;
+			else if (S.edge[i] === E.collide) col++;
+		}
+		for (i = 0; i < S.nPl; i++) uMax = Math.max(uMax, Math.abs(S.plU[i]));
+		return 'fastest plate ' + (uMax / 1e4).toFixed(2) + ' cm/yr   opening ' + open +
+			'   trenches ' + sub + '   collisions ' + col;
+	},
+
 	// 2 Hz: the only place HUD strings are built
 	updateHud: function () {
 		var s = 't ' + SIM.t.toFixed(3) + ' Myr   Tm ' + SIM.Tm.toFixed(3) + '   frame ' + SIM.frame;
@@ -153,6 +166,7 @@ var UI = {
 			' (sim ' + PERF.msSim.toFixed(2) + ' + draw ' + PERF.msDraw.toFixed(2) + ')';
 		s += '\ncols ' + S.nCol + '/' + P.colCap + '   plates ' + S.nPl + '   vents ' + S.nVen +
 			'   ribbons ' + S.nRib + '   plumes ' + S.nPlm + '   deposits ' + S.nDep + '   seed ' + P.seed;
+		s += '\n' + this.tectonics();
 		this.hud.textContent = s;
 	}
 };
