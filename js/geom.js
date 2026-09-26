@@ -333,20 +333,25 @@ GEO.nextColX = function (S, c, cx) {
 	return S.colX[cn] + P.wrap * Math.ceil((cx - S.colX[cn]) / P.wrap);
 };
 
-// adaptive nice-step depth grid; the label strings are built here (on view change),
-// never in the frame loop
+// Build one altitude grid in world order. The old grid chose its step at sea level,
+// which made the asinh-compressed deep half thousands of nearly coincident lines.
+// Pick a step that is readable at the deepest visible interval; y increases upward.
 GEO.buildGrid = function (yT, yB) {
-	var steps = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
-	var step = steps[steps.length - 1], i, d, g = [], y;
+	var steps = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
+	var step = steps[steps.length - 1] * 1e3, i, d, g = [], first, last, k, y;
 	for (i = 0; i < steps.length; i++) {
-		d = (this.u(0) - this.u(-steps[i] * 1e3)) / this.duPx;
-		if (d >= 30) { step = steps[i]; break; }
+		step = steps[i] * 1e3;
+		// The smallest screen separation is at the deepest end of the window.
+		d = Math.abs(this.sy(yB + step) - this.sy(yB));
+		if (d >= 24) break;
 	}
-	for (y = -step * 1e3; y > yB; y -= step * 1e3)
-		g.push({ s: this.sy(y), t: (y / 1e3 | 0) + ' km' });
-	for (y = step * 1e3; y < yT; y += step * 1e3)
-		g.push({ s: this.sy(y), t: '+' + (y / 1e3 | 0) + ' km' });
-	g.sort(function (a, b) { return a.s - b.s; });
+	first = Math.ceil(yB / step);
+	last = Math.floor(yT / step);
+	for (k = first; k <= last; k++) {
+		y = k * step;
+		if (k === 0) continue; // sea level has its own, stronger line and label
+		g.push({ s: this.sy(y), t: (y > 0 ? '+' : '') + (y / 1e3) + ' km' });
+	}
 	this.grid = g;
 };
 

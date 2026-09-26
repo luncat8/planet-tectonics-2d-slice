@@ -161,6 +161,14 @@ for (i = 0; i < P.ch; i++) {
 	if (Math.abs(GEO.lutRowInvP[i] - GEO.fanN[r] / P.wrap) > 1e-15) fanOk = false;
 }
 check.ok('per-row fan LUTs match the band tables', fanOk);
+var gridOk = true, gridGap = Infinity;
+for (i = 1; i < GEO.grid.length; i++) {
+	if (GEO.grid[i].s >= GEO.grid[i - 1].s) gridOk = false;
+	gridGap = Math.min(gridGap, GEO.grid[i - 1].s - GEO.grid[i].s);
+}
+check.ok('altitude grid runs upward to downward', gridOk);
+check.ok('altitude grid lines stay readable', GEO.grid.length < 40 && gridGap >= 24,
+	GEO.grid.length + ' lines, min gap ' + gridGap.toFixed(1) + ' px');
 
 check.section('E. presets and camera');
 check.near('default kx = winW/cw', GEO.kx, P.winW / P.cw, 1e-12);
