@@ -37,6 +37,8 @@ var P = {
 	ch: 560,
 	zoomMin: 0.02,               // per axis (the overview preset needs 0.052)
 	zoomMax: 200,
+	gridGapY: 26,                // min px between altitude scale lines (one label tall)
+	gridGapX: 110,               // min px between distance scale lines (one label wide)
 	// enums
 	LITH: { sed: 0, fel: 1, maf: 2, tephra: 3, lava: 4, sill: 5, n: 6 },
 	OCLS: { vms: 0, maf: 1, arc: 2, oro: 3, bas: 4, pla: 5, n: 6 },

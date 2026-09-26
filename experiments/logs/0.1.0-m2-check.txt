@@ -67,6 +67,6 @@ PASS  ridge push is downslope on oceanic columns only
 M2.1 determinism and finite state at every kernel boundary
 PASS  all buffers finite after every kernel (20 frames)
 PASS  same seed and dtGeo are bitwise deterministic (300 frames)
-PASS  sim frame (K0-K3 so far) within the 4 ms budget   0.822 ms/frame, min of 7x20
+PASS  sim frame (K0-K3 so far) within the 4 ms budget   0.864 ms/frame, min of 7x20
 
 ALL PASS (60 checks)

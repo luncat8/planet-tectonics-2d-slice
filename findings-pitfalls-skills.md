@@ -132,3 +132,33 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   re-tests the default window. Assert that the fixtures really differ (distinct kx/duPx).
 - no browser installs in this sandbox (CDN/apt blocked): experiments/snapshot.js runs the sim
   in node and writes the real body raster to a PNG with zlib, plus boundary bars.
+
+## 0.1.0 UI (axis sliders, scale rulers)
+
+- ruling an asinh axis needs two rules, not one. A fixed step is wrong everywhere: picked at
+  the surface it draws thousands of coincident lines in the compressed deep half, picked at
+  the deepest interval it leaves the detailed surface half with one line per 190 px. Use a
+  round `1..9 x 10^d` ladder (the log part of the map) plus a 1-2-5 subdivision of any band
+  still wider than ~3 labels (the linear core). Ladder alone leaves a blank 280 px strip
+  between 10 and 20 km at crust zoom; subdivision alone is the old failure.
+- anchor the ladder greedy at 0 and run it over the whole world, then clip to the window.
+  Selecting from the visible range instead makes the lines reshuffle while you pan.
+- greedy "first rung that clears the gap" picks -9 km over -10 km. Choose the *set* per
+  decade first (1..9, else 1,2,5, else 1) and the values stay round.
+- a label cache keyed on "the value this string was built for" needs a sentinel that is not
+  a legal value. 0 is a legal x-ruler value, so a zero-filled Float64Array reported
+  "unchanged" and the lap-origin label stayed null. Fill the cache with NaN.
+- a wrapped x axis: count the step from x = 0 *inside each lap*, not across the seam.
+  Continuing k*step past the wrap gives labels like 40500 -> 470 km and the round numbers
+  are lost after one lap.
+- vertical range input, no transform hacks: `writing-mode: vertical-lr; direction: rtl`
+  (rtl is what puts the minimum at the bottom). Lay the canvas and both sliders out in one
+  CSS grid so each slider is exactly as long as the axis it scales.
+- two-way controls drift unless there is one funnel. Every camera move (wheel, drag, preset,
+  key) ends in UI.afterView(), which syncs the LUTs and writes the axis factors back into
+  the sliders; the sliders hold no state of their own.
+- a canvas polyline that `continue`s over unowned columns must track whether the path is
+  open: `if (px === 0) moveTo else lineTo` draws a wrong first segment whenever column 0 is
+  the one skipped (canvas promotes a leading lineTo to a moveTo, silently).
+- the smoke DOM stub reads `checked` straight out of index.html, so the shipped default of a
+  checkbox is what the headless run exercises — a flipped default fails the test, not the user.

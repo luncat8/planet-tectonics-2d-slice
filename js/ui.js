@@ -1,6 +1,8 @@
-// ui.js — the only DOM file besides render.present(): two log sliders, cursor-anchored
-// pan/zoom, presets, the scale readout, the geology probe and the 2 Hz HUD. The camera
-// is moved only through GEO (lookAt/panBy/zoomAt/setPreset) so the LUTs cannot go stale.
+// ui.js — the only DOM file besides render.present(): the two log time sliders, the two
+// axis scale sliders flanking the canvas, the scale-lines toggle, cursor-anchored pan/zoom,
+// presets, the geology probe and the 2 Hz HUD. The camera is moved only through GEO
+// (lookAt/panBy/zoomAt/setZoomX/setZoomY/setPreset) so the LUTs cannot go stale, and every
+// move funnels through afterView() so the sliders cannot drift from the camera.
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
 var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.GEO;
@@ -12,12 +14,18 @@ var UI = {
 	dragX: 0, dragY: 0, dragging: false,
 	paused: false,
 	cvs: null, hud: null, sGeo: null, sErupt: null, vGeo: null, vErupt: null,
+	sVZoom: null, sHZoom: null, vZoom: null, cScale: null,
 
 	// log-feel slider maps (slider at 0 = pause)
 	sToGeo: function (s) { return s <= 0 ? 0 : P.geoMin * Math.pow(P.geoMax / P.geoMin, s); },
 	gToS: function (d) { return d <= 0 ? 0 : Math.log(d / P.geoMin) / Math.log(P.geoMax / P.geoMin); },
 	sToErupt: function (s) { return s <= 0 ? 0 : P.eruptMin * Math.pow(P.eruptMax / P.eruptMin, s); },
 	eToS: function (d) { return d <= 0 ? 0 : Math.log(d / P.eruptMin) / Math.log(P.eruptMax / P.eruptMin); },
+
+	// the two scale sliders are log over [axis minimum, zoomMax] — the same feel as the
+	// wheel, where a constant drag is a constant magnification factor
+	sToZ: function (s, zMin) { return zMin * Math.pow(P.zoomMax / zMin, s); },
+	zToS: function (z, zMin) { return Math.log(z / zMin) / Math.log(P.zoomMax / zMin); },
 
 	fmtGeo: function (d) {
 		if (d <= 0) return 'pause';
@@ -49,6 +57,20 @@ var UI = {
 			P.sl.erupt = self.sToErupt(this.value / 1000);
 			self.vErupt.textContent = self.fmtErupt(P.sl.erupt);
 		});
+		this.sVZoom = document.getElementById('sVZoom');
+		this.sHZoom = document.getElementById('sHZoom');
+		this.vZoom = document.getElementById('vZoom');
+		this.cScale = document.getElementById('cScale');
+		this.sVZoom.addEventListener('input', function () {
+			GEO.setZoomY(self.sToZ(this.value / 1000, GEO.zoomYMin));
+			self.afterView();
+		});
+		this.sHZoom.addEventListener('input', function () {
+			GEO.setZoomX(self.sToZ(this.value / 1000, P.zoomMin));
+			self.afterView();
+		});
+		RNDR.showScale = this.cScale.checked;
+		this.cScale.addEventListener('change', function () { RNDR.showScale = this.checked; });
 		var pres = document.querySelectorAll('#presets button');
 		for (var i = 0; i < pres.length; i++) (function (b) {
 			b.addEventListener('click', function () { self.preset(b.getAttribute('data-v')); });
@@ -64,8 +86,25 @@ var UI = {
 
 	preset: function (name) {
 		GEO.setPreset(name);
+		this.afterView();
+	},
+
+	// every camera move ends here: sync the LUTs, read the two axis scales back into
+	// their sliders (the wheel and the presets move both) and refresh the readouts
+	afterView: function () {
 		GEO.sync();
+		this.sVZoom.value = Math.round(1000 * this.zToS(GEO.zoomY(), GEO.zoomYMin));
+		this.sHZoom.value = Math.round(1000 * this.zToS(GEO.zoomX(), P.zoomMin));
+		this.vZoom.textContent = this.fmtScale();
 		this.updateCursor();
+	},
+
+	// metres per pixel on each axis; the vertical one is quoted at sea level, where the
+	// asinh map is at its most detailed
+	fmtScale: function () {
+		var mpx = P.yLin * GEO.duPx;
+		return 'scale  x ' + (GEO.kx / 1e3).toFixed(2) + ' km/px   y ' +
+			(mpx < 1000 ? Math.round(mpx) + ' m/px' : (mpx / 1e3).toFixed(2) + ' km/px') + ' at 0 m';
 	},
 
 	// Canvas events include the CSS border; camera coordinates are content-box pixels.
@@ -96,8 +135,7 @@ var UI = {
 			this.dragX = p.x;
 			this.dragY = p.y;
 		}
-		GEO.sync();
-		this.updateCursor();
+		this.afterView();
 	},
 
 	// the world point under the cursor stays under the cursor; exact because the window
@@ -106,14 +144,14 @@ var UI = {
 		e.preventDefault();
 		var p = this.pos(e);
 		GEO.zoomAt(Math.pow(1.0015, -e.deltaY), p.x, p.y);
-		GEO.sync();
-		this.updateCursor();
+		this.afterView();
 	},
 
 	key: function (e) {
 		var k = e.key;
 		if (k === ' ') { this.togglePause(); e.preventDefault(); return; }
 		if (k === 'm') { RNDR.mesh = !RNDR.mesh; return; }
+		if (k === 'g') { RNDR.showScale = !RNDR.showScale; this.cScale.checked = RNDR.showScale; return; }
 		var names = { '1': 'def', '2': 'ovw', '3': 'cru', '4': 'bas' };
 		if (names[k]) this.preset(names[k]);
 	},

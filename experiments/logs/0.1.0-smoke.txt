@@ -1,7 +1,7 @@
 
 A. page load (index.html order, 12 scripts)
 PASS  index.html loads every js/*.js file exactly once   js/params.js js/rng.js js/geom.js js/state.js js/surface.js js/columns.js js/mantle.js js/plates.js js/perf.js js/ui.js js/render.js js/sim.js
-PASS  the DOM stub found every id in index.html   bar,sGeo,vGeo,sErupt,vErupt,presets,bMesh,wrap,c,hud,help
+PASS  the DOM stub found every id in index.html   bar,sGeo,vGeo,sErupt,vErupt,presets,bMesh,stage,sVZoom,wrap,c,hud,axis,sHZoom,cScale,vZoom,help
 PASS  the preset buttons come from index.html   def,ovw,cru,bas
 PASS  page loaded and started the frame loop
 PASS  SIM ran a planet reset   t=0 nCol=512
@@ -45,9 +45,22 @@ PASS  space pauses the geologic clock
 PASS  space resumes it   rel 0.00e+0  got 49906.84743614388 yr/f  want 49906.84743614388
 PASS  the mesh button is wired in index.html
 
+D2. axis scale sliders and the scale-lines toggle
+PASS  the sliders read zoom 1 back as the middle of their log range   abs 2.57e-1  got 425 slider  want 424.74250108400463
+PASS  horizontal slider max = zoomMax   rel 0.00e+0  got 200  want 200
+PASS  the vertical scale did not move with it   rel 0.00e+0  got 1  want 1
+PASS  horizontal slider min = zoomMin   rel 0.00e+0  got 0.02  want 0.02
+PASS  vertical slider max = zoomMax   rel 7.11e-13  got 199.9999999999993  want 200
+PASS  vertical slider min = the whole planet   rel 0.00e+0  got 0.531708204466091  want 0.531708204466091
+PASS  a preset drives both sliders back   abs 1.84e-1  got 495 slider  want 494.81560009750683
+PASS  the scale readout is built   "scale  x 0.23 km/px   y 25 m/px at 0 m"
+PASS  scale lines are on by default, as index.html says
+PASS  the checkbox turns the scale lines off
+PASS  g turns them back on and re-ticks the checkbox
+
 E. determinism
 PASS  two fresh 1000-frame runs are bit-identical   2384683372|3778018669,3219501952,3788145402,3620133688 vs 2384683372|3778018669,3219501952,3788145402,3620133688
 PASS  a different seed diverges   3224289907|609912025,1928876461,1656449407,1884274477
 PASS  the state hash is not degenerate   2384683372|3778018669,3219501952,3788145402,3620133688
 
-ALL PASS (41 checks)
+ALL PASS (52 checks)

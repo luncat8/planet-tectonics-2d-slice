@@ -77,6 +77,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 	UI.init();
 	RNDR.init(document.getElementById('c'));
 	GEO.setPreset('def');
+	UI.afterView();
 	function tick(now) {
 		var a = performance.now();
 		SIM.step();

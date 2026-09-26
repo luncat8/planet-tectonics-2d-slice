@@ -15,6 +15,7 @@ var RNDR = {
 	mohoY: null,
 	profY: null,          // profile altitude per screen column, rebuilt by body()
 	mesh: false,          // the M0 measuring-tool overlay, toggled from the UI
+	showScale: true,      // the altitude / distance scale lines, toggled from the UI
 	probe: '',            // geology under the cursor, rebuilt on mousemove only
 	probeLines: [],       // the same text split once, so the overlay never allocates
 	palLith: null, palMantle: null, palWater: null, palAir: null
@@ -196,11 +197,13 @@ RNDR.overlayProfile = function () {
 	c.strokeStyle = 'rgba(235,225,200,0.75)';
 	c.stroke();
 	c.beginPath();
+	var open = false;
 	for (px = 0; px < this.w; px++) {
 		col = GEO.lutCol[px];
-		if (col < 0) continue;
+		if (col < 0) { open = false; continue; }
 		s = GEO.sy(this.mohoY[px]);
-		if (px === 0) c.moveTo(px + 0.5, s); else c.lineTo(px + 0.5, s);
+		if (open) c.lineTo(px + 0.5, s); else c.moveTo(px + 0.5, s);
+		open = true;
 	}
 	c.strokeStyle = 'rgba(255,230,140,0.5)';
 	c.stroke();
@@ -329,25 +332,30 @@ RNDR.overlayMesh = function () {
 	c.stroke();
 };
 
-// World-ordered grid; reverse label traversal keeps the screen-space gap check monotone.
-// Sea level gets its own stronger line and label.
+// The two rulers: altitude lines with their labels down the left edge, distance lines
+// with theirs along the bottom. GEO already spaced both by the gap params, so every
+// line that is on screen gets a label. Sea level is a datum, not a ruler: always drawn.
 RNDR.overlayGrid = function () {
-	var c = this.ctx, g = GEO.grid, i, s, lastL = -1e9;
-	c.beginPath();
-	for (i = 0; i < g.length; i++) {
-		s = g[i].s;
-		if (s > 0 && s < P.ch) { c.moveTo(0, s); c.lineTo(P.cw, s); }
-	}
+	var c = this.ctx, i, s;
 	c.lineWidth = 1;
-	c.strokeStyle = 'rgba(130,140,165,0.3)';
-	c.stroke();
 	c.font = '10px monospace';
-	c.fillStyle = 'rgba(165,175,200,0.8)';
-	for (i = g.length - 1; i >= 0; i--) {
-		s = g[i].s;
-		if (s < 10 || s > P.ch - 6 || s - lastL < 16) continue;
-		c.fillText(g[i].t, 4, s - 2);
-		lastL = s;
+	if (this.showScale) {
+		c.beginPath();
+		for (i = 0; i < GEO.vgN; i++) { s = (GEO.vgS[i] | 0) + 0.5; c.moveTo(0, s); c.lineTo(P.cw, s); }
+		for (i = 0; i < GEO.hgN; i++) { s = (GEO.hgS[i] | 0) + 0.5; c.moveTo(s, 0); c.lineTo(s, P.ch); }
+		c.strokeStyle = 'rgba(130,140,165,0.3)';
+		c.stroke();
+		c.fillStyle = 'rgba(165,175,200,0.8)';
+		for (i = 0; i < GEO.vgN; i++) {
+			s = GEO.vgS[i];
+			if (s < 10 || s > P.ch - 6) continue;
+			c.fillText(GEO.vgT[i], 4, s - 2);
+		}
+		for (i = 0; i < GEO.hgN; i++) {
+			s = GEO.hgS[i];
+			if (s < 2 || s > P.cw - 64) continue;
+			c.fillText(GEO.hgT[i], s + 3, P.ch - 4);
+		}
 	}
 	var sy0 = GEO.sy(0);
 	if (sy0 > -2 && sy0 < P.ch + 2) {
@@ -361,7 +369,7 @@ RNDR.overlayGrid = function () {
 };
 
 RNDR.overlayCursor = function () {
-	if (UI.mx < 0 || UI.my < 0 || UI.my >= P.ch) return;
+	if (UI.mx < 0 || UI.my < 0 || UI.mx >= P.cw || UI.my >= P.ch) return;
 	var c = this.ctx;
 	c.beginPath();
 	c.moveTo(UI.mx, 0); c.lineTo(UI.mx, P.ch);

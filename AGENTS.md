@@ -59,11 +59,16 @@ experiments/logs/ - keep useful;
 git push returns "Invalid username or token" is ok, no need to investigate or report - i will apply manually
 
 ## Workflow
-- **Worklog**: record development steps and its validation in `archive/*-worklog.md`, end job with a next step suggestion.
+- **Worklog**: record development steps and its validation in `archive/*.md`, end job with a next step suggestion. Better don't grow it as very big file but split to easy find tasks.
 example:
+draft (basic idea as reference of what user initially want):
 0.1.x-draft.md
+dev plan (LLM write how to implement it and split tasks to steps):
 archive/0.1.0-plan.md
-archive/0.1.0-worklog.md
+worklog:
+archive/0.1.M2-speed-slider.md
+report (user can copy LLM answer as report to better connect context of previous session):
+archive/0.1.M2-speed-slider-report.md
 0.1.1-plan.md
 0.1.3-draft.md - you may also write user prompts as draft files to store reference of global task
 0.1.2-plan.md

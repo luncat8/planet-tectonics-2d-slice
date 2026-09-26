@@ -1,6 +1,7 @@
 // snapshot.js — headless look at the section: runs the sim in node, paints the real body
 // raster (render.body) into a PNG, and marks plate boundaries as coloured bars along the
 // top edge (the canvas overlay needs a browser). For eyeballing a change without one.
+// The scale-line overlay is drawn too (lines only); its labels are printed to stdout.
 // Run: node experiments/snapshot.js [frames=200] [preset=def] [out=/tmp/snapshot.png] [seed=1] [kyrPerFrame=50]
 'use strict';
 var fs = require('fs');
@@ -19,6 +20,19 @@ GEO.sync();
 GEO.buildColLUT(S);
 var w = P.cw, h = P.ch, px = new Uint32Array(w * h);
 R.body(px, w, h);
+
+// the two rulers, lines only (labels are canvas text; they are printed below instead)
+var RULE = 0xff9a8c78, SEA = 0xffe6aa5a;
+for (var gi = 0; gi < GEO.vgN; gi++) {
+	var gs = GEO.vgS[gi] | 0;
+	if (gs >= 0 && gs < h) for (var gx = 0; gx < w; gx++) px[gs * w + gx] = RULE;
+}
+for (gi = 0; gi < GEO.hgN; gi++) {
+	var gsx = GEO.hgS[gi] | 0;
+	if (gsx >= 0 && gsx < w) for (var gy = 0; gy < h; gy++) px[gy * w + gsx] = RULE;
+}
+var s0 = GEO.sy(0) | 0;
+if (s0 >= 0 && s0 < h) for (gx = 0; gx < w; gx++) px[s0 * w + gx] = SEA;
 
 // boundary bars: ridge/rift green, trench red, collision orange, neutral grey
 var BAR = [0, 0xffb4b4b4, 0xff78eb6e, 0xff4b5fff, 0xff3cafff];
@@ -55,5 +69,11 @@ ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4);
 ihdr[8] = 8; ihdr[9] = 6; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
 fs.writeFileSync(out, Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
 	chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]));
+console.log('altitude ' + Array.from(GEO.vgT.slice(0, GEO.vgN), function (t, i) {
+	return t + '@' + GEO.vgS[i].toFixed(0);
+}).join(' '));
+console.log('distance ' + Array.from(GEO.hgT.slice(0, GEO.hgN), function (t, i) {
+	return t + '@' + GEO.hgS[i].toFixed(0);
+}).join(' '));
 console.log('wrote ' + out + '  t ' + SIM.t.toFixed(2) + ' Myr  preset ' + preset + '  plates ' + S.nPl +
 	'  u ' + Array.from(S.plU.subarray(0, S.nPl), function (u) { return (u / 1e4).toFixed(2); }).join(' ') + ' cm/yr');

@@ -41,9 +41,16 @@ var ctx2d = new Proxy({
 	set: function (t, k, v) { t[k] = v; return true; }
 });
 
+// `checked` comes from index.html itself, so the shipped default of a checkbox is what
+// the headless run exercises
+function checkedIn(id) {
+	return new RegExp('id="' + id + '"[^>]*\\bchecked\\b').test(html);
+}
+
 function makeEl(id, dataV) {
 	return {
-		id: id, value: '0', textContent: '', dataset: dataV ? { v: dataV } : null,
+		id: id, value: '0', textContent: '', checked: checkedIn(id),
+		dataset: dataV ? { v: dataV } : null,
 		listeners: {},
 		clientLeft: id === 'c' ? 1 : 0, clientTop: id === 'c' ? 1 : 0,
 		clientWidth: id === 'c' ? 1280 : 0, clientHeight: id === 'c' ? 560 : 0,
@@ -201,6 +208,33 @@ key(ev('keydown', { key: ' ' }));
 check.near('space resumes it', L.sb.P.sl.geo, g1, 1e-12, 'yr/f');
 var meshBtn = L.els.bMesh;
 check.ok('the mesh button is wired in index.html', typeof meshBtn.listeners.click === 'function');
+
+check.section('D2. axis scale sliders and the scale-lines toggle');
+L.sb.UI.preset('def');
+check.near('the sliders read zoom 1 back as the middle of their log range',
+	Number(L.els.sHZoom.value), 1000 * L.sb.UI.zToS(1, L.sb.P.zoomMin), 1, 'slider');
+var vz = L.els.sVZoom.listeners.input, hz = L.els.sHZoom.listeners.input;
+L.els.sHZoom.value = '1000'; hz.call(L.els.sHZoom);
+check.near('horizontal slider max = zoomMax', L.sb.GEO.zoomX(), L.sb.P.zoomMax, 1e-9);
+check.near('the vertical scale did not move with it', L.sb.GEO.zoomY(), 1, 1e-9);
+L.els.sHZoom.value = '0'; hz.call(L.els.sHZoom);
+check.near('horizontal slider min = zoomMin', L.sb.GEO.zoomX(), L.sb.P.zoomMin, 1e-9);
+L.els.sVZoom.value = '1000'; vz.call(L.els.sVZoom);
+check.near('vertical slider max = zoomMax', L.sb.GEO.zoomY(), L.sb.P.zoomMax, 1e-9);
+L.els.sVZoom.value = '0'; vz.call(L.els.sVZoom);
+check.near('vertical slider min = the whole planet', L.sb.GEO.zoomY(), L.sb.GEO.zoomYMin, 1e-9);
+L.sb.UI.preset('cru');
+check.near('a preset drives both sliders back', Number(L.els.sVZoom.value),
+	1000 * L.sb.UI.zToS(10, L.sb.GEO.zoomYMin), 1, 'slider');
+check.ok('the scale readout is built', /km\/px/.test(L.els.vZoom.textContent),
+	JSON.stringify(L.els.vZoom.textContent));
+check.ok('scale lines are on by default, as index.html says', L.sb.RNDR.showScale === true);
+L.els.cScale.checked = false;
+L.els.cScale.listeners.change.call(L.els.cScale);
+check.ok('the checkbox turns the scale lines off', L.sb.RNDR.showScale === false);
+key(ev('keydown', { key: 'g' }));
+check.ok('g turns them back on and re-ticks the checkbox',
+	L.sb.RNDR.showScale === true && L.els.cScale.checked === true);
 
 check.section('E. determinism');
 function runFresh(seed, n) {

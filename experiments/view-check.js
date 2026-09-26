@@ -166,39 +166,129 @@ for (i = 0; i < P.ch; i++) {
 	if (Math.abs(GEO.lutRowInvP[i] - GEO.fanN[r] / P.wrap) > 1e-15) fanOk = false;
 }
 check.ok('per-row fan LUTs match the band tables', fanOk);
-var gridOk = true, gridGap = Infinity, visibleGrid = 0;
-for (i = 0; i < GEO.grid.length; i++) {
-	if (GEO.grid[i].s < 10 || GEO.grid[i].s > P.ch - 6) continue;
-	visibleGrid++;
+// --- the two rulers (design §1.4) ------------------------------------------------
+// The scale lines are the readable form of the asinh map, so they are checked the way
+// they are read: spacing, ordering, ladder membership and the label that sits on each.
+
+var VIEWS = [
+	['default', function () { GEO.setPreset('def'); }],
+	['overview', function () { GEO.setPreset('ovw'); }],
+	['crust x10', function () { GEO.setPreset('cru'); }],
+	['basin x40', function () { GEO.setPreset('bas'); }],
+	['deep window', function () { GEO.setPreset('def'); GEO.lookAt(0, GEO.u(-200e3), GEO.u(-1200e3)); }],
+	['max zoom', function () { GEO.setPreset('bas'); GEO.setZoomX(P.zoomMax); GEO.setZoomY(P.zoomMax); }]
+];
+
+// k x 10^d for integer k in 1..9: the ladder membership of one value
+function onLadder(v) {
+	var a = Math.abs(v), d = Math.pow(10, Math.floor(Math.log10(a) + 1e-9));
+	var k = Math.round(a / d);
+	return k >= 1 && k <= 9 && Math.abs(k * d - a) < a * 1e-9;
 }
-for (i = 1; i < GEO.grid.length; i++) {
-	if (GEO.grid[i].s >= GEO.grid[i - 1].s) gridOk = false;
-	gridGap = Math.min(gridGap, GEO.grid[i - 1].s - GEO.grid[i].s);
+
+// a line value a reader can say out loud: at most three significant digits
+function roundValue(v) {
+	var a = Math.abs(v), u = Math.pow(10, Math.floor(Math.log10(a) + 1e-9) - 2);
+	return Math.abs(Math.round(a / u) * u - a) < a * 1e-9;
 }
-check.ok('increasing altitude maps toward canvas top', gridOk);
-check.ok('altitude grid lines stay readable', GEO.grid.length < 40 && gridGap >= 24,
-	GEO.grid.length + ' lines, min gap ' + gridGap.toFixed(1) + ' px');
-var labelY = [], labelText = [], seaY = -1;
-RNDR.ctx = {
-	beginPath: function () {}, moveTo: function () {}, lineTo: function () {}, stroke: function () {},
-	fillText: function (text, x, y) {
-		if (text.indexOf(' km') >= 0) { labelText.push(text); labelY.push(y + 2); }
-		if (text === '0 m sea level') seaY = y + 3;
+
+// the overlay's own label pass, captured through a stub context
+function capture() {
+	var out = { line: [], text: [], sea: -1 };
+	RNDR.ctx = {
+		beginPath: function () {}, moveTo: function () {}, lineTo: function () {}, stroke: function () {},
+		fillText: function (text, x, y) {
+			if (text === '0 m sea level') { out.sea = y + 3; return; }
+			out.text.push(text); out.line.push(y);
+		}
+	};
+	RNDR.overlayGrid();
+	RNDR.ctx = null;
+	return out;
+}
+
+var vi, vname;
+for (vi = 0; vi < VIEWS.length; vi++) {
+	vname = VIEWS[vi][0];
+	VIEWS[vi][1]();
+	GEO.sync();
+	var n = GEO.vgN, ordered = true, inWin = true, ladder = true, gap = Infinity, big = 0, prev = 0;
+	for (i = 0; i < n; i++) {
+		if (GEO.vgS[i] < 0 || GEO.vgS[i] > P.ch) inWin = false;
+		if (!roundValue(GEO.vgY[i])) ladder = false;
+		if (i > 0) {
+			if (GEO.vgY[i] <= GEO.vgY[i - 1] || GEO.vgS[i] >= GEO.vgS[i - 1]) ordered = false;
+			gap = Math.min(gap, GEO.vgS[i - 1] - GEO.vgS[i]);
+		}
 	}
-};
-RNDR.overlayGrid();
-RNDR.ctx = null;
-var labelsOrdered = true, labelsSigned = true;
-for (i = 0; i < labelY.length; i++) {
-	if (i > 0 && labelY[i] <= labelY[i - 1]) labelsOrdered = false;
-	var altitude = parseFloat(labelText[i]);
-	if (altitude > 0 && labelText[i].charAt(0) !== '+') labelsSigned = false;
-	if (altitude < 0 && labelText[i].charAt(0) !== '-') labelsSigned = false;
+	// largest strip of canvas with no altitude line, window edges included
+	prev = P.ch;
+	for (i = 0; i < n; i++) { big = Math.max(big, prev - GEO.vgS[i]); prev = GEO.vgS[i]; }
+	big = Math.max(big, prev);
+	check.ok(vname + ': altitude lines ordered, in window, round values',
+		n > 2 && ordered && inWin && ladder, n + ' lines');
+	check.ok(vname + ': altitude lines never crowd', gap >= P.gridGapY,
+		'min gap ' + gap.toFixed(1) + ' px (limit ' + P.gridGapY + ')');
+	check.ok(vname + ': altitude lines never leave a blank band', big <= 200,
+		'largest blank ' + big.toFixed(0) + ' px');
+
+	var hn = GEO.hgN, hOk = true, hGap = Infinity, hStep = 0;
+	for (i = 0; i < hn; i++) {
+		if (GEO.hgS[i] < -1 || GEO.hgS[i] > P.cw + 1) hOk = false;
+		if (i > 0) {
+			if (GEO.hgS[i] <= GEO.hgS[i - 1]) hOk = false;
+			// a lap seam restarts the count, so only same-lap neighbours carry the step
+			if (GEO.hgV[i] > GEO.hgV[i - 1]) {
+				hStep = GEO.hgV[i] - GEO.hgV[i - 1];
+				hGap = Math.min(hGap, GEO.hgS[i] - GEO.hgS[i - 1]);
+			}
+		}
+	}
+	check.ok(vname + ': distance lines ordered and in window', hn > 1 && hOk, hn + ' lines');
+	check.ok(vname + ': distance step is a 1-2-5 decade, never crowding',
+		hGap >= P.gridGapX && onLadder(hStep) && [1, 2, 5].indexOf(hStep / Math.pow(10, Math.floor(Math.log10(hStep) + 1e-9))) >= 0,
+		'step ' + hStep + ' m = ' + hGap.toFixed(1) + ' px');
+
+	var cap = capture();
+	var labelled = 0, labelOk = true;
+	for (i = 0; i < GEO.vgN; i++) if (GEO.vgS[i] >= 10 && GEO.vgS[i] <= P.ch - 6) labelled++;
+	for (i = 0; i < GEO.hgN; i++) if (GEO.hgS[i] >= 2 && GEO.hgS[i] <= P.cw - 64) labelled++;
+	if (cap.text.length !== labelled) labelOk = false;
+	for (i = 0; i < cap.text.length; i++) if (!/^([+-]?\d+(\.\d+)? (m|km)|0)$/.test(cap.text[i])) labelOk = false;
+	check.ok(vname + ': every on-screen line is labelled once, in m or km', labelOk,
+		cap.text.length + '/' + labelled + '  ' + cap.text.slice(0, 4).join(' '));
 }
-check.ok('all readable grid lines have ordered labels', labelY.length === visibleGrid && labelsOrdered,
-	labelY.length + '/' + visibleGrid + ' labels');
-check.ok('grid labels show explicit altitude signs', labelsSigned);
-check.near('sea-level label sits on its horizontal line', seaY, GEO.sy(0), 1e-9, 'px');
+
+// the labels of the default window, spelled out: signs, ladder, sea level on its line
+GEO.setPreset('def'); GEO.sync();
+var dcap = capture();
+var signed = true, onLine = true;
+for (i = 0; i < GEO.vgN; i++) {
+	var want = (GEO.vgY[i] > 0 ? '+' : '-') +
+		(Math.abs(GEO.vgY[i]) >= 1000 ? Math.abs(GEO.vgY[i]) / 1000 + ' km' : Math.abs(GEO.vgY[i]) + ' m');
+	if (GEO.vgT[i] !== want) signed = false;
+}
+for (i = 0; i < dcap.line.length; i++) if (dcap.line[i] < 0 || dcap.line[i] > P.ch) onLine = false;
+check.ok('altitude labels carry an explicit sign and the line value', signed,
+	GEO.vgT.slice(0, GEO.vgN).join(' '));
+check.ok('no label is drawn off the canvas', onLine);
+check.near('sea-level label sits on its horizontal line', dcap.sea, GEO.sy(0), 1e-9, 'px');
+check.ok('the scale-lines toggle removes every ruler line but keeps sea level', (function () {
+	RNDR.showScale = false;
+	var off = capture();
+	RNDR.showScale = true;
+	return off.text.length === 0 && Math.abs(off.sea - GEO.sy(0)) < 1e-9;
+})());
+
+// the rung choice is anchored at 0 m, so a pan slides the lines instead of reshuffling
+GEO.setPreset('def'); GEO.sync();
+var before = GEO.vgT.slice(0, GEO.vgN).join(' ');
+GEO.panBy(0, 120); GEO.sync();
+var after = GEO.vgT.slice(0, GEO.vgN).join(' ');
+check.ok('a vertical pan keeps the same ladder rungs', after.length > 0 &&
+	(before.indexOf(after) >= 0 || after.indexOf(before) >= 0 ||
+		after.split(' ').every(function (t) { return before.indexOf(t) >= 0; })),
+	before + '  ->  ' + after);
 
 check.section('E. presets and camera');
 check.near('default kx = winW/cw', GEO.kx, P.winW / P.cw, 1e-12);
@@ -210,6 +300,41 @@ GEO.setPreset('cru'); GEO.sync();
 check.near('crust preset is x10', GEO.kx, P.winW / P.cw / 10, 1e-9);
 GEO.setPreset('bas'); GEO.sync();
 check.near('basin preset is x40', GEO.kx, P.winW / P.cw / 40, 1e-9);
+
+// the two axis sliders: setZoom must read back exactly, so a slider can be driven from
+// the camera without drifting, and the vertical one must not move the centred altitude
+check.near('def reads back as zoom 1 on both axes',
+	(function () { GEO.setPreset('def'); GEO.sync(); return GEO.zoomX() * GEO.zoomY(); })(), 1, 1e-12);
+check.near('cru reads back as zoom 10 on both axes',
+	(function () { GEO.setPreset('cru'); GEO.sync(); return GEO.zoomX() + GEO.zoomY(); })(), 20, 1e-9);
+check.near('ovw reads back as the anisotropic preset', (function () {
+	GEO.setPreset('ovw'); GEO.sync();
+	return GEO.zoomX() - GEO.zoomY() / GEO.zoomYMin;
+})(), 0, 1e-9);
+var zRt = true, zCen = true, zi, zz, uc0;
+GEO.setPreset('def'); GEO.sync();
+for (zi = 0; zi <= 20; zi++) {
+	zz = P.zoomMin * Math.pow(P.zoomMax / P.zoomMin, zi / 20);
+	GEO.setZoomX(zz); GEO.sync();
+	if (Math.abs(GEO.zoomX() - zz) > zz * 1e-12) zRt = false;
+}
+for (zi = 0; zi <= 20; zi++) {
+	zz = GEO.zoomYMin * Math.pow(P.zoomMax / GEO.zoomYMin, zi / 20);
+	uc0 = (P.view.uT + P.view.uB) / 2;
+	GEO.setZoomY(zz); GEO.sync();
+	if (Math.abs(GEO.zoomY() - zz) > zz * 1e-9) zRt = false;
+	// zoomed out far enough the window hits the sky top and slides: only an unclamped
+	// span can keep its centre
+	if (P.view.uT < GEO.u(P.skyTop) - 1e-9 && P.view.uB > GEO.u(-P.R) + 1e-9 &&
+		Math.abs((P.view.uT + P.view.uB) / 2 - uc0) > 1e-12) zCen = false;
+}
+check.ok('setZoomX / setZoomY read back over the whole slider sweep', zRt);
+check.ok('vertical scale keeps the centred altitude while the window fits', zCen);
+GEO.setZoomX(1e6); GEO.setZoomY(1e6); GEO.sync();
+check.near('both axes clamp at zoomMax', GEO.zoomX() + GEO.zoomY(), 2 * P.zoomMax, 1e-9);
+GEO.setZoomY(1e-6); GEO.sync();
+check.near('vertical scale clamps at the whole planet', GEO.zoomY(), GEO.zoomYMin, 1e-9);
+check.near('the whole planet is exactly sky top to center', GEO.y(GEO.uB), -P.R, 1, 'm');
 // zoom about a cursor point must keep that world point fixed
 GEO.setPreset('def'); GEO.sync();
 var sx = 411.5, sy = 233.5;

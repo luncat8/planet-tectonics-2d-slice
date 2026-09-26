@@ -6,15 +6,21 @@
 <title>planet tectonics — 2d slice</title>
 <style>
 	body { margin: 0; background: #05070c; color: #9aa7bd; font: 12px/1.5 monospace; display: flex; flex-direction: column; align-items: center; }
-	#bar { width: 1280px; display: flex; gap: 18px; align-items: center; padding: 6px 0; flex-wrap: wrap; }
+	/* 22 px slider + 6 px gap + 1282 px canvas box: the whole page lines up on the canvas */
+	#bar { width: 1310px; box-sizing: border-box; padding: 6px 0 6px 28px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 	#bar label { white-space: nowrap; }
 	input[type=range] { width: 150px; vertical-align: middle; }
 	button { background: #121826; color: #9aa7bd; border: 1px solid #2a3550; font: 11px monospace; padding: 1px 7px; cursor: pointer; }
 	button:hover { color: #dfe7f5; }
-	#wrap { position: relative; width: 1280px; height: 560px; }
+	/* the camera controls sit on the axes they scale: vertical left, horizontal below */
+	#stage { display: grid; grid-template-columns: 22px 1282px; grid-template-rows: 562px auto; column-gap: 6px; row-gap: 3px; }
+	#sVZoom { grid-area: 1 / 1; width: 22px; height: 562px; margin: 0; writing-mode: vertical-lr; direction: rtl; }
+	#wrap { grid-area: 1 / 2; position: relative; width: 1282px; height: 562px; }
+	#axis { grid-area: 2 / 2; display: flex; gap: 16px; align-items: center; }
+	#sHZoom { width: 380px; }
 	canvas { display: block; border: 1px solid #1c2438; cursor: crosshair; }
 	#hud { position: absolute; left: 8px; top: 8px; white-space: pre; pointer-events: none; color: #9fd6b8; text-shadow: 0 0 3px #000; }
-	#help { width: 1280px; color: #55637d; font-size: 11px; padding: 4px 0 12px; }
+	#help { width: 1310px; box-sizing: border-box; padding: 4px 0 12px 28px; color: #55637d; font-size: 11px; }
 </style>
 </head>
 <body>
@@ -29,11 +35,19 @@
 	</span>
 	<button id="bMesh">mesh</button>
 </div>
-<div id="wrap">
-	<canvas id="c" width="1280" height="560"></canvas>
-	<div id="hud"></div>
+<div id="stage">
+	<input id="sVZoom" type="range" min="0" max="1000" value="500" title="vertical scale">
+	<div id="wrap">
+		<canvas id="c" width="1280" height="560"></canvas>
+		<div id="hud"></div>
+	</div>
+	<div id="axis">
+		<input id="sHZoom" type="range" min="0" max="1000" value="500" title="horizontal scale">
+		<label><input id="cScale" type="checkbox" checked> scale lines</label>
+		<span id="vZoom"></span>
+	</div>
 </div>
-<div id="help">drag = pan &middot; wheel = zoom (cursor-anchored) &middot; space = pause &middot; m = mesh (row edges, fan bands, column grid, plate boundaries) &middot; 1-4 = presets &middot; hover = geology probe</div>
+<div id="help">drag = pan &middot; wheel = zoom (cursor-anchored, both axes) &middot; left / bottom sliders = one axis at a time &middot; space = pause &middot; g = scale lines &middot; m = mesh (row edges, fan bands, column grid, plate boundaries) &middot; 1-4 = presets &middot; hover = geology probe</div>
 <script src="js/params.js"></script>
 <script src="js/rng.js"></script>
 <script src="js/geom.js"></script>

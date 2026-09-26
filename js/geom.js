@@ -28,9 +28,32 @@ var GEO = {
 	lutX: null, lutY: null,
 	lutRow: null, lutRowBase: null, lutRowCnt: null, lutRowInvP: null,
 	lutCol: null, lutFrac: null,
-	grid: null,      // {s, t}[] depth grid lines, labels prebuilt on view change
+	// scale lines, rebuilt on view change (§1.4). Parallel preallocated arrays, never
+	// objects; vertical labels are references into the ladder table built once at init.
+	vgN: 0, vgY: null, vgS: null, vgT: null,   // altitude lines: world y, screen y, label
+	hgN: 0, hgV: null, hgS: null, hgT: null,   // distance lines: world x in the lap, screen x, label
+	ladN: 0, ladV: null,                       // the 1..9 x 10^d value ladder
+	rung: null, mag: null,                     // scratch: one sign's rungs / line magnitudes
+	zoomYMin: 0,     // vertical zoom that fits sky..center; the slider's low end
 	PRESETS: null
 };
+
+// "1500 m" / "2 km": every ladder and step value is k*10^d, so km values are integral
+function fmtLen(m) { return m >= 1000 ? (m / 1000) + ' km' : m + ' m'; }
+
+// smallest 1-2-5 decade value >= min
+function niceStep(min) {
+	var d = Math.pow(10, Math.floor(Math.log10(min > 0 ? min : 1))), i;
+	for (i = 0; i < 3; i++) if (STEP125[i] * d >= min) return STEP125[i] * d;
+	return 10 * d;
+}
+var STEP125 = [1, 2, 5];
+
+// Rung sets inside one decade, finest first: the whole decade, then 1-2-5, then the
+// decade mark alone. Picking per decade is what makes one ladder work on the asinh
+// axis — near 0 m the map is linear and a whole decade fits evenly, deep down it is
+// logarithmic and the same set collapses to its round marks (§1.4).
+var VSETS = [[1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 5], [1]];
 
 function solveQ(h0, n, span) {
 	// bisection on the geometric sum (same method as scale-check.js)
@@ -105,6 +128,16 @@ GEO.init = function () {
 	this.du0 = (this.u(P.winTop) - this.u(P.winBot)) / P.ch;
 	this.kxMin = this.kx0 / P.zoomMax; this.kxMax = this.kx0 / P.zoomMin;
 	this.duMin = this.du0 / P.zoomMax; this.duMax = this.du0 / P.zoomMin;
+	// the whole planet on one screen: nothing below this is a different view, so it is
+	// the low end of the vertical scale slider
+	this.zoomYMin = this.du0 * P.ch / (this.u(P.skyTop) - this.u(-P.R));
+	// the label caches hold the value their string was built for; NaN means "no string yet",
+	// and 0 is a real line value on the x ruler, so the sentinel cannot be 0
+	this.vgY = new Float64Array(64).fill(NaN); this.vgS = new Float64Array(64); this.vgT = new Array(64);
+	this.hgV = new Float64Array(64).fill(NaN); this.hgS = new Float64Array(64); this.hgT = new Array(64);
+	this.rung = new Int32Array(64);
+	this.mag = new Float64Array(64);
+	this.buildLadder();
 	// flat preset table (design §1.4): [uniform zoom divisor, u centre]. The divisor is
 	// applied to BOTH axes, so a cone stays square and the design's bed-pixel table
 	// (a 50 m bed = 2.0 px at x10) holds in the preset itself. 'ovw' is the one
@@ -236,6 +269,30 @@ GEO.setPreset = function (name) {
 	this.dirty = true;
 };
 
+// --- per-axis scale (the two sliders beside the canvas) ---------------------------
+// The wheel is uniform on purpose (a cone stays square); these are the deliberate
+// anisotropic control, and they read back so the sliders follow every other camera move.
+
+GEO.zoomX = function () { return this.kx0 / P.view.kx; };
+GEO.zoomY = function () { return this.du0 * P.ch / (P.view.uT - P.view.uB); };
+
+GEO.setZoomX = function (z) {
+	var kx = this.kx0 / z;
+	P.view.kx = kx < this.kxMin ? this.kxMin : (kx > this.kxMax ? this.kxMax : kx);
+	this.dirty = true;
+};
+
+// about the window centre; the span lives in u, so the centred altitude stays put
+GEO.setZoomY = function (z) {
+	var v = P.view, du = this.du0 / z, uc = (v.uT + v.uB) / 2, half;
+	if (du < this.duMin) du = this.duMin;
+	if (du > this.duMax) du = this.duMax;
+	half = du * P.ch / 2;
+	v.uT = uc + half;
+	v.uB = uc - half;
+	this.dirty = true;
+};
+
 GEO.panBy = function (dxPx, dyPx) {
 	var v = P.view, dU = dyPx * this.duPx;
 	v.cx -= dxPx * this.kx;
@@ -292,7 +349,8 @@ GEO.rebuild = function (v) {
 		this.lutRowCnt[c] = r < 0 ? 1 : this.fanN[r];
 		this.lutRowInvP[c] = r < 0 ? 0 : this.fanN[r] / P.wrap;
 	}
-	this.buildGrid(P.yLin * Math.sinh(this.uT), P.yLin * Math.sinh(this.uB));
+	this.buildVGrid();
+	this.buildHGrid();
 	this.dirty = false;
 };
 
@@ -334,26 +392,140 @@ GEO.nextColX = function (S, c, cx) {
 	return S.colX[cn] + P.wrap * Math.ceil((cx - S.colX[cn]) / P.wrap);
 };
 
-// Build one altitude grid in world order. The old grid chose its step at sea level,
-// which made the asinh-compressed deep half thousands of nearly coincident lines.
-// Pick a step that is readable at the deepest visible interval; y increases upward.
-GEO.buildGrid = function (yT, yB) {
-	var steps = [1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
-	var step = steps[steps.length - 1] * 1e3, i, d, g = [], first, last, k, y;
-	for (i = 0; i < steps.length; i++) {
-		step = steps[i] * 1e3;
-		// The smallest screen separation is at the deepest end of the window.
-		d = Math.abs(this.sy(yB + step) - this.sy(yB));
-		if (d >= 24) break;
+// --- scale lines (§1.4) ----------------------------------------------------------
+// A single fixed step cannot rule an asinh axis: chosen at the surface it packs the
+// compressed deep half with coincident lines, chosen at the deepest interval it leaves
+// the surface — the detailed half — with one line per 200 px. So the altitude ruler is
+// built in two stages. The ladder greedy picks round 1..9 x 10^d rungs outward from 0 m,
+// which is the log behaviour the map has below the linear core; a band still wider than
+// three labels is then subdivided by a 1-2-5 step, which is the linear behaviour the map
+// has inside the core (without it the 10..20 km band is blank at crust zoom).
+
+// ladder values, built once: 1..9 x 10^d up to 9000 km
+GEO.buildLadder = function () {
+	var d, k;
+	this.ladN = 7 * 9;
+	this.ladV = new Float64Array(this.ladN);
+	for (d = 0; d < 7; d++) for (k = 1; k <= 9; k++) this.ladV[d * 9 + k - 1] = k * Math.pow(10, d);
+};
+
+// finest rung set of decade d whose tightest screen gap still clears gapPx
+GEO.decadeSet = function (sgn, d, gapPx) {
+	var pow = Math.pow(10, d), si, set, i, ok, next;
+	for (si = 0; si < VSETS.length - 1; si++) {
+		set = VSETS[si];
+		ok = true;
+		for (i = 0; i < set.length && ok; i++) {
+			next = i + 1 < set.length ? set[i + 1] : 10;
+			if (Math.abs(this.sy(sgn * next * pow) - this.sy(sgn * set[i] * pow)) < gapPx) ok = false;
+		}
+		if (ok) return set;
 	}
-	first = Math.ceil(yB / step);
-	last = Math.floor(yT / step);
-	for (k = first; k <= last; k++) {
-		y = k * step;
-		if (k === 0) continue; // sea level has its own, stronger line and label
-		g.push({ s: this.sy(y), t: (y > 0 ? '+' : '') + (y / 1e3) + ' km' });
+	return VSETS[VSETS.length - 1];
+};
+
+// Greedy rung pick outward from 0 m into this.rung, returning the count. Anchored at 0
+// and run over the whole world, not the window: the rungs then depend on the zoom alone,
+// so a pan slides the lines instead of reshuffling which ones exist.
+GEO.pickRungs = function (sgn, limit, gapPx) {
+	var out = this.rung, cap = out.length, n = 0, last = this.sy(0), d, set, si, mag, s;
+	for (d = 0; d < 7; d++) {
+		set = this.decadeSet(sgn, d, gapPx);
+		for (si = 0; si < set.length; si++) {
+			mag = set[si] * Math.pow(10, d);
+			if (mag > limit || n >= cap) return n;
+			s = this.sy(sgn * mag);
+			if (Math.abs(s - last) < gapPx) continue;
+			out[n++] = d * 9 + set[si] - 1;
+			last = s;
+		}
 	}
-	this.grid = g;
+	return n;
+};
+
+// 1-2-5 step that subdivides one band into labels no closer than gap, or 0 for no fill.
+// The tightest sub-gap of a uniform world step on this map is the one next to b.
+GEO.fillStep = function (sgn, a, b, sa, sb, gap) {
+	var span = Math.abs(sb - sa), step;
+	if (span < 3 * gap) return 0;
+	if (Math.max(sa, sb) < 0 || Math.min(sa, sb) > P.ch) return 0;
+	step = niceStep((b - a) / Math.floor(span / gap));
+	while (step < b - a && Math.abs(sb - this.sy(sgn * (b - step))) < gap) step = niceStep(step * 1.5);
+	return step < b - a ? step : 0;
+};
+
+// Visible line magnitudes for one sign, ascending, into this.mag. Rungs are kept as they
+// come; a fill line is dropped when it would crowd its neighbour either side.
+GEO.gridMags = function (sgn, limit, gap) {
+	var out = this.mag, cap = out.length, cnt = this.pickRungs(sgn, limit, gap);
+	var yT = this.y(this.uT), yB = this.y(this.uB);
+	var mLo = sgn < 0 ? -yT : yB, mHi = sgn < 0 ? -yB : yT;
+	var n = 0, i, a = 0, b, sa = this.sy(0), sb, last, step, k, v, s;
+	if (mHi <= 0) return 0;
+	if (mLo < 0) mLo = 0;
+	for (i = 0; i <= cnt; i++) {
+		b = i < cnt ? this.ladV[this.rung[i]] : limit;
+		sb = this.sy(sgn * b);
+		last = sa;
+		step = this.fillStep(sgn, a, b, sa, sb, gap);
+		if (step > 0) {
+			k = Math.floor(a / step) + 1;
+			if (k * step < mLo) k = Math.floor(mLo / step);
+			for (; k * step < b && n < cap; k++) {
+				v = k * step;
+				s = this.sy(sgn * v);
+				if (sgn < 0 ? s > P.ch : s < 0) break;
+				if (s < 0 || s > P.ch) continue;
+				if (Math.abs(s - last) < gap || Math.abs(sb - s) < gap) continue;
+				out[n++] = v; last = s;
+			}
+		}
+		if (i < cnt && sb >= 0 && sb <= P.ch && n < cap) out[n++] = b;
+		a = b; sa = sb;
+	}
+	return n;
+};
+
+// altitude lines, emitted in world order (deepest first) so screen y stays monotone
+GEO.buildVGrid = function () {
+	var gap = P.gridGapY, n = 0, i, cnt;
+	cnt = this.gridMags(-1, P.R, gap);
+	for (i = cnt - 1; i >= 0; i--) n = this.pushV(-this.mag[i], n);
+	cnt = this.gridMags(1, P.skyTop, gap);
+	for (i = 0; i < cnt; i++) n = this.pushV(this.mag[i], n);
+	this.vgN = n;
+};
+
+// a label string is rebuilt only when its slot changes value (a pan mostly shifts them)
+GEO.pushV = function (y, n) {
+	if (n >= this.vgY.length) return n;
+	if (this.vgY[n] !== y) { this.vgY[n] = y; this.vgT[n] = (y > 0 ? '+' : '-') + fmtLen(Math.abs(y)); }
+	this.vgS[n] = this.sy(y);
+	return n + 1;
+};
+
+// Distance lines. x is linear, so one 1-2-5 step rules the axis — but it is measured
+// from x = 0 *inside each lap*, never across the seam: the last interval of a lap is
+// short and the next line is 0 again, which is what a wrapped world actually is.
+GEO.buildHGrid = function () {
+	var step = niceStep(P.gridGapX * this.kx), cap = this.hgV.length;
+	var x1 = this.x0 + P.cw * this.kx, kMax = Math.floor(P.wrap / step);
+	var m0 = Math.floor(this.x0 / P.wrap), m1 = Math.floor(x1 / P.wrap);
+	var n = 0, m, base, kLo, kHi, k, v;
+	for (m = m0; m <= m1 && n < cap; m++) {
+		base = m * P.wrap;
+		kLo = Math.ceil((this.x0 - base) / step);
+		kHi = Math.floor((x1 - base) / step);
+		if (kLo < 0) kLo = 0;
+		if (kHi > kMax) kHi = kMax;
+		for (k = kLo; k <= kHi && n < cap; k++) {
+			v = k * step;
+			if (this.hgV[n] !== v) { this.hgV[n] = v; this.hgT[n] = v === 0 ? '0' : fmtLen(v); }
+			this.hgS[n] = (base + v - this.x0) / this.kx;
+			n++;
+		}
+	}
+	this.hgN = n;
 };
 
 GEO.init();
