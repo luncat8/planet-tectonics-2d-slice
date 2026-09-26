@@ -45,8 +45,14 @@ function makeEl(id, dataV) {
 	return {
 		id: id, value: '0', textContent: '', dataset: dataV ? { v: dataV } : null,
 		listeners: {},
+		clientLeft: id === 'c' ? 1 : 0, clientTop: id === 'c' ? 1 : 0,
+		clientWidth: id === 'c' ? 1280 : 0, clientHeight: id === 'c' ? 560 : 0,
 		addEventListener: function (t, f) { this.listeners[t] = f; },
-		getBoundingClientRect: function () { return { left: 0, top: 0, width: 1280, height: 560 }; },
+		getBoundingClientRect: function () {
+			return id === 'c'
+				? { left: 0, top: 0, width: 1282, height: 562 }
+				: { left: 0, top: 0, width: 1280, height: 560 };
+		},
 		getContext: function () { return ctx2d; },
 		getAttribute: function (n) {
 			if (n === 'data-v') return this.dataset ? this.dataset.v : null;
@@ -106,6 +112,11 @@ check.ok('SIM ran a planet reset', L.sb.SIM.t === 0 && L.sb.S.nCol === 512,
 	't=' + L.sb.SIM.t + ' nCol=' + L.sb.S.nCol);
 check.ok('render built its palettes', L.sb.RNDR.palLith.length === 96,
 	'palLith ' + L.sb.RNDR.palLith.length);
+var canvasTopLeft = L.sb.UI.pos(ev('mousemove', { clientX: 1, clientY: 1 }));
+var canvasMid = L.sb.UI.pos(ev('mousemove', { clientX: 641, clientY: 281 }));
+check.ok('canvas pointer mapping excludes its CSS border',
+	canvasTopLeft.x === 0 && canvasTopLeft.y === 0 && canvasMid.x === 640 && canvasMid.y === 280,
+	canvasTopLeft.x + ',' + canvasTopLeft.y + ' / ' + canvasMid.x + ',' + canvasMid.y);
 
 check.section('B. clocks and sliders');
 frames(L, 300);
@@ -138,16 +149,16 @@ L.sb.UI.preset('def');
 check.near('default preset round trip', L.sb.GEO.kx, L.sb.P.winW / L.sb.P.cw, 1e-12);
 
 // the world point under the cursor must survive a wheel zoom and a drag pan
-L.sb.UI.move(ev('mousemove', { clientX: 411, clientY: 233 }));
+L.sb.UI.move(ev('mousemove', { clientX: 412, clientY: 234 }));
 var wx = L.sb.GEO.xAt(411), wy = L.sb.GEO.yAt(233);
-L.sb.UI.wheel(ev('wheel', { deltaY: -400, clientX: 411, clientY: 233 }));
+L.sb.UI.wheel(ev('wheel', { deltaY: -400, clientX: 412, clientY: 234 }));
 check.near('wheel keeps the cursor world x fixed',
 	L.sb.GEO.wrapX(L.sb.GEO.xAt(411) - wx + L.sb.P.wrap / 2) - L.sb.P.wrap / 2, 0, 1e-6, 'm');
 check.near('wheel keeps the cursor world y fixed', L.sb.GEO.yAt(233) - wy, 0, 1e-9, 'm');
 check.ok('wheel zoomed in', L.sb.GEO.kx < L.sb.P.winW / L.sb.P.cw, 'kx=' + L.sb.GEO.kx);
 wx = L.sb.GEO.xAt(411); wy = L.sb.GEO.yAt(233);
-L.sb.UI.down(ev('mousedown', { clientX: 411, clientY: 233 }));
-L.sb.UI.move(ev('mousemove', { clientX: 461, clientY: 183 }));
+L.sb.UI.down(ev('mousedown', { clientX: 412, clientY: 234 }));
+L.sb.UI.move(ev('mousemove', { clientX: 462, clientY: 184 }));
 L.sb.__win.mouseup(ev('mouseup', {}));
 check.near('drag keeps the grabbed world x fixed',
 	L.sb.GEO.wrapX(L.sb.GEO.xAt(461) - wx + L.sb.P.wrap / 2) - L.sb.P.wrap / 2, 0, 1e-6, 'm');

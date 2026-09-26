@@ -195,7 +195,8 @@ GEO.cellOf = function (i, x) {
 // the display map and its inverse (§1.4)
 GEO.u = function (y) { return Math.asinh(y / P.yLin); };
 GEO.y = function (u) { return P.yLin * Math.sinh(u); };
-GEO.sy = function (wy) { return (this.u(wy) - this.uB) / this.duPx; };
+// Canvas y increases downward: the window's top altitude maps to row 0.
+GEO.sy = function (wy) { return (this.uT - this.u(wy)) / this.duPx; };
 GEO.sx = function (wx) { return (wx - this.x0) / this.kx; };
 GEO.xAt = function (sx) { return this.x0 + sx * this.kx; };
 GEO.yAt = function (sy) { return P.yLin * Math.sinh(this.uT - sy * this.duPx); };

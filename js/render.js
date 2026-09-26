@@ -251,7 +251,8 @@ RNDR.overlayMesh = function () {
 	c.stroke();
 };
 
-// the adaptive asinh depth grid + sea level; labels were built on view change
+// World-ordered grid; reverse label traversal keeps the screen-space gap check monotone.
+// Sea level gets its own stronger line and label.
 RNDR.overlayGrid = function () {
 	var c = this.ctx, g = GEO.grid, i, s, lastL = -1e9;
 	c.beginPath();
@@ -264,7 +265,7 @@ RNDR.overlayGrid = function () {
 	c.stroke();
 	c.font = '10px monospace';
 	c.fillStyle = 'rgba(165,175,200,0.8)';
-	for (i = 0; i < g.length; i++) {
+	for (i = g.length - 1; i >= 0; i--) {
 		s = g[i].s;
 		if (s < 10 || s > P.ch - 6 || s - lastL < 16) continue;
 		c.fillText(g[i].t, 4, s - 2);

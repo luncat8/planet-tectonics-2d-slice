@@ -6,6 +6,7 @@ PASS  the preset buttons come from index.html   def,ovw,cru,bas
 PASS  page loaded and started the frame loop
 PASS  SIM ran a planet reset   t=0 nCol=512
 PASS  render built its palettes   palLith 96
+PASS  canvas pointer mapping excludes its CSS border   0,0 / 640,280
 
 B. clocks and sliders
 PASS  300 frames at 50 kyr/f = 15 Myr   rel 7.82e-14  got 15.000000000000078 Myr  want 15
@@ -33,10 +34,10 @@ PASS  wheel clamps at zoomMin   kx=117187.5 max=117187.5
 PASS  zoom clamped and came back   kx=117187.5
 
 D. probe, mesh, keys
-PASS  cursor readout built   "0.0 km  -109 km | 2.34 km/px  717 m/px"
-PASS  geology probe built   "col 0  plate 0  age 942.9 Myr"
-PASS  probe names a layer or the mantle   mantle  109 km  dT -0.11
-PASS  probe in the sky reads air/water   air  29247 m above surface
+PASS  cursor readout built   "40027.8 km  -108 km | 2.34 km/px  713 m/px"
+PASS  geology probe built   "col 511  plate 1  age 927.3 Myr"
+PASS  probe names a layer or the mantle   mantle  108 km  dT -0.11
+PASS  probe in the sky reads air/water   air  29638 m above surface
 PASS  m toggles the mesh overlay
 PASS  m toggles it back
 PASS  preset button 3 = crust x10   rel 0.00e+0  got 234.375  want 234.375
@@ -49,4 +50,4 @@ PASS  two fresh 1000-frame runs are bit-identical   4274465219|3547264217,138400
 PASS  a different seed diverges   2289314890|2340111570,1521480946,1170353247,2236989261
 PASS  the state hash is not degenerate   4274465219|3547264217,1384006036,4229254291,1210344905
 
-ALL PASS (40 checks)
+ALL PASS (41 checks)

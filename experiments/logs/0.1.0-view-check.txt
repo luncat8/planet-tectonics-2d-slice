@@ -38,6 +38,10 @@ PASS  every interior cell has an up neighbour   6643/6643
 
 D. display map and LUTs (design §1.4)
 PASS  |y(u(y)) - y| < 1e-12 rel   max rel 6.27e-16
+PASS  window top maps to canvas row 0   rel 1.79e-14  got -1.7945399021896087e-14 px  want 0
+PASS  window bottom maps to canvas row ch   rel 0.00e+0  got 560 px  want 560
+PASS  screen/world altitude maps are inverse   rel 4.37e-11  got -123000.00000000004 m  want -123000
+PASS  higher altitude maps toward canvas top
 PASS  lutY strictly decreasing top -> down
 PASS  lutY[0] = window top +33 km   abs 1.60e-1  got 32.83975092408298 km  want 33
 PASS  lutY[ch-1] = window bottom -300 km   abs 9.35e-1  got -299.06522042028314 km  want -300
@@ -45,6 +49,11 @@ PASS  lutX filled across the full canvas width
 PASS  lutX wrapped into [0, wrap)   38531345.46704114 .. 1498828.125
 PASS  lutRow agrees with rowOf(lutY)
 PASS  per-row fan LUTs match the band tables
+PASS  increasing altitude maps toward canvas top
+PASS  altitude grid lines stay readable   6 lines, min gap 29.2 px
+PASS  all readable grid lines have ordered labels   5/5 labels
+PASS  grid labels show explicit altitude signs
+PASS  sea-level label sits on its horizontal line   rel 0.00e+0  got 121.56311700510165 px  want 121.56311700510165
 
 E. presets and camera
 PASS  default kx = winW/cw   rel 0.00e+0  got 2343.75  want 2343.75
@@ -77,4 +86,4 @@ PASS  non-uniform perturbed columns x40   0/1280 wrong owners
 PASS  a single column   0/1280 wrong owners
 PASS  zero columns -> every pixel unowned
 
-ALL PASS (66 checks)
+ALL PASS (75 checks)

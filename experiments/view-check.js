@@ -6,6 +6,7 @@
 var L = require('./lib.js');
 var check = L.check;
 var P = L.mods.params, GEO = L.mods.geom, S = L.mods.state, SIM = L.mods.sim;
+var RNDR = L.mods.render;
 
 // the merge rule of the design table, restated so the table itself is checked
 function fanCells(N) {
@@ -136,6 +137,10 @@ for (i = 0; i <= 2000; i++) {
 check.ok('|y(u(y)) - y| < 1e-12 rel', mapErr < 1e-12, 'max rel ' + mapErr.toExponential(2));
 GEO.setPreset('def');
 GEO.sync();
+check.near('window top maps to canvas row 0', GEO.sy(P.winTop), 0, 1e-9, 'px');
+check.near('window bottom maps to canvas row ch', GEO.sy(P.winBot), P.ch, 1e-9, 'px');
+check.near('screen/world altitude maps are inverse', GEO.yAt(GEO.sy(-123e3)), -123e3, 1e-8, 'm');
+check.ok('higher altitude maps toward canvas top', GEO.sy(1) < GEO.sy(0) && GEO.sy(0) < GEO.sy(-1));
 var m2 = true;
 for (i = 1; i < P.ch; i++) if (GEO.lutY[i] >= GEO.lutY[i - 1]) m2 = false;
 check.ok('lutY strictly decreasing top -> down', m2);
@@ -161,14 +166,39 @@ for (i = 0; i < P.ch; i++) {
 	if (Math.abs(GEO.lutRowInvP[i] - GEO.fanN[r] / P.wrap) > 1e-15) fanOk = false;
 }
 check.ok('per-row fan LUTs match the band tables', fanOk);
-var gridOk = true, gridGap = Infinity;
+var gridOk = true, gridGap = Infinity, visibleGrid = 0;
+for (i = 0; i < GEO.grid.length; i++) {
+	if (GEO.grid[i].s < 10 || GEO.grid[i].s > P.ch - 6) continue;
+	visibleGrid++;
+}
 for (i = 1; i < GEO.grid.length; i++) {
 	if (GEO.grid[i].s >= GEO.grid[i - 1].s) gridOk = false;
 	gridGap = Math.min(gridGap, GEO.grid[i - 1].s - GEO.grid[i].s);
 }
-check.ok('altitude grid runs upward to downward', gridOk);
+check.ok('increasing altitude maps toward canvas top', gridOk);
 check.ok('altitude grid lines stay readable', GEO.grid.length < 40 && gridGap >= 24,
 	GEO.grid.length + ' lines, min gap ' + gridGap.toFixed(1) + ' px');
+var labelY = [], labelText = [], seaY = -1;
+RNDR.ctx = {
+	beginPath: function () {}, moveTo: function () {}, lineTo: function () {}, stroke: function () {},
+	fillText: function (text, x, y) {
+		if (text.indexOf(' km') >= 0) { labelText.push(text); labelY.push(y + 2); }
+		if (text === '0 m sea level') seaY = y + 3;
+	}
+};
+RNDR.overlayGrid();
+RNDR.ctx = null;
+var labelsOrdered = true, labelsSigned = true;
+for (i = 0; i < labelY.length; i++) {
+	if (i > 0 && labelY[i] <= labelY[i - 1]) labelsOrdered = false;
+	var altitude = parseFloat(labelText[i]);
+	if (altitude > 0 && labelText[i].charAt(0) !== '+') labelsSigned = false;
+	if (altitude < 0 && labelText[i].charAt(0) !== '-') labelsSigned = false;
+}
+check.ok('all readable grid lines have ordered labels', labelY.length === visibleGrid && labelsOrdered,
+	labelY.length + '/' + visibleGrid + ' labels');
+check.ok('grid labels show explicit altitude signs', labelsSigned);
+check.near('sea-level label sits on its horizontal line', seaY, GEO.sy(0), 1e-9, 'px');
 
 check.section('E. presets and camera');
 check.near('default kx = winW/cw', GEO.kx, P.winW / P.cw, 1e-12);

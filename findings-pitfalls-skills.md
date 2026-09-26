@@ -93,3 +93,9 @@ notes and pitfalls for LLM agents. write here if found good way to do something.
   felsic core into ~4-10 beds and basin sediment into 2-6, scaling bed count with total. M3
   deposition will add the thin rhythmic beds; the initial planet just needs to read as
   stratigraphy.
+- canvas y increases downward while altitude and `u=asinh(y/yLin)` increase upward. Use
+  `screenY=(uTop-u(y))/duPx` for overlays, exactly matching the raster LUT and `yAt`; the
+  tempting `(u(y)-uBottom)/duPx` reflects every overlay around the viewport. Grid levels
+  stored in ascending world altitude then have descending screen y, so label collision
+  checks must traverse them in reverse (or compare absolute screen gaps). Test top/bottom,
+  `yAt(sy(y))`, sea-level alignment and rendered label order—not only grid-array sorting.

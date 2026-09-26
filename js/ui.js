@@ -68,10 +68,16 @@ var UI = {
 		this.updateCursor();
 	},
 
-	// canvas-space position, scale-correct if the page CSS-scales the canvas
+	// Canvas events include the CSS border; camera coordinates are content-box pixels.
 	pos: function (e) {
 		var r = this.cvs.getBoundingClientRect();
-		return { x: (e.clientX - r.left) * (P.cw / r.width), y: (e.clientY - r.top) * (P.ch / r.height) };
+		var bx = this.cvs.clientLeft || 0, by = this.cvs.clientTop || 0;
+		var w = this.cvs.clientWidth || (r.width - bx * 2);
+		var h = this.cvs.clientHeight || (r.height - by * 2);
+		return {
+			x: (e.clientX - r.left - bx) * (P.cw / w),
+			y: (e.clientY - r.top - by) * (P.ch / h)
+		};
 	},
 
 	down: function (e) {
