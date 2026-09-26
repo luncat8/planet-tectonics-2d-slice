@@ -16,6 +16,7 @@ var RNDR = {
 	profY: null,          // profile altitude per screen column, rebuilt by body()
 	mesh: false,          // the M0 measuring-tool overlay, toggled from the UI
 	probe: '',            // geology under the cursor, rebuilt on mousemove only
+	probeLines: [],       // the same text split once, so the overlay never allocates
 	palLith: null, palMantle: null, palWater: null, palAir: null
 };
 
@@ -176,6 +177,7 @@ RNDR.present = function () { this.ctx.putImageData(this.img, 0, 0); };
 
 RNDR.overlay = function () {
 	this.overlayProfile();
+	this.overlayPlates();
 	if (this.mesh) this.overlayMesh();
 	this.overlayGrid();
 	this.overlayCursor();
@@ -202,6 +204,75 @@ RNDR.overlayProfile = function () {
 	}
 	c.strokeStyle = 'rgba(255,230,140,0.5)';
 	c.stroke();
+};
+
+// Plate boundaries (design §7): one glyph per classified edge on the profile — ridge
+// or rift opening, trench with its slab dipping under the overriding side, collision
+// chevrons, neutral tick — and a motion arrow over each plate. Batched into one path
+// per style; positions only, no strings.
+RNDR.EDGE_STYLE = [null, 'rgba(180,180,190,0.7)', 'rgba(110,235,170,0.95)', 'rgba(255,95,75,0.95)', 'rgba(255,175,60,0.95)'];
+
+RNDR.screenX = function (x) { return GEO.wrapX(x - GEO.x0) / GEO.kx; };
+
+RNDR.overlayPlates = function () {
+	var c = this.ctx, n = S.nCol, e, i, j, sx;
+	if (n < 2 || S.nPl < 2) return;
+	c.lineWidth = 1.5;
+	for (e = P.EDGE.neutral; e <= P.EDGE.collide; e++) {
+		c.beginPath();
+		for (i = 0; i < n; i++) {
+			if (S.edge[i] !== e) continue;
+			j = i + 1 < n ? i + 1 : 0;
+			sx = this.screenX(S.colX[j]);
+			if (sx < 0 || sx >= this.w) continue;
+			this.glyph(c, e, S.edgePol[i], sx, GEO.sy(this.profY[sx | 0]));
+		}
+		c.strokeStyle = this.EDGE_STYLE[e];
+		c.stroke();
+	}
+	c.beginPath();
+	for (i = 0; i < n; i++) {
+		if (S.colPlate[i] !== S.colPlate[i > 0 ? i - 1 : n - 1]) this.plateArrow(c, i);
+	}
+	c.strokeStyle = 'rgba(230,235,245,0.8)';
+	c.stroke();
+};
+
+RNDR.glyph = function (c, e, pol, x, y) {
+	var E = P.EDGE, d;
+	if (e === E.neutral) { c.moveTo(x, y - 3); c.lineTo(x, y - 10); return; }
+	if (e === E.open) {
+		c.moveTo(x - 5, y - 11); c.lineTo(x, y - 3); c.lineTo(x + 5, y - 11);
+		return;
+	}
+	if (e === E.subduct) {
+		d = pol < 0 ? 1 : -1;       // the slab dives under the overriding side
+		c.moveTo(x, y - 10); c.lineTo(x, y);
+		c.lineTo(x + 12 * d, y + 12);
+		return;
+	}
+	c.moveTo(x - 9, y - 12); c.lineTo(x - 3, y - 7); c.lineTo(x - 9, y - 2);
+	c.moveTo(x + 9, y - 12); c.lineTo(x + 3, y - 7); c.lineTo(x + 9, y - 2);
+};
+
+// arrow over the visible middle of the plate run starting at column b, length ∝ u
+RNDR.plateArrow = function (c, b) {
+	var n = S.nCol, p = S.colPlate[b], wRun = 0, i = b, k, a, lo, hi, x, len;
+	do { wRun += S.colW[i]; i = i + 1 < n ? i + 1 : 0; } while (S.colPlate[i] === p && i !== b);
+	len = S.plU[p] / P.vRef * 30;
+	if (len > 45) len = 45; else if (len < -45) len = -45;
+	for (k = 0; k < 2; k++) {
+		a = this.screenX(S.colX[b]) - k * P.wrap / GEO.kx;
+		lo = a > 0 ? a : 0;
+		hi = a + wRun / GEO.kx < this.w ? a + wRun / GEO.kx : this.w;
+		if (hi - lo < 70) continue;
+		x = (lo + hi) * 0.5 - len * 0.5;
+		c.moveTo(x, 20); c.lineTo(x + len, 20);
+		if (len > 1 || len < -1) {
+			c.moveTo(x + len - (len > 0 ? 5 : -5), 16); c.lineTo(x + len, 20);
+			c.lineTo(x + len - (len > 0 ? 5 : -5), 24);
+		}
+	}
 };
 
 // the M0 measuring tool: graded rows, fan cell walls, column ticks, plate boundaries
@@ -305,20 +376,19 @@ RNDR.overlayCursor = function () {
 		if (tx > P.cw - 230) tx = UI.mx - 230;
 		c.fillText(UI.cursor, tx, Math.max(10, UI.my - 8));
 	}
-	if (this.probe) {
-		c.fillStyle = 'rgba(10,14,22,0.82)';
-		c.fillRect(P.cw - 236, P.ch - 92, 230, 86);
-		c.fillStyle = 'rgba(159,214,184,0.95)';
-		var lines = this.probe.split('\n');
-		for (var i = 0; i < lines.length; i++) c.fillText(lines[i], P.cw - 230, P.ch - 78 + i * 13);
-	}
+	var lines = this.probeLines, nl = lines.length, i;
+	if (!nl) return;
+	c.fillStyle = 'rgba(10,14,22,0.82)';
+	c.fillRect(P.cw - 256, P.ch - 14 - nl * 13, 250, nl * 13 + 8);
+	c.fillStyle = 'rgba(159,214,184,0.95)';
+	for (i = 0; i < nl; i++) c.fillText(lines[i], P.cw - 250, P.ch - 16 - (nl - 1 - i) * 13);
 };
 
 // the geology under the cursor; rebuilt on mousemove only, never per frame
 RNDR.updateProbe = function (mx, my) {
-	if (mx < 0 || my < 0 || mx >= P.cw || my >= P.ch) { this.probe = ''; return; }
+	if (mx < 0 || my < 0 || mx >= P.cw || my >= P.ch) { this.setProbe(''); return; }
 	var c = GEO.lutCol[mx | 0];
-	if (c < 0 || S.nCol === 0) { this.probe = ''; return; }
+	if (c < 0 || S.nCol === 0) { this.setProbe(''); return; }
 	var y = GEO.lutY[my | 0];
 	var next = c + 1 < S.nCol ? c + 1 : 0, f = GEO.lutFrac[mx | 0];
 	var top = S.z[c] + (S.z[next] - S.z[c]) * f;
@@ -327,12 +397,13 @@ RNDR.updateProbe = function (mx, my) {
 	var height = S.hTot[c] + (S.hTot[next] - S.hTot[c]) * f;
 	var stretch = S.hTot[c] > 0 ? height / S.hTot[c] : 1;
 	var s = 'col ' + c + '  plate ' + S.colPlate[c] + '  age ' + S.colAge[c].toFixed(1) + ' Myr';
+	s += '\nu ' + (S.colU[c] / 1e4).toFixed(2) + ' cm/yr  ext ' + S.ext[c].toFixed(3) + '/Myr' + this.edgeText(c);
 	s += '\nz ' + (top / 1e3).toFixed(2) + ' km  hTot ' + (S.hTot[c] / 1e3).toFixed(1) + ' km';
 	s += '\nfel ' + (S.hFel[c] / 1e3).toFixed(1) + '  maf ' + (S.hMaf[c] / 1e3).toFixed(1) +
 		'  sed ' + (S.hSed[c] / 1e3).toFixed(1) + ' km';
 	if (y > top) {
 		s += '\n' + (y > 0 ? 'air' : 'water') + '  ' + ((y - top) | 0) + ' m above surface';
-		this.probe = s;
+		this.setProbe(s);
 		return;
 	}
 	var k = COL.layerAt(c, (top - y) / stretch);
@@ -340,7 +411,7 @@ RNDR.updateProbe = function (mx, my) {
 		var r = GEO.rowOf(y);
 		var cell = r < 0 ? 0 : GEO.cellOf(r, GEO.lutX[mx | 0]);
 		s += '\nmantle  ' + (-y / 1e3).toFixed(0) + ' km  dT ' + S.Tf[cell].toFixed(2);
-		this.probe = s;
+		this.setProbe(s);
 		return;
 	}
 	var b = c * P.layerCap, d = 0, i;
@@ -349,7 +420,23 @@ RNDR.updateProbe = function (mx, my) {
 	s += '\n' + S.layTh[b + k].toFixed(0) + ' m  ' + S.layAg[b + k].toFixed(0) + ' Myr  ' +
 		this.flagText(S.layFl[b + k]);
 	s += '\n' + (d / 1e3).toFixed(2) + ' km below surface';
+	this.setProbe(s);
+};
+
+RNDR.setProbe = function (s) {
 	this.probe = s;
+	this.probeLines = s ? s.split('\n') : [];
+};
+
+RNDR.EDGE_NAME = ['', 'neutral', 'opening', 'trench', 'collision'];
+
+// the boundary with the right neighbour, if this column sits on one
+RNDR.edgeText = function (c) {
+	var e = S.edge[c];
+	if (e === P.EDGE.none) return '';
+	if (e === P.EDGE.open) return '\nright edge: ' + (S.hFel[c] >= P.hOceanic ? 'rift' : 'ridge');
+	if (e === P.EDGE.subduct) return '\nright edge: trench, ' + (S.edgePol[c] < 0 ? 'this col' : 'right col') + ' subducts';
+	return '\nright edge: ' + this.EDGE_NAME[e];
 };
 
 RNDR.flagText = function (f) {

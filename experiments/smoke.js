@@ -103,7 +103,9 @@ function ev(type, o) {
 }
 
 check.section('A. page load (index.html order, ' + order.length + ' scripts)');
-check.ok('index.html declares the scripts', order.length === 10, order.join(' '));
+var onDisk = fs.readdirSync(path.join(root, 'js')).filter(function (f) { return /\.js$/.test(f); });
+check.ok('index.html loads every js/*.js file exactly once', onDisk.length === order.length &&
+	onDisk.every(function (f) { return order.indexOf('js/' + f) >= 0; }), order.join(' '));
 check.ok('the DOM stub found every id in index.html', IDS.length >= 8, IDS.join(','));
 check.ok('the preset buttons come from index.html', BUTTONS.length === 4, BUTTONS.join(','));
 var L = load();

@@ -41,6 +41,8 @@ var P = {
 	LITH: { sed: 0, fel: 1, maf: 2, tephra: 3, lava: 4, sill: 5, n: 6 },
 	OCLS: { vms: 0, maf: 1, arc: 2, oro: 3, bas: 4, pla: 5, n: 6 },
 	FLAG: { wet: 1, ore: 2, unconf: 4 },
+	// boundary state of a column with its right neighbour (design §4.2); none = same plate
+	EDGE: { none: 0, neutral: 1, open: 2, subduct: 3, collide: 4 },
 	// toy eruptive (design §1.5, §5)
 	ventBoxW: 48,
 	ventBoxH: 32,
@@ -84,6 +86,8 @@ var P = {
 	reliefBase: 40,              // m of undulation everywhere
 	reliefK: 0.08,               // x the elevation difference of the two neighbours
 	// plates (design §4.2)
+	plates0: 8,                  // initial plates: a hot start has many (design §4.8)
+	plateJitter: 16,             // columns of seeded boundary jitter; 512/8 - 2*16 >= minPlateCells
 	rGap: 0.75,
 	rContact: 0.6,
 	K: 3,                        // rift donors
@@ -130,6 +134,7 @@ var P = {
 	kDehy: 0.02,                 // /Myr
 	kMelt: 1e-4,
 	Tc: 0.2,
+	tauT: 100,                   // Myr, fan T anomaly relaxation toward the adiabat
 	// isostasy (design §4.6, reference §7.1)
 	rhoM: 3300,
 	rhoFel: 2750,

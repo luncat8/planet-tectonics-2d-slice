@@ -15,6 +15,8 @@ var COL = {
 	acc: new Float64Array(3),
 	removed: new Float64Array(3),
 	wScratch: new Float64Array(16),
+	lidAcc: new Float64Array(P.nCols),
+	lidCov: new Float64Array(P.nCols),
 	mask: null, prox: null, order: null, ridgeX: null
 };
 
@@ -238,29 +240,47 @@ COL.sedimentCover = function (i) {
 };
 
 // cold lithospheric lid in the fan anomaly: linear from -amp at the surface to 0 at
-// 10*sqrt(age) km (half-space cooling). The per-frame fan T step is mantle.js (M2).
-COL.lithDepth = function (age) { return age > 0 ? 1e4 * Math.sqrt(Math.min(age, 200)) : 0; };
+// 10*sqrt(age) km (half-space cooling). The lid rides the columns, so the mantle
+// kernel re-imposes it after every advection step; below it the field is free.
+COL.lidAgeCap = 200;
+COL.lithDepth = function (age) { return age > 0 ? 1e4 * Math.sqrt(Math.min(age, this.lidAgeCap)) : 0; };
 
 COL.initFanT = function () {
-	var n = S.nCol, i, r, j, j0, j1, C, pitch, val, f, dLith, amp, x0, x1, iLast;
 	S.Tf.fill(0);
-	for (i = 0; i < n; i++) {
-		dLith = this.lithDepth(S.colAge[i]);
-		if (dLith <= 0) continue;
-		amp = P.lithCold * Math.min(1, S.colAge[i] / P.thermAgeCap);
-		x0 = S.colX[i];
-		x1 = x0 + S.colW[i];
-		iLast = GEO.rowOf(-dLith);
-		if (iLast < 0) iLast = GEO.N - 1;
-		for (r = 0; r <= iLast; r++) {
-			f = GEO.rowCy[r] / dLith;
-			if (f >= 1) break;
-			val = -amp * (1 - f);
-			C = GEO.fanN[r];
-			pitch = P.wrap / C;
-			j0 = Math.floor(x0 / pitch);
-			j1 = Math.floor((x1 - 1e-9) / pitch);
-			for (j = j0; j <= j1; j++) S.Tf[GEO.fanOff[r] + ((j % C) + C) % C] = val;
+	this.lidFan();
+};
+
+// Deep fan rows are coarse (16 cells of 2500 km at 50 km depth), so a cell must not
+// take the lid of whichever column owns its centre. Each column spreads its lid over the
+// cells it overlaps; a cell blends lid and advected mantle by the covered fraction
+// (a convex blend: bounds are preserved and a lid-free row is left untouched).
+COL.lidFan = function () {
+	var n = S.nCol, dMax = this.lithDepth(this.lidAgeCap), acc = this.lidAcc, cov = this.lidCov;
+	var r, i, j, C, pitch, off, d, dLith, val, a, b, lo, hi, jj;
+	if (n === 0) return;
+	for (r = 0; r < GEO.N && GEO.rowCy[r] < dMax; r++) {
+		C = GEO.fanN[r];
+		pitch = P.wrap / C;
+		off = GEO.fanOff[r];
+		d = GEO.rowCy[r];
+		acc.fill(0, 0, C);
+		cov.fill(0, 0, C);
+		for (i = 0; i < n; i++) {
+			dLith = this.lithDepth(S.colAge[i]);
+			if (d >= dLith) continue;
+			val = -P.lithCold * Math.min(1, S.colAge[i] / P.thermAgeCap) * (1 - d / dLith);
+			a = S.colX[i];
+			b = a + S.colW[i];
+			for (j = Math.floor(a / pitch); j * pitch < b; j++) {
+				lo = a > j * pitch ? a : j * pitch;
+				hi = b < (j + 1) * pitch ? b : (j + 1) * pitch;
+				jj = j % C;
+				acc[jj] += (hi - lo) * val;
+				cov[jj] += hi - lo;
+			}
+		}
+		for (j = 0; j < C; j++) {
+			if (cov[j] > 0) S.Tf[off + j] = (acc[j] + (pitch - cov[j]) * S.Tf[off + j]) / pitch;
 		}
 	}
 };

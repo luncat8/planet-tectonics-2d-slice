@@ -23,8 +23,10 @@ COL.mask.fill(1); COL.mask[S.nCol - 1] = 0;
 check.ok('margin taper wraps at the seam', COL.margin(0, 0.5) === COL.margin(S.nCol - 2, 0.5) && COL.margin(0, 0.5) < 1);
 
 check.planet(1);
-for (var preset of ['def', 'overview', 'crust', 'basin']) {
+var kxSeen = {};
+for (var preset of ['def', 'ovw', 'cru', 'bas']) {
 	GEO.setPreset(preset); GEO.sync(); GEO.buildColLUT(S);
+	kxSeen[GEO.kx.toFixed(3) + '/' + GEO.duPx.toExponential(3)] = 1;
 	var before = S.hash();
 	R.body(pixels, P.cw, P.ch);
 	var maxError = 0;
@@ -36,4 +38,5 @@ for (var preset of ['def', 'overview', 'crust', 'basin']) {
 	check.ok(preset + ': Moho uses the same interpolation as surface', maxError < 1e-8, maxError);
 	check.ok(preset + ': display interpolation never mutates beds or mass', before === S.hash());
 }
+check.ok('the four preset keys select four distinct windows', Object.keys(kxSeen).length === 4);
 check.done();

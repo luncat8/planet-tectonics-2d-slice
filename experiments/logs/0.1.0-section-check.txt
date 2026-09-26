@@ -9,11 +9,12 @@ PASS  seed 12345: coast has thinned felsic over mafic margin
 PASS  margin taper wraps at the seam
 PASS  def: Moho uses the same interpolation as surface   7.275957614183426e-12
 PASS  def: display interpolation never mutates beds or mass
-PASS  overview: Moho uses the same interpolation as surface   7.275957614183426e-12
-PASS  overview: display interpolation never mutates beds or mass
-PASS  crust: Moho uses the same interpolation as surface   7.275957614183426e-12
-PASS  crust: display interpolation never mutates beds or mass
-PASS  basin: Moho uses the same interpolation as surface   7.275957614183426e-12
-PASS  basin: display interpolation never mutates beds or mass
+PASS  ovw: Moho uses the same interpolation as surface   7.275957614183426e-12
+PASS  ovw: display interpolation never mutates beds or mass
+PASS  cru: Moho uses the same interpolation as surface   1.4551915228366852e-11
+PASS  cru: display interpolation never mutates beds or mass
+PASS  bas: Moho uses the same interpolation as surface   1.4551915228366852e-11
+PASS  bas: display interpolation never mutates beds or mass
+PASS  the four preset keys select four distinct windows
 
-ALL PASS (17 checks)
+ALL PASS (18 checks)

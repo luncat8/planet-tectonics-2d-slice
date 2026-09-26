@@ -107,3 +107,28 @@ interpolate the rendered Moho with the same column fraction, use it for both ras
 overlay, and invert any display-only stack stretch in the probe. Never write interpolated
 thicknesses back to geological state. Separately, quantile land selection needs a coastal
 thickness taper; a binary 0→35 km felsic jump creates artificial continent walls.
+
+## 0.1.0 implementation (M2.1)
+
+- integer mantle harmonics + two half-wrap plates = motionless plates: the mean of
+  cos(n x / R) over half the wrap is exactly 0 for every even n (6, 10, 16), so only the odd
+  mode drives and plates crawl at ~2 mm/yr. Start with several unequal plates (plates0 8,
+  jittered boundaries); then the mean fit sees different flow under each plate.
+- a coarse fan cell must not take a column property from the column at its centre: at 50 km
+  depth a cell is 2500 km (32 columns) wide, and one young-ocean column at the centre warmed a
+  whole cell under a continent (a hard vertical step at x = 0 in the render). Spread each
+  column over the cells it overlaps and blend by covered fraction. Same rule for any future
+  column -> fan write (slab cold, plume heat).
+- a semi-Lagrangian step along a fan row does not need Math.cos per cell: the centre phases
+  step by kap*pitch, so a rotation recurrence gives the flow (5x faster, 1.9 -> 0.36 ms).
+  m2-check re-traces every cell with the closed-form flow() to prove the recurrence equal
+  (1e-14). Keep a slow closed-form reference beside every optimized kernel.
+- every kernel returns at dtGeo = 0. "u relaxes by dt/tau = 0" is not enough: derived fields
+  (ext, edge ages) would still be rewritten and the paused hash would change.
+- python str.replace(old, new) with an empty `old` inserts `new` between every character
+  (a 130k-line render.js). When patching by slicing between two anchors, assert start < end
+  and old non-empty before replacing.
+- a test calling GEO.setPreset('overview') silently no-ops (keys are 'ovw'/'cru'/'bas') and
+  re-tests the default window. Assert that the fixtures really differ (distinct kx/duPx).
+- no browser installs in this sandbox (CDN/apt blocked): experiments/snapshot.js runs the sim
+  in node and writes the real body raster to a PNG with zlib, plus boundary bars.

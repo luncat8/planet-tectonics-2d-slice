@@ -1,5 +1,5 @@
 // sim.js — the frame pipeline (design §3). K0 runs inline (clocks, Tm, the 1 Myr event
-// cadence); K1..K9 register themselves by slot and fill in across M2..M6:
+// cadence); K1..K9 sit in slots and fill in across M2..M6:
 //   K1 mantle/plumes/fan T   K2 plate solve   K3 move columns + boundaries
 //   K4 contact (spawn/consume)   K5 column update   K6 surface   K7 vents (eruptive
 //   clock)   K8 reserved   K9 diag
@@ -10,9 +10,12 @@ var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js
 var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.S;
 var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.GEO;
 var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COL;
+var MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.MNT;
+var PLT = (typeof module !== 'undefined' && module.exports) ? require('./plates.js') : window.PLT;
 
 var SIM = {
-	k: [null, null, null, null, null, null, null, null, null, null],
+	// kernel slots; each is (state, dtGeo Myr, t Myr, Tm) and must no-op at dtGeo = 0
+	k: [null, MNT.k1, PLT.k2, PLT.k3, null, null, null, null, null, null],
 	dG: 0,          // Myr per frame, from the plates slider
 	t: 0,           // Myr
 	tErupt: 0,      // s, the eruptive clock (the only seconds quantity)
@@ -29,6 +32,7 @@ var SIM = {
 		this.dG = P.sl.geo / 1e6;
 		this.cool();
 		S.reset();
+		MNT.init(P.seed);
 		COL.makePlanet(this.Tm);
 	},
 
@@ -54,7 +58,7 @@ var SIM = {
 		this.k0();
 		for (var i = 1; i < 10; i++) {
 			var f = this.k[i];
-			if (f) f(S, this.dG);
+			if (f) f(S, this.dG, this.t, this.Tm);
 			if (i === 4 && this.dG > 0 && this.onEvent) {
 				for (var e = 0; e < this.event; e++) this.onEvent(S, this.dG);
 			}
