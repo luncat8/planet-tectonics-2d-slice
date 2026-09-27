@@ -37,7 +37,7 @@ var MAG = {
 		if (c < 0) return -1;
 		for (q = -4; q <= 4; q++) {
 			var j = (c + q + n) % n;
-			if (!(st.trenchDist[j] > 0)) continue;
+			if (!(st.trenchDist[j] > 0) || st.colGhost[j]) continue;
 			d = Math.abs(this.dx(st.colX[j], x));
 			if (d < bestD) { bestD = d; best = j; }
 		}
@@ -104,7 +104,8 @@ var MAG = {
 			if (!(over > 0)) continue;
 			st.colChamber[i] = P.chamberCap;
 			th = over / st.colW[i];
-			COL.push(i, th, P.LITH.sill, t, 0);
+			// a sill is an intrusive sheet: the deepest rank, not a surface lid
+			COL.insertVol(st, i, P.LITH.sill, th, t, 0);
 			COL.sums(i);
 			// The chamber is audited as mafic melt; solidifying it into a sill moves the
 			// mass between two stored lithologies, so the production entry moves with it.

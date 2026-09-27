@@ -27,11 +27,12 @@ CRU.strength = function (i, Tm) {
 	return s / Tm;
 };
 
+// Growth goes where the rock belongs in the section (COL.insertVol), not on top of the
+// bed that is already there: the arc's felsic thickening a sediment drape, or a large
+// intrusive sheet landing at the surface, are the two inversions this removes.
 CRU.addLayer = function (st, c, thick, lith, age, flags) {
-	var b = c * P.layerCap, top = st.colNL[c] - 1;
 	if (!(thick > 0)) return;
-	if (top >= 0 && st.layLi[b + top] === lith) st.layTh[b + top] += thick;
-	else COL.push(c, thick, lith, age, flags);
+	COL.insertVol(st, c, lith, thick, age, flags);
 };
 
 CRU.arcSpeed = function (st, c) {
@@ -48,7 +49,7 @@ CRU.arcSpeed = function (st, c) {
 CRU.arcGrowth = function (st, dt, t, Tm) {
 	var i, speed, recycled, norm, add, ore;
 	for (i = 0; i < st.nCol; i++) {
-		if (!(st.trenchDist[i] > 0)) continue;
+		if (!(st.trenchDist[i] > 0) || st.colGhost[i]) continue;
 		speed = this.arcSpeed(st, i);
 		if (!(speed > 0) || !(st.colRecycle[i] > 0)) continue;
 		norm = P.w0 * 5e3 * P.slabWaterSed;
@@ -70,7 +71,7 @@ CRU.lipGrowth = function (st, dt, t) {
 	for (i = 0; i < st.nPlm; i++) {
 		if (!st.plmArrive[i] || !(st.plmStr[i] > 0)) continue;
 		c = MAG.nearest(st, st.plmX[i]);
-		if (c < 0) continue;
+		if (c < 0 || st.colGhost[c]) continue;
 		best = Math.abs(MAG.dx(st.colX[c], st.plmX[i]));
 		if (best > Math.max(P.w0, st.plmR[i])) continue;
 		add = P.kLIP * st.plmStr[i] * dt;
@@ -99,6 +100,7 @@ CRU.k5 = function (st, dt, t, Tm) {
 		st.damage[i] = dmg < 0 ? 0 : (dmg > 1 ? 1 : dmg);
 	}
 	CRU.zDyn(st, dt);
+	CRU.delaminate(st, dt);
 	CRU.collapse(st, dt);
 	CRU.arcGrowth(st, dt, t, Tm);
 	CRU.lipGrowth(st, dt, t);
@@ -141,6 +143,59 @@ CRU.zDyn = function (st, dt) {
 	}
 };
 
+// Delamination: the ceiling on crust thickness. A convergent contact shortens, and in 1D
+// shortening can only make the two records thicker -- their territory is the gap between
+// them, and the gap cannot go below the floor. Two 48 km continents meeting at the floor
+// are two 92 km records, and neither the collapse (which moves felsic, and a squeezed
+// column's excess is mafic basement) nor the isostasy (which answers thickness with
+// elevation, not with less crust) can take that away. Real orogens answer it by
+// foundering: the dense lower crust drips into the mantle. That is the sink this is, and
+// it is the design's explicit delamination sink -- without it the crust ceiling is not a
+// mechanism, only a threshold someone wrote down.
+//
+// The rate is proportional to the excess over the ceiling, so a column at the ceiling
+// stops thickening and a column far over it sheds quickly, and the volume is peeled off
+// the *base* (the mafic and intrusive beds) and booked as consumed, so the ledger says
+// where the rock went instead of losing it quietly.
+CRU.delaminate = function (st, dt) {
+	var n = st.nCol, i, b, k, over, take, w, h, any = false, m, lit = CRU.delLit, vol = CRU.delVol;
+	for (i = 0; i < n; i++) {
+		if (st.colGhost[i]) continue;
+		over = st.hTot[i] - P.crustMax;
+		if (!(over > 0)) continue;
+		// metres of crust this frame: a fraction of the excess, never all of it, so the
+		// surface subsides smoothly instead of stepping down onto the ceiling
+		// proportional to the excess, and never more than half of it in one frame, so
+		// the ceiling is reached within a frame or two instead of stepping onto it
+		take = P.kDelam * over * 1000 * dt;
+		if (take > over * 500) take = over * 500;
+		if (!(take > 0)) continue;
+		b = i * P.layerCap;
+		w = st.colW[i];
+		m = 0;
+		for (k = 0; k < st.colNL[i] && take > 0; k++) {
+			h = st.layTh[b + k];
+			if (!(h > 0)) continue;
+			if (take >= h) {
+				take -= h;
+				st.layTh[b + k] = 0;
+				lit[m] = st.layLi[b + k]; vol[m] = h * w; m++;
+			} else {
+				st.layTh[b + k] = h - take;
+				lit[m] = st.layLi[b + k]; vol[m] = take * w; m++;
+				take = 0;
+			}
+		}
+		for (k = 0; k < m; k++) st.ledCons[lit[k]] += vol[k];
+		COL.sums(i);
+		any = true;
+	}
+	return any;
+};
+
+CRU.delLit = new Int32Array(P.layerCap);
+CRU.delVol = new Float64Array(P.layerCap);
+
 // Gravitational collapse (design §4.4, reference §7.2): felsic crust diffuses between
 // neighbours while either side is above hCollapse, so plateaus spread and an orogen
 // stops growing. Shortening conserves volume while it removes area, so without a sink the
@@ -156,21 +211,67 @@ CRU.collapse = function (st, dt) {
 	for (i = 0; i < n; i++) {
 		ip = i + 1 < n ? i + 1 : 0;
 		CRU.face[i] = 0;
+		// A draining sliver has no crust and so has no thickness to be low: it reads as
+		// a hole in the profile, and every face next to it would pour felsic into a
+		// record that is retired a few frames later. A sliver is a gap, not a basin, so
+		// the faces around one carry nothing and the flow goes on past it.
+		if (st.colGhost[i] || st.colGhost[ip]) continue;
 		if (st.hFel[i] < P.hCollapse && st.hFel[ip] < P.hCollapse) continue;
 		dh = st.hFel[ip] - st.hFel[i];
 		if (dh === 0) continue;
 		CRU.face[i] = kf * dh / CRU.faceGap(st, n, i);
 		any = true;
 	}
-	if (!any) return;
-	// face[i] > 0 is inflow into i across its right face (the same sign convention as
-	// the flexure), so the material travels from the thicker i+1 to the thinner i
+	if (any) {
+		// face[i] > 0 is inflow into i across its right face (the same sign convention as
+		// the flexure), so the material travels from the thicker i+1 to the thinner i
+		for (i = 0; i < n; i++) {
+			v = CRU.face[i];
+			if (v === 0) continue;
+			ip = i + 1 < n ? i + 1 : 0;
+			if (v > 0) COL.collapseMove(ip, i, v);
+			else COL.collapseMove(i, ip, -v);
+		}
+	}
+	CRU.belt(st, dt);
+};
+
+// The orogenic flow (0.1.5 M2). A convergent contact cannot make room for the crust
+// shortening adds: in 1D the only places that crust can go are up (the isostasy) and
+// sideways. Without the sideways part the pair at a collision simply doubles in
+// thickness and the boundary is a two-column needle standing 1.5x its flanks (measured:
+// 65 km between 46 and 42 km flanks at 5 Myr, and 1.68x at 6.8 Myr, on seed 5).
+//
+// So the crust a collision carries above the ground beside it moves out to the columns
+// beyond the pair, at a rate set by how fast the boundary is closing: a fast collision
+// spreads faster than a slow one, and a pair that is no longer above its flanks carries
+// nothing. The felsic is peeled off the top of the pair and handed to the column beyond
+// it (COL.collapseMove -> COL.insertVol), so the belt grows outward bed by bed instead of
+// the pair growing a second, third and fourth bed. It is a move inside the crust, so the
+// ledger has nothing to say about it.
+CRU.belt = function (st, dt) {
+	var n = st.nCol, i, j, im, ip, flank, excess, th, w;
 	for (i = 0; i < n; i++) {
-		v = CRU.face[i];
-		if (v === 0) continue;
-		ip = i + 1 < n ? i + 1 : 0;
-		if (v > 0) COL.collapseMove(ip, i, v);
-		else COL.collapseMove(i, ip, -v);
+		if (st.edge[i] !== P.EDGE.collide) continue;
+		j = i + 1 < n ? i + 1 : 0;
+		im = i > 1 ? i - 1 : n - 1;
+		ip = j + 1 < n ? j + 1 : 0;
+		if (st.colGhost[i] || st.colGhost[j] || st.colGhost[im] || st.colGhost[ip]) continue;
+		if (st.colGhost[i > 2 ? i - 2 : n - 2] || st.colGhost[j + 2 < n ? j + 2 : 2]) continue;
+		flank = 0.5 * (st.hTot[i > 1 ? i - 1 : n - 1] + st.hTot[ip]);
+		// the crust holds up a root of beltYield before it starts to flow sideways, the
+		// way an orogenic wedge stands at its critical taper: without that the flow
+		// flattens the boundary until no belt is left at all
+		excess = 0.5 * (st.hTot[i] + st.hTot[j]) - flank - P.beltYield;
+		if (!(excess > 0)) continue;
+		th = P.kBelt * excess * 1000 * dt * (0.5 + Math.abs(st.edgeRelN[i]) / P.vRef);
+		if (!(th > 0)) continue;
+		// half to the column beside the pair and half to the one beyond it, so the belt
+		// widens instead of raising a wall two columns wide
+		COL.collapseMove(i, im, 0.5 * th * st.colW[i]);
+		COL.collapseMove(i, i > 2 ? i - 2 : n - 2, 0.5 * th * st.colW[i]);
+		COL.collapseMove(j, ip, 0.5 * th * st.colW[j]);
+		COL.collapseMove(j, j + 2 < n ? j + 2 : 2, 0.5 * th * st.colW[j]);
 	}
 };
 

@@ -53,6 +53,15 @@ var S = {
 	colMeltArc: new Float64Array(P.colCap), // arc melt supplied in the current frame, m2
 	colMeltPlume: new Float64Array(P.colCap), // plume melt supplied in the current frame, m2
 	colRecycle: new Float64Array(P.colCap), // ribbon water reaching this arc column, m2
+	// 0.1.5: a consumed record is not deleted, it becomes a trench sliver (colGhost) and
+	// gives its crust to the ribbon, keeping its place and its (now tiny) territory
+	// until the trench has closed both its gaps. colAge is its life, as for any record.
+	// hDraw is the crust thickness that is *on screen*: a sliver owns no mass but keeps
+	// its span in the picture, so the drawn profile passes straight through it (design
+	// §1.3 "what is drawn is the integral of the columns" holds everywhere except
+	// across a sliver, where it is a stated, bounded exception).
+	colGhost: new Uint8Array(P.colCap),
+	hDraw: new Float64Array(P.colCap),      // drawn crust thickness, m (surface.js)
 	// layer stacks: flat colCap x layerCap, bottom-up from col*layerCap
 	colNL: new Int32Array(P.colCap),
 	layTh: new Float64Array(P.colCap * P.layerCap),

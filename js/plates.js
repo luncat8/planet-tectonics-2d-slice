@@ -22,7 +22,11 @@ PLT.cD = function (Tm) {
 	return Math.exp(P.Ea * (1 / Tm - 1) + P.coolDrag * cold * cold);
 };
 
-PLT.oceanic = function (S, i) { return S.hFel[i] < P.hOceanic; };
+// A sliver is the trench, not crust: it is never the downgoing side, and it is not the
+// subducting plate's youngest basalt either. Reading it as continental is what keeps the
+// next pair at the trench classified O-C with the *real* oceanic column subducting,
+// whatever its age (0.1.5 M1a).
+PLT.oceanic = function (S, i) { return S.hFel[i] < P.hOceanic && !S.colGhost[i]; };
 
 // ridge push on oceanic columns (downslope), and the previous frame's C–C collision
 // resistance pushing both sides apart, growing with the felsic thickness in contact

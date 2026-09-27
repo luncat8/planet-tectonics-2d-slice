@@ -1,0 +1,20 @@
+contact audit — seed 5, 100 kyr/frame, 5000 frames (500 Myr), 2.18 ms/frame   [STRICT]
+  crust          max 80.1 km   thickest at a contact 71.7 km   collisions 13181 seen, sharpest peak 1.29x flanks, 99.9% of the 1772 with a root widen to a belt   draining records 5 live holding 0.4% of the crust, widest run 0.0 columns (oldest 415.2 Myr)
+  surface        worst single-frame move 3336 m at frame 2587 x 4612.9 km   mean 1.0 m, 1068 raster samples above 100 m
+  event site     0 m at a birth/death site, 3336 m elsewhere on the same frame, quiet-frame worst 769 m   (quiet-frame drawn thickness 42.5 km and width 10.0%, 0 quiet records with no counterpart, 17234 re-partitioned)
+  columns        worst single-frame drawn-thickness change 42.5 km at frame 4532 x 4322.2 km   worst width change 10.0% at frame 1806   worst local slope 147.7%
+  topology       25 births / 1190 deaths (243.00 per 1000 frames) at 0 repeated birth and 0 repeated death sites (526 columns, 9 plates)
+  stacks         0 column-frames with an inverted bed, 0 column-frames at layerCap
+
+contact contract (0.1.5-plan.md §1)
+PASS  R1 an event moves the surface no more than the rest of its own frame   at the site 0 m, elsewhere on that frame 3336 m, ratio 0.00 (max 1.25)
+PASS  R2 no collision is a needle   13184 collisions measured, the sharpest peak 1.29x its flanks at 349.8 km (max 1.5)
+PASS  R2 a collision that builds a belt thickens a run of columns   1771 of 1772 collision-frames with a 4.0 km root thicken 4 or more of the 6 columns around the pair; narrowest seen 2 at 19632.8 km
+PASS  R3 the crust has a ceiling   80.1 km (max 80.0 km)
+PASS  no site changes its topology twice inside the event memory   0 of 1215 events (243.00 per 1000 frames) came within 40 frames of an earlier one at the same site
+PASS  R5 stacks stay in stratigraphic order   0 inverted column-frames
+PASS  R5 no column runs out of beds   0 column-frames touched layerCap, the longest stay 0 frames (max 3)
+PASS  a draining record holds no ground   0.4% of the crust in 5 draining records, widest run 0.0 columns (max 2.0%)
+PASS  every buffer is finite
+
+ALL PASS (9 checks)

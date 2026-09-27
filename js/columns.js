@@ -36,12 +36,95 @@ COL.push = function (c, thick, lith, age, flags) {
 	return thick;
 };
 
+// A bed goes where it belongs in the section, not on top of everything. The stack runs
+// from the deepest bed (index 0) up to the surface and P.LITH_RANK rises along it -- sill,
+// mafic, felsic, volcanic, sediment -- so a bed belongs above the first bed that ranks
+// below it and below the first that ranks above. Appending is what put the arc's felsic
+// on top of a sediment drape and a sill on top of the whole crust (the two inversions the
+// audit counts), and it is also how a column reached layerCap: every new bed took a slot
+// until there were none left.
+//
+// Returns the volume actually placed. A bed of the same rock and the same flags as the
+// one it lands against is thickened instead of added, and at layerCap the stack is
+// consolidated first (thinnest adjacent pair of identical beds) so growth has somewhere
+// to go.
+COL.insertVol = function (st, c, lith, vol, age, flags) {
+	if (!(vol > 0)) return 0;
+	var LC = P.layerCap, b = c * LC, RANK = P.LITH_RANK, r = RANK[lith], n = st.colNL[c], p = 0, k;
+	// p is the first bed that ranks above this one, counting from the deepest
+	while (p < n && RANK[st.layLi[b + p]] <= r) p++;
+	if (n >= LC) {
+		this.consolidate(st, c);
+		n = st.colNL[c]; p = 0;
+		while (p < n && RANK[st.layLi[b + p]] <= r) p++;
+	}
+	// A bed is thickened rather than added, and the flags of the older bed win: the wet
+	// bit says where the bed formed, and a later grain landing on it does not move the
+	// bed somewhere else. Matching on it instead filled stacks with one bed per frame
+	// (measured: 95 beds under 0.35 km on a column that had been at layerCap for 1605
+	// frames), because the surface's wetness flips from frame to frame.
+	if (p > 0 && st.layLi[b + p - 1] === lith) {
+		st.layFl[b + p - 1] |= flags & ~P.FLAG.wet;
+		st.layTh[b + p - 1] += vol;
+		return vol;
+	}
+	if (p < n && st.layLi[b + p] === lith) {
+		st.layTh[b + p] += vol;
+		if (age < st.layAg[b + p]) st.layAg[b + p] = age;
+		return vol;
+	}
+	// Consolidated and still full: the bed has nowhere to go. It is not lost -- it is
+	// booked as consumed, so a stack that will not consolidate cannot quietly eat the
+	// ledger (measured: the crust simply stopped appearing at layerCap).
+	if (n >= LC) { S.ledCons[lith] += vol; return 0; }
+	for (k = n - 1; k >= p; k--) {
+		st.layTh[b + k + 1] = st.layTh[b + k];
+		st.layLi[b + k + 1] = st.layLi[b + k];
+		st.layAg[b + k + 1] = st.layAg[b + k];
+		st.layFl[b + k + 1] = st.layFl[b + k];
+	}
+	st.layTh[b + p] = vol;
+	st.layLi[b + p] = lith;
+	st.layAg[b + p] = age;
+	st.layFl[b + p] = flags;
+	st.colNL[c] = n + 1;
+	for (k = 0; k < S.nDep; k++) {
+		if (S.depCol[k] !== c) continue;
+		if (S.depLay[k] >= p) S.depLay[k]++;
+	}
+	return vol;
+};
+
+// Make room in a full stack. COL.compact already merges the thinnest adjacent pair --
+// the same lithology where there is one, otherwise across classes with the mass booked
+// as a mix -- so consolidation is compact called until it stops making progress. A stack
+// that alternates felsic and sediment has no same-lithology pair to merge and fills to
+// layerCap; without this the beds that arrive after that are booked as consumed, which
+// is rock quietly leaving the planet (measured: 3644 column-frames at layerCap on seed 5
+// at 500 Myr, the belt flow handing the pair's felsic over faster than the stack could
+// take it).
+COL.consolidate = function (st, c) {
+	var t;
+	// Room first, then resolution: a stack that is full is consolidated until it has a
+	// slot, and a stack whose beds are all thinner than P.bedMin is consolidated until
+	// they are not. Beds a few centimetres thick cannot be drawn on a 78 km column and
+	// cannot be reasoned about either -- a record of them is 95 entries of nothing, and
+	// the column has no room for anything else (measured: 3604 column-frames at
+	// layerCap, the worst for 1605 frames in a row).
+	while (st.colNL[c] > 2) {
+		t = this.compact(c);
+		if (st.colNL[c] < P.layerCap && t >= P.bedMin) return;
+	}
+};
+
 // full stack: merge the thinnest adjacent same-lith pair (mass and class exact). An
 // alternating stack with no such pair merges across classes and is counted in ledMix,
 // so the mass balance stays auditable instead of silently drifting.
 COL.compact = function (c) {
 	var LC = P.layerCap, b = c * LC, n = S.colNL[c], k, j, t;
-	if (n < 2) return;
+	// returns the combined thickness of the pair it merged, or -1 when there is nothing
+	// left to merge
+	if (n < 2) return -1;
 	var anyK = -1, anyT = Infinity, sameK = -1, sameT = Infinity;
 	for (k = 0; k + 1 < n; k++) {
 		t = S.layTh[b + k] + S.layTh[b + k + 1];
@@ -70,6 +153,7 @@ COL.compact = function (c) {
 		if (S.depLay[j] === k0 + 1) S.depLay[j] = k0;
 		else if (S.depLay[j] > k0 + 1) S.depLay[j]--;
 	}
+	return anyT;
 };
 
 COL.sums = function (c) {
@@ -147,11 +231,16 @@ COL.collapseMove = function (from, to, volume) {
 		age = S.layAg[bf + k];
 		break;
 	}
+	// The sheet goes in at the felsic rank, not on top of whatever the receiver is
+	// wearing: delivering it to the surface under a fresh drape every frame is what
+	// built a hundred-bed stack of metre-thick beds and filled the column to
+	// layerCap. insertVol also merges it into the felsic already there, so a receiver
+	// that keeps receiving grows one bed, not one bed per frame.
 	if (S.colNL[to] > 0 && S.layLi[bt + S.colNL[to] - 1] === P.LITH.fel) {
 		k = S.colNL[to] - 1;
 		S.layTh[bt + k] += grow;
 		if (S.layAg[bt + k] < age) S.layAg[bt + k] = age;
-	} else this.push(to, grow, P.LITH.fel, age, 0);
+	} else this.insertVol(S, to, P.LITH.fel, grow, age, 0);
 	for (k = n - 1; k >= 0 && moved < peel; k--) {
 		if (S.layLi[bf + k] !== P.LITH.fel) continue;
 		t = S.layTh[bf + k];
@@ -377,7 +466,7 @@ COL.lidFan = function () {
 // --- K3/K4: gather-based Lagrangian topology ---------------------------------------
 // Only these fields travel with a column. Plate records, fan cells and entity tables
 // have their own lifetimes. All scratch is allocated once, including the sort comparator.
-COL.fields = 'colX colW colPlate colU ext edgeRelN edgePol edgeRPlate trenchDist oldW colAge hFel hMaf hSed hTot z slope wet noise damage zDyn fert oVms oMaf oArc oOro oBas oPla volc edge edgeAge edgeSlow colLoad colLoadFel colPla colBevel colChamber colMeltArc colMeltPlume colRecycle colNL'.split(' ');
+COL.fields = 'colX colW colPlate colU ext edgeRelN edgePol edgeRPlate trenchDist oldW colAge hFel hMaf hSed hTot z slope wet noise damage zDyn fert oVms oMaf oArc oOro oBas oPla volc edge edgeAge edgeSlow colLoad colLoadFel colPla colBevel colChamber colMeltArc colMeltPlume colRecycle colGhost colNL'.split(' ');
 COL.oreFields = 'oVms oMaf oArc oOro oBas oPla'.split(' ');
 COL.scratch = COL.fields.map(function (key) { return new S[key].constructor(P.colCap); });
 COL.layerFields = ['layTh', 'layLi', 'layAg', 'layFl'];
@@ -401,6 +490,12 @@ COL.histSlow = new Float64Array(P.colCap);
 COL.map = new Int32Array(P.colCap);
 COL.birthSlot = new Int32Array(P.colCap);
 COL.isNew = new Uint8Array(P.colCap);      // final index -> born in this frame's K4
+COL.birthVol = new Float64Array(P.colCap); // its own volume of new crust (0 = inherit all)
+COL.ramp = new Int32Array(P.colCap);      // newborns of this frame, and where in the
+COL.rampG = new Float64Array(P.colCap);    // gap they sit (for the elevation ramp)
+COL.rampN = 0;
+COL.corrL = new Float64Array(P.plateCap);  // plate displacement the contacts demand
+COL.corrR = new Float64Array(P.plateCap);
 COL.sortCompare = function (a, b) { return S.colX[a] - S.colX[b] || a - b; };
 
 COL.orderView = function (n) {
@@ -452,6 +547,7 @@ COL.transport = function (st, dt) {
 		st.colX[i] += st.colU[i] * dt;
 		st.colX[i] -= Math.floor(st.colX[i] / P.wrap) * P.wrap;
 	}
+	this.floor(st, n);
 	this.orderView(n).sort(this.sortCompare);
 	this.gather(n);
 	// An edge's history is valid only if the same two records are still neighbours;
@@ -468,33 +564,110 @@ COL.transport = function (st, dt) {
 	this.plates();
 };
 
+// Two records of different plates may not interpenetrate. Widths come from spacing, so
+// an unresolved overlap squeezes a column toward zero territory and its volume-conserving
+// stack toward a kilometre-scale spike; the floor is where the contact carries the stress
+// instead of the records crossing and swapping in the sort.
+//
+// The correction is a *plate* correction, not a pair correction: each plate is displaced
+// rigidly by the largest overlap it is holding up, half of it each way (momentum
+// neutral). Nudging the two records apart in place instead would take the difference out
+// of their outer neighbours' gaps, every frame, and the outermost column of the chain
+// would end up with no width at all — and with no width, no thickness. A plate with a
+// contact on both sides is pushed both ways, so the passes repeat until no pair is inside
+// the floor, bounded so a plate ringed by contacts cannot spin. A ring can be over-
+// constrained — a plate held between two equal overlaps has nowhere to move — so the
+// floor is a bound and not an equality: measured on seed 5 at 500 Myr, 3 passes left a C-C
+// pair 7.5% inside the floor, 8 left 0.8%, 16 left 0.05%, and P.floorTol carries that.
+COL.floor = function (st, n) {
+	var min = P.gFloor * P.w0, i, j, d, p, q, a, pass, disp, any;
+	for (pass = 0; pass < P.floorPass; pass++) {
+		for (i = 0; i < P.plateCap; i++) { this.corrL[i] = 0; this.corrR[i] = 0; }
+		any = false;
+		for (i = 0; i < n; i++) {
+			j = i + 1 < n ? i + 1 : 0;
+			p = st.colPlate[i]; q = st.colPlate[j];
+			if (p === q) continue;
+			d = st.colX[j] - st.colX[i];
+			if (d < 0) d += P.wrap;
+			if (d >= min) continue;
+			// settled when no pair is inside the floor, not when no plate moved: a plate
+			// held between two equal overlaps has nothing to move and two pairs to fix
+			any = true;
+			a = 0.5 * (min - d);
+			if (a > this.corrL[p]) this.corrL[p] = a;
+			if (a > this.corrR[q]) this.corrR[q] = a;
+		}
+		if (!any) break;
+		for (p = 0; p < P.plateCap; p++) {
+			disp = this.corrR[p] - this.corrL[p];
+			if (disp === 0) continue;
+			for (i = 0; i < n; i++) if (st.colPlate[i] === p) st.colX[i] = wrapX(st.colX[i] + disp);
+		}
+	}
+};
+
+function wrapX(x) {
+	x %= P.wrap;
+	return x < 0 ? x + P.wrap : x;
+}
+
+// What, if anything, a boundary does to the *number* of columns this frame. Both
+// topology intents are gated on the terms the classifier itself uses to enter a state —
+// past epsHi and held for evAge. The hysteresis deliberately keeps a contact classified
+// at a tenth of the entry speed, so without this a boundary with no meaningful motion
+// spawns and kills a record every few frames, which is the loudest thing the section
+// ever does (0.1.5 M1c).
 COL.intents = function () {
-	var n = S.nCol, i, j, d, e;
+	var n = S.nCol, i, j, d, e, gL, min = P.gFloor * P.w0;
 	this.intent.fill(0, 0, n);
 	for (i = 0; i < n; i++) {
 		j = (i + 1) % n;
 		d = S.colX[j] - S.colX[i];
 		if (d <= 0) d += P.wrap;
+		// A sliver is retired the moment the trench has closed both its gaps to the
+		// floor: its territory is then two floors wide, and handing that back moves each
+		// neighbour's surface by metres. This is geometry, not a boundary state, so it
+		// is not gated on the classifier's entry terms like the two topology intents.
+		if (S.colGhost[i]) {
+			gL = S.colX[i] - S.colX[i > 0 ? i - 1 : n - 1];
+			if (gL < 0) gL += P.wrap;
+			if (gL <= min && d <= min * 1.0001) this.intent[i] = 3;
+			continue;
+		}
+		if (!(Math.abs(S.edgeRelN[i]) > P.epsHi && S.edgeAge[i] > P.evAge)) continue;
 		e = S.edge[i];
 		if (e === P.EDGE.open && d > 2 * P.rGap * P.w0) this.intent[i] = 1;
-		// relN < 0, not < -epsHi: the hysteresis owns the boundary *state*, but two
-		// columns that already overlap and are still closing must resolve. Widths come
-		// from spacing, so an unresolved overlap squeezes a column toward zero width and
-		// its volume-conserving stack toward kilometre-scale spikes.
-		if ((e === P.EDGE.subduct || e === P.EDGE.collide) && d < P.rContact * P.w0 &&
-			S.edgeRelN[i] < 0) this.intent[i] = 2;
+		// A consuming pair is at the floor, not at the contact radius. Consuming leaves
+		// the geometry of the pair unchanged (the loser becomes a sliver in the same
+		// place), so a trigger at rContact re-fires on the very next frame and the
+		// trench runs at the frame rate instead of the convergence rate.
+		// A C-C edge consumes nothing at all: there is nowhere for the crust to go, the
+		// pair squeezes against the floor instead, and that is mass-exact shortening.
+		if (e === P.EDGE.subduct && d <= min * 1.0001 && S.edgeRelN[i] < 0 && !S.colGhost[j]) this.intent[i] = 2;
 	}
 };
 
 // During K4, layTh stores volume (m3 per unit section depth), not thickness.
 // This lets every transfer and merge be exact before final widths are known.
-COL.transfer = function (from, to, fraction) {
-	var b = from * P.layerCap, k, t;
+// Move a fraction of `from`'s stack to `to`, at most `room` volume (Infinity for no
+// limit), and return what moved. The cap matters at a birth: the newborn's volume is
+// fixed by what its own width of new crust should be, and the material it inherits is
+// what is left over.
+COL.transfer = function (from, to, fraction, room) {
+	var b = from * P.layerCap, k, t, moved = 0;
 	for (k = 0; k < S.colNL[from]; k++) {
 		t = S.layTh[b + k] * fraction;
+		if (t > room - moved) t = room - moved;
+		if (t <= 0) break;
 		S.layTh[b + k] -= t;
-		this.push(to, t, S.layLi[b + k], S.layAg[b + k], S.layFl[b + k]);
+		// the receiver may be taking from two parents in one frame, and each parent's
+		// beds arrive deepest-first, so only a rank-ordered insert keeps the two
+		// sections from being stacked on top of each other
+		this.insertVol(S, to, S.layLi[b + k], t, S.layAg[b + k], S.layFl[b + k]);
+		moved += t;
 	}
+	return moved;
 };
 
 COL.moveDeposits = function (from, layer, to, newLayer) {
@@ -504,54 +677,61 @@ COL.moveDeposits = function (from, layer, to, newLayer) {
 	}
 };
 
+// The subduction resolution (0.1.5 M1a). The loser's stack goes into the ribbon exactly
+// as before, and the *record* is not deleted: it keeps its place and its territory, its
+// plate becomes the overriding one, and it is left empty — a trench sliver. Deleting the
+// record is what used to re-partition a full column of territory between the two columns
+// beside it in one frame, and since thickness is volume / width that is a 20-35% loss of
+// crust (a multi-kilometre pop) for both of them. The sliver holds the territory until
+// the trench has closed both its gaps to the floor, and it is drawn as the profile its
+// two real neighbours already make across it, so neither the consumption frame nor the
+// sliver's life moves the section.
 COL.consume = function (i, j) {
-	var E = P.EDGE, left = i, right = j, loser, winner, b, k, lith, t;
+	var left = i, right = j, loser, winner, b, k, lith, t;
 	var SLAB = this.slab;
 	if (!SLAB) {
 		SLAB = (typeof module !== 'undefined' && module.exports) ? require('./slab.js') : window.SLAB;
 		this.slab = SLAB;
 	}
-	if (S.edge[i] === E.collide) {
-		loser = S.hFel[left] <= S.hFel[right] ? left : right;
-		winner = loser === left ? right : left;
-		b = loser * P.layerCap;
-		for (k = 0; k < S.colNL[loser]; k++) {
-			this.push(winner, S.layTh[b + k], S.layLi[b + k], S.layAg[b + k], S.layFl[b + k]);
+	loser = S.edgePol[i] < 0 ? left : right;
+	winner = loser === left ? right : left;
+	b = loser * P.layerCap;
+	var ribbon = SLAB && SLAB.ready;
+	if (ribbon) {
+		var gap = S.colX[right] - S.colX[left];
+		if (gap < 0) gap += P.wrap;
+		// the ribbon is anchored at the edge (the midpoint of the pair's gap), so the
+		// trench does not step half a column from frame to frame
+		SLAB.appendStack(S, loser, wrapX(S.colX[left] + gap * 0.5),
+			S.edgePol[i] < 0 ? 1 : -1, S.colPlate[winner], 0);
+	}
+	for (k = 0; k < S.colNL[loser]; k++) {
+		lith = S.layLi[b + k]; t = S.layTh[b + k];
+		if (this.CLASS[lith] === 0) {
+			// half the sediment is scraped off into the prism on the margin
+			this.insertVol(S, winner, lith, t * 0.5, S.layAg[b + k], S.layFl[b + k]);
 			this.moveDeposits(loser, k, winner, S.colNL[winner] - 1);
-		}
-	} else {
-		loser = S.edgePol[i] < 0 ? left : right;
-		winner = loser === left ? right : left;
-		b = loser * P.layerCap;
-		if (SLAB && SLAB.ready) {
-			var gap = S.colX[right] - S.colX[left];
-			if (gap < 0) gap += P.wrap;
-			var tx = (S.colX[left] + gap * 0.5) % P.wrap;
-			var dir = S.edgePol[i] < 0 ? 1 : -1;
-			SLAB.appendStack(S, loser, tx, dir, S.colPlate[winner], 0);
-		}
-		for (k = 0; k < S.colNL[loser]; k++) {
-			lith = S.layLi[b + k]; t = S.layTh[b + k];
-			if (SLAB && SLAB.ready) {
-				if (this.CLASS[lith] === 0) {
-					this.push(winner, t * 0.5, lith, S.layAg[b + k], S.layFl[b + k]);
-					this.moveDeposits(loser, k, winner, S.colNL[winner] - 1);
-				} else this.moveDeposits(loser, k, -1, -1);
-			} else if (this.CLASS[lith] === 0) {
-				this.push(winner, t * 0.5, lith, S.layAg[b + k], S.layFl[b + k]);
-				this.moveDeposits(loser, k, winner, S.colNL[winner] - 1);
-				S.ledCons[lith] += t * 0.5;
-			} else {
-				this.moveDeposits(loser, k, -1, -1);
-				S.ledCons[lith] += t;
-			}
+			if (!ribbon) S.ledCons[lith] += 0.5 * t * S.colW[loser];
+		} else {
+			this.moveDeposits(loser, k, -1, -1);
+			if (!ribbon) S.ledCons[lith] += t * S.colW[loser];
 		}
 	}
-	// A chamber belongs to the plate margin even when the oceanic column is
-	// consumed. Moving it here keeps the M4 active-mass ledger exact.
+	// A chamber belongs to the plate margin even when the oceanic column is consumed.
+	// Moving it here keeps the M4 active-mass ledger exact.
 	S.colChamber[winner] += S.colChamber[loser];
 	S.colChamber[loser] = 0;
-	this.dead[loser] = 1;
+	// The loose load rides on the plate, so it belongs to the margin that just won the
+	// pair; zeroing it here instead would delete sediment with nothing booked for it.
+	S.colLoad[winner] += S.colLoad[loser];
+	S.colLoadFel[winner] += S.colLoadFel[loser];
+	S.colPla[winner] += S.colPla[loser];
+	S.colLoad[loser] = 0; S.colLoadFel[loser] = 0; S.colPla[loser] = 0;
+	S.colPlate[loser] = S.colPlate[winner];
+	S.colAge[loser] = 0;
+	S.colNL[loser] = 0;
+	S.colGhost[loser] = 1;
+	S.damage[loser] = 0;
 	this.redirect[loser] = winner;
 };
 
@@ -594,13 +774,18 @@ COL.rift = function (i, j, birth, Tm) {
 	S.edgeRPlate[birth] = -1;
 	S.edge[birth] = P.EDGE.neutral;
 	S.edgeAge[birth] = 0; S.edgeSlow[birth] = 0;
-	if (continental) return;
-	// the newborn's final width is exactly half the gap (it sits at the midpoint), so
-	// hMafNew * gap/2 is the fresh crust volume; it becomes the basement under the
-	// inherited sliver. VMS seeding at oceanic birth is M6 (design §4.7).
-	f = P.hMafNewBase * (1 + P.hMafNewTm * Math.max(0, Tm - 1)) * gap * 0.5;
-	this.push(birth, f, P.LITH.maf, 0, P.FLAG.wet);
-	S.ledProd[P.LITH.maf] += f;
+	// The newborn's final width is exactly half the gap (it sits at the midpoint), so a
+	// continental rift inherits the whole of it and an oceanic one is filled out to
+	// hMafNew(Tm) of new crust over that width, whatever the inherited sliver already
+	// provides (COL.inherit books the difference as the mantle source). VMS seeding at
+	// oceanic birth is M6 (design §4.7).
+	// birthVol is the newborn's total crust in volume: the cap COL.inherit fills to. A
+	// rift column has no mantle source -- it is cut from the two margins -- so its cap is
+	// 0, meaning "the whole share the geometry gives you". A cap of 0 read as a literal
+	// zero left the newborn empty (measured: 0 km of crust at a continental rift, and a
+	// boundary that then re-opened and re-cut forever after).
+	this.birthVol[birth] = continental ? 0 :
+		P.hMafNewBase * (1 + P.hMafNewTm * Math.max(0, Tm - 1)) * gap * 0.5;
 };
 
 // The gap the column `q` had on one side before this frame's births: twice the final
@@ -619,7 +804,7 @@ COL.preGap = function (st, count, q, dir) {
 // so the profile stays continuous and mass stays inside the columns (no ledger entry).
 // Runs while colW is still the volume-mode 1, so it reads positions, not widths.
 COL.inherit = function (st, count) {
-	var i, im, ip, gL, gR, wL, wR, f, o, v;
+	var i, im, ip, gL, gR, wL, wR, f, o, v, got, b, k, target, room;
 	if (count < 3) return;
 	for (i = 0; i < count; i++) {
 		if (!this.isNew[i]) continue;
@@ -632,15 +817,51 @@ COL.inherit = function (st, count) {
 		// half of each final gap is what the newborn took from that parent
 		wL = 0.5 * (this.preGap(st, count, im, -1) + 2 * gL);
 		wR = 0.5 * (2 * gR + this.preGap(st, count, ip, 1));
+		target = this.birthVol[i];
+		b = i * P.layerCap;
+		got = 0;
+		for (k = 0; k < st.colNL[i]; k++) got += st.layTh[b + k];
+		room = target > 0 ? target : Infinity;
 		f = wL > 0 ? 0.5 * gL / wL : 0;
-		if (f > 0) this.transfer(im, i, f);
+		if (f > 0) got += this.transfer(im, i, f, room - got);
 		f = wR > 0 ? 0.5 * gR / wR : 0;
-		if (f > 0) this.transfer(ip, i, f);
+		if (f > 0) got += this.transfer(ip, i, f, room - got);
+		// What the newborn still does not have is what the rift makes: the design's
+		// hMafNew of oceanic crust over the newborn's own width, booked in ledProd.
+		// Without this the axis carries the gap's stretched old crust *and* a full
+		// thickness of new one, which is a 13 km needle standing 2 km above its own
+		// margins on the frame it is born (0.1.5 R1).
+		if (target > got) {
+			// New oceanic crust is the *basement* of the newborn, not a lid on its
+			// inherited section, so it is inserted at the mafic rank.
+			this.insertVol(st, i, P.LITH.maf, target - got, 0, P.FLAG.wet);
+			st.ledProd[P.LITH.maf] += target - got;
+		}
 		for (o = 0; o < this.oreFields.length; o++) {
 			v = st[this.oreFields[o]];
 			v[i] = (v[im] * gL + v[ip] * gR) / (gL + gR);
 		}
+		this.ramp[this.rampN++] = i;
+		this.rampG[this.rampN - 1] = gL / (gL + gR);
 	}
+};
+
+// A new crustal body is not fully buoyant on the frame it appears. The newborn starts at
+// the elevation its two parents make across the gap and relaxes to its own isostasy with
+// tauDyn, which is what zDyn is for: a ridge is high, but it is *raised*, and a 1 km
+// step out of nothing on the birth frame is exactly the kind of event the section must
+// not have (0.1.5 R1). Run after K4 has turned layer volumes back into thicknesses, so
+// the newborn's own isostasy is the one that will be drawn.
+COL.rampZ = function (st) {
+	var n = this.rampN, i, im, ip, c, g, tgt;
+	for (i = 0; i < n; i++) {
+		c = this.ramp[i]; g = this.rampG[i];
+		im = c > 0 ? c - 1 : st.nCol - 1;
+		ip = c + 1 < st.nCol ? c + 1 : 0;
+		tgt = SURF.elev(im) + (SURF.elev(ip) - SURF.elev(im)) * g;
+		st.zDyn[c] += tgt - SURF.elev(c);
+	}
+	this.rampN = 0;
 };
 
 COL.k4 = function (st, dt, t, Tm) {
@@ -656,9 +877,13 @@ COL.k4 = function (st, dt, t, Tm) {
 			for (k = 0; k < st.colNL[i]; k++) st.layTh[b + k] *= st.oldW[i] / st.colW[i];
 			self.sums(i);
 		}
+		// no topology ran, so nothing was born: a stale flag would name a record that
+		// has been alive for frames
+		self.isNew.fill(0, 0, n);
 		return false;
 	}
 	self.dead.fill(0);
+	self.rampN = 0;
 	for (i = 0; i < n; i++) {
 		self.redirect[i] = i;
 		self.histEdge[i] = st.edge[i]; self.histPol[i] = st.edgePol[i];
@@ -670,6 +895,11 @@ COL.k4 = function (st, dt, t, Tm) {
 		b = i * P.layerCap;
 		for (k = 0; k < st.colNL[i]; k++) st.layTh[b + k] *= st.oldW[i];
 		st.colW[i] = 1;
+	}
+	for (i = 0; i < n; i++) {
+		j = (i + 1) % n;
+		if (self.intent[i] === 3 && !self.dead[i] && !self.dead[j] &&
+			!st.colGhost[j]) self.dead[i] = 1;
 	}
 	for (i = 0; i < n; i++) {
 		j = (i + 1) % n;
@@ -685,20 +915,26 @@ COL.k4 = function (st, dt, t, Tm) {
 		else {
 			while (self.dead[reuse] !== 1) reuse++;
 			slot = reuse++;
-			self.dead[slot] = 2; // occupied by a birth, but still an old consumed record
+			self.dead[slot] = 2; // occupied by a birth, but still an old retired sliver
 		}
 		self.rift(i, j, slot, Tm);
 		self.birthSlot[births++] = slot;
 	}
 	// Follow redirects before sorting. A consumed vent survives on the margin; a
 	// deposit tied to a destroyed bed loses its horizon instead of pointing into
-	// an unrelated stack on the margin.
-	for (i = 0; i < st.nDep; i++) if (st.depCol[i] >= 0 && self.dead[st.depCol[i]]) st.depCol[i] = -1;
+	// an unrelated stack on the margin. A sliver is both: its beds went to the
+	// ribbon, so the horizon they hosted is gone.
+	for (i = 0; i < st.nDep; i++) {
+		if (st.depCol[i] < 0) continue;
+		if (self.dead[st.depCol[i]] || st.colGhost[st.depCol[i]]) st.depCol[i] = -1;
+	}
 	for (i = 0; i < st.nVen; i++) {
-		if (st.venCol[i] < 0 || !self.dead[st.venCol[i]]) continue;
-		j = self.redirect[st.venCol[i]];
-		if (st.volc[j] < 0) { st.volc[j] = i; st.venCol[i] = j; }
-		else st.venCol[i] = -1;
+		if (st.venCol[i] < 0) continue;
+		if (self.dead[st.venCol[i]] || st.colGhost[st.venCol[i]]) {
+			j = self.redirect[st.venCol[i]];
+			if (st.volc[j] < 0) { st.volc[j] = i; st.venCol[i] = j; }
+			else st.venCol[i] = -1;
+		}
 	}
 	for (i = 0; i < n + appended; i++) if (self.dead[i] !== 1) st.sortOrder[count++] = i;
 	self.orderView(count).sort(self.sortCompare);
@@ -726,7 +962,11 @@ COL.k4 = function (st, dt, t, Tm) {
 		st.edgeRPlate[k] = self.histRP[i];
 	}
 	self.isNew.fill(0, 0, count);
-	for (i = 0; i < births; i++) self.isNew[self.map[self.birthSlot[i]]] = 1;
+	for (i = 0; i < births; i++) {
+		k = self.map[self.birthSlot[i]];
+		self.isNew[k] = 1;
+		self.birthVol[k] = self.birthVol[self.birthSlot[i]];
+	}
 	self.inherit(st, count);
 	st.widths();
 	for (i = 0; i < count; i++) {
@@ -734,6 +974,7 @@ COL.k4 = function (st, dt, t, Tm) {
 		for (k = 0; k < st.colNL[i]; k++) st.layTh[b + k] /= st.colW[i];
 		self.sums(i);
 	}
+	self.rampZ(st);
 	self.plates();
 	return true;
 };

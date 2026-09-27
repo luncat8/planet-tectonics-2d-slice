@@ -100,7 +100,9 @@ RNDR.buildProfile = function (w) {
 		relief = P.reliefBase + P.reliefK * Math.abs(S.z[c1] - S.z[c0]);
 		n0 = S.noise[c0]; n1 = S.noise[c1];
 		profY[px] = z + relief * (n0 + (n1 - n0) * f);
-		this.mohoY[px] = profY[px] - (S.hTot[c0] + (S.hTot[c1] - S.hTot[c0]) * f);
+		// hDraw, not hTot: a draining trench sliver owns no mass but its span is in
+		// the picture, and the drawn Moho must pass straight through it (state.js)
+		this.mohoY[px] = profY[px] - (S.hDraw[c0] + (S.hDraw[c1] - S.hDraw[c0]) * f);
 	}
 };
 
@@ -130,7 +132,7 @@ RNDR.body = function (px, w, h) {
 		b = c * LC;
 		mohoY = this.mohoY[pxc];
 		// Display-only stretch: stored beds and mass are never resampled.
-		var stretch = S.hTot[c] > 0 ? (pY - mohoY) / S.hTot[c] : 1;
+		var stretch = S.hDraw[c] > 0 ? (pY - mohoY) / S.hDraw[c] : 1;
 		wx = lutX[pxc];
 		layIdx = nLay - 1;
 		layBot = layIdx >= 0 ? pY - S.layTh[b + layIdx] * stretch : -Infinity;
@@ -494,8 +496,8 @@ RNDR.updateProbe = function (mx, my) {
 	var top = S.z[c] + (S.z[next] - S.z[c]) * f;
 	var relief = P.reliefBase + P.reliefK * Math.abs(S.z[next] - S.z[c]);
 	top += relief * (S.noise[c] + (S.noise[next] - S.noise[c]) * f);
-	var height = S.hTot[c] + (S.hTot[next] - S.hTot[c]) * f;
-	var stretch = S.hTot[c] > 0 ? height / S.hTot[c] : 1;
+	var height = S.hDraw[c] + (S.hDraw[next] - S.hDraw[c]) * f;
+	var stretch = S.hDraw[c] > 0 ? height / S.hDraw[c] : 1;
 	var s = 'col ' + c + '  plate ' + S.colPlate[c] + '  age ' + S.colAge[c].toFixed(1) + ' Myr';
 	s += '\nu ' + (S.colU[c] / 1e4).toFixed(2) + ' cm/yr  ext ' + S.ext[c].toFixed(3) + '/Myr' + this.edgeText(c);
 	s += '\nz ' + (top / 1e3).toFixed(2) + ' km  hTot ' + (S.hTot[c] / 1e3).toFixed(1) + ' km';

@@ -22,11 +22,19 @@ SURF.elev = function (i) {
 	return P.zRef + buoy - therm + S.zDyn[i];
 };
 
-SURF.profile = function () {
+SURF.profile = function (dt) {
 	var n = S.nCol, i, im, ip, dx;
 	for (i = 0; i < n; i++) {
+		// a draining record is given its ground by morph(), not by its own buoyancy:
+		// it has no crust to be buoyant with, so elev() would hand it the sea floor
+		// every frame and the relaxation would have to climb out of it again -- the
+		// drawn profile of a 178 Myr old sliver sat 5 km under the line between its
+		// margins and wandered as the line moved (measured: 2263 m in one frame at
+		// 28850 km on seed 5, with no event there)
+		if (S.colGhost[i]) continue;
 		S.z[i] = this.elev(i);
 		S.wet[i] = S.z[i] < 0 ? 1 : 0;
+		S.hDraw[i] = S.hTot[i];
 	}
 	if (n < 3) return;
 	for (i = 0; i < n; i++) {
@@ -35,6 +43,55 @@ SURF.profile = function () {
 		dx = S.colX[ip] - S.colX[im];
 		if (dx <= 0) dx += P.wrap;
 		S.slope[i] = dx > 0 ? (S.z[ip] - S.z[im]) / dx : 0;
+	}
+	this.morph(dt);
+};
+
+// A draining sliver is a record that owns no mass: its isostatic elevation and its
+// drawn thickness are the linear interpolation of the *real* columns on either side of
+// its run, which is exactly the line the profile already had across that span. A record
+// whose drawn profile is a value on the line between its neighbours does not change the
+// picture, so consuming a column into a sliver moves nothing (0.1.5 R1). Runs are
+// walked whole, not one column at a time, so a chain of slivers at a trench is pinned
+// to the two margins that bracket it and not to another sliver's stale value.
+//
+// The one exception is a sliver that has just been drained. It was standing on its own
+// ground -- a trench, several km below the line between a thin oceanic margin and a
+// thick continental one -- and snapping it to the line is a 5 km step in the picture in
+// one frame (measured: 5186 m at frame 4983 on seed 5, where a 15 km oceanic record
+// was consumed under a 49 km continental margin). So a sliver walks onto the line over
+// P.tauSliver, which is a trench filling in as the margin grows over it, and one that
+// was already on the line stays on it.
+SURF.morph = function (dt) {
+	var n = S.nCol, i, a, b, x0, x1, g, span, rel, zt, ht;
+	if (n < 3) return;
+	rel = dt > 0 && P.tauSliver > 0 ? 1 - Math.exp(-dt / P.tauSliver) : 1;
+	for (i = 0; i < n; i++) {
+		if (!S.colGhost[i]) continue;
+		a = i;
+		while (a > 0 && S.colGhost[a - 1]) a--;
+		b = i;
+		while (b + 1 < n && S.colGhost[b + 1]) b++;
+		x0 = S.colX[a - 1];
+		x1 = S.colX[b + 1 < n ? b + 1 : 0];
+		if (x1 < x0) x1 += P.wrap;
+		span = x1 - x0;
+		if (!(span > 0)) continue;
+		for (var k = a; k <= b; k++) {
+			g = S.colX[k] - x0;
+			if (g < 0) g += P.wrap;
+			g /= span;
+			zt = S.z[a - 1] + (S.z[b + 1 < n ? b + 1 : 0] - S.z[a - 1]) * g;
+			ht = S.hTot[a - 1] + (S.hTot[b + 1 < n ? b + 1 : 0] - S.hTot[a - 1]) * g;
+			if (rel >= 1) { S.z[k] = zt; S.hDraw[k] = ht; }
+			else { S.z[k] += (zt - S.z[k]) * rel; S.hDraw[k] += (ht - S.hDraw[k]) * rel; }
+			// a pinned sliver is a new profile value, so the three gradients that read
+			// it are stale whether or not the erosion pass touched them
+			SURF.slopeDirty[k] = 1;
+			SURF.slopeDirty[k > 0 ? k - 1 : n - 1] = 1;
+			SURF.slopeDirty[k + 1 < n ? k + 1 : 0] = 1;
+		}
+		i = b;
 	}
 };
 
@@ -72,7 +129,7 @@ SURF.k6 = function (st, dt, t) {
 	var inVol = SURF.inVol, inFel = SURF.inFel, inPla = SURF.inPla;
 	var changed = SURF.changed, slopeDirty = SURF.slopeDirty;
 
-	SURF.profile();
+	SURF.profile(dt);
 
 	var i, j;
 	for (i = 0; i < n; i++) {
@@ -140,6 +197,17 @@ SURF.k6 = function (st, dt, t) {
 		else if (leftLow && !rightLow) lo[i] = im;
 		else if (!leftLow && rightLow) lo[i] = ip;
 		else lo[i] = zl < zr ? im : ip;
+		// A draining sliver owns no crust, so it takes no deposit. Left alone, a trench
+		// is the lowest ground on the planet and collects every grain the margin erodes,
+		// then loses it when the sliver is retired (measured: -6e8 m3 of sediment over
+		// 600 Myr). Routing walks across the sliver run to the real column behind it --
+		// the forearc, which is where trench sediment goes -- and stays put if the whole
+		// neighbourhood is slivers, which leaves the load on the column it came from.
+		if (lo[i] >= 0 && st.colGhost[lo[i]]) {
+			var d2 = lo[i], step = d2 === im ? -1 : 1, guard = 0;
+			while (st.colGhost[d2] && guard < n) { d2 = d2 + step < 0 ? n - 1 : (d2 + step >= n ? 0 : d2 + step); guard++; }
+			lo[i] = guard < n ? d2 : -1;
+		}
 	}
 
 	// split
@@ -171,6 +239,30 @@ SURF.k6 = function (st, dt, t) {
 		var totP = depPla[j] + inPla[j];
 		var wj = colW[j];
 		var th = totV / wj;
+		// A basin fills to its capacity and the rest is carried out of it, over the
+		// shoulder and down to the deep ocean. Without the capacity a trench is the
+		// lowest ground on the planet, so it collects every grain the margin erodes for
+		// as long as the planet runs: measured 25 km of sediment in one trench record
+		// at 500 Myr, and half of that handed to the margin as a single lump when the
+		// trench finally consumed a column (a 4 km step in the surface).
+		if (hSed[j] + th > P.sedCap) {
+			// The capacity limits what the basin *takes*, so the spill can never be more
+			// than the load that arrived. A margin whose prism already stands over the cap
+			// -- subduction hands it half of every sediment bed it consumes, and nothing
+			// takes it back -- otherwise takes the whole load away and deposits a
+			// negative bed. A negative bed is a hole in the stack: every later sum of the
+			// column is short by it, and it is booked nowhere, so the per-lithology
+			// ledger only breaks when the column is finally consumed and the hole is
+			// deleted (measured: four negative beds and +1.5e8 m3 of unbooked sediment at
+			// 700 Myr on seed 1 at a mixed 100/200 kyr step).
+			var shed = hSed[j] + th - P.sedCap;
+			if (shed > th) shed = th;
+			var keep = th > 0 ? 1 - shed / th : 0;
+			st.ledCons[LITH_SED] += shed * wj;
+			th -= shed;
+			totF *= keep;
+			totP *= keep;
+		}
 
 		if (colBevel[j] && colNL[j] > 0) {
 			var bj = j * LC;
@@ -182,7 +274,12 @@ SURF.k6 = function (st, dt, t) {
 		var fl = wet[j] ? FLAG_WET : 0;
 		var nl = colNL[j];
 		var b2 = j * LC;
-		if (nl > 0 && layLi[b2 + nl - 1] === LITH_SED && (layFl[b2 + nl - 1] & FLAG_WET) === (fl & FLAG_WET) && layTh[b2 + nl - 1] < 400) {
+		// the wet bit is not part of the match: a bed keeps the flags of where it formed,
+		// and requiring the incoming grain to agree on them gave a new bed per frame
+		if (th <= 0) {
+			// the basin took the whole load: nothing to lay down, and a zero-thickness
+			// bed would be a slot and a draw call for nothing
+		} else if (nl > 0 && layLi[b2 + nl - 1] === LITH_SED && layTh[b2 + nl - 1] < 400) {
 			layTh[b2 + nl - 1] += th;
 			hSed[j] += th; hTot[j] += th;
 		} else {
@@ -194,18 +291,16 @@ SURF.k6 = function (st, dt, t) {
 				colNL[j] = nl + 1;
 				hSed[j] += th; hTot[j] += th;
 			} else {
-				// at cap — thicken top if sed, else drop (rare, avoids compact scan)
-				if (nl > 0 && layLi[b2 + nl - 1] === LITH_SED) {
-					layTh[b2 + nl - 1] += th;
-					hSed[j] += th; hTot[j] += th;
-				} else {
-					// last resort: compact via module (slow path, very rare)
-					Cmod.push(j, th, LITH_SED, t, fl);
-					Cmod.sums(j);
-				}
+				// A full stack is consolidated and then given the bed at its own rank: the
+				// branch above dropped the bed with nothing booked, and a column that filled
+				// once stayed full for the rest of the run (measured: 3644 consecutive
+				// frames at layerCap on seed 5 at 500 Myr).
+				Cmod.insertVol(st, j, LITH_SED, th, t, fl);
+				Cmod.sums(j);
+				hSed[j] = st.hSed[j]; hTot[j] = st.hTot[j];
 			}
 		}
-		changed[j] = 1;
+		changed[j] = th > 0 ? 1 : 0;
 		var plaThDep = totP / wj;
 		colPla[j] += plaThDep;
 		if (plaThDep > 0) {
@@ -243,13 +338,16 @@ SURF.k6 = function (st, dt, t) {
 
 	// incremental profile for changed columns + neighbours
 	for (i = 0; i < n; i++) if (changed[i]) {
+		if (st.colGhost[i]) { slopeDirty[i] = 1; continue; }   // morph() owns a sliver
 		z[i] = SURF.elev(i);
 		wet[i] = z[i] < 0 ? 1 : 0;
+		st.hDraw[i] = st.hTot[i];
 		slopeDirty[i] = 1;
 		var im2 = i > 0 ? i - 1 : n - 1;
 		var ip2 = i + 1 < n ? i + 1 : 0;
 		slopeDirty[im2] = 1; slopeDirty[ip2] = 1;
 	}
+	SURF.morph(dt);
 	if (n >= 3) {
 		for (i = 0; i < n; i++) if (slopeDirty[i]) {
 			var im3 = i > 0 ? i - 1 : n - 1;

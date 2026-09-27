@@ -270,15 +270,20 @@ check.ok('ridge push is downslope on oceanic columns only', PLT.wB[5] === -P.kRi
 // --- M2.2: rigid transport, wrap, volume contacts -------------------------------
 check.section('M2.2 transport and contact fixtures');
 function ledger(start, name) {
-	var now = S.mass(), valid = true, worst = 0;
+	var now = S.mass(), valid = true, worst = 0, worstOf = [];
 	for (var l = 0; l < P.LITH.n; l++) {
 		var lhs = now[l] + S.ledCons[l] + S.ledMixOut[l];
 		var rhs = start[l] + S.ledProd[l] + S.ledMixIn[l];
 		var err = Math.abs(lhs - rhs) / Math.max(1, rhs);
-		worst = Math.max(worst, err);
+		worstOf[l] = err;
+		if (err > worst) worst = err;
 		valid = valid && err < 1e-12;
 	}
-	check.ok(name + ' per-lith volume ledger', valid, 'max relative ' + worst.toExponential(2));
+	// name the lithology when it breaks: a six-way "worst" number is a number to look up
+	var names = ['sed', 'fel', 'maf', 'teph', 'lava', 'sill'], where = '';
+	if (!valid) for (var d = 0; d < P.LITH.n; d++) if (worstOf[d] === worst) where = names[d];
+	check.ok(name + ' per-lith volume ledger', valid,
+		'max relative ' + worst.toExponential(2) + (where ? ' (' + where + ')' : ''));
 }
 function boundary() {
 	check.planet(1);
@@ -293,9 +298,38 @@ function contact(i, spacing, rel) {
 	S.colU.fill(0); S.colU[j] = rel;
 	S.edge[i] = rel > 0 ? E.open : (S.hFel[i] >= P.hOceanic && S.hFel[j] >= P.hOceanic ? E.collide : E.subduct);
 	S.edgeRelN[i] = rel;
+	// a topology intent is gated on the classifier's own entry terms, so the fixture
+	// has to hold the state past epsHi for longer than P.evAge before K4 may act
+	S.edgeAge[i] = 3;
 	S.edgePol[i] = S.hFel[i] < P.hOceanic ? -1 : 1;
 	S.edgeRPlate[i] = S.colPlate[j];
 	COL.k4(S, 0.05, 0, 1.6);
+}
+// K4 ends on a gather, so a record a fixture just made is found by what it is, not by
+// the index it had before the call: a newborn is flagged (COL.isNew), and a consumed
+// record keeps its slot and its place as a draining sliver (0.1.5 M1a) instead of being
+// deleted. A consuming pair must also be at the floor -- that is the state COL.intents
+// recognises -- so the consuming fixtures below close the gap to P.gFloor.
+function newborn() {
+	for (var i = 0; i < S.nCol; i++) if (COL.isNew[i]) return i;
+	return -1;
+}
+function drained() {
+	var out = [];
+	for (var i = 0; i < S.nCol; i++) if (S.colGhost[i]) out.push(i);
+	return out;
+}
+function rightOf(i) { return i + 1 < S.nCol ? i + 1 : 0; }
+function leftOf(i) { return i > 0 ? i - 1 : S.nCol - 1; }
+function volOf(i) {
+	var v = 0;
+	for (var k = 0; k < S.colNL[i]; k++) v += S.layTh[i * P.layerCap + k];
+	return v * S.colW[i];
+}
+function sedVolOf(i) {
+	var v = 0;
+	for (var k = 0; k < S.colNL[i]; k++) if (S.layLi[i * P.layerCap + k] === P.LITH.sed) v += S.layTh[i * P.layerCap + k];
+	return v * S.colW[i];
 }
 bi = boundary();
 var firstX = S.colX[0];
@@ -339,18 +373,28 @@ ledger(rigidMass, 'rigid 2000 km + 1e5 frames');
 invariants();
 
 bi = boundary();
-var gapMass = S.mass().slice(), gapN = S.nCol, gapPlate = S.colPlate[bi];
+var gapMass = S.mass().slice(), gapN = S.nCol, gapPlate = S.colPlate[bi], nb;
 // Force oceanic donor sets; only the newborn mafic volume is sourced from mantle.
 for (var d = -P.K + 1; d <= P.K; d++) S.hFel[(bi + d + S.nCol) % S.nCol] = 0;
 var hMafNew = P.hMafNewBase * (1 + P.hMafNewTm * Math.max(0, 1.6 - 1));
 contact(bi, 1.6, 5e4);
-check.ok('one opening creates one oceanic packet on the left plate', S.nCol === gapN + 1 &&
-	S.colPlate[bi + 1] === gapPlate && S.colAge[bi + 1] === 0 && S.damage[bi + 1] === 0.6 && S.hMaf[bi + 1] > 0);
-// the newborn owns exactly half the opened gap, so the mantle source is hMafNew*width
-check.near('the mantle source is hMafNew over the newborn own width', S.ledProd[P.LITH.maf],
-	hMafNew * S.colW[bi + 1], 1e-12);
-check.ok('fresh oceanic crust is at least hMafNew thick', S.hMaf[bi + 1] >= hMafNew * (1 - 1e-12),
-	(S.hMaf[bi + 1] / 1e3).toFixed(2) + ' km');
+nb = newborn();
+check.ok('one opening creates one oceanic packet on the left plate', S.nCol === gapN + 1 && nb >= 0 &&
+	S.colPlate[nb] === gapPlate && S.colAge[nb] === 0 && S.damage[nb] === 0.6 && S.hMaf[nb] > 0,
+	'newborn at ' + nb);
+// The newborn owns exactly half the opened gap, and hMafNew over that width is a *cap*:
+// COL.inherit fills the gap out of its two margins and the mantle books only the shortfall,
+// so the axis is a ridge of new crust and never a needle of inherited crust plus new.
+check.ok('the mantle source is the shortfall under hMafNew over the newborn own width',
+	S.ledProd[P.LITH.maf] >= 0 && S.ledProd[P.LITH.maf] <= hMafNew * S.colW[nb] * (1 + 1e-9) &&
+	volOf(nb) >= hMafNew * S.colW[nb] * (1 - 1e-9),
+	'shortfall ' + S.ledProd[P.LITH.maf].toExponential(3) + ' of ' + (hMafNew * S.colW[nb]).toExponential(3) + ' m2');
+// new oceanic crust is the *basement* of the newborn, not a lid on what it inherited,
+// so the deepest bed it gained is mafic and the section is not a needle over the gap
+check.ok('the newborn is a full ridge, not a needle over the gap it was born into',
+	S.hTot[nb] >= hMafNew * (1 - 1e-9) && Math.abs(S.hTot[nb] - S.hTot[leftOf(nb)]) < 0.5 * hMafNew,
+	(S.hTot[nb] / 1e3).toFixed(2) + ' km between ' + (S.hTot[leftOf(nb)] / 1e3).toFixed(2) + ' and ' +
+	(S.hTot[rightOf(nb)] / 1e3).toFixed(2) + ' km');
 ledger(gapMass, 'oceanic ridge');
 invariants();
 
@@ -363,14 +407,19 @@ for (d = -P.K + 1; d <= P.K; d++) {
 	COL.push(donor, 35e3, P.LITH.fel, 100, 0);
 	COL.sums(donor);
 }
-gapMass = S.mass().slice(); gapN = S.nCol;
+gapMass = S.mass().slice(); gapN = S.nCol; gapPlate = S.colPlate[bi];
 contact(bi, 1.6, 5e4);
-check.ok('continental opening creates one rift column on the left plate', S.nCol === gapN + 1 &&
-	S.colPlate[bi + 1] === gapPlate && S.hFel[bi + 1] > 0 && S.ledProd[P.LITH.maf] === 0);
-check.near('the newborn is the mean thickness of the two margins it was cut from',
-	S.hTot[bi + 1], 0.5 * (S.hTot[bi] + S.hTot[bi + 2]), 1e-12);
-check.ok('the newborn inherits beds, it does not invent them', S.colNL[bi + 1] > 1 &&
-	S.colAge[bi + 1] === 0 && S.damage[bi + 1] === 0.6);
+nb = newborn();
+check.ok('continental opening creates one rift column on the left plate', S.nCol === gapN + 1 && nb >= 0 &&
+	S.colPlate[nb] === gapPlate && S.hFel[nb] > 0 && S.ledProd[P.LITH.maf] === 0, 'newborn at ' + nb);
+// The material is the two margins' own, so the newborn stands between them in thickness.
+check.ok('the newborn is cut from the margins it was born between, not invented',
+	S.hTot[nb] >= Math.min(S.hTot[leftOf(nb)], S.hTot[rightOf(nb)]) - 1e-6 &&
+	S.hTot[nb] <= Math.max(S.hTot[leftOf(nb)], S.hTot[rightOf(nb)]) + 1e-6,
+	(S.hTot[nb] / 1e3).toFixed(2) + ' km between ' +
+	(S.hTot[leftOf(nb)] / 1e3).toFixed(2) + ' and ' + (S.hTot[rightOf(nb)] / 1e3).toFixed(2) + ' km');
+check.ok('the newborn inherits beds, it does not invent them', S.colNL[nb] > 1 &&
+	S.colAge[nb] === 0 && S.damage[nb] === 0.6);
 ledger(gapMass, 'continental rift');
 invariants();
 
@@ -441,59 +490,86 @@ invariants();
 // Widths come from spacing, so a closing pair that overlaps must resolve even below the
 // epsHi hysteresis gate: otherwise it interpenetrates forever and the volume-conserving
 // stack of the squeezed column grows without bound (measured: 0.25 km wide, 2.1 km thick).
+// A topology intent is deliberately gated on the classifier's own entry terms, so a slow
+// overlap is classified but not acted on -- what holds it apart is the K3 plate floor.
 bi = boundary();
 S.oldW.set(S.colW);
-S.colX[bi + 1] = S.colX[bi] + 0.4 * P.w0;
+S.colX[bi + 1] = S.colX[bi] + P.gFloor * 0.5 * P.w0;
 S.widths();
 S.colU.fill(0); S.colU[bi + 1] = -1.5e3;      // closing, but slower than epsHi
 S.edge[bi] = E.neutral; S.edgeRelN[bi] = -1.5e3; S.edgeRPlate[bi] = -1;
+S.hFel[bi] = 0;                              // ocean floor going under a margin
 PLT.classify(S, 0.05);
 check.ok('a slow closing overlap is forced to a contact', S.edge[bi] === E.collide || S.edge[bi] === E.subduct,
 	'edge=' + S.edge[bi]);
 var squeezeN = S.nCol;
-COL.k4(S, 0.05, 0, 1.6);
-check.ok('and consumed instead of interpenetrating', S.nCol === squeezeN - 1);
+COL.transport(S, 0.05);
+var squeezeGap = S.colX[(bi + 1) % S.nCol] - S.colX[bi];
+check.ok('and held at the floor by the plate correction instead of interpenetrating',
+	S.nCol === squeezeN && drained().length === 0 &&
+	squeezeGap > P.gFloor * P.w0 * (1 - P.floorTol),
+	'gap ' + squeezeGap.toFixed(0) + ' m of a ' + (P.gFloor * P.w0).toFixed(0) + ' m floor');
 invariants();
 
 bi = boundary();
-// A full C-C stack goes into the thicker winner, with no prism/sink.
+// A full C-C stack has nowhere to go: both records are continental, so the pair
+// shortens against the floor and nothing is consumed (0.1.5 M1a). The mass check
+// below is the whole contract here.
 COL.push(bi, 20e3, P.LITH.fel, 100, 0);
 COL.push(bi + 1, 40e3, P.LITH.fel, 100, 0);
 COL.sums(bi); COL.sums(bi + 1);
 var collisionMass = S.mass().slice(), collisionN = S.nCol;
-var loser = S.hFel[bi] <= S.hFel[bi + 1] ? bi : bi + 1;
-S.nDep = 1; S.depCol[0] = loser; S.depLay[0] = 0;
-S.nVen = 1; S.venCol[0] = loser; S.volc[loser] = 0;
-contact(bi, 0.5, -5e4);
-check.ok('C-C contact consumes exactly the thinner column', S.nCol === collisionN - 1 &&
-	S.ledCons.every(function (v) { return v === 0; }));
-check.ok('collision rehomes deposit horizon and vent to winner', S.depCol[0] >= 0 &&
-	S.depLay[0] < S.colNL[S.depCol[0]] && S.venCol[0] >= 0 && S.volc[S.venCol[0]] === 0);
+contact(bi, P.gFloor * 0.9, -5e4);
+check.ok('a C-C contact consumes nothing and shortens against the floor',
+	S.nCol === collisionN && drained().length === 0 && S.ledCons.every(function (v) { return v === 0; }));
 ledger(collisionMass, 'collision');
 invariants();
 
 bi = boundary();
 var subMass = S.mass().slice(), subN = S.nCol, sedBefore = S.ledCons[P.LITH.sed];
 S.hFel[bi] = 0; S.hFel[bi + 1] = 35e3;
-contact(bi, 0.5, -5e4);
-check.ok('subduction consumes ocean and leaves half sediment in prism', S.nCol === subN - 1 &&
-	S.ledCons[P.LITH.maf] > 0 && S.ledCons[P.LITH.sed] > sedBefore);
+// the ocean floor already wears the planet's own pelagic drape, and a fixture may not
+// invent mass: the prism is measured against what the column really carries
+var sedLoser = sedVolOf(bi), winVol = volOf(bi + 1);
+S.nDep = 1; S.depCol[0] = bi; S.depLay[0] = S.colNL[bi] - 1;
+S.nVen = 1; S.venCol[0] = bi; S.volc[bi] = 0;
+contact(bi, P.gFloor * 0.9, -5e4);
+var dr = drained();
+check.ok('subduction drains the ocean record, books the rest and keeps half its sediment as prism',
+	S.nCol === subN && dr.length === 1 && S.colNL[dr[0]] === 0 &&
+	S.ledCons[P.LITH.maf] > 0 && S.ledCons[P.LITH.sed] >= sedBefore + 0.5 * sedLoser - 1e-6 &&
+	volOf(rightOf(dr[0])) >= winVol + 0.5 * sedLoser - 1e-6,
+	'prism ' + (0.5 * sedLoser).toExponential(3) + ' m2 of ' + sedLoser.toExponential(3) + ' m2 scraped');
+// the deposit horizon and the vent of a consumed record follow it onto the margin
+check.ok('a consumed record hands its deposit horizon and vent to the winner',
+	S.depCol[0] >= 0 && S.depLay[0] < S.colNL[S.depCol[0]] && S.venCol[0] >= 0 &&
+	S.volc[S.venCol[0]] === 0);
 ledger(subMass, 'subduction');
 invariants();
 
 // If the edge-carrying column is consumed, the left neighbour inherits its
 // running boundary with the same right plate, not the consumed column's slot.
 bi = boundary();
-S.edge[bi] = E.collide; S.edgeAge[bi] = 12;
+S.hFel[bi] = 1; S.hFel[bi + 1] = 35e3;
+S.edge[bi] = E.subduct; S.edgeAge[bi] = 12;
 S.edgeRPlate[bi] = S.colPlate[bi + 1];
 S.edgeRelN[bi] = -5e4;
-S.hFel[bi] = 1; S.hFel[bi + 1] = 35e3;
+S.edgePol[bi] = -1;
 S.oldW.set(S.colW);
-S.colX[bi + 1] = S.colX[bi] + 0.5 * P.w0;
+S.colX[bi - 1] = S.colX[bi] - 0.2 * P.w0;
+S.colX[bi + 1] = S.colX[bi] + P.gFloor * 0.9 * P.w0;
 S.widths();
 COL.k4(S, 0.05, 0, 1.6);
-check.ok('consumed left owner hands its edge history to new left neighbour',
-	S.edge[bi - 1] === E.collide && S.edgeAge[bi - 1] === 12);
+// The consumed record's own edge dies with it: its right face is a plate interior from
+// the frame it is drained. The boundary that takes its place is the one on the loser's
+// left, and it is classified from the geometry by PLT.classify -- K4 hands it no state
+// and no age, so a subduction that walks left is re-earned at the new site instead of
+// inherited, which is what keeps a trench from running at the frame rate.
+check.ok('the consumed edge is retired and the boundary left of it starts fresh',
+	S.colGhost[bi] && S.edge[bi] === E.none && S.edgeAge[bi] === 0 &&
+	S.edge[bi - 1] === E.none && S.edgeAge[bi - 1] === 0 &&
+	S.colPlate[bi - 1] !== S.colPlate[bi] && S.edgeRPlate[bi - 1] === -1,
+	'left edge=' + S.edge[bi - 1] + ' age=' + S.edgeAge[bi - 1] + ' drained=' + S.colGhost[bi]);
 invariants();
 
 // Cadence events operate on the stable post-K4 list, not during a gather.
@@ -558,22 +634,26 @@ invariants();
 
 // A seam opening is the same event as an interior opening, including the left tie.
 bi = boundary();
-var seamI = S.nCol - 1;
 check.planet(1);
-seamI = S.nCol - 1;
+var seamI = S.nCol - 1;
 var seamPlate = S.colPlate[seamI], seamMass = S.mass().slice(), seamN = S.nCol;
 S.oldW.set(S.colW);
 S.colX[seamI] -= 0.6 * P.w0;
 S.widths();
-S.edge[seamI] = E.open; S.edgeRelN[seamI] = 5e4;
+S.edge[seamI] = E.open; S.edgeRelN[seamI] = 5e4; S.edgeAge[seamI] = 3;
+S.edgePol[seamI] = 0; S.edgeRPlate[seamI] = S.colPlate[0];
 COL.k4(S, 0.05, 0, 1.6);
-check.ok('wrapped last-to-first gap produces one left-plate packet', S.nCol === seamN + 1 &&
-	S.colPlate[S.nCol - 1] === seamPlate && S.colX[S.nCol - 1] > P.wrap - P.w0);
+nb = newborn();
+check.ok('wrapped last-to-first gap produces one left-plate packet', S.nCol === seamN + 1 && nb >= 0 &&
+	S.colPlate[nb] === seamPlate && S.colX[nb] > P.wrap - P.w0 && S.colX[nb] < P.wrap,
+	'newborn at ' + nb + ' x ' + (S.colX[nb >= 0 ? nb : 0] / 1e3).toFixed(1) + ' km');
 ledger(seamMass, 'seam opening');
 invariants();
 
-// At capacity a failed birth leaves no ledger or donor side effects. A concurrent
-// consumption frees a slot, and the birth reuses it without exceeding the buffer.
+// At capacity a birth that cannot fit is skipped whole: no ledger entry, no donor
+// touched, no partial column. A consumption in the same frame does not change that -- a
+// consumed record keeps its slot as a draining sliver (0.1.5 M1a), so it frees nothing
+// and the birth is still skipped.
 function fullFixture(consumption) {
 	check.planet(1);
 	S.nCol = P.colCap;
@@ -584,28 +664,35 @@ function fullFixture(consumption) {
 		S.colPlate[i] = i < 384 ? 0 : (i <= 500 ? 1 : 2);
 		S.colNL[i] = 0;
 		S.hFel[i] = 0; S.hSed[i] = 0; S.hMaf[i] = 0;
-		S.edge[i] = E.none; S.edgeRelN[i] = 0;
+		S.edge[i] = E.none; S.edgeRelN[i] = 0; S.edgeAge[i] = 0; S.edgePol[i] = 0;
+		S.edgeRPlate[i] = -1;
 		S.volc[i] = -1;
 	}
 	var open = 383;
 	for (i = 384; i < S.nCol; i++) S.colX[i] += 0.9 * P.w0;
-	S.edge[open] = E.open; S.edgeRelN[open] = 5e4;
+	S.edge[open] = E.open; S.edgeRelN[open] = 5e4; S.edgeAge[open] = 3;
+	S.edgePol[open] = 0; S.edgeRPlate[open] = 1;
 	if (consumption) {
-		S.colX[501] = S.colX[500] + 0.5 * P.w0;
-		S.edge[500] = E.collide; S.edgeRelN[500] = -5e4;
-		S.hFel[500] = 1; S.hFel[501] = 2;
+		// an ocean floor under a continental margin, closed to the floor: the state
+		// COL.intents reads as a consuming pair
+		S.colX[500] = S.colX[501] - P.gFloor * 0.9 * P.w0;
+		S.edge[500] = E.subduct; S.edgeRelN[500] = -5e4; S.edgeAge[500] = 12;
+		S.edgePol[500] = -1; S.edgeRPlate[500] = 2;
+		S.hFel[500] = 0; S.hFel[501] = 35e3;
 	}
 	S.widths(); S.oldW.set(S.colW);
 	COL.k4(S, 0.05, 0, 1.6);
 }
 fullFixture(false);
-check.ok('at colCap skipped birth is atomic', S.nCol === P.colCap && S.spawnSkipped === 1 &&
-	S.ledProd[P.LITH.maf] === 0);
+check.ok('at colCap a birth that does not fit is skipped whole', S.nCol === P.colCap &&
+	S.spawnSkipped === 1 && S.ledProd[P.LITH.maf] === 0 && newborn() === -1,
+	'n=' + S.nCol + ' skipped=' + S.spawnSkipped + ' prod=' + S.ledProd[P.LITH.maf]);
 invariants();
 fullFixture(true);
-check.ok('a consumed slot is reused by a birth at colCap', S.nCol === P.colCap &&
-	S.spawnSkipped === 0 && S.ledProd[P.LITH.maf] > 0,
-	'n=' + S.nCol + ' skipped=' + S.spawnSkipped + ' prod=' + S.ledProd[P.LITH.maf]);
+check.ok('a draining record frees no slot, so the birth is still skipped',
+	S.nCol === P.colCap && S.spawnSkipped === 1 && S.ledProd[P.LITH.maf] === 0 &&
+	drained().length === 1,
+	'n=' + S.nCol + ' skipped=' + S.spawnSkipped + ' drained=' + drained().length);
 invariants();
 
 check.planet(1);
@@ -798,13 +885,18 @@ function longRun(rate, frames) {
 	return { minGap: minGap, maxH: maxH, maxZ: maxZ, nCol: S.nCol, nPl: S.nPl };
 }
 var lr = longRun(100e3, 5000);
+// COL.floor is a rigid plate correction, and a ring of contacts can over-constrain it:
+// a plate held between two equal overlaps has nowhere to move. The floor is therefore a
+// bound (P.floorTol), not an equality -- measured 0.05% short on seed 5 at 500 Myr.
 check.ok('500 Myr at 100 kyr/frame leaves no interpenetrating columns',
-	lr.minGap > 0.05 * P.w0, 'min gap ' + (lr.minGap / P.w0).toFixed(3) + ' w0');
+	lr.minGap > P.gFloor * P.w0 * (1 - P.floorTol),
+	'min gap ' + (lr.minGap / P.w0).toFixed(4) + ' w0 of a ' + P.gFloor + ' w0 floor');
 invariants();
 console.log('  500 Myr @100 kyr: n=' + lr.nCol + ' plates=' + lr.nPl +
 	' maxCrust=' + (lr.maxH / 1e3).toFixed(0) + ' km maxRelief=' + (lr.maxZ / 1e3).toFixed(1) + ' km');
 lr = longRun(10e3, 5000);
-check.ok('50 Myr at 10 kyr/frame is finite too', Number.isFinite(lr.maxH) && lr.minGap > 0.05 * P.w0,
+check.ok('50 Myr at 10 kyr/frame is finite too',
+	Number.isFinite(lr.maxH) && lr.minGap > P.gFloor * P.w0 * (1 - P.floorTol),
 	'maxCrust ' + (lr.maxH / 1e3).toFixed(0) + ' km');
 invariants();
 

@@ -20,7 +20,6 @@ var P = {
 	nCols: 512,
 	// columns: the Lagrangian crust (design §2.2)
 	colCap: 768,
-	layerCap: 96,
 	// capacities of the other entities (design §2.1, §2.3)
 	plateCap: 32,
 	ribCap: 8,
@@ -41,6 +40,12 @@ var P = {
 	gridGapX: 110,               // min px between distance scale lines (one label wide)
 	// enums
 	LITH: { sed: 0, fel: 1, maf: 2, tephra: 3, lava: 4, sill: 5, n: 6 },
+	// Stratigraphic rank of a lithology, densest/intrusive at the bottom. A stack is
+	// ordered when this never *increases* upward, and it is the one table the layer
+	// primitive (COL.insertVol) and the audit both order by, so the gate and the
+	// mechanism cannot disagree about what an inversion is. Sill is an intrusion
+	// (basement), tephra and lava are surface products, sediment is the youngest.
+	LITH_RANK: [4, 2, 1, 3, 3, 0],
 	OCLS: { vms: 0, maf: 1, arc: 2, oro: 3, bas: 4, pla: 5, n: 6 },
 	FLAG: { wet: 1, ore: 2, unconf: 4 },
 	// boundary state of a column with its right neighbour (design §4.2); none = same plate
@@ -81,6 +86,7 @@ var P = {
 	oozeMax: 1200,
 	sedBasinK: 0.45,
 	sedBasinMax: 3000,
+	sedCap: 4000,                // m, the sediment a basin holds before it spills
 	sedLandMax: 600,
 	lithCold: 0.55,              // fan T anomaly at the surface under full lithosphere
 	// profile: a spline through the column tops plus noise scaled by the local relief,
@@ -92,8 +98,13 @@ var P = {
 	plateJitter: 16,             // columns of seeded boundary jitter; 512/8 - 2*16 >= minPlateCells
 	rGap: 0.75,
 	rContact: 0.6,
+	gFloor: 0.05,                // x w0: no two different-plate records closer than this
+	floorPass: 16,                 // bound on COL.floor's settle passes; it stops early when settled
+	floorTol: 0.01,                // x gFloor a ring of contacts may leave uncorrected (see COL.floor)
 	K: 3,                        // rift donors
 	minPlateCells: 24,
+	evAge: 2,                    // Myr a boundary must hold one state before it may change
+	                            // the number of columns (the classifier's own entry terms)
 	epsHi: 2e3,                  // m/Myr (2 mm/yr) boundary hysteresis
 	epsLo: 1e3,                  // m/Myr (1 mm/yr)
 	vRef: 5e4,                   // m/Myr (5 cm/yr)
@@ -119,6 +130,10 @@ var P = {
 	tauDyn: 10,                  // Myr, zDyn relaxation
 	kFlex: 0.05,                 // /Myr
 	kCollapse: 0.02,             // /Myr
+	tauSliver: 4,                 // Myr, a drained sliver's drawn ground follows the line between
+	                               // its margins over this time rather than in one frame
+	kBelt: 0.12,                 // /Myr, orogenic flow out of a collision pair, per km of excess
+	beltYield: 3000,              // m, the root a collision can hold up without flowing sideways
 	faceGapMin: 0.5,             // x w0: floor on the face gap of both column stencils
 	kEro: 0.05,                  // /Myr
 	zKnee: 9e3,
@@ -188,6 +203,22 @@ var P = {
 	kB: 2e-4,                    // /m
 	kB2: 0.002,                  // /Myr
 	kDecay: 1 / 500,             // 1/Myr (1 / 500 Myr)
+	// 0.1.5 contact contract (0.1.5-plan.md §1): thresholds of the measurement, not
+	// physics. contact-audit.js --strict gates on exactly these, so the gate, the plan
+	// and the tuning cannot quote different numbers
+	layerCap: 96,                 // beds a stack may hold before it consolidates
+	bedMin: 250,                // m, a bed thinner than this is absorbed into its neighbour
+	capStay: 3,                  // frames a column may sit at layerCap before it has consolidated
+	beltCols: 4,                  // columns a collision belt must thicken, of the 6 around the pair
+	beltRise: 2000,               // m, the thickening that makes a column part of a belt
+	beltRoot: 4000,               // m, the root a collision must stand above its flanks to count as built
+	beltPeak: 1.5,                // a collision peak over its flanks that is a needle, not a belt
+	crustMax: 80e3,               // m, the ceiling on one column's crust
+	evDzK: 1.25,                  // an event frame may move the surface this much more
+	evRate: 2,                    // topology events per 1000 frames
+	kDelam: 0.45,                 // 1/Myr, foundering rate per km of excess over crustMax
+	sliverMax: 0.02,              // fraction of the crust a draining record may hold
+	evGap: 40,                    // frames a site must stay quiet before its topology may change again
 	// live state (not part of §9: sliders, seed, view)
 	seed: 1,
 	sl: { geo: 50e3, erupt: 1800 },   // current slider rates, yr/frame and s/frame
@@ -197,6 +228,11 @@ var P = {
 // derived, never hardcoded elsewhere: the nominal column width follows from the wrap
 // and the count (2*pi*6371 km / 512 = 78.184 km) so it cannot drift from R
 P.w0 = P.wrap / P.nCols;
+// A trench sliver is retired when the territory it holds is worth nothing to the
+// picture. Its width is half the sum of its two gaps and the floor keeps each of them at
+// gFloor, so wMin = gFloor puts the retirement exactly where both gaps are on the floor,
+// and hands each neighbour back a hundredth of a column: a few per cent of its width.
+P.wMin = P.gFloor * P.w0;
 
 // the window in display space: x centre (m), horizontal m/px, and the vertical span
 // in u (asinh) — zoom/pan are exact in u-space because the display map is non-linear

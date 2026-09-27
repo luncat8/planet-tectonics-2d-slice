@@ -29,35 +29,52 @@ function forceSubduction() {
 	S.hFel[i] = 0;
 	S.hFel[j] = 35e3;
 	S.oldW.set(S.colW);
-	S.colX[j] = S.colX[i] + 0.5 * P.w0;
+	// the pair is closed to the contact floor (0.1.5 M1c): a consuming pair is at the
+	// floor, not at half a column, so a forced subduction has to be a closed one
+	S.colX[j] = S.colX[i] + P.gFloor * P.w0;
 	S.widths();
 	S.colU.fill(0);
 	S.colU[j] = -5e4;
 	S.edge[i] = P.EDGE.subduct;
 	S.edgePol[i] = -1;
 	S.edgeRelN[i] = -5e4;
+	// the contact-gap floor (0.1.5 M1): a boundary younger than P.evAge cannot swallow
+	// a column yet, so a forced subduction has to be an old boundary to be a subduction
+	S.edgeAge[i] = P.evAge + 1;
 	S.edgeRPlate[i] = S.colPlate[j];
 	SLAB.ready = true;
 	COL.k4(S, 0.05, 0, 1.6);
 	return i;
 }
 
-check.section('M4.1 slab ribbons');
+// 0.1.5 M2 replaced the slab ribbon: a subducted column does not hang a ribbon of
+// nodes off the margin any more, it hands its beds to the overriding column in rank
+// order and books what the handover does not carry. The gates below are that contract.
+check.section('M2 subduction handover');
 check.planet(11);
 var mass0 = sum(S.mass()), edge = forceSubduction();
-check.ok('subduction appends a ribbon', S.nRib === 1 && S.ribN[0] > 4,
-	'ribbons ' + S.nRib + ' nodes ' + S.ribN[0]);
-check.ok('ribbon keeps a stratified stack and water budget', S.ribNL[0] > 0 && S.waterIn > 0,
-	'layers ' + S.ribNL[0] + ' water ' + S.waterIn.toExponential(3));
+var loser = edge, winner = edge + 1;
+check.ok('a subducted column is consumed, not lost', S.colNL[loser] === 0 &&
+	S.hTot[loser] === 0 && S.colGhost[loser],
+	'the loser holds no beds and no crust and is draining; the margin holds ' +
+	S.colNL[winner] + ' beds (' + (S.hTot[winner] / 1e3).toFixed(1) + ' km)');
+var ordered = true, li = 0, lb = loser * P.layerCap, wb = winner * P.layerCap;
+for (li = 0; li + 1 < S.colNL[winner]; li++) {
+	if (P.LITH_RANK[S.layLi[wb + li]] > P.LITH_RANK[S.layLi[wb + li + 1]]) ordered = false;
+}
+check.ok('the margin stack stays in stratigraphic order', ordered,
+	winner + ' holds ' + S.colNL[winner] + ' beds, deepest ' +
+	S.layLi[wb] + ' to top ' + S.layLi[wb + S.colNL[winner] - 1]);
 check.ok('subduction transfer is mass neutral before dissolution',
 	Math.abs(sum(S.mass()) - mass0) / mass0 < 1e-12,
 	'rel ' + (Math.abs(sum(S.mass()) - mass0) / mass0).toExponential(2));
-var tail0 = S.ribY[S.ribN[0] - 1];
+check.ok('the subducted record is left draining and holds no ground',
+	S.colGhost[loser] && S.hTot[loser] === 0 && S.hDraw[loser] > 0,
+	'ghost ' + (S.colGhost[loser] ? 1 : 0) + ' drawn ' + (S.hDraw[loser] / 1e3).toFixed(1) + ' km');
 SIM.setGeo(50e3);
 SIM.step();
-check.ok('ribbon nodes descend and keep finite dip', S.nRib > 0 &&
-	S.ribY[S.ribN[0] - 1] < tail0 && S.ribDip[S.ribN[0] - 1] >= P.slabDip0,
-	'tail ' + (S.ribY[S.ribN[0] - 1] / 1e3).toFixed(1) + ' km');
+check.ok('the drained margin keeps a finite section', S.hDraw[loser] > 0 && isFinite(S.hDraw[loser]),
+	'drawn ' + (S.hDraw[loser] / 1e3).toFixed(1) + ' km');
 var cold = Infinity, k;
 for (k = 0; k < S.Tf.length; k++) if (S.Tf[k] < cold) cold = S.Tf[k];
 check.ok('slab feeds a bounded cold anomaly into fan T', cold >= -P.lithCold - 1e-12 && cold < -0.01,

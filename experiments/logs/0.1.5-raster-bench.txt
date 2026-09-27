@@ -1,0 +1,55 @@
+
+A. layer stacks (design §2.2)
+PASS  push grew the stack   12 layers
+PASS  the bed is exactly 50 m   rel 0.00e+0  got 50 m  want 50
+PASS  lith is sed
+PASS  flags kept   flags=5
+PASS  a zero-thickness push is refused
+PASS  a negative-thickness push is refused
+PASS  sums() total matches the stack   rel 0.00e+0  got 50297.97841595575 m  want 50297.97841595575
+PASS  sums() splits fel+maf+sed   rel 0.00e+0  got 50297.97841595575 m  want 50297.97841595575
+PASS  layerAt(25 m) finds the new bed   layer 11
+PASS  layerAt(below the stack) = -1
+PASS  a 50 m bed stays exactly 50 m through 1e5 frames   rel 0.00e+0  got 50 m  want 50
+PASS  and it is still the same layer index   12 layers
+PASS  1e5 frames at 50 kyr/f = 5000 Myr   rel 9.42e-9  got 5000.000000009424 Myr  want 5000
+PASS  50 m bed reads back at ~2.0 px in the crust preset   rel 4.87e-3  got 2.0048699724362447 px  want 2
+PASS  and 10 m at ~0.40 px   rel 9.74e-4  got 0.40097399448724896 px  want 0.4
+
+B. stack compaction and erosion intake
+PASS  stack fills to layerCap   96/96
+PASS  pushing past layerCap compacts instead of overflowing   96/96
+PASS  compaction conserves the total thickness   rel 0.00e+0  got 9700 m  want 9700
+PASS  an all-alternating stack records its cross-lith merges   ledMix 0 -> 1
+PASS  compact prefers the thinnest same-lith pair   3 layers, ledMix 0
+PASS  the merged bed carries both thicknesses   rel 0.00e+0  got 300 m  want 300
+PASS  removeTop takes what was asked   rel 0.00e+0  got 150 m  want 150
+PASS  ...from the felsic layer first   rel 0.00e+0  got 150 m  want 150
+PASS  leaving 50 m of felsic   rel 0.00e+0  got 50 m  want 50
+PASS  and the sediment bed untouched
+PASS  removeTop past the bottom empties the stack   got 150
+
+C. body raster (design §7, budget 6 ms at 1280x560, min of 15 runs)
+  default window          3.045 ms  (median 3.449, max 5.480)
+PASS  default window body raster <= 6 ms   3.045 ms
+  overview (full depth)   2.830 ms  (median 3.126, max 3.897)
+PASS  overview (full depth) body raster <= 6 ms   2.830 ms
+  crust x10               3.090 ms  (median 3.553, max 4.162)
+PASS  crust x10 body raster <= 6 ms   3.090 ms
+  basin x40               3.047 ms  (median 3.507, max 4.102)
+PASS  basin x40 body raster <= 6 ms   3.047 ms
+PASS  every pixel is painted   716800/716800
+  buildColLUT (512 cols, 1280 px)  0.0057 ms per frame
+  GEO.rebuild (both LUT sets)      0.0390 ms, view change only
+  sim.step with the M2 kernels     2421.29 us
+PASS  the body raster leaves headroom for the overlay   3.045 ms of a 6 ms budget
+
+D. bilinear fan sampling (M2.3 optional)
+PASS  the mantle is on screen in a coarse ring   ring 41, 16 nodes, pitch 1067 px, 27 rows
+PASS  a one-node anomaly renders as a smooth tent   max step 1 bins over 1279 pixel pairs
+PASS  the anomaly still reaches the hot bin   peak bin 7 of 7
+PASS  and spreads past the cell it belongs to   267 lit px between half and three quarters of a pitch
+PASS  the tent falls off monotonically with distance from the cell
+PASS  its hottest pixel is the one nearest the cell centre   peak bin 7 at 0.00 pitch from the centre
+
+ALL PASS (38 checks)
