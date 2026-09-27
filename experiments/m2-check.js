@@ -4,6 +4,7 @@
 var L = require('./lib.js'), check = L.check;
 var P = L.mods.params, S = L.mods.state, COL = L.mods.columns, SIM = L.mods.sim;
 var GEO = L.mods.geom, MNT = L.mods.mantle, PLT = L.mods.plates, E = P.EDGE;
+var SURF = L.mods.surface, CRU = L.mods.crust;
 
 function invariants() {
 	var finite = true, sorted = true, sums = true, counts = new Int32Array(P.plateCap), width = 0;
@@ -54,14 +55,16 @@ invariants();
 // K0 must queue events, never execute topology before contact resolution.
 SIM.reset();
 var order = [];
-var savedContact = SIM.k[4];
+var savedContact = SIM.k[4], savedColumn = SIM.k[5];
 SIM.add(4, function () { order.push('contact'); });
 SIM.add(5, function () { order.push('surface'); });
 SIM.onEvent = function () { order.push('event'); };
 SIM.dG = P.eventCadence * 2;
 SIM.step();
 check.ok('all due events execute after K4 and before K5', order.join(',') === 'contact,event,event,surface');
-SIM.add(4, savedContact); SIM.add(5, null); SIM.onEvent = COL.events;
+// restore both slots by value: hard-coding the K5 slot back to null (its M2.0 value)
+// silently disabled the column update for every fixture below, long runs included
+SIM.add(4, savedContact); SIM.add(5, savedColumn); SIM.onEvent = COL.events;
 SIM.reset();
 var first = S.hash();
 SIM.reset();
@@ -133,8 +136,19 @@ check.ok('T stays finite and inside its initial bounds over 40 Myr', tBound, '['
 var uOk = true;
 for (var p = 0; p < S.nPl; p++) uOk = uOk && Math.abs(S.plU[p]) <= P.vMax && Number.isFinite(S.plU[p]);
 check.ok('plate speeds finite and within vMax', uOk, Array.from(S.plU.subarray(0, S.nPl), function (u) { return (u / 1e4).toFixed(2); }).join(' ') + ' cm/yr');
-check.ok('only newborn ridges have damage (not neutral contacts)',
-	S.damage.every(function (d) { return d === 0 || d === 0.6; }));
+// Damage has a K5 source now, so this narrows to "it stays a fraction"; the closed form of
+// the source (extension only, divided by strength, healing otherwise) is fixture-tested in
+// the M2.3 section. At the hot start ext/extRef reaches 10-100 in extensional columns, so
+// most of them saturate — benign, because a split needs a narrow damaged corridor between
+// two intact bodies of >= minPlateCells, not merely a damaged cell.
+var dmgOk = true, dmgMax = 0, dmgPos = 0;
+for (var q = 0; q < S.nCol; q++) {
+	if (S.damage[q] < 0 || S.damage[q] > 1) dmgOk = false;
+	if (S.damage[q] > 0) dmgPos++;
+	if (S.damage[q] > dmgMax) dmgMax = S.damage[q];
+}
+check.ok('damage stays a fraction after 40 Myr of real tectonics', dmgOk,
+	dmgPos + '/' + S.nCol + ' columns damaged, max ' + dmgMax.toFixed(3));
 invariants();
 
 // --- M2.1 plate solve ---------------------------------------------------------------
@@ -328,12 +342,21 @@ bi = boundary();
 var gapMass = S.mass().slice(), gapN = S.nCol, gapPlate = S.colPlate[bi];
 // Force oceanic donor sets; only the newborn mafic volume is sourced from mantle.
 for (var d = -P.K + 1; d <= P.K; d++) S.hFel[(bi + d + S.nCol) % S.nCol] = 0;
+var hMafNew = P.hMafNewBase * (1 + P.hMafNewTm * Math.max(0, 1.6 - 1));
 contact(bi, 1.6, 5e4);
 check.ok('one opening creates one oceanic packet on the left plate', S.nCol === gapN + 1 &&
 	S.colPlate[bi + 1] === gapPlate && S.colAge[bi + 1] === 0 && S.damage[bi + 1] === 0.6 && S.hMaf[bi + 1] > 0);
+// the newborn owns exactly half the opened gap, so the mantle source is hMafNew*width
+check.near('the mantle source is hMafNew over the newborn own width', S.ledProd[P.LITH.maf],
+	hMafNew * S.colW[bi + 1], 1e-12);
+check.ok('fresh oceanic crust is at least hMafNew thick', S.hMaf[bi + 1] >= hMafNew * (1 - 1e-12),
+	(S.hMaf[bi + 1] / 1e3).toFixed(2) + ' km');
 ledger(gapMass, 'oceanic ridge');
 invariants();
 
+// A continental opening: both margins stretch (the centred width thins the two of them
+// by the same factor) and the newborn takes the territory between them with the crust
+// that is in it, so no thickness jumps at the birth — a rift valley, not a spike.
 bi = boundary();
 for (d = -P.K + 1; d <= P.K; d++) {
 	var donor = (bi + d + S.nCol) % S.nCol;
@@ -341,11 +364,95 @@ for (d = -P.K + 1; d <= P.K; d++) {
 	COL.sums(donor);
 }
 gapMass = S.mass().slice(); gapN = S.nCol;
-var oldFel = S.hFel[bi];
 contact(bi, 1.6, 5e4);
-check.ok('continental opening shares felsic beds and thins donors', S.nCol === gapN + 1 &&
-	S.hFel[bi + 1] > 0 && S.hFel[bi] < oldFel && S.ledProd[P.LITH.maf] === 0);
+check.ok('continental opening creates one rift column on the left plate', S.nCol === gapN + 1 &&
+	S.colPlate[bi + 1] === gapPlate && S.hFel[bi + 1] > 0 && S.ledProd[P.LITH.maf] === 0);
+check.near('the newborn is the mean thickness of the two margins it was cut from',
+	S.hTot[bi + 1], 0.5 * (S.hTot[bi] + S.hTot[bi + 2]), 1e-12);
+check.ok('the newborn inherits beds, it does not invent them', S.colNL[bi + 1] > 1 &&
+	S.colAge[bi + 1] === 0 && S.damage[bi + 1] === 0.6);
 ledger(gapMass, 'continental rift');
+invariants();
+
+// Uniform two-plate fixture: opening one boundary must stretch (and thin) BOTH margins by
+// the same factor, and the birth must leave every thickness where the stretching put it,
+// so the rift axis sinks instead of spiking. The 1/(K+1) donor share this replaces made
+// the newborn twice as thick as its margins (+6 km of relief at the axis).
+function riftFixture() {
+	check.planet(1);
+	S.nCol = 12; S.nPl = 2;
+	for (var i = 0; i < 12; i++) {
+		S.colX[i] = i * P.w0;
+		S.colPlate[i] = i < 6 ? 0 : 1;
+		S.colNL[i] = 0;
+		COL.push(i, 35e3, P.LITH.fel, 100, 0);
+		COL.sums(i);
+		S.colAge[i] = 100;
+		S.colU[i] = i < 6 ? -2e4 : 2e4;      // 4 cm/yr of full spreading
+	}
+	S.widths(); S.oldW.set(S.colW);
+	SURF.profile();
+	return S.mass().slice();
+}
+var riftMass = riftFixture(), riftFrames = 0, inlandH = S.hTot[1], inlandZ = S.z[1], nb;
+while (S.nCol === 12 && riftFrames < 200) {
+	COL.transport(S, 0.05);
+	PLT.classify(S, 0.05);
+	PLT.trench(S);
+	COL.k4(S, 0.05, 0, 1.6);
+	SURF.profile();
+	S.oldW.set(S.colW);
+	riftFrames++;
+}
+check.ok('a diverging uniform pair spawns exactly one column', S.nCol === 13, riftFrames + ' frames');
+nb = S.damage.findIndex(function (v, i) { return v === 0.6 && S.colAge[i] === 0; });
+check.ok('the newborn sits between the two margins', nb > 0 && nb < S.nCol - 1, 'nb=' + nb);
+check.near('opening thinned both margins by the same factor', S.hTot[nb - 1], S.hTot[nb + 1], 1e-12);
+check.near('and the birth left both at the newborn thickness', S.hTot[nb], S.hTot[nb - 1], 1e-12);
+check.ok('the rift axis is a valley below the inland crust', S.z[nb] < inlandZ && S.z[nb] < 0,
+	'z=' + S.z[nb].toFixed(0) + ' m inland ' + inlandZ.toFixed(0) + ' m');
+check.ok('the stretched margins stay below the inland thickness', S.hTot[nb - 1] < inlandH,
+	(S.hTot[nb - 1] / 1e3).toFixed(2) + ' km of ' + (inlandH / 1e3).toFixed(2));
+check.ok('a continental rift sources nothing from the mantle', S.ledProd[P.LITH.maf] === 0);
+ledger(riftMass, 'uniform continental rift');
+invariants();
+
+// Ore potentials are concentrations: a birth averages the two parents and stays in range,
+// where the old 2K-donor share summed six columns of potential into one (up to 3.0).
+bi = boundary();
+for (d = -1; d <= 2; d++) { S.oArc[(bi + d + S.nCol) % S.nCol] = 0.9; S.oVms[(bi + d + S.nCol) % S.nCol] = 0.4; }
+S.oldW.set(S.colW);
+S.colX[bi + 1] = S.colX[bi] + 1.6 * P.w0;
+S.widths();
+S.colU.fill(0); S.colU[bi + 1] = 5e4;
+S.edge[bi] = E.open; S.edgeRelN[bi] = 5e4; S.edgeRPlate[bi] = S.colPlate[bi + 1];
+COL.k4(S, 0.05, 0, 1.6);
+var oreOk = true;
+for (var oc = 0; oc < S.nCol; oc++) {
+	for (var of = 0; of < COL.oreFields.length; of++) {
+		var ov = S[COL.oreFields[of]][oc];
+		if (ov < 0 || ov > 1) oreOk = false;
+	}
+}
+check.ok('ore potentials stay concentrations in 0..1 through a birth', oreOk &&
+	S.oArc[bi + 1] === 0.9 && S.oVms[bi + 1] === 0.4, 'oArc=' + S.oArc[bi + 1]);
+invariants();
+
+// Widths come from spacing, so a closing pair that overlaps must resolve even below the
+// epsHi hysteresis gate: otherwise it interpenetrates forever and the volume-conserving
+// stack of the squeezed column grows without bound (measured: 0.25 km wide, 2.1 km thick).
+bi = boundary();
+S.oldW.set(S.colW);
+S.colX[bi + 1] = S.colX[bi] + 0.4 * P.w0;
+S.widths();
+S.colU.fill(0); S.colU[bi + 1] = -1.5e3;      // closing, but slower than epsHi
+S.edge[bi] = E.neutral; S.edgeRelN[bi] = -1.5e3; S.edgeRPlate[bi] = -1;
+PLT.classify(S, 0.05);
+check.ok('a slow closing overlap is forced to a contact', S.edge[bi] === E.collide || S.edge[bi] === E.subduct,
+	'edge=' + S.edge[bi]);
+var squeezeN = S.nCol;
+COL.k4(S, 0.05, 0, 1.6);
+check.ok('and consumed instead of interpenetrating', S.nCol === squeezeN - 1);
 invariants();
 
 bi = boundary();
@@ -408,6 +515,45 @@ S.damage[splitAt] = P.splitDamage + 0.01;
 check.ok('damaged corridor splits two sufficiently large daughter plates', COL.events(S) &&
 	S.nPl === nPlBefore + 1 && S.damage[splitAt] === 0.5 &&
 	S.plN[plate] >= P.minPlateCells && S.plN[S.nPl - 1] >= P.minPlateCells);
+invariants();
+
+// In 1D every single cell is a cut, so the reference's corridor rule ("removing the damaged
+// cells leaves >= 2 bodies of >= minPlateCells") has to be read as the *intact* runs. Split
+// at the first damaged cell instead and the planet fragments to plateCap as soon as damage
+// saturates: measured 32 plates, 449 of 583 columns above splitDamage, 1000 km orogens.
+var wi, pStart, corAt, corLen = 5, weak;
+bi = boundary();
+nPlBefore = S.nPl;
+for (wi = 0; wi < S.nCol; wi++) S.damage[wi] = wi % 6 < 5 ? P.splitDamage + 0.01 : 0.1;
+check.ok('widespread damage leaves every plate intact', !COL.events(S) && S.nPl === nPlBefore);
+for (wi = 0; wi < S.nCol; wi++) S.damage[wi] = 0.1;
+plate = 0;
+for (wi = 1; wi < S.nPl; wi++) if (S.plN[wi] > S.plN[plate]) plate = wi;
+pStart = -1;
+for (wi = 0; wi < S.nCol; wi++) {
+	if (S.colPlate[wi] === plate && S.colPlate[(wi + S.nCol - 1) % S.nCol] !== plate) { pStart = wi; break; }
+}
+corAt = pStart + P.minPlateCells + 10;
+for (wi = 0; wi < corLen; wi++) S.damage[(corAt + wi) % S.nCol] = P.splitDamage + 0.01;
+check.ok('a multi-cell corridor splits at its midpoint, nearer daughter first',
+	S.plN[plate] >= 2 * P.minPlateCells + corLen && pStart >= 0 && COL.events(S) &&
+	S.nPl === nPlBefore + 1 &&
+	S.colPlate[(corAt + (corLen >> 1)) % S.nCol] === S.nPl - 1 &&
+	S.colPlate[(corAt + (corLen >> 1) - 1) % S.nCol] === plate);
+weak = true;
+for (wi = 0; wi < corLen; wi++) if (S.damage[(corAt + wi) % S.nCol] !== 0.5) weak = false;
+check.ok('the whole corridor becomes a weak line and cannot split again', weak && !COL.events(S));
+invariants();
+// a plate that owns the whole wrap is a closed ring: cutting a corridor out of it leaves one
+// connected body, so it must not split (and must not run off the end of the plate list)
+check.planet(1);
+for (wi = 0; wi < S.nCol; wi++) S.colPlate[wi] = 0;
+S.nPl = 1;
+COL.plates();
+S.damage.fill(P.splitDamage + 0.01, 0, S.nCol);
+S.damage.fill(0.1, P.minPlateCells, 2 * P.minPlateCells);
+S.damage.fill(0.1, S.nCol - 2 * P.minPlateCells, S.nCol - P.minPlateCells);
+check.ok('a single planet-wide plate never splits', !COL.events(S) && S.nPl === 1);
 invariants();
 
 // A seam opening is the same event as an interior opening, including the left tie.
@@ -473,6 +619,195 @@ SIM.run(3000);
 ledger(longMass, '700 Myr mixed-rate evolving planet (repeated births)');
 invariants();
 
+// --- M2.3: K5 column update and the K6 profile ----------------------------------
+check.section('M2.3 age, damage, zDyn, flexure, collapse');
+
+check.planet(1);
+SIM.setGeo(50e3);
+SIM.run(20);
+SIM.setGeo(0);
+var pausedHash = S.hash();
+SIM.run(50);
+check.ok('K5/K6 at zero geological time change nothing', pausedHash === S.hash());
+
+// age and damage on a prescribed extension field
+check.planet(1);
+var weak = 3, strong = 9;
+S.ext.fill(0);
+S.damage.fill(0.5);
+S.hFel[weak] = 5e3; S.colAge[weak] = 5;
+S.hFel[strong] = 40e3; S.colAge[strong] = 300;
+var age0 = S.colAge.slice(0, S.nCol);
+S.ext[0] = 2 * P.extRef;
+S.ext[1] = -2 * P.extRef;
+CRU.k5(S, 1, 0, 1);
+var ageOk = true;
+for (var ai = 0; ai < S.nCol; ai++) ageOk = ageOk && S.colAge[ai] === age0[ai] + 1;
+check.ok('thermal age grows by exactly dtGeo', ageOk);
+check.near('damage grows at kDam*ext/extRef/strength - kHeal*damage', S.damage[0],
+	0.5 + (P.kDam * 2 / CRU.strength(0, 1) - P.kHeal * 0.5), 1e-12);
+check.near('convergence has no damage source, only healing', S.damage[1], 0.5 - P.kHeal * 0.5, 1e-12);
+check.ok('thick old crust is stronger than thin young crust',
+	CRU.strength(strong, 1) > CRU.strength(weak, 1),
+	CRU.strength(strong, 1).toFixed(3) + ' vs ' + CRU.strength(weak, 1).toFixed(3));
+check.ok('a hot mantle weakens the lithosphere', CRU.strength(weak, 1.6) < CRU.strength(weak, 0.35));
+check.ok('strength stays inside its clamp', CRU.strength(weak, 1) >= P.strBase &&
+	CRU.strength(strong, 1) <= P.strMax);
+S.ext.fill(1e3 * P.extRef);
+S.colAge.fill(0);
+for (ai = 0; ai < 200; ai++) CRU.k5(S, 0.2, 0, 1.6);
+check.ok('damage saturates at 1 and never leaves 0..1',
+	S.damage.every(function (v, i) { return i >= S.nCol || (v >= 0 && v <= 1); }),
+	'max ' + Math.max.apply(null, Array.from(S.damage.subarray(0, S.nCol))).toFixed(4));
+
+// zDyn: the trench source is signed, frame-rate independent, and bounded by zTrench
+function trenchRun(dt, frames) {
+	check.planet(1);
+	S.zDyn.fill(0);
+	S.trenchDist.fill(0, 0, S.nCol);
+	S.trenchDist[40] = 1;
+	for (var i = 0; i < frames; i++) CRU.zDyn(S, dt);
+	return S.zDyn.slice(0, S.nCol);
+}
+var slow = trenchRun(0.05, 4000), fast = trenchRun(0.2, 1000), drift = 0;
+for (ai = 0; ai < S.nCol; ai++) drift = Math.max(drift, Math.abs(slow[ai] - fast[ai]));
+check.ok('a running trench pulls the margin down (signed source)', slow[40] < 0,
+	(slow[40]).toFixed(1) + ' m');
+check.ok('the depression is bounded by zTrench and dies away inland',
+	-slow[40] <= P.zTrench && Math.abs(slow[41]) < Math.abs(slow[40]) &&
+	Math.abs(slow[45]) < Math.abs(slow[41]),
+	[40, 41, 42, 45].map(function (i) { return (slow[i]).toFixed(0); }).join(' / ') + ' m');
+// Not bitwise: the relaxation is the exact exponential pull of the reference while the
+// flexure is explicit, so the effective relaxation rate carries a dt/2tau error and the
+// steady state of a running trench moves 0.5% between 50 kyr and 200 kyr per frame —
+// far inside the +-10% the plan allows between prescribed frame rates.
+check.ok('100 Myr at 50 kyr and at 200 kyr per frame agree within 1%', drift < 1e-2 * P.zTrench,
+	'max drift ' + (100 * drift / P.zTrench).toFixed(2) + '% of zTrench');
+
+// flexure alone: symmetric spread, and SUM(w*zDyn) decays by exactly the relaxation
+check.planet(1);
+S.trenchDist.fill(0, 0, S.nCol);
+S.zDyn.fill(0, 0, S.nCol);
+S.zDyn[64] = 1000;
+var sum0 = 0;
+for (ai = 0; ai < S.nCol; ai++) sum0 += S.colW[ai] * S.zDyn[ai];
+CRU.zDyn(S, 0.1);
+var sum1 = 0;
+for (ai = 0; ai < S.nCol; ai++) sum1 += S.colW[ai] * S.zDyn[ai];
+check.near('flexure conserves SUM(w*zDyn) while relaxation decays it', sum1,
+	sum0 * Math.exp(-0.1 / P.tauDyn), 1e-9);
+check.ok('a localized load spreads to both neighbours symmetrically',
+	S.zDyn[64] < 1000 * Math.exp(-0.1 / P.tauDyn) && S.zDyn[63] > 0 &&
+	Math.abs(S.zDyn[63] - S.zDyn[65]) < 1e-9 * S.zDyn[63],
+	S.zDyn[63].toFixed(3) + ' / ' + S.zDyn[64].toFixed(3) + ' / ' + S.zDyn[65].toFixed(3));
+var flexBound = true;
+for (ai = 0; ai < 2000; ai++) {
+	CRU.zDyn(S, 0.2);
+	for (var zi = 0; zi < S.nCol; zi++) {
+		if (!Number.isFinite(S.zDyn[zi]) || Math.abs(S.zDyn[zi]) > 1000) flexBound = false;
+	}
+}
+check.ok('400 Myr of flexure stays finite and never amplifies', flexBound);
+
+// collapse: real beds move, the felsic volume is exact, and the gate is hCollapse
+function plateau(hFel) {
+	check.planet(1);
+	for (var i = 0; i < S.nCol; i++) {
+		S.colNL[i] = 0;
+		COL.push(i, hFel, P.LITH.fel, 100, 0);
+		COL.sums(i);
+	}
+	S.colNL[50] = 0;
+	COL.push(50, P.hCollapse + 30e3, P.LITH.fel, 100, 0);
+	COL.push(50, 2e3, P.LITH.sed, 10, 0);
+	COL.sums(50);
+	SURF.profile();
+	return S.mass().slice();
+}
+function felVolume() {
+	var v = 0;
+	for (var i = 0; i < S.nCol; i++) v += S.hFel[i] * S.colW[i];
+	return v;
+}
+var plateMass = plateau(35e3), fel0 = felVolume(), h50 = S.hFel[50], z50 = S.z[50];
+CRU.collapse(S, 1);
+check.ok('a plateau above hCollapse spreads into both neighbours',
+	S.hFel[50] < h50 && S.hFel[49] > 35e3 && S.hFel[51] > 35e3,
+	(S.hFel[50] / 1e3).toFixed(3) + ' km, neighbours ' + (S.hFel[49] / 1e3).toFixed(3));
+check.near('collapse conserves felsic volume exactly', felVolume(), fel0, 1e-9);
+check.ok('collapse moves real beds, not just the cache',
+	S.layTh[49 * P.layerCap] > 35e3 && S.layTh[51 * P.layerCap] > 35e3 &&
+	S.hFel[49] === S.layTh[49 * P.layerCap] && S.colNL[50] >= 1,
+	(S.layTh[49 * P.layerCap] / 1e3).toFixed(3) + ' km in the neighbour bed');
+check.ok('the sediment cap rides down with the collapsed crust',
+	S.layLi[50 * P.layerCap + S.colNL[50] - 1] === P.LITH.sed);
+ledger(plateMass, 'gravitational collapse');
+SURF.k6(S, 1);
+check.ok('collapse lowers the plateau (isostasy follows the beds)', S.z[50] < z50,
+	S.z[50].toFixed(1) + ' m of ' + z50.toFixed(1));
+check.planet(1);
+for (ai = 0; ai < S.nCol; ai++) {
+	S.colNL[ai] = 0;
+	COL.push(ai, 35e3, P.LITH.fel, 100, 0);
+	COL.sums(ai);
+}
+var flatHash = S.hash();
+CRU.collapse(S, 1);
+CRU.collapse(S, 1);
+check.ok('nothing moves while every column is below hCollapse', flatHash === S.hash());
+
+// K5/K6 add no crust: the relief of a collision comes from the layer sums alone
+bi = boundary();
+COL.push(bi, 20e3, P.LITH.fel, 100, 0);
+COL.push(bi + 1, 40e3, P.LITH.fel, 100, 0);
+COL.sums(bi); COL.sums(bi + 1);
+var prod0 = S.ledProd.slice(), cons0 = S.ledCons.slice();
+contact(bi, 0.5, -5e4);
+var win = S.hTot[bi - 1] > S.hTot[bi] ? bi - 1 : bi, zWin = S.z[win];
+CRU.k5(S, 0.1, 0, 1.6);
+SURF.k6(S, 0.1);
+var ledgerQuiet = true;
+for (var li = 0; li < P.LITH.n; li++) {
+	ledgerQuiet = ledgerQuiet && S.ledProd[li] === prod0[li] && S.ledCons[li] === cons0[li];
+}
+check.ok('K5/K6 never touch the lithology ledger', ledgerQuiet);
+check.ok('the collided crust stands higher through isostasy alone', S.z[win] !== zWin &&
+	Number.isFinite(S.z[win]), (zWin).toFixed(0) + ' -> ' + S.z[win].toFixed(0) + ' m');
+
+// K6 owns the profile: after a full frame every z is the current elevation
+check.planet(1);
+SIM.setGeo(50e3);
+SIM.run(30);
+var profileFresh = true;
+for (ai = 0; ai < S.nCol; ai++) if (S.z[ai] !== SURF.elev(ai)) profileFresh = false;
+check.ok('a frame ends with the profile recomputed from the final state', profileFresh);
+
+// acceptance 8 shape: 500 Myr at both frame rates stays finite, balanced and un-squeezed
+function longRun(rate, frames) {
+	check.planet(5);
+	SIM.setGeo(rate);
+	SIM.run(frames);
+	var minGap = Infinity, maxH = 0, maxZ = 0;
+	for (var i = 0; i < S.nCol; i++) {
+		var g = S.colX[i + 1 < S.nCol ? i + 1 : 0] - S.colX[i];
+		if (g <= 0) g += P.wrap;
+		minGap = Math.min(minGap, g);
+		maxH = Math.max(maxH, S.hTot[i]);
+		maxZ = Math.max(maxZ, S.z[i]);
+	}
+	return { minGap: minGap, maxH: maxH, maxZ: maxZ, nCol: S.nCol, nPl: S.nPl };
+}
+var lr = longRun(100e3, 5000);
+check.ok('500 Myr at 100 kyr/frame leaves no interpenetrating columns',
+	lr.minGap > 0.05 * P.w0, 'min gap ' + (lr.minGap / P.w0).toFixed(3) + ' w0');
+invariants();
+console.log('  500 Myr @100 kyr: n=' + lr.nCol + ' plates=' + lr.nPl +
+	' maxCrust=' + (lr.maxH / 1e3).toFixed(0) + ' km maxRelief=' + (lr.maxZ / 1e3).toFixed(1) + ' km');
+lr = longRun(10e3, 5000);
+check.ok('50 Myr at 10 kyr/frame is finite too', Number.isFinite(lr.maxH) && lr.minGap > 0.05 * P.w0,
+	'maxCrust ' + (lr.maxH / 1e3).toFixed(0) + ' km');
+invariants();
+
 check.section('M2.1 determinism and finite state at every kernel boundary');
 check.planet(3);
 SIM.setGeo(50e3);
@@ -507,5 +842,5 @@ for (var run = 0; run < 7; run++) {
 	SIM.run(20);
 	best = Math.min(best, Number(process.hrtime.bigint() - t0) / 1e6 / 20);
 }
-check.ok('sim frame (K0-K4) within the 4 ms budget', best <= 4, best.toFixed(3) + ' ms/frame, min of 7x20');
+check.ok('sim frame (K0-K6) within the 4 ms budget', best <= 4, best.toFixed(3) + ' ms/frame, min of 7x20');
 check.done();

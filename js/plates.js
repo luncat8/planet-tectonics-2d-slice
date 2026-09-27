@@ -101,7 +101,7 @@ PLT.polarity = function (S, i, j, keepPol) {
 };
 
 PLT.classify = function (S, dt) {
-	var E = P.EDGE, n = S.nCol, i, j, rp, same, prev, prevPol, type;
+	var E = P.EDGE, n = S.nCol, i, j, rp, same, prev, prevPol, type, d;
 	for (i = 0; i < n; i++) {
 		j = i + 1 < n ? i + 1 : 0;
 		rp = S.colPlate[j];
@@ -115,6 +115,16 @@ PLT.classify = function (S, dt) {
 			continue;
 		}
 		type = this.edgeType(prev, S.edgeRelN[i]);
+		// Hard contact: the eps hysteresis decides the boundary *state*, but a pair that
+		// already overlaps and is still closing has to resolve by polarity. The reference
+		// can leave such a pair neutral (its cells keep a fixed area); here widths come
+		// from spacing, so an unresolved slow overlap squeezes a column toward zero width
+		// and its volume-conserving stack toward a kilometre-scale spike.
+		if (type === E.neutral && S.edgeRelN[i] < 0) {
+			d = S.colX[j] - S.colX[i];
+			if (d < 0) d += P.wrap;
+			if (d < P.rContact * P.w0) type = E.subduct;
+		}
 		S.edge[i] = type;
 		S.edgePol[i] = 0;
 		if (type === E.subduct) this.polarity(S, i, j, prevPol);

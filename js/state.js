@@ -164,17 +164,28 @@ S.layout = function () {
 	this.widths();
 };
 
-// column width from the neighbour gaps (columns are born equal but stop being so
-// once rifts spawn and trenches consume; every mass integral uses the real width)
+// Column width = the territory the column owns: from the midpoint of its left gap to the
+// midpoint of its right gap (not centred on x unless the two gaps are equal). The renderer
+// draws the crust as a piecewise-linear profile with the columns as nodes, so this
+// trapezoid width makes SUM(thickness*width) exactly the integral of what is on screen,
+// and SUM(colW) = wrap for any spacing. It is also symmetric in the two margins: an
+// opening gap stretches (and thins) BOTH of them, and inserting a column takes territory
+// from both parents instead of all of it from the left one. The left-anchored width
+// (x[i+1]-x[i]) did the opposite, which is why COL.inherit hands a newborn the material of
+// the territory it takes: with these widths a birth leaves every thickness unchanged, so a
+// rift axis is a valley and not a spike.
 S.widths = function () {
-	var n = this.nCol, i;
+	var n = this.nCol, i, im, ip, dl, dr;
 	if (n === 0) return;
 	if (n === 1) { this.colW[0] = P.wrap; return; }
 	for (i = 0; i < n; i++) {
-		var j = i + 1 < n ? i + 1 : 0;
-		var d = this.colX[j] - this.colX[i];
-		if (d <= 0) d += P.wrap;
-		this.colW[i] = d;
+		im = i > 0 ? i - 1 : n - 1;
+		ip = i + 1 < n ? i + 1 : 0;
+		dl = this.colX[i] - this.colX[im];
+		dr = this.colX[ip] - this.colX[i];
+		if (dl < 0) dl += P.wrap;
+		if (dr < 0) dr += P.wrap;
+		this.colW[i] = 0.5 * (dl + dr);
 	}
 };
 

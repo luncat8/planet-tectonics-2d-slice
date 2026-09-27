@@ -156,9 +156,81 @@ console.log('  GEO.rebuild (both LUT sets)      ' +
 	(Number(process.hrtime.bigint() - t) / 1e6 / 2000).toFixed(4) + ' ms, view change only');
 var t = process.hrtime.bigint();
 for (n = 0; n < 200; n++) SIM.step();
-console.log('  sim.step with the M1 kernels     ' +
+console.log('  sim.step with the M2 kernels     ' +
 	(Number(process.hrtime.bigint() - t) / 1e3 / 200).toFixed(2) + ' us');
 check.ok('the body raster leaves headroom for the overlay', tDef <= BUDGET * 0.85,
 	tDef.toFixed(3) + ' ms of a ' + BUDGET + ' ms budget');
+
+check.section('D. bilinear fan sampling (M2.3 optional)');
+// The fan tightens with depth, so the mantle rows on screen sit in rings of 8-16 nodes:
+// one node is 1067-2135 screen pixels wide, and the real field carries node-to-node jumps
+// of ~3 colour bins. Nearest-node sampling therefore paints the mantle in hard-edged
+// stripes a thousand pixels wide. One prescribed node anomaly must come out as a smooth
+// centred tent instead: monotone in distance from the cell, never stepping more than one
+// of the eight bins, and still lit past half a pitch, where nearest-node has already
+// jumped to the (cold) neighbour cell.
+GEO.setPreset('def');
+GEO.sync();
+SIM.reset();
+RNDR.body(px, w, h);                // builds the palettes lazily; the map below needs them
+var binOf = new Map(), q;
+for (q = 0; q < RNDR.palMantle.length; q++) binOf.set(RNDR.palMantle[q] >>> 0, q & 7);
+var rowsOf = {}, sy, sx, mant;
+for (sy = 0; sy < h; sy++) {
+	if (GEO.lutRow[sy] < 0) continue;
+	mant = 0;
+	for (sx = 0; sx < w; sx++) if (binOf.has(px[sy * w + sx] >>> 0)) mant++;
+	if (mant > 0.9 * w) rowsOf[GEO.lutRow[sy]] = (rowsOf[GEO.lutRow[sy]] || 0) + 1;
+}
+var blobRing = -1, pitchPx = Infinity, pitchM = 0;
+for (var key in rowsOf) {
+	var cand = P.wrap / GEO.fanN[key] / GEO.kx;
+	if (cand < pitchPx || (cand === pitchPx && blobRing >= 0 && rowsOf[key] > rowsOf[blobRing])) {
+		pitchPx = cand;
+		blobRing = +key;
+	}
+}
+pitchM = P.wrap / GEO.fanN[blobRing < 0 ? 0 : blobRing];
+check.ok('the mantle is on screen in a coarse ring', blobRing >= 0,
+	'ring ' + blobRing + ', ' + GEO.fanN[blobRing] + ' nodes, pitch ' + pitchPx.toFixed(0) +
+	' px, ' + rowsOf[blobRing] + ' rows');
+var blobRows = [];
+for (sy = 0; sy < h; sy++) if (GEO.lutRow[sy] === blobRing) blobRows.push(sy);
+// put the anomaly on the node the middle of the screen looks at, so it cannot be off-window
+var blobNode = (GEO.lutX[w >> 1] * GEO.lutRowInvP[blobRows[0]]) | 0;
+var blobX = (blobNode + 0.5) * pitchM;
+S.Tf.fill(0);
+S.Tf[GEO.fanOff[blobRing] + blobNode] = 0.6;
+RNDR.body(px, w, h);
+var flat = 4;                       // Tf = 0 lands in bin 4 of the 8-bin ramp
+sy = blobRows[blobRows.length >> 1];
+var tent = [], maxStep = 0, peak = 0, pairs = 0, farLit = 0, prev = -1;
+for (sx = 0; sx < w; sx++) {
+	var bn = binOf.get(px[sy * w + sx] >>> 0);
+	if (bn === undefined) { prev = -1; continue; }
+	var dx = Math.abs(GEO.lutX[sx] - blobX) % P.wrap;
+	var d = (dx > P.wrap / 2 ? P.wrap - dx : dx) / pitchM;
+	if (bn > peak) peak = bn;
+	if (prev >= 0) {
+		var step = Math.abs(bn - prev);
+		if (step > maxStep) maxStep = step;
+		pairs++;
+	}
+	prev = bn;
+	if (d > 0.5 && d < 0.75 && bn > flat) farLit++;
+	tent.push([d, bn]);
+}
+check.ok('a one-node anomaly renders as a smooth tent', maxStep <= 1 && pairs > 500,
+	'max step ' + maxStep + ' bins over ' + pairs + ' pixel pairs');
+check.ok('the anomaly still reaches the hot bin', peak >= 6, 'peak bin ' + peak + ' of 7');
+check.ok('and spreads past the cell it belongs to', farLit > 20,
+	farLit + ' lit px between half and three quarters of a pitch');
+tent.sort(function (a, b2) { return a[0] - b2[0]; });
+var monotone = true;
+for (q = 1; q < tent.length; q++) if (tent[q][1] > tent[q - 1][1]) monotone = false;
+check.ok('the tent falls off monotonically with distance from the cell', monotone);
+check.ok('its hottest pixel is the one nearest the cell centre', tent.length > 0 &&
+	peak === tent[0][1], 'peak bin ' + peak + ' at ' +
+	(tent.length ? tent[0][0].toFixed(2) : 'no') + ' pitch from the centre');
 
 check.done();

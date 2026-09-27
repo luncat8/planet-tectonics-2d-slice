@@ -119,7 +119,8 @@ RNDR.body = function (px, w, h) {
 	var lutRow = GEO.lutRow, lutBase = GEO.lutRowBase, lutCnt = GEO.lutRowCnt, lutInvP = GEO.lutRowInvP;
 	var palLith = this.palLith, palMantle = this.palMantle, palWater = this.palWater, palAir = this.palAir;
 	var profY = this.profY, Tf = S.Tf, LC = P.layerCap, n = S.nCol;
-	var c, s, off, pY, mohoY, nLay, b, layIdx, layBot, y, lith, wd, ad, j, cnt, row, tb, wx, invP;
+	var c, s, off, pY, mohoY, nLay, b, layIdx, layBot, y, lith, wd, ad, wx;
+	var j, j2, cnt, row, base, fx, t0, tb, ringPrev, pal;
 
 	for (var pxc = 0; pxc < w; pxc++) {
 		c = lutCol[pxc];
@@ -159,14 +160,30 @@ RNDR.body = function (px, w, h) {
 			s++; off += w;
 		}
 
+		// The fan is a radial mesh, so one ring owns a contiguous run of screen rows and
+		// its colour at this x does not change across the run: sample and shade the ring
+		// once, then stamp the run. That pays for the bilinear x sampling below — a ring
+		// pitch is hundreds of screen pixels and the field carries node-to-node jumps of
+		// ~3 colour bins, so nearest-node sampling stripes the mantle a thousand pixels
+		// wide. Cell centres: the +cnt keeps the half-cell shift positive so |0 floors.
+		ringPrev = -2;
 		while (s < h) {
 			row = lutRow[s];
-			if (row < 0) row = 0;
-			cnt = lutCnt[s];
-			j = (wx * lutInvP[s]) | 0;
-			if (j >= cnt) j = cnt - 1;
-			tb = ((Tf[lutBase[s] + j] + 0.6) * 6.6666667) | 0;
-			px[off] = palMantle[(row << 3) | (tb < 0 ? 0 : (tb > 7 ? 7 : tb))];
+			if (row !== ringPrev) {
+				ringPrev = row;
+				cnt = lutCnt[s];
+				fx = wx * lutInvP[s] + cnt - 0.5;
+				j = fx | 0;
+				fx -= j;
+				j -= cnt;
+				if (j < 0) j += cnt;
+				j2 = j + 1 < cnt ? j + 1 : 0;
+				base = lutBase[s];
+				t0 = Tf[base + j];
+				tb = ((t0 + (Tf[base + j2] - t0) * fx + 0.6) * 6.6666667) | 0;
+				pal = ((row < 0 ? 0 : row) << 3) | (tb < 0 ? 0 : (tb > 7 ? 7 : tb));
+			}
+			px[off] = palMantle[pal];
 			s++; off += w;
 		}
 	}

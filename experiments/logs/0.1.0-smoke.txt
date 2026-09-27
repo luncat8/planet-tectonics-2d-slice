@@ -1,6 +1,6 @@
 
-A. page load (index.html order, 12 scripts)
-PASS  index.html loads every js/*.js file exactly once   js/params.js js/rng.js js/geom.js js/state.js js/surface.js js/columns.js js/mantle.js js/plates.js js/perf.js js/ui.js js/render.js js/sim.js
+A. page load (index.html order, 13 scripts)
+PASS  index.html loads every js/*.js file exactly once   js/params.js js/rng.js js/geom.js js/state.js js/surface.js js/columns.js js/mantle.js js/plates.js js/crust.js js/perf.js js/ui.js js/render.js js/sim.js
 PASS  the DOM stub found every id in index.html   bar,sGeo,vGeo,sErupt,vErupt,presets,bMesh,stage,sVZoom,wrap,c,hud,axis,sHZoom,cScale,vZoom,help
 PASS  the preset buttons come from index.html   def,ovw,cru,bas
 PASS  page loaded and started the frame loop
@@ -35,9 +35,9 @@ PASS  zoom clamped and came back   kx=117187.5
 
 D. probe, mesh, keys
 PASS  cursor readout built   "40027.8 km  -108 km | 2.34 km/px  713 m/px"
-PASS  geology probe built   "col 513  plate 7  age 830.3 Myr"
-PASS  probe names a layer or the mantle   fel 47.0  maf 0.0  sed 0.1 km
-PASS  probe in the sky reads air/water   fel 47.0  maf 0.0  sed 0.1 km
+PASS  geology probe built   "col 513  plate 7  age 732.0 Myr"
+PASS  probe names a layer or the mantle   fel 44.0  maf 0.0  sed 0.1 km
+PASS  probe in the sky reads air/water   fel 44.0  maf 0.0  sed 0.1 km
 PASS  m toggles the mesh overlay
 PASS  m toggles it back
 PASS  preset button 3 = crust x10   rel 0.00e+0  got 234.375  want 234.375
@@ -59,8 +59,8 @@ PASS  the checkbox turns the scale lines off
 PASS  g turns them back on and re-ticks the checkbox
 
 E. determinism
-PASS  two fresh 1000-frame runs are bit-identical   816544722|3778018669,3219501952,3788145402,3620133688 vs 816544722|3778018669,3219501952,3788145402,3620133688
-PASS  a different seed diverges   253917652|609912025,1928876461,1656449407,1884274477
-PASS  the state hash is not degenerate   816544722|3778018669,3219501952,3788145402,3620133688
+PASS  two fresh 1000-frame runs are bit-identical   3936532718|3778018669,3219501952,3788145402,3620133688 vs 3936532718|3778018669,3219501952,3788145402,3620133688
+PASS  a different seed diverges   3076157710|609912025,1928876461,1656449407,1884274477
+PASS  the state hash is not degenerate   3936532718|3778018669,3219501952,3788145402,3620133688
 
 ALL PASS (52 checks)

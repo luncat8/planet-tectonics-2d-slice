@@ -99,6 +99,63 @@ COL.removeTop = function (c, amount) {
 	return amount - left;
 };
 
+// drop layer k and let the beds above it ride down (deposits above follow)
+COL.removeAt = function (c, k) {
+	var LC = P.layerCap, b = c * LC, n = S.colNL[c], j;
+	for (j = k; j < n - 1; j++) {
+		S.layTh[b + j] = S.layTh[b + j + 1];
+		S.layLi[b + j] = S.layLi[b + j + 1];
+		S.layAg[b + j] = S.layAg[b + j + 1];
+		S.layFl[b + j] = S.layFl[b + j + 1];
+	}
+	S.colNL[c] = n - 1;
+	for (j = 0; j < S.nDep; j++) {
+		if (S.depCol[j] === c && S.depLay[j] > k) S.depLay[j]--;
+	}
+};
+
+// Gravitational collapse transport (crust.js K5): move `volume` (m2 of crust per unit
+// depth into the page) of felsic crust from `from` to the top of `to`. The two columns
+// have different widths, so the same volume is a different thickness on each side — that
+// is the whole point of keeping the flux in volume units. Collapse carries the upper
+// crust, so the material is peeled off the topmost felsic beds and the beds above them
+// ride down; the receiver gets one new felsic bed, or a thicker top bed if it already
+// ends in felsic (collapse reworks the surface, it does not bury a new bed under it, and
+// this keeps the stack from filling with metre-scale beds). A deposit in a bed that is
+// fully taken follows it. hFel is a cache of the stack, so the volume is clamped to it
+// and both caches are rebuilt.
+COL.collapseMove = function (from, to, volume) {
+	var LC = P.layerCap, bf = from * LC, bt = to * LC, k, n, t, take, moved = 0, age = 0;
+	var peel = volume / S.colW[from], grow;
+	if (peel > S.hFel[from]) peel = S.hFel[from];
+	if (!(peel > 0)) return 0;
+	grow = peel * S.colW[from] / S.colW[to];
+	n = S.colNL[from];
+	for (k = n - 1; k >= 0; k--) {
+		if (S.layLi[bf + k] !== P.LITH.fel) continue;
+		age = S.layAg[bf + k];
+		break;
+	}
+	if (S.colNL[to] > 0 && S.layLi[bt + S.colNL[to] - 1] === P.LITH.fel) {
+		k = S.colNL[to] - 1;
+		S.layTh[bt + k] += grow;
+		if (S.layAg[bt + k] < age) S.layAg[bt + k] = age;
+	} else this.push(to, grow, P.LITH.fel, age, 0);
+	for (k = n - 1; k >= 0 && moved < peel; k--) {
+		if (S.layLi[bf + k] !== P.LITH.fel) continue;
+		t = S.layTh[bf + k];
+		take = t > peel - moved ? peel - moved : t;
+		moved += take;
+		S.layTh[bf + k] = t - take;
+		if (S.layTh[bf + k] > 0) break;
+		this.moveDeposits(from, k, to, S.colNL[to] - 1);
+		this.removeAt(from, k);
+	}
+	this.sums(from);
+	this.sums(to);
+	return moved * S.colW[from];
+};
+
 // the layer at depth d below the column's surface, or -1 below the whole stack
 COL.layerAt = function (c, d) {
 	var LC = P.layerCap, b = c * LC, cum = 0, k;
@@ -255,6 +312,15 @@ COL.initFanT = function () {
 	this.lidFan();
 };
 
+// wrapped gap from the left neighbour of column i to column i (the whole wrap for a
+// single column, whose cell is everything)
+COL.gapLeft = function (i, n) {
+	var d;
+	if (n === 1) return P.wrap;
+	d = S.colX[i] - S.colX[i > 0 ? i - 1 : n - 1];
+	return d < 0 ? d + P.wrap : d;
+};
+
 // Deep fan rows are coarse (16 cells of 2500 km at 50 km depth), so a cell must not
 // take the lid of whichever column owns its centre. Each column spreads its lid over the
 // cells it overlaps; a cell blends lid and advected mantle by the covered fraction
@@ -274,12 +340,19 @@ COL.lidFan = function () {
 			dLith = this.lithDepth(S.colAge[i]);
 			if (d >= dLith) continue;
 			val = -P.lithCold * Math.min(1, S.colAge[i] / P.thermAgeCap) * (1 - d / dLith);
-			a = S.colX[i];
+			// the column's own cell: the midpoint of its left gap to the midpoint of its
+			// right gap (S.widths). That cell is not centred on x unless the gaps are
+			// equal, and the bands may start negative or end past the wrap — both are
+			// handled by the modulo below. Centring a band of width colW on x instead
+			// makes neighbouring bands overlap, and an overlap of one part in 1e13 is
+			// enough to break the convex blend (measured: Tf undershoots -lithCold).
+			a = S.colX[i] - 0.5 * this.gapLeft(i, n);
 			b = a + S.colW[i];
 			for (j = Math.floor(a / pitch); j * pitch < b; j++) {
 				lo = a > j * pitch ? a : j * pitch;
 				hi = b < (j + 1) * pitch ? b : (j + 1) * pitch;
 				jj = j % C;
+				if (jj < 0) jj += C;
 				acc[jj] += (hi - lo) * val;
 				cov[jj] += hi - lo;
 			}
@@ -315,6 +388,8 @@ COL.histLP = new Int32Array(P.colCap);
 COL.histAge = new Float64Array(P.colCap);
 COL.histSlow = new Float64Array(P.colCap);
 COL.map = new Int32Array(P.colCap);
+COL.birthSlot = new Int32Array(P.colCap);
+COL.isNew = new Uint8Array(P.colCap);      // final index -> born in this frame's K4
 COL.sortCompare = function (a, b) { return S.colX[a] - S.colX[b] || a - b; };
 
 COL.orderView = function (n) {
@@ -384,22 +459,23 @@ COL.intents = function () {
 		if (d <= 0) d += P.wrap;
 		e = S.edge[i];
 		if (e === P.EDGE.open && d > 2 * P.rGap * P.w0) this.intent[i] = 1;
+		// relN < 0, not < -epsHi: the hysteresis owns the boundary *state*, but two
+		// columns that already overlap and are still closing must resolve. Widths come
+		// from spacing, so an unresolved overlap squeezes a column toward zero width and
+		// its volume-conserving stack toward kilometre-scale spikes.
 		if ((e === P.EDGE.subduct || e === P.EDGE.collide) && d < P.rContact * P.w0 &&
-			S.edgeRelN[i] < -P.epsHi) this.intent[i] = 2;
+			S.edgeRelN[i] < 0) this.intent[i] = 2;
 	}
 };
 
 // During K4, layTh stores volume (m3 per unit section depth), not thickness.
-// This lets every transfer and merge be exact before final Voronoi widths are known.
-COL.transfer = function (from, to, fraction, sedimentOnly) {
-	var b = from * P.layerCap, k, t, lith;
+// This lets every transfer and merge be exact before final widths are known.
+COL.transfer = function (from, to, fraction) {
+	var b = from * P.layerCap, k, t;
 	for (k = 0; k < S.colNL[from]; k++) {
-		lith = S.layLi[b + k];
-		if (sedimentOnly && this.CLASS[lith] !== 0) continue;
-		if (!sedimentOnly && this.CLASS[lith] === 2) continue;
 		t = S.layTh[b + k] * fraction;
 		S.layTh[b + k] -= t;
-		this.push(to, t, lith, S.layAg[b + k], S.layFl[b + k]);
+		this.push(to, t, S.layLi[b + k], S.layAg[b + k], S.layFl[b + k]);
 	}
 };
 
@@ -440,19 +516,34 @@ COL.consume = function (i, j) {
 	this.redirect[loser] = winner;
 };
 
+// One birth per qualifying gap (design §4.3): the newborn sits at the gap midpoint,
+// joins the left plate (the wrapped seam too) and starts hot (age 0, damage 0.6). Both
+// donor sets continental (mean hFel over K columns >= hRiftBreakup) -> a rift column;
+// otherwise the mantle sources fresh oceanic crust of hMafNew(Tm) over the newborn's own
+// width, recorded in ledProd. Either way the *material* of the newborn comes from the
+// territory it takes (COL.inherit), not from a share of the K donors: in 1D the gap is
+// already owned by the two columns beside it and has been stretched thin by the opening,
+// while the reference's 1/(K+1) share fills an *empty* fixed grid cell. Taking 1/(K+1)
+// from each of 2K donors packed 1.5 columns of crust into a half-width cell — a 69 km
+// spike with +6 km of relief at every rift axis instead of the design's rift valley, and
+// the thickest column then won every C-C collision (347 km of crust, 55 km of relief
+// after 1 Gyr). Ore potentials are concentrations (0..1, design §4.7), so they follow the
+// territory as a weighted mean and stay bounded instead of summing past 1.
 COL.rift = function (i, j, birth, Tm) {
-	var n = S.nCol, d, a, b, o, v, leftFel = 0, rightFel = 0;
-	var donors = true, fraction = 1 / (P.K + 1), f;
+	var n = S.nCol, d, a, b, gap, leftFel = 0, rightFel = 0, continental = true, f;
 	for (d = 0; d < P.K; d++) {
 		a = (i - d + n) % n; b = (j + d) % n;
-		if (this.dead[a] || this.dead[b]) donors = false;
+		if (this.dead[a] || this.dead[b]) continental = false;
 		leftFel += S.hFel[a]; rightFel += S.hFel[b];
 	}
-	donors = donors && leftFel >= P.K * P.hRiftBreakup && rightFel >= P.K * P.hRiftBreakup;
+	continental = continental &&
+		leftFel >= P.K * P.hRiftBreakup && rightFel >= P.K * P.hRiftBreakup;
+	gap = S.colX[j] - S.colX[i];
+	if (gap < 0) gap += P.wrap;
 	for (var field = 0; field < this.fields.length; field++) S[this.fields[field]][birth] = 0;
 	S.colNL[birth] = 0;
 	S.colW[birth] = 1; // K4 stores layer volumes until final widths are known
-	S.colX[birth] = (S.colX[i] + (S.colX[j] + (j <= i ? P.wrap : 0))) * 0.5 % P.wrap;
+	S.colX[birth] = (S.colX[i] + gap * 0.5) % P.wrap;
 	S.colPlate[birth] = S.colPlate[i];
 	S.colU[birth] = S.colU[i];
 	S.colAge[birth] = 0;
@@ -464,31 +555,58 @@ COL.rift = function (i, j, birth, Tm) {
 	S.edgeRPlate[birth] = -1;
 	S.edge[birth] = P.EDGE.neutral;
 	S.edgeAge[birth] = 0; S.edgeSlow[birth] = 0;
-	if (!donors) {
-		f = P.hMafNewBase * (1 + P.hMafNewTm * Math.max(0, Tm - 1));
-		// Half the opened gap is the newborn's initial width; final width is
-		// computed only after all births. The material is a mantle source.
-		f *= (S.colX[j] - S.colX[i] + (j <= i ? P.wrap : 0)) * 0.5;
-		this.push(birth, f, P.LITH.maf, 0, P.FLAG.wet);
-		S.ledProd[P.LITH.maf] += f;
-		S.oVms[birth] = (S.oVms[i] + S.oVms[j]) * 0.5;
-		return;
-	}
-	for (d = 0; d < P.K; d++) {
-		a = (i - d + n) % n; b = (j + d) % n;
-		this.transfer(a, birth, fraction, false);
-		this.transfer(b, birth, fraction, false);
+	if (continental) return;
+	// the newborn's final width is exactly half the gap (it sits at the midpoint), so
+	// hMafNew * gap/2 is the fresh crust volume; it becomes the basement under the
+	// inherited sliver. VMS seeding at oceanic birth is M6 (design §4.7).
+	f = P.hMafNewBase * (1 + P.hMafNewTm * Math.max(0, Tm - 1)) * gap * 0.5;
+	this.push(birth, f, P.LITH.maf, 0, P.FLAG.wet);
+	S.ledProd[P.LITH.maf] += f;
+};
+
+// The gap the column `q` had on one side before this frame's births: twice the final
+// gap when a newborn sits in it (a newborn is placed at the gap midpoint).
+COL.preGap = function (st, count, q, dir) {
+	var o = dir > 0 ? (q + 1 < count ? q + 1 : 0) : (q > 0 ? q - 1 : count - 1);
+	var g = dir > 0 ? st.colX[o] - st.colX[q] : st.colX[q] - st.colX[o];
+	if (g < 0) g += P.wrap;
+	return this.isNew[o] ? 2 * g : g;
+};
+
+// A newborn takes the territory its two parents lose, and the material that goes with
+// it: fraction = (width lost) / (the parent's width before the birth). Every thickness
+// is therefore unchanged by the birth — the parents keep theirs and the newborn is the
+// width-weighted mean of the two, exactly what the renderer interpolates between them —
+// so the profile stays continuous and mass stays inside the columns (no ledger entry).
+// Runs while colW is still the volume-mode 1, so it reads positions, not widths.
+COL.inherit = function (st, count) {
+	var i, im, ip, gL, gR, wL, wR, f, o, v;
+	if (count < 3) return;
+	for (i = 0; i < count; i++) {
+		if (!this.isNew[i]) continue;
+		im = i > 0 ? i - 1 : count - 1;
+		ip = i + 1 < count ? i + 1 : 0;
+		gL = st.colX[i] - st.colX[im];
+		gR = st.colX[ip] - st.colX[i];
+		if (gL < 0) gL += P.wrap;
+		if (gR < 0) gR += P.wrap;
+		// half of each final gap is what the newborn took from that parent
+		wL = 0.5 * (this.preGap(st, count, im, -1) + 2 * gL);
+		wR = 0.5 * (2 * gR + this.preGap(st, count, ip, 1));
+		f = wL > 0 ? 0.5 * gL / wL : 0;
+		if (f > 0) this.transfer(im, i, f);
+		f = wR > 0 ? 0.5 * gR / wR : 0;
+		if (f > 0) this.transfer(ip, i, f);
 		for (o = 0; o < this.oreFields.length; o++) {
-			v = S[this.oreFields[o]];
-			v[birth] += (v[a] + v[b]) * fraction;
-			v[a] *= 1 - fraction; v[b] *= 1 - fraction;
+			v = st[this.oreFields[o]];
+			v[i] = (v[im] * gL + v[ip] * gR) / (gL + gR);
 		}
 	}
 };
 
 COL.k4 = function (st, dt, t, Tm) {
 	var self = COL;
-	if (!(dt > 0)) return;
+	if (!(dt > 0)) return false;
 	var n = st.nCol, i, j, k, b, count = 0, births = 0, appended = 0, freed = 0, reuse = 0, slot, oldN = n, any = false;
 	self.intents();
 	for (i = 0; i < n; i++) if (self.intent[i]) { any = true; break; }
@@ -499,7 +617,6 @@ COL.k4 = function (st, dt, t, Tm) {
 			for (k = 0; k < st.colNL[i]; k++) st.layTh[b + k] *= st.oldW[i] / st.colW[i];
 			self.sums(i);
 		}
-		SURF.profile();
 		return false;
 	}
 	self.dead.fill(0);
@@ -532,7 +649,7 @@ COL.k4 = function (st, dt, t, Tm) {
 			self.dead[slot] = 2; // occupied by a birth, but still an old consumed record
 		}
 		self.rift(i, j, slot, Tm);
-		births++;
+		self.birthSlot[births++] = slot;
 	}
 	// Follow redirects before sorting. A consumed vent survives on the margin; a
 	// deposit tied to a destroyed bed loses its horizon instead of pointing into
@@ -569,6 +686,9 @@ COL.k4 = function (st, dt, t, Tm) {
 		st.edgeAge[k] = self.histAge[i]; st.edgeSlow[k] = self.histSlow[i];
 		st.edgeRPlate[k] = self.histRP[i];
 	}
+	self.isNew.fill(0, 0, count);
+	for (i = 0; i < births; i++) self.isNew[self.map[self.birthSlot[i]]] = 1;
+	self.inherit(st, count);
 	st.widths();
 	for (i = 0; i < count; i++) {
 		b = i * P.layerCap;
@@ -576,7 +696,6 @@ COL.k4 = function (st, dt, t, Tm) {
 		self.sums(i);
 	}
 	self.plates();
-	SURF.profile();
 	return true;
 };
 
@@ -611,21 +730,57 @@ COL.events = function (st) {
 		for (i = 0; i < n; i++) {
 			if (st.colPlate[i] === p && st.colPlate[(i + n - 1) % n] !== p) { start = i; break; }
 		}
-		if (start < 0 || st.plN[p] < 2 * P.minPlateCells) continue;
-		for (i = P.minPlateCells; i <= st.plN[p] - P.minPlateCells; i++) {
-			c = (start + i) % n;
-			if (st.damage[c] < P.splitDamage) continue;
-			b = st.nPl++;
-			st.plU[b] = st.plU[p]; st.plUP[b] = st.plUP[p];
-			st.plDmg[b] = st.plDmg[p];
-			for (k = i; k < st.plN[p]; k++) st.colPlate[(start + k) % n] = b;
-			st.damage[c] = 0.5;
-			st.edgeRPlate.fill(-1, 0, n);
-			COL.plates();
-			return true;
-		}
+		// start < 0 means the plate owns the whole wrap: cutting a corridor out of a closed
+		// ring leaves one connected body, so there is nothing to split off
+		if (start < 0) continue;
+		i = COL.splitScan(st, p, start, n);      // SIM calls events without a receiver
+		if (i < 0) continue;
+		b = st.nPl++;
+		st.plU[b] = st.plU[p]; st.plUP[b] = st.plUP[p];
+		st.plDmg[b] = st.plDmg[p];
+		for (k = i; k < st.plN[p]; k++) st.colPlate[(start + k) % n] = b;
+		for (k = COL.corStart; k < COL.corStart + COL.corLen; k++) st.damage[(start + k) % n] = 0.5;
+		st.edgeRPlate.fill(-1, 0, n);
+		COL.plates();
+		return true;
 	}
 	return false;
+};
+
+// Where plate p splits, as an offset from its first cell, or -1. Reference §5: the cells
+// with damage >= splitDamage form a corridor, and the plate splits only where removing that
+// corridor leaves two bodies of >= minPlateCells. In 1D *every* cell is a cut, so splitting
+// at the first damaged cell fragments the planet as soon as damage is widespread (measured:
+// plateCap 32 plates, 449 of 583 columns above splitDamage, 1000 km orogens). The bodies are
+// the contiguous intact runs, which makes the rule self-limiting exactly as it is in 2D,
+// where a wide damaged zone disconnects nothing. The corridor's cells go to the nearer
+// daughter and their damage drops to 0.5, so the rift stays a weak line that cannot re-split.
+COL.corStart = 0;
+COL.corLen = 0;
+COL.splitScan = function (st, p, start, n) {
+	var L = st.plN[p], i, j, c, left = 0, cor = -1, corLen = 0, leftRun = 0, rightRun = 0;
+	if (L < 2 * P.minPlateCells) return -1;
+	for (i = 0; i < L; i++) {
+		c = (start + i) % n;
+		if (st.damage[c] >= P.splitDamage) {
+			if (cor < 0) { cor = i; corLen = 0; leftRun = left; }
+			corLen++;
+			left = 0;
+			continue;
+		}
+		if (cor < 0) { left++; continue; }
+		rightRun = 0;
+		for (j = i; j < L && st.damage[(start + j) % n] < P.splitDamage; j++) rightRun++;
+		if (leftRun >= P.minPlateCells && rightRun >= P.minPlateCells) {
+			COL.corStart = cor;
+			COL.corLen = corLen;
+			return cor + (corLen >> 1);
+		}
+		cor = -1;
+		left = rightRun;
+		i += rightRun - 1;
+	}
+	return -1;
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = COL;

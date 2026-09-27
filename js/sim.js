@@ -12,12 +12,14 @@ var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js
 var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COL;
 var MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.MNT;
 var PLT = (typeof module !== 'undefined' && module.exports) ? require('./plates.js') : window.PLT;
+var CRU = (typeof module !== 'undefined' && module.exports) ? require('./crust.js') : window.CRU;
+var SURF = (typeof module !== 'undefined' && module.exports) ? require('./surface.js') : window.SURF;
 
 var SIM = {
 	// kernel slots; each is (state, dtGeo Myr, t Myr, Tm) and must no-op at dtGeo = 0
 	k: [null, MNT.k1, PLT.k2, PLT.k3, function (st, dt, t, Tm) {
 		if (COL.k4(st, dt, t, Tm)) { PLT.classify(st, 0); PLT.trench(st); }
-	}, null, null, null, null, null],
+	}, CRU.k5, SURF.k6, null, null, null],
 	dG: 0,          // Myr per frame, from the plates slider
 	t: 0,           // Myr
 	tErupt: 0,      // s, the eruptive clock (the only seconds quantity)

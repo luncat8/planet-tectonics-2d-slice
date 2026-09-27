@@ -43,4 +43,12 @@ SURF.profile = function () {
 	}
 };
 
+// K6 (design §3): the profile is recomputed once per frame, after K3-K5 have settled the
+// topology, zDyn and the collapse fluxes — never inside a kernel that only half-finished
+// the surface. Erosion, one-hop routing and deposition join this kernel in M3.
+SURF.k6 = function (st, dt) {
+	if (!(dt > 0)) return;
+	SURF.profile();      // SIM invokes kernels without a receiver
+};
+
 if (typeof module !== 'undefined' && module.exports) module.exports = SURF;

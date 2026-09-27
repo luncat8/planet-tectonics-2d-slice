@@ -175,5 +175,73 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   newborns. Clearing only the former `nCol` leaves stale marks at append slots after a
   consume, causing an intermittent unaccounted birth in long runs. A 700 Myr ledger
   fixture catches this whereas a 100 Myr fixture does not.
-- SIM invokes kernel/event function references without a receiver. Event functions that
-  call helpers must address their module explicitly, not rely on `this`.
+- SIM invokes kernel/event function references without a receiver, so `this` is undefined in
+  strict mode. Kernels and event hooks that call helpers must address their module explicitly
+  (`CRU.zDyn(...)`, `COL.splitScan(...)`), not rely on `this` — hit twice, in M2.2 events and
+  again in M2.3 K5/K6.
+
+## M2.3 stencils on variable-width columns
+
+- Write every neighbour stencil as a **face flux**, never as a per-column Laplacian: one number
+  per face `F_i = k*dt*w0^2*(v[i+1]-v[i])/gap`, applied as `v[i] += (F_i - F[i-1])/colW[i]`.
+  At uniform spacing it collapses to the reference's `k*dt*SUM(v_j - v_i)` so the constant keeps
+  its 1/Myr meaning, the fluxes telescope so `SUM(colW*v)` is conserved by the diffusion alone,
+  and it stays bounded when a contact squeezes two columns together. A true Laplacian with a
+  `1/gap^2` coefficient goes unstable as soon as columns close.
+- Floor the face gap (`max(gap, faceGapMin*w0)`). Without it an overlap of 0.05*w0 asks for a
+  200x smaller step than the frame provides, and the explicit stencil explodes.
+- Pick a sign convention and write it down at the flux site: `F_i > 0` = inflow into column `i`
+  across its **right** face. A collapse diffusion that moves material from `i` to `i+1` when
+  `F_i > 0` feeds thick -> thick and runs away exponentially (measured 2.87e6 km of crust in
+  1200 frames). The bug is invisible in a conservation check — it conserves mass perfectly while
+  it blows up.
+- A flux between columns of different widths is a **volume** (m^2 of section); a stack push takes
+  a **thickness**. Convert at both ends (`peel = volume/colW[from]`,
+  `grow = peel*colW[from]/colW[to]`) or the receiver gains kilometres per frame.
+- Relaxation + explicit diffusion are not jointly frame-rate independent: the exact exponential
+  pull has effective rate `(1-e^-dt/tau)/dt = 1/tau - dt/2tau^2`, so the steady state of a running
+  source drifts with dt (0.49% between 50 and 200 kyr/frame here). Measure it, assert it inside
+  the tolerance the plan already allows, and say why in the fixture — don't chase bitwise.
+- Transport that changes a thickness cache (`hFel`) must move **real beds**, or the cache and the
+  stack disagree at the next `sums()`. Peel the donor's topmost beds of that lithology (beds above
+  ride down, deposits follow their horizon) and thicken the receiver's top bed if it is the same
+  lithology instead of pushing a new one — otherwise the stack fills with metre-scale beds and
+  compaction churns.
+
+## M2.3 1D degeneracies of 2D rules
+
+- A plate-split rule that reads "the damaged cells form a corridor; split if removing them leaves
+  two bodies" is self-limiting in 2D (a wide damaged zone disconnects nothing) and **not** in 1D,
+  where every single cell is a cut. Ported literally it fragments the planet to `plateCap` as soon
+  as damage saturates: 8 -> 32 plates, 449 of 583 columns above threshold, 1000 km orogens. The
+  1D reading is the contiguous **intact** runs; both must be >= `minPlateCells`. A plate that owns
+  the whole wrap is a closed ring and can never be split by a corridor.
+- All shortening at a 1D boundary lands on one column (no out-of-plane spread), so gravitational
+  collapse diffusion — the reference's height cap — can only spread it to neighbours that are
+  themselves above the threshold. It helps a lot (946 -> 142 km peak crust over 1 Gyr) but it is
+  not the cap; the erosion knee law is (~3 km/Myr at 17 km of relief, ~620 km/Myr at 100 km).
+  When a 1D port exaggerates orogens, look for the missing sink, don't clamp thickness.
+- Fixed-area birth mechanics don't port either: the reference fills an *empty* grid cell from
+  2K donors at `1/(K+1)` each; with variable-width columns the gap is already owned and stretched,
+  so the newborn must inherit the material of the territory it takes. The donor share packs 1.5
+  columns of crust into a half-width cell — a spike where the design asks for a rift valley.
+
+## M2.3 harness and measurement
+
+- Restore a kernel slot **by saved value**. `SIM.add(5, null)` was correct when K5 was empty and
+  silently disabled the column update for every fixture below it once K5 shipped; the only clue
+  was a long-run printout that matched the no-K5 numbers exactly. Print a physical number (peak
+  relief, plate count) from every long-run fixture — a green check on a disabled kernel still
+  passes its own assertions.
+- Bench two variants **interleaved in one process** (`a,b,a,b,...`, min of N). Separate runs in
+  this sandbox differ by 2x from CPU contention alone (the same code measured 3.9 ms and 7.2 ms
+  minutes apart); interleaving cancels it and made a +8% cost visible as +8% instead of +30%.
+- Give every new rendering/physics fixture a **negative control**: revert the implementation,
+  re-run, and confirm the fixture fails. The bilinear-sampling fixture reports 3-bin steps and
+  0 lit pixels past half a pitch under nearest-node, 1 bin and 267 px under bilinear — without
+  that run it was only an assertion, not evidence.
+- Hoist anything constant across a contiguous run: the fan is a radial mesh, so one ring owns a
+  run of 3-27 screen rows and its sampled colour at a given x is the same for all of them.
+  Sampling and shading the ring once per screen column and stamping the run paid for adding
+  bilinear interpolation several times over (default window 3.90 -> 2.94 ms). Look for the run
+  structure before optimising the inner arithmetic.

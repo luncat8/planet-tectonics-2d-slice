@@ -3,13 +3,13 @@ M2.0 state, ledger, event order
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
 PASS  zero geological time leaves tectonic state unchanged
 PASS  edge history starts invalid
-PASS  mixed merge ledger lith 0   rel 0.00e+0  got 33120000784.307064  want 33120000784.307064
-PASS  mixed merge ledger lith 1   rel 0.00e+0  got 714595282782.2251  want 714595282782.2251
-PASS  mixed merge ledger lith 2   rel 0.00e+0  got 335331177336.2627  want 335331177336.2627
+PASS  mixed merge ledger lith 0   rel 0.00e+0  got 33120000784.30707  want 33120000784.30707
+PASS  mixed merge ledger lith 1   rel 0.00e+0  got 714595282782.2257  want 714595282782.2257
+PASS  mixed merge ledger lith 2   rel 0.00e+0  got 335331177336.26263  want 335331177336.26263
 PASS  mixed merge ledger lith 3   rel 0.00e+0  got 0  want 0
 PASS  mixed merge ledger lith 4   rel 0.00e+0  got 0  want 0
 PASS  mixed merge ledger lith 5   rel 0.00e+0  got 0  want 0
@@ -17,7 +17,7 @@ PASS  mixed merge records one event
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
 PASS  all due events execute after K4 and before K5
 PASS  reset is deterministic, including new buffers
@@ -32,18 +32,18 @@ PASS  flow speed bounded by the mode sum   8.51 cm/yr
 PASS  constant T is preserved (times the relaxation)   0.00e+0
 PASS  back-trace recurrence equals the closed-form flow   1.03e-14
 PASS  T stays finite and inside its initial bounds over 40 Myr   [-0.550, 0.000]
-PASS  plate speeds finite and within vMax   -1.24 0.09 2.85 0.01 -0.62 0.38 3.29 -1.08 cm/yr
-PASS  only newborn ridges have damage (not neutral contacts)
+PASS  plate speeds finite and within vMax   -1.44 0.09 3.28 -0.92 -1.61 0.32 2.82 -1.05 cm/yr
+PASS  damage stays a fraction after 40 Myr of real tectonics   383/521 columns damaged, max 1.000
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 7.45e-9  got 40030173.592041135  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 9.69e-8  got 40030173.592041045  want 40030173.59204114
 PASS  plate counts agree
 
 M2.1 plate solve
 PASS  dt = tauOmega gives the width-weighted mean fit   0.00e+0
 PASS  columns carry their plate velocity
-PASS  relaxation moves u by dt/tauOmega of the gap   rel 1.46e-11  got 29820.99852559458  want 29820.998525594594
+PASS  relaxation moves u by dt/tauOmega of the gap   rel 0.00e+0  got 29147.74903817362  want 29147.74903817362
 PASS  speed clamps at vMax
 PASS  cD grows as the mantle cools (stagnant lid)
 
@@ -70,34 +70,64 @@ PASS  ridge push is downslope on oceanic columns only
 M2.2 transport and contact fixtures
 PASS  wrap gather carries stack, marker, vent and deposit together
 PASS  rigid movement retains every spacing through seam
-PASS  rigid wrap per-lith volume ledger   max relative 1.70e-16
+PASS  rigid wrap per-lith volume ledger   max relative 0.00e+0
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
 PASS  5 cm/yr rigid plate translates 2000 km including the wrap   rel 2.33e-10  got 2007818.3932796954  want 2007818.3932796957
-PASS  rigid plate carries its own width through 40 translations   rel 2.04e-10  got 78183.93279695557  want 78183.93279695537
-PASS  no rigid spacing drift after 1e5 frames   rel 2.62e-10  got 78183.93279695511  want 78183.93279695537
-PASS  rigid 2000 km + 1e5 frames per-lith volume ledger   max relative 1.24e-16
+PASS  rigid plate carries its own width through 40 translations   rel 8.00e-10  got 78183.93279695604  want 78183.93279695524
+PASS  no rigid spacing drift after 1e5 frames   rel 1.31e-10  got 78183.93279695511  want 78183.93279695524
+PASS  rigid 2000 km + 1e5 frames per-lith volume ledger   max relative 1.27e-16
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
 PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
 PASS  plate counts agree
 PASS  one opening creates one oceanic packet on the left plate
-PASS  oceanic ridge per-lith volume ledger   max relative 0.00e+0
+PASS  the mantle source is hMafNew over the newborn own width   rel 0.00e+0  got 831877044.959605  want 831877044.959605
+PASS  fresh oceanic crust is at least hMafNew thick   25.07 km
+PASS  oceanic ridge per-lith volume ledger   max relative 1.82e-16
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
-PASS  continental opening shares felsic beds and thins donors
+PASS  continental opening creates one rift column on the left plate
+PASS  the newborn is the mean thickness of the two margins it was cut from   rel 0.00e+0  got 43137.44888894816  want 43137.44888894816
+PASS  the newborn inherits beds, it does not invent them
 PASS  continental rift per-lith volume ledger   max relative 0.00e+0
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  a diverging uniform pair spawns exactly one column   20 frames
+PASS  the newborn sits between the two margins   nb=5
+PASS  opening thinned both margins by the same factor   rel 1.82e-11  got 27870.523923220677  want 27870.523923220695
+PASS  and the birth left both at the newborn thickness   rel 1.09e-11  got 27870.523923220688  want 27870.523923220677
+PASS  the rift axis is a valley below the inland crust   z=-788 m inland 400 m
+PASS  the stretched margins stay below the inland thickness   27.87 km of 35.00
+PASS  a continental rift sources nothing from the mantle
+PASS  uniform continental rift per-lith volume ledger   max relative 1.74e-16
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 7.45e-9  got 40030173.59204115  want 40030173.59204114
+PASS  plate counts agree
+PASS  ore potentials stay concentrations in 0..1 through a birth   oArc=0.9
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  a slow closing overlap is forced to a contact   edge=3
+PASS  and consumed instead of interpenetrating
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
 PASS  C-C contact consumes exactly the thinner column
 PASS  collision rehomes deposit horizon and vent to winner
@@ -105,69 +135,122 @@ PASS  collision per-lith volume ledger   max relative 0.00e+0
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
 PASS  subduction consumes ocean and leaves half sediment in prism
-PASS  subduction per-lith volume ledger   max relative 1.82e-16
+PASS  subduction per-lith volume ledger   max relative 0.00e+0
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
 PASS  consumed left owner hands its edge history to new left neighbour
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
 PASS  one newly slow frame cannot suture an old fast collision
 PASS  20-Myr slow C-C suture merges exactly one plate
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
 PASS  damaged corridor splits two sufficiently large daughter plates
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
-PASS  wrapped last-to-first gap produces one left-plate packet
-PASS  seam opening per-lith volume ledger   max relative 5.10e-16
+PASS  widespread damage leaves every plate intact
+PASS  a multi-cell corridor splits at its midpoint, nearer daughter first
+PASS  the whole corridor becomes a weak line and cannot split again
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  a single planet-wide plate never splits
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  wrapped last-to-first gap produces one left-plate packet
+PASS  seam opening per-lith volume ledger   max relative 6.80e-16
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
 PASS  at colCap skipped birth is atomic
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
 PASS  a consumed slot is reused by a birth at colCap   n=768 skipped=0 prod=812381559.647954
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
-PASS  100 Myr evolving planet per-lith volume ledger   max relative 1.70e-16
+PASS  100 Myr evolving planet per-lith volume ledger   max relative 1.27e-15
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 5.22e-8  got 40030173.59204109  want 40030173.59204114
 PASS  plate counts agree
-PASS  700 Myr mixed-rate evolving planet (repeated births) per-lith volume ledger   max relative 3.72e-15
+PASS  700 Myr mixed-rate evolving planet (repeated births) per-lith volume ledger   max relative 7.30e-15
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 7.45e-9  got 40030173.59204115  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 8.20e-8  got 40030173.59204106  want 40030173.59204114
+PASS  plate counts agree
+
+M2.3 age, damage, zDyn, flexure, collapse
+PASS  K5/K6 at zero geological time change nothing
+PASS  thermal age grows by exactly dtGeo
+PASS  damage grows at kDam*ext/extRef/strength - kHeal*damage   rel 0.00e+0  got 0.5744230769230769  want 0.5744230769230769
+PASS  convergence has no damage source, only healing   rel 0.00e+0  got 0.4975  want 0.4975
+PASS  thick old crust is stronger than thin young crust   1.300 vs 0.300
+PASS  a hot mantle weakens the lithosphere
+PASS  strength stays inside its clamp
+PASS  damage saturates at 1 and never leaves 0..1   max 1.0000
+PASS  a running trench pulls the margin down (signed source)   -1727.1 m
+PASS  the depression is bounded by zTrench and dies away inland   -1727 / -466 / -125 / -2 m
+PASS  100 Myr at 50 kyr and at 200 kyr per frame agree within 1%   max drift 0.49% of zTrench
+PASS  flexure conserves SUM(w*zDyn) while relaxation decays it   rel 1.49e-8  got 77405989.66748153  want 77405989.66748154
+PASS  a localized load spreads to both neighbours symmetrically   4.950 / 980.149 / 4.950
+PASS  400 Myr of flexure stays finite and never amplifies
+PASS  a plateau above hCollapse spreads into both neighbours   78.200 km, neighbours 35.900
+PASS  collapse conserves felsic volume exactly   rel 0.00e+0  got 1404574352697.2922  want 1404574352697.2922
+PASS  collapse moves real beds, not just the cache   35.900 km in the neighbour bed
+PASS  the sediment cap rides down with the collapsed crust
+PASS  gravitational collapse per-lith volume ledger   max relative 0.00e+0
+PASS  collapse lowers the plateau (isostasy follows the beds)   8145.8 m of 8445.8
+PASS  nothing moves while every column is below hCollapse
+PASS  K5/K6 never touch the lithology ledger
+PASS  the collided crust stands higher through isostasy alone   -1827 -> 3288 m
+PASS  a frame ends with the profile recomputed from the final state
+PASS  500 Myr at 100 kyr/frame leaves no interpenetrating columns   min gap 0.635 w0
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 3.73e-8  got 40030173.592041105  want 40030173.59204114
+PASS  plate counts agree
+  500 Myr @100 kyr: n=597 plates=9 maxCrust=167 km maxRelief=22.0 km
+PASS  50 Myr at 10 kyr/frame is finite too   maxCrust 405 km
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 8.94e-8  got 40030173.59204105  want 40030173.59204114
 PASS  plate counts agree
 
 M2.1 determinism and finite state at every kernel boundary
 PASS  all buffers finite after every kernel (20 frames)
 PASS  same seed and dtGeo are bitwise deterministic (300 frames)
-PASS  sim frame (K0-K4) within the 4 ms budget   2.099 ms/frame, min of 7x20
+PASS  sim frame (K0-K6) within the 4 ms budget   1.639 ms/frame, min of 7x20
 
-ALL PASS (159 checks)
+ALL PASS (239 checks)

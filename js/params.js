@@ -114,21 +114,32 @@ var P = {
 	vColl: 2e5,
 	kArc: 8e3,
 	zTrench: 3e3,                // m
-	// surface (design §4.6)
+	// surface (design §4.4, §4.6)
 	tauDyn: 10,                  // Myr, zDyn relaxation
 	kFlex: 0.05,                 // /Myr
 	kCollapse: 0.02,             // /Myr
+	faceGapMin: 0.5,             // x w0: floor on the face gap of both column stencils
 	kEro: 0.05,                  // /Myr
 	zKnee: 9e3,
 	slopeRef: 0.01,
 	delta: 20,                   // m, one-hop routing threshold
 	kPlacer: 0.2,
-	// damage (design §4.2, §4.3)
+	// damage (design §4.2, §4.3) and lithosphere strength (design §4.4, reference §6.5):
+	// strength = clamp(sBase + sFelK*ss(hFel; sFelLo..sFelHi) + sAgeK*ss(age; sAgeLo..sAgeHi),
+	//                  sBase, sMax) / Tm
 	kDam: 0.05,                  // /Myr
-	kDamT: 0.02,                 // /Myr
+	kDamT: 0.02,                 // /Myr (reserved: no transverse velocity in 1D)
 	kHeal: 0.005,                // /Myr
 	extRef: 1e-2,                // 1/Myr (= 1e-8 /yr)
 	splitDamage: 0.8,
+	strBase: 0.3,
+	strFelK: 0.7,
+	strFelLo: 10e3,
+	strFelHi: 35e3,
+	strAgeK: 0.3,
+	strAgeLo: 20,                // Myr
+	strAgeHi: 200,               // Myr
+	strMax: 1.3,
 	// thermal (design §4.5, §4.8)
 	Tm0: 1.6,
 	tauCool: 2500,               // Myr
