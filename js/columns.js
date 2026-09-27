@@ -15,6 +15,7 @@ var COL = {
 	CLASS: new Uint8Array([0, 1, 2, 0, 2, 2]),
 	acc: new Float64Array(3),
 	removed: new Float64Array(3),
+	removedLi: new Float64Array(P.LITH.n),   // the same removal, split by lithology
 	wScratch: new Float64Array(16),
 	lidAcc: new Float64Array(P.nCols),
 	lidCov: new Float64Array(P.nCols),
@@ -84,15 +85,19 @@ COL.sums = function (c) {
 COL.sumsAll = function () { for (var i = 0; i < S.nCol; i++) this.sums(i); };
 
 // erosion intake (M3): take `amount` off the top, top layer first. Returns what was
-// actually removed and leaves the per-class split in COL.removed.
+// actually removed and leaves the per-class split in COL.removed and the per-lithology
+// split in COL.removedLi (the erosion kernel turns every removed rock into sediment,
+// which the mass ledger has to record as an explicit transformation).
 COL.removeTop = function (c, amount) {
-	var rem = this.removed, LC = P.layerCap, b = c * LC, left = amount, k, t, take, d;
+	var rem = this.removed, remLi = this.removedLi, LC = P.layerCap, b = c * LC, left = amount, k, t, take, d;
 	rem[0] = 0; rem[1] = 0; rem[2] = 0;
+	remLi.fill(0);
 	while (left > 0 && S.colNL[c] > 0) {
 		k = S.colNL[c] - 1;
 		t = S.layTh[b + k];
 		take = t > left ? left : t;
 		rem[this.CLASS[S.layLi[b + k]]] += take;
+		remLi[S.layLi[b + k]] += take;
 		left -= take;
 		if (take < t) { S.layTh[b + k] = t - take; break; }
 		// A depth-resolved deposit hosted by a removed top bed has no horizon

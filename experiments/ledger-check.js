@@ -4,7 +4,7 @@
 var L = require('./lib.js'), check = L.check;
 var P = L.mods.params, S = L.mods.state, SIM = L.mods.sim;
 var COL = L.mods.columns, SLAB = L.mods.slab, MAG = L.mods.magma;
-var PLT = L.mods.plates, GEO = L.mods.geom;
+var PLT = L.mods.plates, GEO = L.mods.geom, SURF = L.mods.surface;
 
 function sum(a) {
 	var v = 0, i;
@@ -66,6 +66,7 @@ check.ok('slab feeds a bounded cold anomaly into fan T', cold >= -P.lithCold - 1
 check.section('M4.2 plume head, chamber and LIP');
 check.planet(12);
 var c0 = MAG.nearest(S, S.plmX[0]), hMaf0 = S.hMaf[c0], prod0 = S.ledProd[P.LITH.maf];
+var lava0 = S.ledProd[P.LITH.lava], lavaMass0 = S.mass()[P.LITH.lava];
 S.plmY[0] = -5e3;
 S.plmStr[0] = 1;
 SIM.setGeo(50e3);
@@ -80,6 +81,10 @@ check.ok('a plume reaches the surface and swells', S.plmArrive[0] === 1 && S.plm
 check.ok('plume head supplies a chamber and grows a mafic LIP', S.meltPlume > 0 &&
 	(lava || S.meltSill > 0 || S.ledProd[P.LITH.maf] > prod0),
 	'melt ' + S.meltPlume.toFixed(0) + ' m2 led ' + S.ledProd[P.LITH.maf].toExponential(3));
+check.ok('the LIP credits lava production, not mafic melt',
+	S.ledProd[P.LITH.lava] > lava0 && S.mass()[P.LITH.lava] > lavaMass0,
+	'prod ' + (S.ledProd[P.LITH.lava] / 1e6).toFixed(1) + 'e6 m3 mass ' +
+	((S.mass()[P.LITH.lava] - lavaMass0) / 1e6).toFixed(1) + 'e6 m3');
 check.ok('all M4 buffers are finite', finite());
 
 check.section('M4.3 water, melt and active-mass ledger');
@@ -116,5 +121,69 @@ check.ok('cooling reaches the stagnant-lid speed scale', PLT.cD(T4) > 200 &&
 	P.vRef / PLT.cD(T4) < 1e3,
 	'cD(4 Gyr) ' + PLT.cD(T4).toFixed(1));
 check.ok('long M4 run remains finite', finite());
+
+check.section('M4.4 full pipeline: transformation accounting');
+// The M4.3 fixture above disables K5 and K6, so it cannot see erosion or arc/LIP
+// production. This one runs every kernel and demands the same closure: erosion
+// converts rock into sediment, a LIP stores lava, a chamber spill stores a sill —
+// each of those is a transfer between two ledger accounts, and a missing entry shows
+// up here as mass with no source (measured: +110e9 m3 of sediment in 150 Myr).
+check.planet(14);
+var fullMass = S.mass().slice();
+SIM.setGeo(50e3);
+SIM.run(800);
+var fullNow = S.mass(), fullWorst = 0, fl, lhsF, rhsF, errF;
+for (fl = 0; fl < P.LITH.n; fl++) {
+	lhsF = fullNow[fl] + S.ledCons[fl] + S.ledMixOut[fl];
+	rhsF = fullMass[fl] + S.ledProd[fl] + S.ledMixIn[fl];
+	errF = Math.abs(lhsF - rhsF) / Math.max(1, rhsF);
+	if (errF > fullWorst) fullWorst = errF;
+}
+check.ok('the complete K0-K9 pipeline keeps the per-lithology ledger closed',
+	fullWorst < 1e-9, 'worst rel ' + fullWorst.toExponential(2));
+
+// a felsic top bed, lifted above the erosion knee: what erosion removes is booked as
+// a rock-to-sediment transformation on both sides
+check.planet(15);
+var cEro = 0;
+S.colNL[cEro] = 0;
+COL.push(cEro, 20e3, P.LITH.fel, 100, 0);
+COL.sums(cEro);
+S.zDyn[cEro] = 8e3;
+var mixOut0 = S.ledMixOut[P.LITH.fel], mixIn0 = S.ledMixIn[P.LITH.sed];
+var eroMass = S.mass().slice();
+SURF.k6(S, 0.05, 0);
+check.ok('eroded rock is booked as a rock -> sediment transformation',
+	S.ledMixOut[P.LITH.fel] > mixOut0 && S.ledMixIn[P.LITH.sed] > mixIn0,
+	'out ' + ((S.ledMixOut[P.LITH.fel] - mixOut0) / 1e6).toFixed(2) + 'e6 m3 in ' +
+	((S.ledMixIn[P.LITH.sed] - mixIn0) / 1e6).toFixed(2) + 'e6 m3');
+var eroNow = S.mass(), eroWorst = 0, el;
+for (el = 0; el < P.LITH.n; el++) {
+	lhsF = eroNow[el] + S.ledCons[el] + S.ledMixOut[el];
+	rhsF = eroMass[el] + S.ledProd[el] + S.ledMixIn[el];
+	errF = Math.abs(lhsF - rhsF) / Math.max(1, rhsF);
+	if (errF > eroWorst) eroWorst = errF;
+}
+check.ok('one erosion step stays inside the ledger', eroWorst < 1e-12, 'worst rel ' + eroWorst.toExponential(2));
+
+// a chamber over its capacity spills a sill: the melt moves between two stored
+// lithologies, so the production entry has to move with it
+check.planet(16);
+var cSill = 5, mafBefore = S.ledProd[P.LITH.maf];
+S.colChamber[cSill] = 3 * P.chamberCap;
+var sillMass = S.mass().slice();
+SIM.setGeo(50e3);
+SIM.step();
+var sillNow = S.mass(), sillWorst = 0, sl;
+for (sl = 0; sl < P.LITH.n; sl++) {
+	lhsF = sillNow[sl] + S.ledCons[sl] + S.ledMixOut[sl];
+	rhsF = sillMass[sl] + S.ledProd[sl] + S.ledMixIn[sl];
+	errF = Math.abs(lhsF - rhsF) / Math.max(1, rhsF);
+	if (errF > sillWorst) sillWorst = errF;
+}
+check.ok('a spilled chamber is booked as mafic -> sill', S.meltSill > 0 && S.ledProd[P.LITH.sill] >= S.meltSill - 1e-6 &&
+	sillWorst < 1e-12,
+	'sill ' + (S.meltSill / 1e9).toFixed(3) + 'e9 m3, maf ' +
+	((S.ledProd[P.LITH.maf] - mafBefore) / 1e9).toFixed(3) + 'e9 m3, worst rel ' + sillWorst.toExponential(2));
 
 check.done();

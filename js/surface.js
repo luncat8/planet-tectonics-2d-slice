@@ -110,6 +110,18 @@ SURF.k6 = function (st, dt, t) {
 		var w = colW[i];
 		volE[i] = removed * w;
 		volFel[i] = remFel * w;
+		// Erosion does not destroy rock, it turns it into sediment: every removed bed of
+		// another lithology is an explicit transformation, exactly the accounting
+		// COL.compact uses when it merges across lithologies. Without this the sediment
+		// mass grows with no source entry and the per-lithology ledger breaks as soon as
+		// the surface kernel runs (measured: +110e9 m3 of sediment at 150 Myr).
+		var remLi = Cmod.removedLi, l;
+		for (l = 0; l < P.LITH.n; l++) {
+			if (l === LITH_SED || remLi[l] === 0) continue;
+			var volM = remLi[l] * w;
+			st.ledMixOut[l] += volM;
+			st.ledMixIn[LITH_SED] += volM;
+		}
 		var oSum = oOro[i] + oArc[i];
 		if (oSum > 0) volPla[i] = kPlacer * oSum * removed * w;
 		colLoad[i] = removed;

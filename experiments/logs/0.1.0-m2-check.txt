@@ -196,13 +196,13 @@ PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
 PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
-PASS  100 Myr evolving planet total volume ledger (M3 erosion converts lith)   rel 6.30e-16
+PASS  100 Myr evolving planet per-lith volume ledger   max relative 2.39e-14
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
 PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
-PASS  700 Myr mixed-rate evolving planet (repeated births) total volume ledger (M3 erosion converts lith)   rel 5.56e-16
+PASS  700 Myr mixed-rate evolving planet (repeated births) per-lith volume ledger   max relative 2.50e-14
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
@@ -251,6 +251,6 @@ PASS  plate counts agree
 M2.1 determinism and finite state at every kernel boundary
 PASS  all buffers finite after every kernel (20 frames)
 PASS  same seed and dtGeo are bitwise deterministic (300 frames)
-PASS  sim frame (K0-K6) within the 4 ms budget   1.793 ms/frame, min of 7x20
+PASS  sim frame (K0-K6) within the 4 ms budget   1.844 ms/frame, min of 7x20
 
 ALL PASS (239 checks)

@@ -75,7 +75,10 @@ CRU.lipGrowth = function (st, dt, t) {
 		if (best > Math.max(P.w0, st.plmR[i])) continue;
 		add = P.kLIP * st.plmStr[i] * dt;
 		this.addLayer(st, c, add, P.LITH.lava, t, 0);
-		st.ledProd[P.LITH.maf] += add * st.colW[c];
+		// the new layer is lava, so the ledger has to credit lava, not mafic melt:
+		// massBy[] is measured per stored lithology, and a mafic credit here leaves
+		// the lava account with mass and no production entry
+		st.ledProd[P.LITH.lava] += add * st.colW[c];
 		st.oMaf[c] += 0.01 * add / 1e3;
 		if (st.oMaf[c] > 1) st.oMaf[c] = 1;
 		COL.sums(c);

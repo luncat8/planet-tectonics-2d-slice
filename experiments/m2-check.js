@@ -280,21 +280,6 @@ function ledger(start, name) {
 	}
 	check.ok(name + ' per-lith volume ledger', valid, 'max relative ' + worst.toExponential(2));
 }
-function ledgerTotal(start, name) {
-	var now = S.mass(), sumNow = 0, sumStart = 0, sumCons = 0, sumProd = 0, sumMixOut = 0, sumMixIn = 0;
-	for (var l = 0; l < P.LITH.n; l++) {
-		sumNow += now[l];
-		sumStart += start[l];
-		sumCons += S.ledCons[l];
-		sumProd += S.ledProd[l];
-		sumMixOut += S.ledMixOut[l];
-		sumMixIn += S.ledMixIn[l];
-	}
-	var lhs = sumNow + sumCons + sumMixOut;
-	var rhs = sumStart + sumProd + sumMixIn;
-	var err = Math.abs(lhs - rhs) / Math.max(1, rhs);
-	check.ok(name + ' total volume ledger (M3 erosion converts lith)', err < 1e-6, 'rel ' + err.toExponential(2));
-}
 function boundary() {
 	check.planet(1);
 	for (var i = 0; i < S.nCol - 1; i++) if (S.colPlate[i] !== S.colPlate[i + 1]) return i;
@@ -627,11 +612,11 @@ check.planet(1);
 var longMass = S.mass().slice();
 SIM.setGeo(100e3);
 SIM.run(1000);
-ledgerTotal(longMass, '100 Myr evolving planet');
+ledger(longMass, '100 Myr evolving planet');
 invariants();
 SIM.setGeo(200e3);
 SIM.run(3000);
-ledgerTotal(longMass, '700 Myr mixed-rate evolving planet (repeated births)');
+ledger(longMass, '700 Myr mixed-rate evolving planet (repeated births)');
 invariants();
 
 // --- M2.3: K5 column update and the K6 profile ----------------------------------

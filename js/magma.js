@@ -106,6 +106,10 @@ var MAG = {
 			th = over / st.colW[i];
 			COL.push(i, th, P.LITH.sill, t, 0);
 			COL.sums(i);
+			// The chamber is audited as mafic melt; solidifying it into a sill moves the
+			// mass between two stored lithologies, so the production entry moves with it.
+			st.ledProd[P.LITH.maf] -= over;
+			st.ledProd[P.LITH.sill] += over;
 			st.meltSill += over;
 			st.oMaf[i] = st.oMaf[i] + over / P.chamberCap * 0.01;
 			if (st.oMaf[i] > 1) st.oMaf[i] = 1;

@@ -1,0 +1,8 @@
+contact audit — seed 1, 50 kyr/frame, 3000 frames (150 Myr), 2.48 ms/frame
+  crust          max 161.1 km   thickest column at a contact 76.6 km   belt run around it 5 columns above 55 km
+  surface        worst single-frame move 4657 m at frame 2985 x 23865.6 km   mean 1.4 m, 1523 raster samples above 100 m
+  frames         on a birth/death frame 4657 m   on a quiet frame 276 m   (thickness change 17.9 km vs 1.3 km)
+  columns        worst single-frame thickness change 17.9 km at frame 1878 x 22019.4 km   worst local slope 25.2%
+  topology       93 births/deaths, 91 of them at a site that had already flipped (523 columns, 10 plates)
+  stacks         135883 column-frames with an inverted bed, 66923 column-frames at layerCap
+targets for 0.1.5 (see 0.1.5-plan.md): a birth/death frame no worse than a quiet one, worst move <= 300 m at 50 kyr/frame, max crust <= 80 km, belt >= 4 columns wide

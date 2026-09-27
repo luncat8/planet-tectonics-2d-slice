@@ -140,7 +140,7 @@ var S = {
 	ledCons: new Float64Array(P.LITH.n),
 	ledMixIn: new Float64Array(P.LITH.n),
 	ledMixOut: new Float64Array(P.LITH.n),
-	ledMix: 0,                              // cross-lithology stack merges (auditable loss)
+	ledMix: 0,                              // cross-lithology merges and rock -> sediment conversions
 	waterIn: 0,                             // slab-bound water volume, m2
 	waterReleased: 0,                       // cumulative dehydration, m2
 	waterUsed: 0,                            // wedge / mantle water sink, m2
