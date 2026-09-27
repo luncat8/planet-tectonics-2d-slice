@@ -46,7 +46,9 @@ var S = {
 	edgeAge: new Float64Array(P.colCap),    // Myr in that boundary state
 	edgeSlow: new Float64Array(P.colCap),   // consecutive Myr of slow C-C contact
 	colLoad: new Float64Array(P.colCap),    // mobile sediment load, m (one-hop routing)
+	colLoadFel: new Float64Array(P.colCap), // felsic fraction of mobile load, m
 	colPla: new Float64Array(P.colCap),     // placer load riding colLoad, m
+	colBevel: new Uint8Array(P.colCap),     // 1 if top beveled since last burial (unconformity)
 	// layer stacks: flat colCap x layerCap, bottom-up from col*layerCap
 	colNL: new Int32Array(P.colCap),
 	layTh: new Float64Array(P.colCap * P.layerCap),
@@ -140,6 +142,7 @@ S.reset = function () {
 	this.edgeRPlate.fill(-1);
 	this.volc.fill(-1);
 	this.venCol.fill(-1);
+	sViews = null;
 	RNG.seed(P.seed);
 	this.layout();
 };
@@ -190,7 +193,21 @@ S.widths = function () {
 };
 
 // measured crust mass per lithology, m3 (unit depth into the page)
+// includes mobile sediment load as sediment so total crust+mobile is conserved
+// through an erosion->routing->deposition frame (M3)
 S.mass = function () {
+	var m = this.massBy, i, k, b, n;
+	m.fill(0);
+	for (i = 0; i < this.nCol; i++) {
+		b = i * P.layerCap;
+		n = this.colNL[i];
+		for (k = 0; k < n; k++) m[this.layLi[b + k]] += this.layTh[b + k] * this.colW[i];
+		m[P.LITH.sed] += this.colLoad[i] * this.colW[i];
+	}
+	return m;
+};
+
+S.massStack = function () {
 	var m = this.massBy, i, k, b, n;
 	m.fill(0);
 	for (i = 0; i < this.nCol; i++) {

@@ -366,7 +366,7 @@ COL.lidFan = function () {
 // --- K3/K4: gather-based Lagrangian topology ---------------------------------------
 // Only these fields travel with a column. Plate records, fan cells and entity tables
 // have their own lifetimes. All scratch is allocated once, including the sort comparator.
-COL.fields = 'colX colW colPlate colU ext edgeRelN edgePol edgeRPlate trenchDist oldW colAge hFel hMaf hSed hTot z slope wet noise damage zDyn fert oVms oMaf oArc oOro oBas oPla volc edge edgeAge edgeSlow colLoad colPla colNL'.split(' ');
+COL.fields = 'colX colW colPlate colU ext edgeRelN edgePol edgeRPlate trenchDist oldW colAge hFel hMaf hSed hTot z slope wet noise damage zDyn fert oVms oMaf oArc oOro oBas oPla volc edge edgeAge edgeSlow colLoad colLoadFel colPla colBevel colNL'.split(' ');
 COL.oreFields = 'oVms oMaf oArc oOro oBas oPla'.split(' ');
 COL.scratch = COL.fields.map(function (key) { return new S[key].constructor(P.colCap); });
 COL.layerFields = ['layTh', 'layLi', 'layAg', 'layFl'];

@@ -426,6 +426,8 @@ RNDR.updateProbe = function (mx, my) {
 	s += '\nz ' + (top / 1e3).toFixed(2) + ' km  hTot ' + (S.hTot[c] / 1e3).toFixed(1) + ' km';
 	s += '\nfel ' + (S.hFel[c] / 1e3).toFixed(1) + '  maf ' + (S.hMaf[c] / 1e3).toFixed(1) +
 		'  sed ' + (S.hSed[c] / 1e3).toFixed(1) + ' km';
+	s += '\nload ' + S.colLoad[c].toFixed(1) + ' m  pla ' + S.colPla[c].toFixed(1) + ' m  oPla ' + S.oPla[c].toFixed(3);
+	s += '  oBas ' + S.oBas[c].toFixed(3) + (S.colBevel[c] ? '  [beveled]' : '');
 	if (y > top) {
 		s += '\n' + (y > 0 ? 'air' : 'water') + '  ' + ((y - top) | 0) + ' m above surface';
 		this.setProbe(s);
