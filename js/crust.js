@@ -9,6 +9,7 @@ var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js
 var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.S;
 var SURF = (typeof module !== 'undefined' && module.exports) ? require('./surface.js') : window.SURF;
 var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COL;
+var MAG = (typeof module !== 'undefined' && module.exports) ? require('./magma.js') : window.MAG;
 
 var CRU = {
 	face: new Float64Array(P.colCap)     // right-face flux of each column, per stencil
@@ -26,6 +27,61 @@ CRU.strength = function (i, Tm) {
 	return s / Tm;
 };
 
+CRU.addLayer = function (st, c, thick, lith, age, flags) {
+	var b = c * P.layerCap, top = st.colNL[c] - 1;
+	if (!(thick > 0)) return;
+	if (top >= 0 && st.layLi[b + top] === lith) st.layTh[b + top] += thick;
+	else COL.push(c, thick, lith, age, flags);
+};
+
+CRU.arcSpeed = function (st, c) {
+	var n = st.nCol, d, j, speed = 0;
+	for (d = 0; d <= 3; d++) {
+		j = (c + d) % n;
+		if (st.edge[j] === P.EDGE.subduct && Math.abs(st.edgeRelN[j]) > speed) speed = Math.abs(st.edgeRelN[j]);
+		j = (c - d + n) % n;
+		if (st.edge[j] === P.EDGE.subduct && Math.abs(st.edgeRelN[j]) > speed) speed = Math.abs(st.edgeRelN[j]);
+	}
+	return speed;
+};
+
+CRU.arcGrowth = function (st, dt, t, Tm) {
+	var i, speed, recycled, norm, add, ore;
+	for (i = 0; i < st.nCol; i++) {
+		if (!(st.trenchDist[i] > 0)) continue;
+		speed = this.arcSpeed(st, i);
+		if (!(speed > 0) || !(st.colRecycle[i] > 0)) continue;
+		norm = P.w0 * 5e3 * P.slabWaterSed;
+		recycled = st.colRecycle[i] / norm;
+		if (recycled > 2) recycled = 2;
+		add = P.kArc * Tm * speed * dt / P.vRef * (1 + P.kRec * recycled);
+		if (!(add > 0)) continue;
+		ore = recycled > 0 ? P.FLAG.ore : 0;
+		this.addLayer(st, i, add, P.LITH.fel, t, ore);
+		st.ledProd[P.LITH.fel] += add * st.colW[i];
+		st.oArc[i] += P.kA * Math.min(2, speed / P.vRef) * dt * (1 + recycled);
+		if (st.oArc[i] > 1) st.oArc[i] = 1;
+		COL.sums(i);
+	}
+};
+
+CRU.lipGrowth = function (st, dt, t) {
+	var i, c, best, add;
+	for (i = 0; i < st.nPlm; i++) {
+		if (!st.plmArrive[i] || !(st.plmStr[i] > 0)) continue;
+		c = MAG.nearest(st, st.plmX[i]);
+		if (c < 0) continue;
+		best = Math.abs(MAG.dx(st.colX[c], st.plmX[i]));
+		if (best > Math.max(P.w0, st.plmR[i])) continue;
+		add = P.kLIP * st.plmStr[i] * dt;
+		this.addLayer(st, c, add, P.LITH.lava, t, 0);
+		st.ledProd[P.LITH.maf] += add * st.colW[c];
+		st.oMaf[c] += 0.01 * add / 1e3;
+		if (st.oMaf[c] > 1) st.oMaf[c] = 1;
+		COL.sums(c);
+	}
+};
+
 CRU.k5 = function (st, dt, t, Tm) {
 	if (!(dt > 0)) return;
 	var n = st.nCol, i, ext, dmg;
@@ -41,6 +97,8 @@ CRU.k5 = function (st, dt, t, Tm) {
 	}
 	CRU.zDyn(st, dt);
 	CRU.collapse(st, dt);
+	CRU.arcGrowth(st, dt, t, Tm);
+	CRU.lipGrowth(st, dt, t);
 };
 
 // Face gap of the periodic face i -> i+1, floored. Both column stencils below are

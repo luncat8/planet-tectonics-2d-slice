@@ -109,6 +109,7 @@ var P = {
 	U0: 5e4,                     // m/Myr mantle speed scale
 	Lm: 2e6,                     // m, psi wavelength scale (modes k = 2..5)
 	Ea: 3,
+	coolDrag: 24,                // extra Arrhenius stiffening below the adiabat unit T
 	vSlab: 1e6,                  // m/Myr
 	kRidge: 5e6,
 	vColl: 2e5,
@@ -144,10 +145,28 @@ var P = {
 	Tm0: 1.6,
 	tauCool: 2500,               // Myr
 	Tfloor: 0.35,
-	kDehy: 0.02,                 // /Myr
-	kMelt: 1e-4,
-	Tc: 0.2,
-	tauT: 100,                   // Myr, fan T anomaly relaxation toward the adiabat
+	kDehy: 0.02,                 // /Myr, slab water release between 50 and 200 km
+	kMelt: 2e-3,                  // fraction of released water converted to arc melt
+	Tc: 0.2,                     // anomaly threshold above the wedge reference
+	wedgeT0: 0.7,                // adiabat reference at the wedge (Tf stores the anomaly)
+	chamberCap: 2e7,              // m2 per unit depth before a sill / underplate spill
+	slabWaterSed: 0.06,          // bound water fraction of a sediment layer
+	slabWaterMaf: 0.008,         // bound water fraction of a mafic layer
+	slabSurfaceDepth: 5e3,        // trench anchor depth, m
+	slabSinkFrac: 0.02,           // P.vSlab is a force scale; this is its 1D descent fraction
+	slabDip0: 45 * Math.PI / 180,
+	slabDipMax: 60 * Math.PI / 180,
+	slabDissolve: 660e3,
+	slabNodeGap: 25e3,
+	kPlumeMelt: 2e4,              // m2/Myr at a normalized plume head
+	plumeStart: -2e6,
+	plumeRise: 5e4,               // m/Myr at Tm0 (about 5 cm/yr)
+	plumeLifeMin: 50,
+	plumeLifeMax: 150,
+	plumeRadius: 180e3,
+	plumeHeat: 0.55,
+	kLIP: 1.5e3,                  // mafic stack growth, m/Myr at unit plume strength
+	tauT: 100,                    // Myr, fan T anomaly relaxation toward the adiabat
 	// isostasy (design §4.6, reference §7.1)
 	rhoM: 3300,
 	rhoFel: 2750,

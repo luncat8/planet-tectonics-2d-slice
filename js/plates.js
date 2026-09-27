@@ -1,7 +1,7 @@
 // plates.js — K2 plate solve and K3 transport/classifier (design §4.2).
 // A plate is rigid in 1D, so the reference's 3x3 force balance degenerates to a
 // width-weighted mean of (mantle drive + equivalent basal velocities w / cD) over its
-// columns, relaxed by dtGeo/tauOmega and clamped to vMax. Slab pull joins in M4.
+// columns, relaxed by dtGeo/tauOmega and clamped to vMax. M4 adds a bounded slab pull.
 // Edge i is the boundary from sorted column i to its right neighbour across the wrap.
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
@@ -15,19 +15,28 @@ var PLT = {
 };
 
 // cD rescales every non-drag term: a cooling mantle stiffens and the same forces
-// produce less speed, so plates freeze into a stagnant lid without a switch
-PLT.cD = function (Tm) { return Math.exp(P.Ea * (1 / Tm - 1)); };
+// produce less speed. The extra low-T term makes the design's 4 Gyr stagnant lid
+// measurable without changing the hot-start calibration.
+PLT.cD = function (Tm) {
+	var cold = Tm < 1 ? 1 - Tm : 0;
+	return Math.exp(P.Ea * (1 / Tm - 1) + P.coolDrag * cold * cold);
+};
 
 PLT.oceanic = function (S, i) { return S.hFel[i] < P.hOceanic; };
 
 // ridge push on oceanic columns (downslope), and the previous frame's C–C collision
 // resistance pushing both sides apart, growing with the felsic thickness in contact
 PLT.basal = function (S) {
-	var n = S.nCol, w = this.wB, i, j, m, f;
+	var n = S.nCol, w = this.wB, i, j, m, f, slabAge, loser;
 	for (i = 0; i < n; i++) w[i] = this.oceanic(S, i) ? -P.kRidge * S.slope[i] : 0;
 	for (i = 0; i < n; i++) {
-		if (S.edge[i] !== P.EDGE.collide || S.edgeRelN[i] >= 0) continue;
 		j = i + 1 < n ? i + 1 : 0;
+		if (S.edge[i] === P.EDGE.subduct) {
+			loser = S.edgePol[i] < 0 ? i : j;
+			slabAge = Math.min(1, Math.max(0, S.colAge[loser]) / 70);
+			w[loser] += P.vSlab * P.slabSinkFrac * slabAge;
+		}
+		if (S.edge[i] !== P.EDGE.collide || S.edgeRelN[i] >= 0) continue;
 		f = Math.min(2, (S.hFel[i] + S.hFel[j]) / (2 * P.hFelLand0));
 		m = P.vColl * f * -S.edgeRelN[i] / P.vRef;
 		w[i] -= m;

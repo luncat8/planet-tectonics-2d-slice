@@ -9,6 +9,7 @@ var RNG = (typeof module !== 'undefined' && module.exports) ? require('./rng.js'
 var SURF = (typeof module !== 'undefined' && module.exports) ? require('./surface.js') : window.SURF;
 
 var COL = {
+	slab: null,
 	// lith -> density class of the cached sums: 0 sed, 1 felsic, 2 mafic. Tephra is
 	// fragmental (sed density); lava and sill are crystalline (mafic density).
 	CLASS: new Uint8Array([0, 1, 2, 0, 2, 2]),
@@ -85,7 +86,7 @@ COL.sumsAll = function () { for (var i = 0; i < S.nCol; i++) this.sums(i); };
 // erosion intake (M3): take `amount` off the top, top layer first. Returns what was
 // actually removed and leaves the per-class split in COL.removed.
 COL.removeTop = function (c, amount) {
-	var rem = this.removed, LC = P.layerCap, b = c * LC, left = amount, k, t, take;
+	var rem = this.removed, LC = P.layerCap, b = c * LC, left = amount, k, t, take, d;
 	rem[0] = 0; rem[1] = 0; rem[2] = 0;
 	while (left > 0 && S.colNL[c] > 0) {
 		k = S.colNL[c] - 1;
@@ -94,6 +95,11 @@ COL.removeTop = function (c, amount) {
 		rem[this.CLASS[S.layLi[b + k]]] += take;
 		left -= take;
 		if (take < t) { S.layTh[b + k] = t - take; break; }
+		// A depth-resolved deposit hosted by a removed top bed has no horizon
+		// after erosion. Do not leave it pointing one slot past the new top.
+		for (d = 0; d < S.nDep; d++) {
+			if (S.depCol[d] === c && S.depLay[d] >= k) S.depLay[d] = -1;
+		}
 		S.colNL[c] = k;
 	}
 	return amount - left;
@@ -366,7 +372,7 @@ COL.lidFan = function () {
 // --- K3/K4: gather-based Lagrangian topology ---------------------------------------
 // Only these fields travel with a column. Plate records, fan cells and entity tables
 // have their own lifetimes. All scratch is allocated once, including the sort comparator.
-COL.fields = 'colX colW colPlate colU ext edgeRelN edgePol edgeRPlate trenchDist oldW colAge hFel hMaf hSed hTot z slope wet noise damage zDyn fert oVms oMaf oArc oOro oBas oPla volc edge edgeAge edgeSlow colLoad colLoadFel colPla colBevel colNL'.split(' ');
+COL.fields = 'colX colW colPlate colU ext edgeRelN edgePol edgeRPlate trenchDist oldW colAge hFel hMaf hSed hTot z slope wet noise damage zDyn fert oVms oMaf oArc oOro oBas oPla volc edge edgeAge edgeSlow colLoad colLoadFel colPla colBevel colChamber colMeltArc colMeltPlume colRecycle colNL'.split(' ');
 COL.oreFields = 'oVms oMaf oArc oOro oBas oPla'.split(' ');
 COL.scratch = COL.fields.map(function (key) { return new S[key].constructor(P.colCap); });
 COL.layerFields = ['layTh', 'layLi', 'layAg', 'layFl'];
@@ -418,10 +424,17 @@ COL.gather = function (n) {
 };
 
 COL.plates = function () {
+	var i, p;
 	S.plN.fill(0);
-	for (var i = 0; i < S.nCol; i++) {
-		var p = S.colPlate[i];
+	for (i = 0; i < S.nCol; i++) {
+		p = S.colPlate[i];
 		if (S.plN[p]++ === 0) S.plX0[p] = S.colX[i];
+	}
+	for (p = 0; p < S.nPl; p++) {
+		if (S.plN[p] > 0) continue;
+		S.plU[p] = 0;
+		S.plUP[p] = 0;
+		S.plDmg[p] = 0;
 	}
 };
 
@@ -488,6 +501,11 @@ COL.moveDeposits = function (from, layer, to, newLayer) {
 
 COL.consume = function (i, j) {
 	var E = P.EDGE, left = i, right = j, loser, winner, b, k, lith, t;
+	var SLAB = this.slab;
+	if (!SLAB) {
+		SLAB = (typeof module !== 'undefined' && module.exports) ? require('./slab.js') : window.SLAB;
+		this.slab = SLAB;
+	}
 	if (S.edge[i] === E.collide) {
 		loser = S.hFel[left] <= S.hFel[right] ? left : right;
 		winner = loser === left ? right : left;
@@ -500,9 +518,21 @@ COL.consume = function (i, j) {
 		loser = S.edgePol[i] < 0 ? left : right;
 		winner = loser === left ? right : left;
 		b = loser * P.layerCap;
+		if (SLAB && SLAB.ready) {
+			var gap = S.colX[right] - S.colX[left];
+			if (gap < 0) gap += P.wrap;
+			var tx = (S.colX[left] + gap * 0.5) % P.wrap;
+			var dir = S.edgePol[i] < 0 ? 1 : -1;
+			SLAB.appendStack(S, loser, tx, dir, S.colPlate[winner], 0);
+		}
 		for (k = 0; k < S.colNL[loser]; k++) {
 			lith = S.layLi[b + k]; t = S.layTh[b + k];
-			if (this.CLASS[lith] === 0) {
+			if (SLAB && SLAB.ready) {
+				if (this.CLASS[lith] === 0) {
+					this.push(winner, t * 0.5, lith, S.layAg[b + k], S.layFl[b + k]);
+					this.moveDeposits(loser, k, winner, S.colNL[winner] - 1);
+				} else this.moveDeposits(loser, k, -1, -1);
+			} else if (this.CLASS[lith] === 0) {
 				this.push(winner, t * 0.5, lith, S.layAg[b + k], S.layFl[b + k]);
 				this.moveDeposits(loser, k, winner, S.colNL[winner] - 1);
 				S.ledCons[lith] += t * 0.5;
@@ -512,6 +542,10 @@ COL.consume = function (i, j) {
 			}
 		}
 	}
+	// A chamber belongs to the plate margin even when the oceanic column is
+	// consumed. Moving it here keeps the M4 active-mass ledger exact.
+	S.colChamber[winner] += S.colChamber[loser];
+	S.colChamber[loser] = 0;
 	this.dead[loser] = 1;
 	this.redirect[loser] = winner;
 };

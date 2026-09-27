@@ -38,8 +38,13 @@ MNT.init = function (seed) {
 };
 
 MNT.setTime = function (t, Tm) {
+	var thermal = (Tm - P.Tfloor) / (P.Tm0 - P.Tfloor);
+	if (thermal < 0) thermal = 0;
+	else if (thermal > 1) thermal = 1;
 	this.t = t;
-	this.s = Math.pow(Tm, 2.5);
+	// Tm is stored in the calibrated absolute range; normalize it at the
+	// flow boundary so the basal speed reaches zero at the cold floor.
+	this.s = Math.pow(thermal, 2.5);
 };
 
 // u_x(x, 0, t): the surface drive under the plates
@@ -64,6 +69,81 @@ MNT.flow = function (x, y) {
 
 MNT.columns = function (S) {
 	for (var i = 0; i < S.nCol; i++) this.uCol[i] = this.uSurf(S.colX[i]);
+};
+
+MNT.initPlumes = function (S, seed) {
+	var n = 3 + ((seed >>> 0) % 4), i, k, f, phase;
+	S.nPlm = n;
+	for (i = 0; i < n; i++) {
+		S.plmX[i] = P.wrap * RNG.hash2(i, 41, seed | 0);
+		S.plmY[i] = P.plumeStart - 250e3 * RNG.hash2(i, 42, seed | 0);
+		S.plmR[i] = P.plumeRadius * (0.65 + 0.35 * RNG.hash2(i, 43, seed | 0));
+		S.plmStr[i] = 0.7 + 0.5 * RNG.hash2(i, 44, seed | 0);
+		S.plmAge[i] = 0;
+		S.plmLife[i] = P.plumeLifeMin + (P.plumeLifeMax - P.plumeLifeMin) * RNG.hash2(i, 45, seed | 0);
+		S.plmArrive[i] = 0;
+		S.plmNCon[i] = P.conduitCap;
+		for (k = 0; k < P.conduitCap; k++) {
+			f = k / (P.conduitCap - 1);
+			phase = 6.283185307179586 * RNG.hash2(i, k + 51, seed | 0);
+			S.plmConY[i * P.conduitCap + k] = P.plumeStart * (1 - f) + S.plmY[i] * f;
+			S.plmConX[i * P.conduitCap + k] = S.plmX[i] + 40e3 * Math.sin(phase) * (1 - f);
+			S.plmConT[i * P.conduitCap + k] = P.plumeHeat * S.plmStr[i] * (0.35 + 0.65 * f);
+		}
+	}
+};
+
+MNT.heat = function (S, x, y, value, dt) {
+	var row = GEO.rowOf(y), cell, C, j, add;
+	if (row < 0) return;
+	cell = GEO.cellOf(row, x);
+	add = value * dt;
+	S.Tf[cell] += add;
+	C = GEO.fanN[row];
+	if (C <= 1) return;
+	j = cell - GEO.fanOff[row];
+	add *= 0.25;
+	S.Tf[GEO.fanOff[row] + (j + C - 1) % C] += add;
+	S.Tf[GEO.fanOff[row] + (j + 1) % C] += add;
+};
+
+MNT.stepPlumes = function (S, dt, Tm) {
+	var i, k, n, f, base, rise, amp, y, x, phase;
+	for (i = 0; i < S.nPlm; i++) {
+		S.plmAge[i] += dt;
+		rise = P.plumeRise * Math.min(1.25, Tm / P.Tm0) * dt;
+		MNT.flow(S.plmX[i], S.plmY[i]);
+		S.plmX[i] = (S.plmX[i] + MNT.vx * dt * 0.1 + P.wrap) % P.wrap;
+		S.plmY[i] += rise;
+		if (S.plmY[i] >= -P.slabSurfaceDepth) {
+			S.plmY[i] = -P.slabSurfaceDepth;
+			S.plmArrive[i] = 1;
+		}
+		S.plmR[i] += (S.plmArrive[i] ? 1.2e3 : 0.35e3) * dt;
+		if (S.plmR[i] > 500e3) S.plmR[i] = 500e3;
+		if (S.plmAge[i] > S.plmLife[i]) S.plmStr[i] *= Math.exp(-dt / 20);
+		if (S.plmStr[i] < 0.03) S.plmStr[i] = 0;
+		n = S.plmNCon[i];
+		base = i * P.conduitCap;
+		for (k = 0; k < n; k++) {
+			f = k / (n - 1);
+			phase = 6.283185307179586 * (i + 1) * f;
+			S.plmConY[base + k] = P.plumeStart * (1 - f) + S.plmY[i] * f;
+			S.plmConX[base + k] = (S.plmX[i] + 45e3 * Math.sin(phase + S.plmAge[i] * 0.04) * (1 - f) + P.wrap) % P.wrap;
+			S.plmConT[base + k] = P.plumeHeat * S.plmStr[i] * (0.35 + 0.65 * f);
+			amp = S.plmConT[base + k] * (0.7 + 0.3 * f);
+			this.heat(S, S.plmConX[base + k], S.plmConY[base + k], amp * 0.018, dt);
+		}
+		x = S.plmX[i]; y = S.plmY[i];
+		this.heat(S, x, y, P.plumeHeat * S.plmStr[i] * 0.035, dt);
+	}
+	// Thermal anomalies are bounded by the adiabat reference: a plume warms a
+	// cold lid and a slab cools it, but neither source creates an uncalibrated
+	// positive-temperature branch outside the M2 fan field.
+	for (i = 0; i < S.Tf.length; i++) {
+		if (S.Tf[i] > 0) S.Tf[i] = 0;
+		else if (S.Tf[i] < -P.lithCold) S.Tf[i] = -P.lithCold;
+	}
 };
 
 // T in fan row r at world x: linear between the row's cell centres, periodic in x
@@ -131,6 +211,7 @@ MNT.k1 = function (S, dt, t, Tm) {
 	MNT.setTime(t, Tm);
 	MNT.columns(S);
 	MNT.stepT(S, dt);
+	MNT.stepPlumes(S, dt, Tm);
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = MNT;

@@ -245,3 +245,18 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   Sampling and shading the ring once per screen column and stamping the run paid for adding
   bilinear interpolation several times over (default window 3.90 -> 2.94 ms). Look for the run
   structure before optimising the inner arithmetic.
+
+## M4 ribbons and source ledgers
+
+- A slab polyline is resampled geometry, not a conservation grid: interpolate node water
+  for the new spacing, then renormalize its sum. Otherwise a visually harmless respacing
+  step silently drains the dehydration ledger.
+- When a ribbon tail passes the dissolution depth and its node count is shortened, sink
+  the discarded node water before decrementing `ribN`; `S.mass()` only sees active nodes.
+- Keep ribbon and chamber volumes in the same cross-section volume units as K4 (`m2` per
+  unit depth). `S.mass()` can then include them directly, while stack additions divide by
+  `colW` only at the column boundary. This made subduction, chamber overflow and width
+  changes close to machine precision.
+- A cooling curve can reach a cold mantle while stale plate ids retain an unused high
+  velocity. Rebuild `plN` and zero velocities of empty plate records after every topology
+  gather before measuring stagnant-lid speed.

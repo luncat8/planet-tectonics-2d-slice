@@ -49,6 +49,10 @@ var S = {
 	colLoadFel: new Float64Array(P.colCap), // felsic fraction of mobile load, m
 	colPla: new Float64Array(P.colCap),     // placer load riding colLoad, m
 	colBevel: new Uint8Array(P.colCap),     // 1 if top beveled since last burial (unconformity)
+	colChamber: new Float64Array(P.colCap), // stored melt volume, m2 per unit depth
+	colMeltArc: new Float64Array(P.colCap), // arc melt supplied in the current frame, m2
+	colMeltPlume: new Float64Array(P.colCap), // plume melt supplied in the current frame, m2
+	colRecycle: new Float64Array(P.colCap), // ribbon water reaching this arc column, m2
 	// layer stacks: flat colCap x layerCap, bottom-up from col*layerCap
 	colNL: new Int32Array(P.colCap),
 	layTh: new Float64Array(P.colCap * P.layerCap),
@@ -77,7 +81,12 @@ var S = {
 	ribY: new Float64Array(P.ribCap * P.ribNodeCap),
 	ribDip: new Float64Array(P.ribCap * P.ribNodeCap),
 	ribT: new Float64Array(P.ribCap * P.ribNodeCap),
-	ribW: new Float64Array(P.ribCap * P.ribNodeCap),  // water riding the node
+	ribW: new Float64Array(P.ribCap * P.ribNodeCap),  // water riding the node, m2
+	ribRelW: new Float64Array(P.ribCap * P.ribNodeCap), // water released this frame, m2
+	ribDir: new Int8Array(P.ribCap),
+	ribPlate: new Int32Array(P.ribCap),
+	ribX0: new Float64Array(P.ribCap),
+	ribAge: new Float64Array(P.ribCap),
 	ribNL: new Int32Array(P.ribCap),
 	ribLTh: new Float64Array(P.ribCap * P.layerCap),
 	ribLLi: new Int8Array(P.ribCap * P.layerCap),
@@ -90,6 +99,9 @@ var S = {
 	plmY: new Float64Array(P.plumeCap),
 	plmR: new Float64Array(P.plumeCap),
 	plmStr: new Float64Array(P.plumeCap),
+	plmAge: new Float64Array(P.plumeCap),
+	plmLife: new Float64Array(P.plumeCap),
+	plmArrive: new Uint8Array(P.plumeCap),
 	plmNCon: new Int32Array(P.plumeCap),
 	plmConX: new Float64Array(P.plumeCap * P.conduitCap),
 	plmConY: new Float64Array(P.plumeCap * P.conduitCap),
@@ -129,12 +141,20 @@ var S = {
 	ledMixIn: new Float64Array(P.LITH.n),
 	ledMixOut: new Float64Array(P.LITH.n),
 	ledMix: 0,                              // cross-lithology stack merges (auditable loss)
+	waterIn: 0,                             // slab-bound water volume, m2
+	waterReleased: 0,                       // cumulative dehydration, m2
+	waterUsed: 0,                            // wedge / mantle water sink, m2
+	meltArc: 0,                              // generated arc melt volume, m2
+	meltPlume: 0,                            // generated plume melt volume, m2
+	meltSill: 0,                             // chamber overflow emplaced as sill, m2
 	massBy: new Float64Array(P.LITH.n)      // measured crust mass per LITH, m3
 };
 
 S.reset = function () {
 	this.nCol = 0; this.nPl = 0; this.nRib = 0; this.nPlm = 0; this.nVen = 0; this.nDep = 0;
 	this.ledMix = 0; this.spawnSkipped = 0;
+	this.waterIn = 0; this.waterReleased = 0; this.waterUsed = 0;
+	this.meltArc = 0; this.meltPlume = 0; this.meltSill = 0;
 	for (var k in this) {
 		var v = this[k];
 		if (v && v.fill) v.fill(0);
@@ -196,13 +216,21 @@ S.widths = function () {
 // includes mobile sediment load as sediment so total crust+mobile is conserved
 // through an erosion->routing->deposition frame (M3)
 S.mass = function () {
-	var m = this.massBy, i, k, b, n;
+	var m = this.massBy, i, k, b, n, rb, rn;
 	m.fill(0);
 	for (i = 0; i < this.nCol; i++) {
 		b = i * P.layerCap;
 		n = this.colNL[i];
 		for (k = 0; k < n; k++) m[this.layLi[b + k]] += this.layTh[b + k] * this.colW[i];
 		m[P.LITH.sed] += this.colLoad[i] * this.colW[i];
+		m[P.LITH.maf] += this.colChamber[i];
+	}
+	// A ribbon owns the consumed stack until it reaches the 660 km dissolution depth.
+	// Its layers are already volumes per unit depth, so no column width is applied.
+	for (i = 0; i < this.nRib; i++) {
+		rb = i * P.layerCap;
+		rn = this.ribNL[i];
+		for (k = 0; k < rn; k++) m[this.ribLLi[rb + k]] += this.ribLTh[rb + k];
 	}
 	return m;
 };

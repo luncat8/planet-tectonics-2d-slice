@@ -5,6 +5,10 @@
 var L = require('./lib.js'), check = L.check;
 var P = L.mods.params, S = L.mods.state, COL = L.mods.columns, SIM = L.mods.sim;
 var SURF = L.mods.surface, GEO = L.mods.geom;
+// M3's conservation fixtures isolate erosion/routing from the M4 mantle sources;
+// the M4 ledger check covers slab, plume and melt production separately.
+var savedM4 = SIM.k[1];
+SIM.k[1] = null;
 
 function totalMass() {
 	// stack + mobile (S.mass includes mobile as sed)
@@ -232,6 +236,14 @@ S.colBevel[col] = 1;
 var nlAfterEro = S.colNL[col];
 check.ok('erosion removed some layers or thinned top', nlAfterEro <= nlBefore,
 	'before ' + nlBefore + ' after ' + nlAfterEro);
+S.nDep = 1;
+S.depCol[0] = col;
+S.depLay[0] = S.colNL[col] - 1;
+var topDepth = S.layTh[col * P.layerCap + S.colNL[col] - 1];
+COL.removeTop(col, topDepth);
+check.ok('removing a top bed invalidates its deposit horizon', S.depLay[0] === -1);
+S.nDep = 0;
+COL.sums(col);
 // now deposit
 var depTh = 300;
 COL.push(col, depTh, P.LITH.sed, SIM.t, P.FLAG.wet);
@@ -290,4 +302,5 @@ for (var key in S) {
 }
 check.ok('all buffers finite after 20 frames with erosion', finite);
 
+SIM.k[1] = savedM4;
 check.done();

@@ -25,25 +25,25 @@ PASS  reset is deterministic, including new buffers
 M2.1 mantle flow and fan T
 PASS  modes are integer harmonics of the wrap   6,10,13,16
 PASS  mode obliquity, precession and phase within the design ranges
-PASS  flow repeats after P.wrap to double precision   7.51e-9 m/Myr
+PASS  flow repeats after P.wrap to double precision   1.96e-9 m/Myr
 PASS  surface drive is u_x(x, 0)   0.00e+0
-PASS  streamfunction flow is divergence-free   max |div|/(|du/dx|+|dv/dy|) 4.48e-6
-PASS  flow speed bounded by the mode sum   8.51 cm/yr
+PASS  streamfunction flow is divergence-free   max |div|/(|du/dx|+|dv/dy|) 4.49e-6
+PASS  flow speed bounded by the mode sum   2.22 cm/yr
 PASS  constant T is preserved (times the relaxation)   0.00e+0
-PASS  back-trace recurrence equals the closed-form flow   1.03e-14
+PASS  back-trace recurrence equals the closed-form flow   3.94e-15
 PASS  T stays finite and inside its initial bounds over 40 Myr   [-0.550, 0.000]
-PASS  plate speeds finite and within vMax   -1.44 0.09 3.28 -0.92 -1.61 0.32 2.82 -1.05 cm/yr
-PASS  damage stays a fraction after 40 Myr of real tectonics   383/521 columns damaged, max 1.000
+PASS  plate speeds finite and within vMax   0.05 0.08 1.06 -0.07 0.16 0.05 -0.11 0.34 0.05 0.08 cm/yr
+PASS  damage stays a fraction after 40 Myr of real tectonics   358/514 columns damaged, max 1.000
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 9.69e-8  got 40030173.592041045  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
 
 M2.1 plate solve
 PASS  dt = tauOmega gives the width-weighted mean fit   0.00e+0
 PASS  columns carry their plate velocity
-PASS  relaxation moves u by dt/tauOmega of the gap   rel 0.00e+0  got 29147.74903817362  want 29147.74903817362
+PASS  relaxation moves u by dt/tauOmega of the gap   rel 7.28e-12  got 29401.568837822706  want 29401.5688378227
 PASS  speed clamps at vMax
 PASS  cD grows as the mantle cools (stagnant lid)
 
@@ -196,17 +196,17 @@ PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
 PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
-PASS  100 Myr evolving planet per-lith volume ledger   max relative 1.27e-15
+PASS  100 Myr evolving planet total volume ledger (M3 erosion converts lith)   rel 6.30e-16
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 5.22e-8  got 40030173.59204109  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
-PASS  700 Myr mixed-rate evolving planet (repeated births) per-lith volume ledger   max relative 7.30e-15
+PASS  700 Myr mixed-rate evolving planet (repeated births) total volume ledger (M3 erosion converts lith)   rel 5.56e-16
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 8.20e-8  got 40030173.59204106  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 2.98e-8  got 40030173.59204111  want 40030173.59204114
 PASS  plate counts agree
 
 M2.3 age, damage, zDyn, flexure, collapse
@@ -229,28 +229,28 @@ PASS  collapse conserves felsic volume exactly   rel 0.00e+0  got 1404574352697.
 PASS  collapse moves real beds, not just the cache   35.900 km in the neighbour bed
 PASS  the sediment cap rides down with the collapsed crust
 PASS  gravitational collapse per-lith volume ledger   max relative 0.00e+0
-PASS  collapse lowers the plateau (isostasy follows the beds)   8145.8 m of 8445.8
+PASS  collapse lowers the plateau (isostasy follows the beds)   8054.8 m of 8445.8
 PASS  nothing moves while every column is below hCollapse
 PASS  K5/K6 never touch the lithology ledger
 PASS  the collided crust stands higher through isostasy alone   -1827 -> 3288 m
 PASS  a frame ends with the profile recomputed from the final state
-PASS  500 Myr at 100 kyr/frame leaves no interpenetrating columns   min gap 0.635 w0
+PASS  500 Myr at 100 kyr/frame leaves no interpenetrating columns   min gap 0.750 w0
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 3.73e-8  got 40030173.592041105  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 9.69e-8  got 40030173.592041045  want 40030173.59204114
 PASS  plate counts agree
-  500 Myr @100 kyr: n=597 plates=9 maxCrust=167 km maxRelief=22.0 km
-PASS  50 Myr at 10 kyr/frame is finite too   maxCrust 405 km
+  500 Myr @100 kyr: n=535 plates=9 maxCrust=80 km maxRelief=6.5 km
+PASS  50 Myr at 10 kyr/frame is finite too   maxCrust 105 km
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 8.94e-8  got 40030173.59204105  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 9.69e-8  got 40030173.592041045  want 40030173.59204114
 PASS  plate counts agree
 
 M2.1 determinism and finite state at every kernel boundary
 PASS  all buffers finite after every kernel (20 frames)
 PASS  same seed and dtGeo are bitwise deterministic (300 frames)
-PASS  sim frame (K0-K6) within the 4 ms budget   1.639 ms/frame, min of 7x20
+PASS  sim frame (K0-K6) within the 4 ms budget   1.793 ms/frame, min of 7x20
 
 ALL PASS (239 checks)

@@ -1,0 +1,21 @@
+
+M4.1 slab ribbons
+PASS  subduction appends a ribbon   ribbons 1 nodes 12
+PASS  ribbon keeps a stratified stack and water budget   layers 5 water 9.241e+6
+PASS  subduction transfer is mass neutral before dissolution   rel 0.00e+0
+PASS  ribbon nodes descend and keep finite dip   tail -281.1 km
+PASS  slab feeds a bounded cold anomaly into fan T   min dT -0.550
+
+M4.2 plume head, chamber and LIP
+PASS  a plume reaches the surface and swells   y -5.0 km r 178 km
+PASS  plume head supplies a chamber and grows a mafic LIP   melt 1200 m2 led 5.865e+6
+PASS  all M4 buffers are finite
+
+M4.3 water, melt and active-mass ledger
+PASS  active ribbon and chamber mass balances per lithology   worst rel 1.94e-15
+PASS  water is conserved between ribbon, release and wedge sinks   in 3.741e+7 used 2.093e+7 residual 1.648e+7
+PASS  arc melt is present after ribbon dehydration   melt 2850 water 3.429e+6
+PASS  cooling reaches the stagnant-lid speed scale   cD(4 Gyr) 322.1
+PASS  long M4 run remains finite
+
+ALL PASS (13 checks)

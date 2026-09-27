@@ -196,6 +196,7 @@ RNDR.present = function () { this.ctx.putImageData(this.img, 0, 0); };
 RNDR.overlay = function () {
 	this.overlayProfile();
 	this.overlayPlates();
+	this.overlayM4();
 	if (this.mesh) this.overlayMesh();
 	this.overlayGrid();
 	this.overlayCursor();
@@ -224,6 +225,80 @@ RNDR.overlayProfile = function () {
 	}
 	c.strokeStyle = 'rgba(255,230,140,0.5)';
 	c.stroke();
+};
+
+RNDR.overlayM4 = function () {
+	var c = this.ctx, r, k, n, b, x, y, sx, sy, lastX, dx, p, q, i;
+	if (S.nRib > 0) {
+		c.lineCap = 'round';
+		for (r = 0; r < S.nRib; r++) {
+			b = r * P.ribNodeCap;
+			n = S.ribN[r];
+			c.beginPath();
+			for (k = 0; k < n; k++) {
+				sx = this.screenX(S.ribX[b + k]);
+				sy = GEO.sy(S.ribY[b + k]);
+				if (k === 0) { c.moveTo(sx, sy); lastX = sx; }
+				else {
+					dx = sx - lastX;
+					if (dx > this.w * 0.5) sx -= this.w;
+					else if (dx < -this.w * 0.5) sx += this.w;
+					c.lineTo(sx, sy); lastX = sx;
+				}
+			}
+			c.strokeStyle = 'rgba(80,150,220,0.24)';
+			c.lineWidth = 8;
+			c.stroke();
+			c.beginPath();
+			for (k = 0; k < n; k++) {
+				sx = this.screenX(S.ribX[b + k]);
+				sy = GEO.sy(S.ribY[b + k]);
+				if (k === 0) c.moveTo(sx, sy); else c.lineTo(sx, sy);
+			}
+			c.strokeStyle = 'rgba(115,190,235,0.95)';
+			c.lineWidth = 2;
+			c.stroke();
+			for (k = 1; k < n; k += 2) {
+				sx = this.screenX(S.ribX[b + k]);
+				sy = GEO.sy(S.ribY[b + k]);
+				c.beginPath();
+				c.moveTo(sx - 4, sy - 3); c.lineTo(sx + 4, sy + 3);
+				c.strokeStyle = (k & 2) ? 'rgba(226,170,125,0.9)' : 'rgba(90,95,110,0.9)';
+				c.lineWidth = 1;
+				c.stroke();
+			}
+		}
+	}
+	if (S.nPlm > 0) {
+		for (p = 0; p < S.nPlm; p++) {
+			b = p * P.conduitCap;
+			n = S.plmNCon[p];
+			c.beginPath();
+			for (q = 0; q < n; q++) {
+				sx = this.screenX(S.plmConX[b + q]);
+				sy = GEO.sy(S.plmConY[b + q]);
+				if (q === 0) c.moveTo(sx, sy); else c.lineTo(sx, sy);
+			}
+			c.strokeStyle = 'rgba(245,135,70,0.42)';
+			c.lineWidth = 3;
+			c.stroke();
+			sx = this.screenX(S.plmX[p]);
+			sy = GEO.sy(S.plmY[p]);
+			c.beginPath();
+			c.arc(sx, sy, Math.max(3, S.plmR[p] / GEO.kx), 0, 6.283185307179586);
+			c.strokeStyle = S.plmArrive[p] ? 'rgba(255,195,80,0.95)' : 'rgba(245,135,70,0.75)';
+			c.lineWidth = S.plmArrive[p] ? 2 : 1;
+			c.stroke();
+		}
+	}
+	// A small warm marker keeps a supplied arc column readable before M5 creates vents.
+	for (i = 0; i < S.nCol; i++) {
+		if (!(S.colMeltArc[i] > 0)) continue;
+		x = this.screenX(S.colX[i]);
+		y = GEO.sy(S.z[i]);
+		c.beginPath(); c.arc(x, y, 3, 0, 6.283185307179586);
+		c.fillStyle = 'rgba(255,150,65,0.9)'; c.fill();
+	}
 };
 
 // Plate boundaries (design §7): one glyph per classified edge on the profile — ridge
@@ -428,6 +503,7 @@ RNDR.updateProbe = function (mx, my) {
 		'  sed ' + (S.hSed[c] / 1e3).toFixed(1) + ' km';
 	s += '\nload ' + S.colLoad[c].toFixed(1) + ' m  pla ' + S.colPla[c].toFixed(1) + ' m  oPla ' + S.oPla[c].toFixed(3);
 	s += '  oBas ' + S.oBas[c].toFixed(3) + (S.colBevel[c] ? '  [beveled]' : '');
+	s += '\nchamber ' + S.colChamber[c].toFixed(0) + ' m2  recycle ' + S.colRecycle[c].toFixed(0) + ' m2';
 	if (y > top) {
 		s += '\n' + (y > 0 ? 'air' : 'water') + '  ' + ((y - top) | 0) + ' m above surface';
 		this.setProbe(s);

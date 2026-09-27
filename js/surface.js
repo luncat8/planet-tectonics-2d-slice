@@ -93,53 +93,16 @@ SURF.k6 = function (st, dt, t) {
 		var q = zi / zKnee;
 		var e = kEro * zi * q * q * (1 + 2 * sl / slopeRef) * dt;
 		if (!(e > 0)) continue;
-		var b = i * LC;
-		var nl = colNL[i];
-		if (nl <= 0) continue;
-		var top = nl - 1;
-		var topTh = layTh[b + top];
-		var removed = 0, remFel = 0;
-		if (topTh > e) {
-			var lith = layLi[b + top];
-			var cls = CLASS[lith];
-			layTh[b + top] = topTh - e;
-			removed = e;
-			if (cls === 1) remFel = e;
-			hTot[i] -= e;
-			if (cls === 0) hSed[i] -= e;
-			else if (cls === 1) hFel[i] -= e;
-			else hMaf[i] -= e;
-		} else {
-			var left = e;
-			var rf = 0;
-			while (left > 0 && colNL[i] > 0) {
-				top = colNL[i] - 1;
-				topTh = layTh[b + top];
-				var take = topTh > left ? left : topTh;
-				var lith2 = layLi[b + top];
-				var cls2 = CLASS[lith2];
-				if (cls2 === 1) rf += take;
-				left -= take;
-				if (take < topTh) {
-					layTh[b + top] = topTh - take;
-					break;
-				}
-				colNL[i] = top;
-			}
-			removed = e - left;
-			remFel = rf;
-			// for multi-layer removal, recompute h caches from remaining stack quickly
-			// (rare path, so we can afford a small loop)
-			var acc0 = 0, acc1 = 0, acc2 = 0;
-			var nn = colNL[i];
-			for (var k = 0; k < nn; k++) {
-				var thk = layTh[b + k];
-				var cl = CLASS[layLi[b + k]];
-				if (cl === 0) acc0 += thk;
-				else if (cl === 1) acc1 += thk;
-				else acc2 += thk;
-			}
-			hSed[i] = acc0; hFel[i] = acc1; hMaf[i] = acc2; hTot[i] = acc0 + acc1 + acc2;
+		if (colNL[i] <= 0) continue;
+		// Keep the stack operation in one place: it also invalidates deposits
+		// hosted by a completely removed top bed.
+		var Cremoved = Cmod.removeTop(i, e);
+		var removed = Cremoved;
+		var remFel = Cmod.removed[1];
+		if (removed > 0) {
+			Cmod.sums(i);
+			hFel[i] = st.hFel[i]; hMaf[i] = st.hMaf[i];
+			hSed[i] = st.hSed[i]; hTot[i] = st.hTot[i];
 		}
 		if (!(removed > 0)) continue;
 		colBevel[i] = 1;
