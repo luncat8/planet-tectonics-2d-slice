@@ -266,6 +266,54 @@ COL.layerAt = function (c, d) {
 	return -1;
 };
 
+// --- the belt at a convergent edge -------------------------------------------------
+
+function wmod(k, n) { k %= n; return k < 0 ? k + n : k; }
+
+// One measurement of a collision belt, shared by the orogenic flow (CRU.belt), by the
+// collision resistance in the plate solve (PLT.basal) and by the contract gate
+// (contact-audit beltScan), so the mechanism, the force and the gate cannot disagree
+// about what a belt is.
+//
+// The flanks are the ground *outside* the belt — three and four columns out on either
+// side — so the belt cannot raise the bar it is measured against; a flank taken one
+// column out rises with the belt and the flow that widens it stops as soon as it works.
+// The belt is the contiguous run of columns around the pair that stands P.beltRise above
+// those flanks, walked outward and stopped by a draining sliver (which has no crust to
+// be thick with) or by P.beltMaxCols.
+//
+// Returns the number of columns in the run, and leaves the flank thickness in COL.flankH,
+// the run's mean felsic thickness in COL.beltFel and its width in metres in COL.beltW.
+// The pair itself always counts, so a contact that has not thickened yet still resists
+// over its own two columns.
+COL.flankH = 0;
+COL.beltFel = 0;
+COL.beltW = 0;
+COL.beltAt = function (st, n, i) {
+	var j = i + 1 < n ? i + 1 : 0, h = st.hTot, fel = st.hFel, w = st.colW;
+	var k, c, cnt, thr, sumW, sumF;
+	// The flanks sit just outside the ground the orogenic flow reaches (P.beltFeed
+	// columns each side). A flank inside that reach is ground the flow itself thickens,
+	// so the belt raises the bar it is measured against and shuts its own flow off.
+	this.flankH = 0.25 * (h[wmod(i - P.beltFeed - 1, n)] + h[wmod(i - P.beltFeed - 2, n)] +
+		h[wmod(j + P.beltFeed + 1, n)] + h[wmod(j + P.beltFeed + 2, n)]);
+	thr = this.flankH + P.beltRise;
+	cnt = 2; sumW = w[i] + w[j]; sumF = fel[i] + fel[j];
+	for (k = 1; k <= P.beltMaxCols; k++) {
+		c = wmod(i - k, n);
+		if (c === j || st.colGhost[c] || !(h[c] >= thr)) break;
+		cnt++; sumW += w[c]; sumF += fel[c];
+	}
+	for (k = 1; k <= P.beltMaxCols; k++) {
+		c = wmod(j + k, n);
+		if (c === i || st.colGhost[c] || !(h[c] >= thr)) break;
+		cnt++; sumW += w[c]; sumF += fel[c];
+	}
+	this.beltW = sumW;
+	this.beltFel = sumF / cnt;
+	return cnt;
+};
+
 // --- initial planet (M1.1) ------------------------------------------------------
 // Tm is passed in: it lives in sim.js and a require back would be a load cycle.
 
@@ -481,6 +529,9 @@ for (var size = 0; size <= P.colCap; size++) {
 COL.dead = new Uint8Array(P.colCap);
 COL.redirect = new Int32Array(P.colCap);
 COL.intent = new Int8Array(P.colCap);
+// For a consume forced by geometry rather than by the boundary class: the column that ran
+// out of room, or -1 when the polarity decides.
+COL.crush = new Int32Array(P.colCap);
 COL.histEdge = new Int8Array(P.colCap);
 COL.histPol = new Int8Array(P.colCap);
 COL.histRP = new Int32Array(P.colCap);
@@ -619,20 +670,47 @@ function wrapX(x) {
 // spawns and kills a record every few frames, which is the loudest thing the section
 // ever does (0.1.5 M1c).
 COL.intents = function () {
-	var n = S.nCol, i, j, d, e, gL, min = P.gFloor * P.w0;
+	var n = S.nCol, i, j, im, d, e, gL, min = P.gFloor * P.w0;
 	this.intent.fill(0, 0, n);
+	this.crush.fill(-1, 0, n);
 	for (i = 0; i < n; i++) {
 		j = (i + 1) % n;
+		im = i > 0 ? i - 1 : n - 1;
 		d = S.colX[j] - S.colX[i];
 		if (d <= 0) d += P.wrap;
+		gL = S.colX[i] - S.colX[im];
+		if (gL < 0) gL += P.wrap;
 		// A sliver is retired the moment the trench has closed both its gaps to the
 		// floor: its territory is then two floors wide, and handing that back moves each
 		// neighbour's surface by metres. This is geometry, not a boundary state, so it
 		// is not gated on the classifier's entry terms like the two topology intents.
 		if (S.colGhost[i]) {
-			gL = S.colX[i] - S.colX[i > 0 ? i - 1 : n - 1];
-			if (gL < 0) gL += P.wrap;
-			if (gL <= min && d <= min * 1.0001) this.intent[i] = 3;
+			// A sliver that has another sliver on its right is in a pile-up: the trench
+			// has eaten several columns in a row and each of them left a marker here.
+			// The rightmost one waits for its own gaps to close, so without this the
+			// whole chain waits behind it and the markers squeeze the real columns
+			// between them. A chain drains from the left instead.
+			if (gL <= min && (d <= min * 1.0001 || S.colGhost[j])) { this.intent[i] = 3; continue; }
+			// The other way a sliver is finished: its trench gap opens. The plates have
+			// separated, so the sliver marks no trench any more, and what is left is a
+			// zero-crust record inside its own plate stealing width from the column
+			// beside it for as long as that plate lives -- the floor cannot help, because
+			// a plate is rigid and both of them move together. Retire it, and the column
+			// beside it gets its territory back.
+			if (S.edgeRelN[S.colPlate[im] !== S.colPlate[i] ? im : i] > 0) this.intent[i] = 3;
+			continue;
+		}
+		// Two floors on one column is a configuration the floor cannot satisfy: the
+		// column's whole territory is narrower than one floor, so no position of it
+		// clears both boundaries. It happens whenever a plate is squeezed from both
+		// sides at once -- the separation floor holds each gap at the floor and the
+		// span between the two outer columns keeps shrinking, so the middle column's
+		// width collapses towards zero. The age gate below cannot be allowed to hold
+		// the topology open that long, so a crushed column is absorbed across the gap
+		// with a real column on the other side, on geometry alone.
+		if (gL <= min && d <= min * 1.0001) {
+			if (S.colGhost[im]) { this.intent[i] = 2; this.crush[i] = i; }
+			else { this.intent[im] = 2; this.crush[im] = i; }
 			continue;
 		}
 		if (!(Math.abs(S.edgeRelN[i]) > P.epsHi && S.edgeAge[i] > P.evAge)) continue;
@@ -686,14 +764,14 @@ COL.moveDeposits = function (from, layer, to, newLayer) {
 // the trench has closed both its gaps to the floor, and it is drawn as the profile its
 // two real neighbours already make across it, so neither the consumption frame nor the
 // sliver's life moves the section.
-COL.consume = function (i, j) {
+COL.consume = function (i, j, crushLoser) {
 	var left = i, right = j, loser, winner, b, k, lith, t;
 	var SLAB = this.slab;
 	if (!SLAB) {
 		SLAB = (typeof module !== 'undefined' && module.exports) ? require('./slab.js') : window.SLAB;
 		this.slab = SLAB;
 	}
-	loser = S.edgePol[i] < 0 ? left : right;
+	loser = crushLoser >= 0 ? crushLoser : (S.edgePol[i] < 0 ? left : right);
 	winner = loser === left ? right : left;
 	b = loser * P.layerCap;
 	var ribbon = SLAB && SLAB.ready;
@@ -703,7 +781,7 @@ COL.consume = function (i, j) {
 		// the ribbon is anchored at the edge (the midpoint of the pair's gap), so the
 		// trench does not step half a column from frame to frame
 		SLAB.appendStack(S, loser, wrapX(S.colX[left] + gap * 0.5),
-			S.edgePol[i] < 0 ? 1 : -1, S.colPlate[winner], 0);
+			loser === left ? 1 : -1, S.colPlate[winner], 0);
 	}
 	for (k = 0; k < S.colNL[loser]; k++) {
 		lith = S.layLi[b + k]; t = S.layTh[b + k];
@@ -733,6 +811,24 @@ COL.consume = function (i, j) {
 	S.colGhost[loser] = 1;
 	S.damage[loser] = 0;
 	this.redirect[loser] = winner;
+};
+
+// What a draining record still holds when the trench retires it. A sliver owns no crust,
+// but it is not nothing: melt can be parked in its chamber after it was drained (a plume
+// head that arrives over a trench), and the gather below drops the slot, so anything left
+// in it would leave the model with no entry anywhere. Booked here instead — a draining
+// record is never a mass source and never a sink. Called from K4, where layTh is a volume.
+COL.drain = function (st, c) {
+	var b = c * P.layerCap, k;
+	for (k = 0; k < st.colNL[c]; k++) {
+		st.ledCons[st.layLi[b + k]] += st.layTh[b + k];
+		st.layTh[b + k] = 0;
+	}
+	st.colNL[c] = 0;
+	if (st.colChamber[c] > 0) {
+		st.ledCons[P.LITH.maf] += st.colChamber[c];
+		st.colChamber[c] = 0;
+	}
 };
 
 // One birth per qualifying gap (design §4.3): the newborn sits at the gap midpoint,
@@ -898,13 +994,14 @@ COL.k4 = function (st, dt, t, Tm) {
 	}
 	for (i = 0; i < n; i++) {
 		j = (i + 1) % n;
-		if (self.intent[i] === 3 && !self.dead[i] && !self.dead[j] &&
-			!st.colGhost[j]) self.dead[i] = 1;
+		if (self.intent[i] !== 3 || self.dead[i] || self.dead[j]) continue;
+		self.drain(st, i);
+		self.dead[i] = 1;
 	}
 	for (i = 0; i < n; i++) {
 		j = (i + 1) % n;
 		if (self.intent[i] !== 2 || self.dead[i] || self.dead[j]) continue;
-		self.consume(i, j);
+		self.consume(i, j, self.crush[i]);
 	}
 	for (i = 0; i < n; i++) freed += self.dead[i];
 	for (i = 0; i < n; i++) {
@@ -979,14 +1076,15 @@ COL.k4 = function (st, dt, t, Tm) {
 	return true;
 };
 
-// Due 1-Myr events: a slow C-C boundary sutures the smaller plate into the
-// larger after 20 Myr; a damaged corridor splits a plate only if both daughters
-// have enough columns. Called after K4, never while the sorted list is changing.
+// Due 1-Myr events: a C-C boundary that has been slower than P.vSuture for P.sutureAge
+// sutures the smaller plate into the larger; a damaged corridor splits a plate only if
+// both daughters have enough columns. Called after K4, never while the sorted list is
+// changing.
 COL.events = function (st) {
 	var n = st.nCol, i, j, a, b, small, large, last, p, start, k, c;
 	for (i = 0; i < n; i++) {
 		j = (i + 1) % n;
-		if (st.edge[i] !== P.EDGE.collide || st.edgeSlow[i] <= 20 ||
+		if (st.edge[i] !== P.EDGE.collide || st.edgeSlow[i] <= P.sutureAge ||
 			Math.abs(st.edgeRelN[i]) >= P.vSuture) continue;
 		a = st.colPlate[i]; b = st.colPlate[j];
 		if (a === b) continue;

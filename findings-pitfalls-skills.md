@@ -260,3 +260,38 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
 - A cooling curve can reach a cold mantle while stale plate ids retain an unused high
   velocity. Rebuild `plN` and zero velocities of empty plate records after every topology
   gather before measuring stagnant-lid speed.
+
+## 0.1.6 plate forces, ledgers and gates
+
+- **A gate that skips on a NaN input passes.** `P.beltFeed` went missing (a sweep restored
+  `js/params.js` from a snapshot taken before the parameter was added), so the belt flank
+  was NaN, the audit's `beltScan` did `if (!(flank > 0)) continue`, counted 0 collisions,
+  and both R2 checks passed vacuously — `--strict` printed ALL PASS. Read the *report*
+  line, not just the exit code: "0 collisions measured" is not a pass. And restore a
+  sweep's parameters from a snapshot taken after the last real edit.
+- **A plate's drive is the mean of the flow under it.** Modes shorter than a plate cancel
+  in that mean, so raising the flow amplitude does nothing. Measure the retention
+  (plate-mean / column-mean) before touching a force constant: it went 22% → 41% by
+  doubling the wavelength scale, and mean plate speed tripled.
+- **A boundary force is a line force.** Written as a per-column velocity it is averaged
+  over the whole plate by the solve, so one boundary column brakes a 50-column plate —
+  a factor of 50 lost. Sum it per plate (`PLT.fP`) and divide once.
+- **The separation floor sets the model's time resolution.** A pair that closes more than
+  one floor gap per frame is inside the floor every frame, so the consuming edge fires
+  every frame and the trench runs at the frame rate. Check
+  `max|edgeRelN|·dt < gFloor·w0` before believing any event rate: 2291 deaths in 3000
+  frames became 65 by widening the floor, with no other change.
+- **Retiring a record must book what it holds.** A "draining" record is not empty: a plume
+  head arriving over a trench parked 1.35e4 m³ of melt in two slivers' chambers, and the
+  gather dropped the slots. One 700 Myr residual of rel 6e-8 was that and nothing else.
+  Fix the invariant (book at retirement), not just the caller that leaked.
+- **Bisect a ledger residual to a single frame before reading code.** Frame-by-frame
+  balance marks around one kernel, printed as *delta from a baseline* (a balance printed
+  as `toExponential(6)` cannot resolve a 1e-8 relative change), localised −1.354e4 m³ to
+  the interval between two marks with three statements in it.
+- **A probe loop bounded by `st.nCol` is not comparable across a gather** — `nCol` changes
+  there and dead slots enter or leave the range. Bound it by the pre-gather count and
+  classify by the dead flag; that is exactly the interval where the leak was.
+- **Rigid plates make the floor useless inside a plate.** A zero-crust marker on a plate
+  moves with the column beside it, so no position correction can ever separate them; it
+  steals that column's width for as long as the plate lives. Retire the marker instead.

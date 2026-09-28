@@ -250,29 +250,40 @@ CRU.collapse = function (st, dt) {
 // the pair growing a second, third and fourth bed. It is a move inside the crust, so the
 // ledger has nothing to say about it.
 CRU.belt = function (st, dt) {
-	var n = st.nCol, i, j, im, ip, flank, excess, th, w;
+	var n = st.nCol, i, j, k, excess, th;
 	for (i = 0; i < n; i++) {
-		if (st.edge[i] !== P.EDGE.collide) continue;
+		if (st.edge[i] !== P.EDGE.collide || st.colGhost[i]) continue;
 		j = i + 1 < n ? i + 1 : 0;
-		im = i > 1 ? i - 1 : n - 1;
-		ip = j + 1 < n ? j + 1 : 0;
-		if (st.colGhost[i] || st.colGhost[j] || st.colGhost[im] || st.colGhost[ip]) continue;
-		if (st.colGhost[i > 2 ? i - 2 : n - 2] || st.colGhost[j + 2 < n ? j + 2 : 2]) continue;
-		flank = 0.5 * (st.hTot[i > 1 ? i - 1 : n - 1] + st.hTot[ip]);
+		if (st.colGhost[j]) continue;
+		// the flow needs ground to flow into: a draining record beside the pair is a
+		// trench, not a flank
+		for (k = 1; k <= P.beltFeed; k++) {
+			if (st.colGhost[wmodc(i - k, n)] || st.colGhost[wmodc(j + k, n)]) break;
+		}
+		if (k <= P.beltFeed) continue;
+		// COL.beltAt is the one belt measurement in the model, and its flanks sit just
+		// outside the ground this flow reaches, so the belt is measured against ground it
+		// has not thickened. A flank inside the flow's reach rises with the belt and
+		// shuts the flow off as soon as it works.
+		COL.beltAt(st, n, i);
 		// the crust holds up a root of beltYield before it starts to flow sideways, the
 		// way an orogenic wedge stands at its critical taper: without that the flow
 		// flattens the boundary until no belt is left at all
-		excess = 0.5 * (st.hTot[i] + st.hTot[j]) - flank - P.beltYield;
+		excess = 0.5 * (st.hTot[i] + st.hTot[j]) - COL.flankH - P.beltYield;
 		if (!(excess > 0)) continue;
 		th = P.kBelt * excess * 1000 * dt * (0.5 + Math.abs(st.edgeRelN[i]) / P.vRef);
 		if (!(th > 0)) continue;
-		// half to the column beside the pair and half to the one beyond it, so the belt
-		// widens instead of raising a wall two columns wide
-		COL.collapseMove(i, im, 0.5 * th * st.colW[i]);
-		COL.collapseMove(i, i > 2 ? i - 2 : n - 2, 0.5 * th * st.colW[i]);
-		COL.collapseMove(j, ip, 0.5 * th * st.colW[j]);
-		COL.collapseMove(j, j + 2 < n ? j + 2 : 2, 0.5 * th * st.colW[j]);
+		// spread over the P.beltFeed columns each side, so the belt widens instead of
+		// raising a wall two columns wide
+		for (k = 1; k <= P.beltFeed; k++) {
+			COL.collapseMove(i, wmodc(i - k, n), th * st.colW[i] / P.beltFeed);
+			COL.collapseMove(j, wmodc(j + k, n), th * st.colW[j] / P.beltFeed);
+		}
 	}
 };
+
+// wrapped column index. The hand-rolled `i > 2 ? i - 2 : n - 2` this replaces sent
+// column 1 to n - 2 and column n - 1's belt to column 2, i.e. across the whole planet.
+function wmodc(k, n) { k %= n; return k < 0 ? k + n : k; }
 
 if (typeof module !== 'undefined' && module.exports) module.exports = CRU;

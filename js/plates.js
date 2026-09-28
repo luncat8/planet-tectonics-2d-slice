@@ -1,15 +1,37 @@
 // plates.js — K2 plate solve and K3 transport/classifier (design §4.2).
 // A plate is rigid in 1D, so the reference's 3x3 force balance degenerates to a
-// width-weighted mean of (mantle drive + equivalent basal velocities w / cD) over its
-// columns, relaxed by dtGeo/tauOmega and clamped to vMax. M4 adds a bounded slab pull.
+// width-weighted mean of the drive over its columns plus the boundary forces acting on
+// the plate as a whole, relaxed by dtGeo/tauOmega and clamped to vMax.
 // Edge i is the boundary from sorted column i to its right neighbour across the wrap.
+//
+// Two kinds of term enter, and telling them apart is what makes the speeds come out at
+// the scale of real plates:
+//
+//   distributed   ridge push: an equivalent basal *velocity* per column, entering the
+//                 mean weighted by the column's width, so a plate feels it in
+//                 proportion to the oceanic ground it carries. This is correct as a
+//                 per-column quantity because it is the local slope integral: summed
+//                 over an oceanic run it telescopes to the ridge-to-trench drop.
+//   line force    slab pull and collision resistance act *at a boundary*, on the plate
+//                 as a whole. They are summed once per plate (fP, m2/Myr = velocity x
+//                 length) and divided by the plate's width by the solve itself, which is
+//                 a force divided by a drag.
+//
+// Writing the boundary terms as per-column velocities — what 0.1.5 did — divided both by
+// the number of columns in the plate. Measured on seed 1 at 100 Myr, a slab pull worth
+// 2 cm/yr of equivalent velocity reached its plate as 0.6 mm/yr and a continental
+// collision braking at 8 cm/yr reached its plates as 1.6 mm/yr, against a mantle drive of
+// 2.5 mm/yr: the plates moved at the speed of the drive alone (mean 2.7 mm/yr, a tenth of
+// the real thing) and a collision braked nothing it was not already stopping.
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
 var MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.MNT;
 var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COL;
+var SLAB = (typeof module !== 'undefined' && module.exports) ? require('./slab.js') : window.SLAB;
 
 var PLT = {
-	wB: new Float64Array(P.colCap),     // equivalent basal velocity, m/Myr
+	wB: new Float64Array(P.colCap),     // distributed equivalent basal velocity, m/Myr
+	fP: new Float64Array(P.plateCap),   // line forces on each plate, m2/Myr, +x
 	sumW: new Float64Array(P.plateCap),
 	sumU: new Float64Array(P.plateCap)
 };
@@ -28,23 +50,47 @@ PLT.cD = function (Tm) {
 // whatever its age (0.1.5 M1a).
 PLT.oceanic = function (S, i) { return S.hFel[i] < P.hOceanic && !S.colGhost[i]; };
 
-// ridge push on oceanic columns (downslope), and the previous frame's C–C collision
-// resistance pushing both sides apart, growing with the felsic thickness in contact
+// Ridge push on oceanic columns (downslope), and the two boundary line forces: the
+// slab hanging at a trench pulls the plate that owns it, and the previous frame's C–C
+// collision resistance pushes both sides apart over the width of the orogen.
 PLT.basal = function (S) {
-	var n = S.nCol, w = this.wB, i, j, m, f, slabAge, loser;
+	var n = S.nCol, np = S.nPl, w = this.wB, f = this.fP, i, j, p, q, m, fb, lb;
+	var slabAge, loser, dir, gap, x, len;
 	for (i = 0; i < n; i++) w[i] = this.oceanic(S, i) ? -P.kRidge * S.slope[i] : 0;
+	for (p = 0; p < np; p++) f[p] = 0;
 	for (i = 0; i < n; i++) {
 		j = i + 1 < n ? i + 1 : 0;
+		p = S.colPlate[i]; q = S.colPlate[j];
+		if (p === q) continue;
 		if (S.edge[i] === P.EDGE.subduct) {
 			loser = S.edgePol[i] < 0 ? i : j;
+			// the downgoing plate is pulled *toward* the trench, so the sign follows the
+			// polarity: a left-hand loser is pulled to +x, a right-hand one to -x. One
+			// unsigned `+=` on the loser (0.1.5) pulled half the trenches the wrong way
+			// and pushed the slab's own plate out of the trench instead.
+			dir = S.edgePol[i] < 0 ? 1 : -1;
 			slabAge = Math.min(1, Math.max(0, S.colAge[loser]) / 70);
-			w[loser] += P.vSlab * P.slabSinkFrac * slabAge;
+			gap = S.colX[j] - S.colX[i];
+			if (gap < 0) gap += P.wrap;
+			x = S.colX[i] + gap * 0.5;
+			if (x >= P.wrap) x -= P.wrap;
+			len = SLAB.pullLen(S, x, S.edgePol[i] < 0 ? 1 : -1);
+			f[S.colPlate[loser]] += dir * P.vSlab * P.slabPullK * slabAge * len;
 		}
 		if (S.edge[i] !== P.EDGE.collide || S.edgeRelN[i] >= 0) continue;
-		f = Math.min(2, (S.hFel[i] + S.hFel[j]) / (2 * P.hFelLand0));
-		m = P.vColl * f * -S.edgeRelN[i] / P.vRef;
-		w[i] -= m;
-		w[j] += m;
+		// The resistance is what the orogen is, not what the two records at the contact
+		// are: it acts over the whole belt the collision has built (COL.beltAt, the same
+		// measurement the R2 gate uses) and it scales with the felsic thickness standing
+		// in it. A young two-column contact is a narrow wall and brakes little; a
+		// twelve-column orogen of thickened crust is a buttress and brakes hard, which is
+		// how a collision comes to rest without a speed limit anywhere (R4).
+		COL.beltAt(S, n, i);
+		lb = COL.beltW;
+		fb = COL.beltFel / P.hFelLand0;
+		if (fb > 2) fb = 2;
+		m = P.vColl * fb * -S.edgeRelN[i] / P.vRef * lb;
+		f[p] -= m;
+		f[q] += m;
 	}
 };
 
@@ -57,6 +103,8 @@ PLT.solve = function (S, dt, Tm) {
 		sw[p] += S.colW[i];
 		su[p] += S.colW[i] * (MNT.uCol[i] + this.wB[i] * icD);
 	}
+	// the line forces are already whole-plate: one term, divided by the width below
+	for (p = 0; p < np; p++) su[p] += this.fP[p] * icD;
 	for (p = 0; p < np; p++) {
 		S.plUP[p] = S.plU[p];
 		if (!(sw[p] > 0)) continue;
@@ -68,8 +116,20 @@ PLT.solve = function (S, dt, Tm) {
 	for (i = 0; i < n; i++) S.colU[i] = S.plU[S.colPlate[i]];
 };
 
-// ext = d(uMantle - uPlate)/dx, periodic centred differences at the column positions
-// (1/Myr; the damage update in K5 normalizes by extRef)
+// ext = d(uMantle)/dx, the divergence of the mantle's own surface flow at the columns
+// (1/Myr; the damage update in K5 normalizes by extRef).
+//
+// The design writes d(uMantle - uPlate)/dx, and inside a plate the two are the same
+// thing, because a plate is rigid and its own divergence is zero there. They differ only
+// at a boundary, where uPlate jumps: the difference is the jump over two columns, with
+// the *opposite* sign to the geology. Measured on seed 1, a convergent boundary read
+// +5.4 /Myr — 540x extRef, an instant saturation — and a divergent one read negative, so
+// the field damaged the crust exactly where it was being destroyed and left the rifts
+// that were opening alone (mean damage at t = 5 Myr: trench 0.75, rift 0.14).
+//
+// What nucleates a rift is the basal traction tearing the plate apart from below, which
+// is the mantle's divergence; what a boundary does to the crust is already written in the
+// boundary classification. So the plate term stays out of this field.
 PLT.extension = function (S) {
 	var n = S.nCol, uM = MNT.uCol, i, im, ip, dx;
 	if (n < 3) { for (i = 0; i < n; i++) S.ext[i] = 0; return; }
@@ -78,7 +138,7 @@ PLT.extension = function (S) {
 		ip = i + 1 < n ? i + 1 : 0;
 		dx = S.colX[ip] - S.colX[im];
 		if (dx <= 0) dx += P.wrap;
-		S.ext[i] = ((uM[ip] - S.colU[ip]) - (uM[im] - S.colU[im])) / dx;
+		S.ext[i] = (uM[ip] - uM[im]) / dx;
 	}
 };
 

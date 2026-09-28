@@ -85,11 +85,27 @@ var MAG = {
 		void dt;
 	},
 
+	// The column a plume melts into: the nearest one that is real ground. A draining
+	// sliver is the trench, not crust, and melt parked in its chamber leaves the model
+	// unbooked when the trench retires the record (measured: 1.35e4 m3 of mafic on two
+	// slivers retired in one frame at 112 Myr on seed 1).
+	plumeColumn: function (st, x) {
+		var c = this.nearest(st, x), n = st.nCol, q, j;
+		if (c < 0) return -1;
+		for (q = 0; q <= 4; q++) {
+			j = (c + q) % n;
+			if (!st.colGhost[j]) return j;
+			j = (c - q + n) % n;
+			if (!st.colGhost[j]) return j;
+		}
+		return -1;
+	},
+
 	plume: function (st, dt) {
 		var i, c, temp, amount;
 		for (i = 0; i < st.nPlm; i++) {
 			if (!st.plmArrive[i] || !(st.plmStr[i] > 0)) continue;
-			c = this.nearest(st, st.plmX[i]);
+			c = this.plumeColumn(st, st.plmX[i]);
 			if (c < 0) continue;
 			temp = 0.8 + st.plmStr[i] * 0.4;
 			amount = P.kPlumeMelt * st.plmStr[i] * temp * dt;

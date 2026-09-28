@@ -372,6 +372,8 @@ function atSite(x) {
 // part of the belt, so the width half is measured where the orogenic flow and the
 // collision balance. The report says how many collisions were measured and how many got
 // that far, so a run that never did cannot pass as if it had.
+function wm(k) { k %= S.nCol; return k < 0 ? k + S.nCol : k; }
+
 function beltScan(final) {
 	var n = S.nCol, i, j, c, h, flank, peak, run, bump;
 	for (i = 0; i < n; i++) {
@@ -379,15 +381,17 @@ function beltScan(final) {
 		j = i + 1 < n ? i + 1 : 0;
 		if (S.colGhost[i] || S.colGhost[j]) continue;      // mid-consumption: not a section
 		// the flanks are the ground *outside* the belt, three and four columns out, so
-		// the belt's own columns cannot raise the bar they are measured against
-		flank = 0.25 * (S.hTot[i > 3 ? i - 3 : n - 3] + S.hTot[i > 4 ? i - 4 : n - 4] +
-			S.hTot[j + 2 < n ? j + 2 : 2] + S.hTot[j + 3 < n ? j + 3 : 3]);
+		// the belt's own columns cannot raise the bar they are measured against. This is
+		// COL.beltAt's flank, written out so the gate keeps its own copy of the
+		// arithmetic; the wrapped index matters (the hand-rolled `i > 3 ? i - 3 : n - 3`
+		// sent column 1's flank to n - 3, half a planet away).
+		flank = 0.25 * (S.hTot[wm(i - P.beltFeed - 1)] + S.hTot[wm(i - P.beltFeed - 2)] +
+			S.hTot[wm(j + P.beltFeed + 1)] + S.hTot[wm(j + P.beltFeed + 2)]);
 		peak = Math.max(S.hTot[i], S.hTot[j]);
 		if (!(flank > 0)) continue;
 		run = 0;
 		for (h = -2; h <= 3; h++) {
-			c = i + h; while (c < 0) c += n; while (c >= n) c -= n;
-			if (S.hTot[c] >= flank + P.beltRise) run++;
+			if (S.hTot[wm(i + h)] >= flank + P.beltRise) run++;
 		}
 		beltN++;
 		if (peak / flank > beltExcess) { beltExcess = peak / flank; beltX = S.colX[i]; }

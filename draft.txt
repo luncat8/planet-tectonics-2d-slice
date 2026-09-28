@@ -13,6 +13,7 @@ read
 https://github.com/luncat8/planet-geotectonics
 for physics and deposits references
 
+make good collision of plates. need thing how plates and layers push each other and interact smooth, good looking and realistic way
 
 
 

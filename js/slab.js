@@ -57,6 +57,32 @@ SLAB.newRibbon = function (st, r, x, dir, plate, t) {
 	return r;
 };
 
+// Read-only: the polyline length of the slab hanging at a trench, for the plate solve's
+// slab pull. Unlike findRibbon this never creates a ribbon and never matches on the
+// owning plate — a suture or a split remaps colPlate without touching ribPlate, so the
+// plate id is not a reliable key, and "the slab under this trench" is a position and a
+// dip direction. Returns 0 where there is none, so a trench whose slab has dissolved at
+// P.slabDissolve pulls with nothing, which is a detachable slab and the reason the pull
+// is a length rather than a constant.
+SLAB.pullLen = function (st, x, dir) {
+	var best = -1, bestD = 2.5 * P.w0, d, r, k, base, n, len, dx, dy;
+	for (r = 0; r < st.nRib; r++) {
+		if (st.ribDir[r] !== dir) continue;
+		d = Math.abs(this.dx(st.ribX0[r], x));
+		if (d < bestD) { bestD = d; best = r; }
+	}
+	if (best < 0) return 0;
+	base = best * P.ribNodeCap;
+	n = st.ribN[best];
+	len = 0;
+	for (k = 1; k < n; k++) {
+		dx = this.dx(st.ribX[base + k - 1], st.ribX[base + k]);
+		dy = st.ribY[base + k] - st.ribY[base + k - 1];
+		len += Math.sqrt(dx * dx + dy * dy);
+	}
+	return len;
+};
+
 SLAB.findRibbon = function (st, x, dir, plate, t) {
 	var best = -1, bestD = 2.5 * P.w0, d, r, slot;
 	for (r = 0; r < st.nRib; r++) {

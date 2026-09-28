@@ -98,13 +98,15 @@ var P = {
 	plateJitter: 16,             // columns of seeded boundary jitter; 512/8 - 2*16 >= minPlateCells
 	rGap: 0.75,
 	rContact: 0.6,
-	gFloor: 0.05,                // x w0: no two different-plate records closer than this
+	gFloor: 0.12,                 // floor must exceed the per-frame displacement
 	floorPass: 16,                 // bound on COL.floor's settle passes; it stops early when settled
 	floorTol: 0.01,                // x gFloor a ring of contacts may leave uncorrected (see COL.floor)
 	K: 3,                        // rift donors
 	minPlateCells: 24,
 	evAge: 2,                    // Myr a boundary must hold one state before it may change
 	                            // the number of columns (the classifier's own entry terms)
+	sutureAge: 20,               // Myr a C-C contact must stay slower than vSuture before
+	                            // its two plates suture into one (COL.events)
 	epsHi: 2e3,                  // m/Myr (2 mm/yr) boundary hysteresis
 	epsLo: 1e3,                  // m/Myr (1 mm/yr)
 	vRef: 5e4,                   // m/Myr (5 cm/yr)
@@ -116,14 +118,22 @@ var P = {
 	hCollapse: 50e3,
 	hMafNewBase: 7e3,            // hMafNew = base * (1 + hMafNewTm * max(0, Tm - 1))
 	hMafNewTm: 1.5,
-	// forces (design §4.1, §4.2)
-	U0: 5e4,                     // m/Myr mantle speed scale
-	Lm: 2e6,                     // m, psi wavelength scale (modes k = 2..5)
+	// forces (design §4.1, §4.2). U0 and Lm are calibrated together, because a plate's
+	// drive is the *mean* of the flow under it: at Lm 2000 km the modes (n = 6, 10, 13, 16)
+	// are shorter than a plate, the mean cancels 81% of the flow, and the plates crawled
+	// at 2.7 mm/yr against the design's 5 cm/yr scale. Cells of 4000-13000 km are also the
+	// honest scale for whole-mantle convection, and they leave the plates 35-60% of the
+	// flow, so the drive is the real thing rather than a residual of it.
+	U0: 8e4,                     // m/Myr (8 cm/yr) mantle surface speed scale
+	Lm: 4e6,                     // m, psi wavelength scale (modes k = 2..5 -> n = 3,5,6,8)
 	Ea: 3,
 	coolDrag: 24,                // extra Arrhenius stiffening below the adiabat unit T
 	vSlab: 1e6,                  // m/Myr
+	slabPullK: 0.05,             // fraction of vSlab a metre of slab delivers as pull:
+	                             // F = vSlab*slabPullK*s(age)*Lslab (m2/Myr), a line
+	                             // force on the plate, divided by its width in the solve
 	kRidge: 5e6,
-	vColl: 2e5,
+	vColl: 2e5,                  // m/Myr of equivalent velocity per unit belt width
 	kArc: 8e3,
 	zTrench: 3e3,                // m
 	// surface (design §4.4, §4.6)
@@ -146,7 +156,15 @@ var P = {
 	kDam: 0.05,                  // /Myr
 	kDamT: 0.02,                 // /Myr (reserved: no transverse velocity in 1D)
 	kHeal: 0.005,                // /Myr
-	extRef: 1e-2,                // 1/Myr (= 1e-8 /yr)
+	extRef: 5e-1,                // 1/Myr, calibrated to this flow's own surface divergence
+	                            // (p50 0.018, p99 0.058 /Myr at U0 8e4 / Lm 4e6): damage
+	                            // settles at kDam*(ext/extRef)/kHeal = 10*ext/extRef, so
+	                            // 5e-1 leaves the median column at 0.36 and saturates the
+	                            // top percent. The reference's 1e-8 /yr is a real intraplate
+	                            // strain rate; a flow of cm/yr over 5000 km cells is 30x
+	                            // that, and at extRef 1e-2 every column on the planet sat
+	                            // at damage 1 and the split rule was decided by geometry
+	                            // alone (measured: 58 rifts in 50 Myr).
 	splitDamage: 0.8,
 	strBase: 0.3,
 	strFelK: 0.7,
@@ -210,6 +228,8 @@ var P = {
 	bedMin: 250,                // m, a bed thinner than this is absorbed into its neighbour
 	capStay: 3,                  // frames a column may sit at layerCap before it has consolidated
 	beltCols: 4,                  // columns a collision belt must thicken, of the 6 around the pair
+	beltMaxCols: 16,              // columns the belt walk (COL.beltAt) follows out from the pair
+	beltFeed: 2,                  // columns each side the orogenic flow reaches; the flanks sit just beyond
 	beltRise: 2000,               // m, the thickening that makes a column part of a belt
 	beltRoot: 4000,               // m, the root a collision must stand above its flanks to count as built
 	beltPeak: 1.5,                // a collision peak over its flanks that is a needle, not a belt

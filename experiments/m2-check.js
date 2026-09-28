@@ -73,7 +73,28 @@ check.ok('reset is deterministic, including new buffers', first === S.hash());
 // --- M2.1 mantle ------------------------------------------------------------------
 check.section('M2.1 mantle flow and fan T');
 check.planet(1);
-check.ok('modes are integer harmonics of the wrap', Array.from(MNT.n).join(',') === '6,10,13,16', Array.from(MNT.n).join(','));
+// Derived from P.Lm, not quoted: the mode list is a function of the wavelength scale, and
+// a hardcoded list would pass a stale calibration. The second check is the calibration
+// itself -- a plate's drive is the *mean* of the flow under it, so a mode shorter than a
+// plate cancels in that mean and the plates crawl (at Lm 2000 km the mean kept 19% of the
+// flow and the plates moved at 2.7 mm/yr; at 4000 km it keeps ~50%).
+var wantN = [];
+for (var mk = 2; mk <= 5; mk++) wantN.push(Math.round(mk * P.wrap / (2 * Math.PI * P.Lm)));
+check.ok('modes are integer harmonics of the wrap', Array.from(MNT.n).join(',') === wantN.join(','),
+	Array.from(MNT.n).join(',') + ' want ' + wantN.join(','));
+MNT.setTime(0, P.Tm0);
+var flowAbs = 0, plateAbs = 0, plateN = 0, colN = 0;
+for (var fc = 0; fc < S.nCol; fc++) flowAbs += Math.abs(MNT.uSurf(S.colX[fc]));
+flowAbs /= S.nCol;
+for (var fp = 0; fp < S.nPl; fp++) {
+	var fw = 0, fu = 0;
+	for (fc = 0; fc < S.nCol; fc++) if (S.colPlate[fc] === fp) { fw += S.colW[fc]; fu += S.colW[fc] * MNT.uSurf(S.colX[fc]); }
+	if (fw > 0) { plateAbs += Math.abs(fu / fw); plateN++; }
+}
+plateAbs /= plateN;
+check.ok('the drive survives plate averaging', plateAbs > 0.3 * flowAbs,
+	'plates feel ' + (plateAbs / 1e3).toFixed(2) + ' mm/yr of a ' + (flowAbs / 1e3).toFixed(2) +
+	' mm/yr flow (' + (100 * plateAbs / flowAbs).toFixed(0) + '%)');
 var modesOk = true;
 for (var m = 0; m < MNT.nMode; m++) {
 	var period = 2 * Math.PI / MNT.om[m];
@@ -165,6 +186,8 @@ for (var c = 0; c < S.nCol; c++) {
 	sw[S.colPlate[c]] += S.colW[c];
 	su[S.colPlate[c]] += S.colW[c] * (MNT.uCol[c] + PLT.wB[c] * icD);
 }
+// the boundary line forces are whole-plate terms: one entry per plate, not per column
+for (p = 0; p < S.nPl; p++) su[p] += PLT.fP[p] * icD;
 PLT.solve(S, P.tauOmega, SIM.Tm);
 var fitErr = 0;
 for (p = 0; p < S.nPl; p++) fitErr = Math.max(fitErr, Math.abs(S.plU[p] - su[p] / sw[p]));
@@ -261,8 +284,16 @@ bi = twoPlates();
 setRel(-5e4);
 S.slope.fill(0);
 PLT.basal(S);
-check.ok('collision resistance pushes both sides apart, equal and opposite', PLT.wB[bi] < 0 && PLT.wB[bi + 1] === -PLT.wB[bi],
-	(PLT.wB[bi] / 1e4).toFixed(2) + ' cm/yr');
+// The resistance is a line force on the two *plates* (fP, m2/Myr), not a per-column
+// velocity: a boundary term divided by the plate's column count is 1/n of the force it
+// stands for, which is why the 0.1.5 collision never braked anything.
+var collF = PLT.fP[S.colPlate[bi]];
+check.ok('collision resistance pushes both plates apart, equal and opposite',
+	collF < 0 && PLT.fP[S.colPlate[bi + 1]] === -collF, (collF / 1e9).toFixed(2) + 'e9 m2/Myr');
+COL.beltAt(S, S.nCol, bi);
+check.near('the resistance acts over the belt the contact has built', collF,
+	-P.vColl * Math.min(2, COL.beltFel / P.hFelLand0) * 5e4 / P.vRef * COL.beltW, 1e-9);
+
 S.hFel[5] = 0; S.slope[5] = 1e-3;
 PLT.basal(S);
 check.ok('ridge push is downslope on oceanic columns only', PLT.wB[5] === -P.kRidge * 1e-3 && PLT.wB[6] === 0);
