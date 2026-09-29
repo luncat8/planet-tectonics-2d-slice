@@ -96,6 +96,7 @@ G.mesh = function (nx, ny, wrap, depth, yLin) {
 		M.vol[j] = M.dx * dEta * M.jC[j];           // cell area per unit out-of-plane depth
 	}
 	M.cw = new Float64Array((ny + 1) * nx);     // mu_k / W_k, the conservative scatter's factor
+	M.cover = 1 / 16;                             // minimum deposited fraction that is a sample
 	M.eMin = 0.5 * dEta; M.eMax = etaBot - 0.5 * dEta;
 	M.yMin = yLin * Math.sinh(M.eMin); M.yMax = yLin * Math.sinh(M.eMax);
 	for (m = 0; m <= (nx >> 1); m++) M.lam[m] = (2 - 2 * Math.cos(2 * Math.PI * m / nx)) / (M.dx * M.dx);
@@ -355,8 +356,8 @@ G.scatterT = function (M, S, Tg) {
 		base = j * nx;
 		for (i = 0; i < nx; i++) {
 			q = base + i;
-			if (w[q] > 0.0625 * mu) { Tg[q] = sum[q] / w[q]; cw[q] = mu / w[q]; }
-			else { e++; cw[q] = 0; }                           // under a sixteenth: not a sample
+			if (w[q] > M.cover * mu) { Tg[q] = sum[q] / w[q]; cw[q] = mu / w[q]; }
+			else { e++; cw[q] = 0; }                           // under M.cover: not a sample
 		}
 	}
 	if (e) fillHoles(M, S, Tg);
@@ -460,31 +461,45 @@ G.gatherVel = function (M, S, psi, dt) {
 // local one -- both are coverage errors, and coverage is exactly what the heat bookkeeping
 // rides on: gatherDT's weights claim a node's measure only if some marker reaches it.
 //
-// The cheap repair is: every empty node takes one marker from the nearest node that has two.
-// A repaired marker keeps its T, m and v exactly -- its *position* was wrong and correcting
-// that is the whole repair -- so the common case creates, diffuses and interpolates nothing.
-// When a fold outruns the search (more than a row's worth of nodes left empty) the global
-// re-deal below runs instead: it always restores coverage, at the price of resampling the
-// field, which measured as several kappa of numerical diffusion when it ran every frame.
-// force = the periodic global re-deal the caller's cadence asks for; without it this is the
-// cheap coverage repair first, and the re-deal only if the repair cannot do the job.
+// The cheap repair is: every transfer hole takes one marker from the nearest node that has
+// two. A repaired marker keeps its T, m and v exactly -- its *position* was wrong and
+// correcting that is the whole repair -- so the common case creates, diffuses and
+// interpolates nothing. The target is scatterT's deposited-weight test, not nearest-node
+// occupancy: an empty bucket can still be well covered by a quadratic kernel. The global
+// re-deal below is a genuine last resort if local donors cannot cover a transfer hole; it is
+// never a routine cadence because it resamples the field. `force` exists for an explicit
+// future reset, not for normal frame stepping.
 G.reseed = function (M, S, force) {
-	var nx = M.nx, ny = M.ny, counts = M.counts, slot = M.slot, order = S.order;
-	var p, q, i, j, c = 0, n = 0, L, total = 0;
+	var nx = M.nx, ny = M.ny, counts = M.counts, slot = M.slot, order = S.order, w = M.w;
+	var p, q, i, j, c = 0, n = 0, L, total = 0, mu;
 	counts.fill(0);
 	for (p = 0; p < S.n; p++) counts[nodeOf(M, S, p)]++;
 	for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) { q = j * nx + i; slot[q] = c; c += counts[q]; }
 	for (p = 0; p < S.n; p++) { q = nodeOf(M, S, p); order[slot[q]++] = p; }
 	if (force) { G.redeal(M, S, slot, order, counts); S.moved = 0; return; }
-	for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) if (!counts[j * nx + i]) total++;
-	for (L = 0; L < LEVELS.length; L++) {
-		for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) {
-			if (counts[j * nx + i]) continue;
-			if (pull(M, S, counts, slot, order, j, i, LEVELS[L])) n++;
-		}
-		if (n >= total) break;                            // every node covered: stop
+	// A nearest-node bucket being empty is not a coverage failure: the quadratic deposit may
+	// still sample it well. Move a marker only for the same low deposited weight scatterT
+	// called a hole. The old occupancy rule moved tens of markers for one true hole, then
+	// re-dealt a whole lattice once those harmless bucket gaps passed one row.
+	for (j = 1; j < ny; j++) {
+		mu = M.dEta * M.jN[j] * M.dx;
+		for (i = 0; i < nx; i++) if (w[j * nx + i] <= M.cover * mu) total++;
 	}
-	if (n > nx) G.redeal(M, S, slot, order, counts);      // a whole row's worth left: re-deal
+	for (L = 0; L < LEVELS.length; L++) {
+		for (j = 1; j < ny; j++) {
+			mu = M.dEta * M.jN[j] * M.dx;
+			for (i = 0; i < nx; i++) {
+				q = j * nx + i;
+				if (w[q] > M.cover * mu) continue;
+				if (pull(M, S, counts, slot, order, j, i, LEVELS[L])) { n++; w[q] = mu; }
+			}
+		}
+		if (n >= total) break;                            // every transfer hole covered: stop
+	}
+	// A full re-deal is the last resort, never a threshold on the *number moved*. It is much
+	// less disruptive than leaving a field hole, but normal convection reaches this branch
+	// only if the local donor search genuinely cannot cover a transfer hole.
+	if (n < total) G.redeal(M, S, slot, order, counts);
 	S.moved = n;
 };
 // the repair's search radii: the near ring first (a folded marker one or two cells off its

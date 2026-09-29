@@ -22,9 +22,9 @@ var PTR = {
 	off: null, octx: null, ow: 0, oh: 0,                // the raster runs at half resolution
 	jOf: null, fyOf: null, iOf: null, fxOf: null,      // screen -> mesh resampling tables
 	sx: 1,                                              // km per raster column
-	pal: null,                                          // 256 packed words, T = 0..1
+	pal: null, meltPal: null, meltLevel: null,          // packed thermal and melt-overlay LUTs
 	ticks: null, labels: null, barPx: 0,                // the ruler
-	markers: true, ruler: true,
+	markers: true, ruler: true, melt: true,
 
 	SKY: 0xff1c1014, CMB: 0xff2e1a10, MARK: 0x404040,
 
@@ -70,11 +70,13 @@ var PTR = {
 		this.barPx = Math.round((RULER[4] / v.kx) / 50) * 50;      // the bar snaps to 50 px
 	},
 
-	// the field: T bilinear from the two node rows each screen row spans
+	// The field: T bilinear from the two node rows each screen row spans. The optional gold
+	// overlay is the pressure-release melt indicator, not a replacement for the cold/hot
+	// mantle colour: one-phase P1 still shows physically valid cold downwellings.
 	raster: function (M, S, px, w, h) {
-		var nx = M.nx, ny = M.ny, Tg = S.Tg, pal = this.pal;
-		var jOf = this.jOf, fyOf = this.fyOf, iOf = this.iOf, fxOf = this.fxOf;
-		var x, y, q, j, fy, base, base2, i, i1, fx, t0, t1, t, k;
+		var nx = M.nx, ny = M.ny, Tg = S.Tg, Mg = S.Mg, pal = this.pal, meltPal = this.meltPal;
+		var jOf = this.jOf, fyOf = this.fyOf, iOf = this.iOf, fxOf = this.fxOf, meltLevel = this.meltLevel;
+		var x, y, q, j, fy, base, base2, i, i1, fx, t0, t1, t, m0, m1, m, k, mk;
 		for (y = 0; y < h; y++) {
 			j = jOf[y]; fy = fyOf[y]; q = y * w;
 			if (j < 0) { for (x = 0; x < w; x++) px[q + x] = this.SKY; continue; }
@@ -86,7 +88,13 @@ var PTR = {
 				t1 = Tg[base2 + i] + (Tg[base2 + i1] - Tg[base2 + i]) * fx;
 				t = t0 + (t1 - t0) * fy;
 				k = (t * 255 + 0.5) | 0;
-				px[q + x] = k < 0 ? pal[0] : k > 255 ? pal[255] : pal[k];
+				if (k < 0) k = 0; else if (k > 255) k = 255;
+				if (!this.melt) { px[q + x] = pal[k]; continue; }
+				m0 = Mg[base + i] + (Mg[base + i1] - Mg[base + i]) * fx;
+				m1 = Mg[base2 + i] + (Mg[base2 + i1] - Mg[base2 + i]) * fx;
+				m = m0 + (m1 - m0) * fy;
+				mk = meltLevel[(m * 255 + 0.5) | 0];
+				px[q + x] = mk ? meltPal[mk * 256 + k] : pal[k];
 			}
 		}
 	},
@@ -175,6 +183,8 @@ var PTR = {
 var RULER = [0, 700, 1400, 2900, 1000];    // km: four depth lines and the distance bar
 
 PTR.pal = buildPal();                       // at load: the headless raster needs no init
+PTR.meltPal = buildMeltPal(PTR.pal);
+PTR.meltLevel = buildMeltLevel();
 
 function buildPal() {
 	var pal = new Uint32Array(256), i, s, t, q, a, b2, r, g, bl;
@@ -187,6 +197,32 @@ function buildPal() {
 		pal[i] = 0xff000000 | ((bl | 0) << 16) | ((g | 0) << 8) | (r | 0);
 	}
 	return pal;
+}
+
+// Sixteen preblended gold overlays avoid per-pixel colour math in the raster pass. The level
+// curve ignores trace values and then rises quickly, so it isolates concentrated extraction
+// pathways instead of tinting the whole shallow mantle.
+function buildMeltPal(pal) {
+	var out = new Uint32Array(16 * 256), level, i, a, c, r, g, b;
+	for (level = 0; level < 16; level++) {
+		a = level / 15 * 0.82;
+		for (i = 0; i < 256; i++) {
+			c = pal[i]; r = c & 255; g = (c >>> 8) & 255; b = (c >>> 16) & 255;
+			r += (255 - r) * a; g += (188 - g) * a; b += (48 - b) * a;
+			out[level * 256 + i] = 0xff000000 | ((b | 0) << 16) | ((g | 0) << 8) | (r | 0);
+		}
+	}
+	return out;
+}
+
+function buildMeltLevel() {
+	var out = new Uint8Array(256), i, t;
+	for (i = 0; i < 256; i++) {
+		t = (i / 255 - 0.08) / 0.10;
+		if (t < 0) t = 0; else if (t > 1) t = 1;
+		out[i] = Math.sqrt(t) * 15 + 0.5;
+	}
+	return out;
 }
 
 // the bar's label, from its true length in km (built on view change, not per frame)

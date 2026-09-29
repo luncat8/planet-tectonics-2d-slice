@@ -14,7 +14,8 @@ var SIM = {
 	M: null, S: S,
 	t: 0,              // Myr since reset
 	frame: 0,
-	dt: 0,             // Myr per frame, from the clock slider
+	dt: 0,             // Myr per rendered frame, from the clock slider
+	sub: 0, subDt: 0,  // fluid solves in the rendered frame and their Myr step
 	phase: 0,          // the initial condition's phase, fixed per reset so a run replays
 	k: [null, null, null, null, null, null, null, null, null],   // G1..G8
 
@@ -26,6 +27,7 @@ var SIM = {
 		G.alloc(this.M);
 		S.init(this.M, this.phase);
 		this.dt = P.sl.kyr / 1000;
+		this.sub = 0; this.subDt = 0;
 	},
 
 	// a fresh planet at the current seed, keeping the solver and the buffers
@@ -51,10 +53,24 @@ var SIM = {
 
 	step: function () {
 		this.k0();
-		if (this.dt > 0) for (var i = 1; i < 9; i++) {
-			var f = this.k[i];
-			if (f) f(this.M, S, this.dt, this.t);
+		if (!(this.dt > 0)) { this.sub = 0; this.subDt = 0; return; }
+		// The clock controls how much geology one *rendered* frame represents, not the
+		// transport CFL. A 500 kyr display frame is ten validated 50 kyr fluid updates, so its
+		// result matches ten ordinary frames instead of skipping across the narrow top rows.
+		var n = Math.ceil(this.dt / P.dtFluidMax);
+		if (n < 1) n = 1;
+		var ds = this.dt / n, t0 = this.t - this.dt, s, i, f;
+		this.sub = n; this.subDt = ds;
+		for (s = 0; s < n; s++) {
+			for (i = 1; i < 8; i++) {
+				f = this.k[i];
+				if (f) f(this.M, S, ds, t0 + (s + 1) * ds);
+			}
+			F.wall(this.M, S);
+			S.wall += S.d.wallRate * ds;
 		}
+		f = this.k[8];
+		if (f) f(this.M, S, this.dt, this.t);
 	},
 
 	// n frames with no rendering (fixtures); the diagnostics are part of a frame
@@ -69,10 +85,7 @@ var SIM = {
 SIM.k[1] = function (M, S) { F.transfer(M, S); };
 SIM.k[2] = function (M, S) { F.flow(M, S, P.RaK); };
 SIM.k[3] = function (M, S, dt) { F.move(M, S, dt, P.kappa, P.flip); };
-SIM.k[8] = function (M, S, dt) {
-	F.diag(M, S);
-	S.wall += S.d.wallRate * dt;      // the same heat read from the walls' side of the solve
-};
+SIM.k[8] = function (M, S) { F.diag(M, S); };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = SIM;
 

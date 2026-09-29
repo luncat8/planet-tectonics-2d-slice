@@ -27,9 +27,12 @@ var PTP = {
 	flip: 1,                     // marker temperature transfer: 1 = pure FLIP (exactly
 	                             // conservative), < 1 blends toward the grid (smoothing)
 	// clock (plan §2.3): the slider is kyr/frame; 50 kyr/frame is 3 Myr of geology per
-	// second of wall clock at 60 fps, which is the demonstration scale
+	// second of wall clock at 60 fps, which is the demonstration scale. A rendered frame may
+	// contain several fluid solves: transport never receives more than dtFluidMax, so the
+	// 500 kyr/f end of the control follows the same trajectory instead of leaping over cells.
 	dt0: 50,                     // kyr/frame, default
 	dtMin: 5, dtMax: 500,        // kyr/frame, slider range
+	dtFluidMax: 0.05,            // Myr; 50 kyr is the validated maximum fluid substep
 	// initial condition (plan §8 P1): 'rb' is the Rayleigh-Benard state the fixture
 	// compares against pt-conv.js; 'cool' is a hot planet with a cold skin; 'blob' is a
 	// single plume head for looking at one thing
@@ -38,6 +41,19 @@ var PTP = {
 	icAmp: 0.02,                 // perturbation amplitude, fraction of the drop
 	icMode: 1,                   // x wavenumber of the perturbation
 	seed: 1,
+	// pressure-release melt indicator. P1 does not yet turn markers into conserved melt
+	// particles (that is P3), but a separate diagnostic makes hot upward mantle visibly
+	// generate and segregate melt instead of asking the one-phase thermal field to stand in
+	// for magma. It never feeds back into the P1 Stokes solve.
+	meltProxy: true,
+	meltDepth: 550,              // km: decompression melting begins above this depth
+	meltTop: 80,                 // km: full pressure-release factor above this depth
+	meltExcess: 0.008,           // T above the row mean before a source is active
+	meltRange: 0.04,             // T excess that reaches unit source strength
+	meltUpRef: 12,               // km/Myr of upward mantle flow for unit source strength
+	meltRise: 250,               // km/Myr of buoyant segregation through the mantle
+	meltBuild: 1.2,              // 1/Myr, source to visible melt-potential conversion
+	meltDecay: 6,                // Myr, extraction/cooling time of the indicator
 	// particles (plan §3.1): one marker per interior node, each carrying its node's measure.
 	// The count is fixed in P1 -- no merging, no eruption, no absorb -- and a moving marker
 	// keeps its mass, so the parcel heat is exactly what the walls put in (the ledger) and

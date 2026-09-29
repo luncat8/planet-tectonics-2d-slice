@@ -16,7 +16,9 @@ var PTS = {
 	T: null,                        // 0 at the surface, 1 at the CMB
 	m: null,                        // mass per unit out-of-plane depth, km2 (fixed in P1)
 	vx: null, vy: null,             // km/Myr, the interpolated grid velocity
-	Tg: null,                       // node temperature field (ny+1) * nx
+	Tg: null,                        // node temperature field (ny+1) * nx
+	Mg: null, MgS: null,            // pressure-release melt indicator and its transport scratch
+	rowT: null,                     // horizontally averaged T at each node row, reused by melt
 	u: null, v: null,               // staggered velocity fields
 	empty: 0, clamp: 0,             // diagnostics of the last frame: nodes with no marker, and
 	                                // markers that had to be kept inside the box
@@ -27,7 +29,7 @@ var PTS = {
 	// per-frame diagnostics, mutated in place: the HUD formats them at 2 Hz
 	d: {
 		nu: 0, uMax: 0, vMax: 0, wells: 0, heat: 0, mHeat: 0, tMin: 0, tMax: 0,
-		fluxTop: 0, fluxBot: 0, wallRate: 0, drift: 0
+		fluxTop: 0, fluxBot: 0, wallRate: 0, drift: 0, melt: 0, meltY: 0
 	},
 
 	// allocate for a mesh (idempotent: the quality switch can change the mesh size)
@@ -41,6 +43,8 @@ var PTS = {
 		}
 		if (!this.Tg || this.Tg.length !== M.n) {
 			this.Tg = new Float64Array(M.n);
+			this.Mg = new Float64Array(M.n); this.MgS = new Float64Array(M.n);
+			this.rowT = new Float64Array(M.ny + 1);
 			this.u = new Float64Array(M.ny * M.nx);
 			this.v = new Float64Array((M.ny + 1) * M.nx);
 		}
@@ -79,12 +83,14 @@ var PTS = {
 			}
 		}
 		this.n = p;
-		this.empty = 0; this.clamp = 0; this.ledger = 0; this.wall = 0; this.moved = 0;
-		this.Tg.fill(0);
+		this.empty = 0; this.clamp = 0; this.ledger = 0; this.wall = 0;
+		this.moved = 0; this.redeals = 0;
+		this.Tg.fill(0); this.Mg.fill(0); this.MgS.fill(0); this.rowT.fill(0);
 		this.u.fill(0); this.v.fill(0);
 		for (i = 0; i < nx; i++) this.Tg[ny * nx + i] = 1;
 		this.d.nu = 0; this.d.uMax = 0; this.d.vMax = 0; this.d.wells = 0;
 		this.d.heat = 0; this.d.tMin = 0; this.d.tMax = 0; this.d.fluxTop = 0; this.d.fluxBot = 0;
+		this.d.melt = 0; this.d.meltY = 0;
 	},
 
 	// the initial temperature of the node at (i, j)

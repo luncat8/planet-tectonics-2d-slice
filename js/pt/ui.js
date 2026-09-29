@@ -61,6 +61,7 @@ var PTUI = {
 		document.getElementById('bStep').addEventListener('click', function () { self.paused = true; self.stepOnce = true; });
 		document.getElementById('bReset').addEventListener('click', function () { SIM.reset(); self.updateHud(SIM); });
 		document.getElementById('bMark').addEventListener('click', function () { PTRNDR.markers = !PTRNDR.markers; });
+		document.getElementById('bMelt').addEventListener('click', function () { PTRNDR.melt = !PTRNDR.melt; });
 		document.getElementById('bRuler').addEventListener('click', function () { PTRNDR.ruler = !PTRNDR.ruler; });
 		document.getElementById('bMesh').addEventListener('click', function () { self.cycleMesh(SIM); });
 		document.getElementById('bLid').addEventListener('click', function () { PTRNDR.preset('lid', SIM.M); self.updateHud(SIM); });
@@ -90,6 +91,7 @@ var PTUI = {
 		else if (ev.key === '.') { this.paused = true; this.stepOnce = true; }
 		else if (ev.key === 'r') SIM.reset();
 		else if (ev.key === 'm') PTRNDR.markers = !PTRNDR.markers;
+		else if (ev.key === 'v') PTRNDR.melt = !PTRNDR.melt;
 		else if (ev.key === 'g') PTRNDR.ruler = !PTRNDR.ruler;
 		else if (ev.key === '1') this.quality = 0;
 		else if (ev.key === '2') this.quality = 1;
@@ -142,12 +144,13 @@ var PTUI = {
 	updateHud: function (SIM) {
 		var M = SIM.M, d = S.d, out;
 		var px = d.uMax * (P.sl.kyr / 1000) / P.view.kx;      // the fastest marker, px per frame
-		out = clock(SIM.t) + '   ' + (P.sl.kyr > 0 ? P.sl.kyr.toFixed(0) + ' kyr/f  ' + (P.sl.kyr * 60 / 1000).toFixed(2) + ' Myr/s' : 'paused')
+		out = clock(SIM.t) + '   ' + (P.sl.kyr > 0 ? P.sl.kyr.toFixed(0) + ' kyr/f  ' + (P.sl.kyr * PERF.fps / 1000).toFixed(2) + ' Myr/s  fluid ' + SIM.sub + 'x' : 'paused')
 			+ '\nNu ' + d.nu.toFixed(2) + '   max|u| ' + d.uMax.toFixed(1) + ' cm/yr   ' + px.toFixed(1) + ' px/f   wells ' + d.wells
 			+ '\nmarkers ' + S.n + '/' + P.partCap + '  ' + P.mpc + '/node   empty ' + S.empty
 			+ '   moved ' + S.moved + '  redeals ' + S.redeals + '   nodes ' + M.nx + 'x' + M.ny
 			+ '\nledger ' + fmt(S.ledger) + '   walls ' + fmt(S.wall) + '   gap ' + (S.wall ? (S.ledger / S.wall).toFixed(1) + 'x' : '--')
 			+ '\nT ' + d.tMin.toFixed(3) + '..' + d.tMax.toFixed(3) + '   heat ' + fmt(d.heat)
+			+ '\nmelt* ' + d.melt.toFixed(2) + '   source depth ' + d.meltY.toFixed(0) + ' km'
 			+ '\nsim ' + PERF.msSim.toFixed(1) + ' ms   draw ' + PERF.msDraw.toFixed(1) + ' ms   fps ' + PERF.fps.toFixed(0);
 		if (this.probeOn) out += '\n' + this.probe;
 		this.hud.textContent = out;
