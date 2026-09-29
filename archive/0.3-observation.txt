@@ -1,6 +1,15 @@
 1.
 some instability or event at 150Myr that cause big changes in visual. seems like in any Clock settings kyr/f, but in big dt it break map to noise.
 
+ups: stability issues seems solved in 7bf63af137408a72ef83195d0fd63fdb985709db
+
+
 2.
 convection behave ok, but looks reverted against earth expectations: it appears fast cold streams that fall deep to core (like in cup of tea)
-and smooth uplift streams. but i think mantle and magma should behave opposite: heat flows reach top because pressure fall, easy melted accumulates in flow, etc.
+and smooth uplift streams. but i think mantle and magma should behave opposite - flow in up direction shout be more active and accelerated somehow: heat flows reach top because pressure fall, easy melted accumulates in flow, etc. and downward flow should be more dissipate, diffuse and do not reach bottom as a cold drop.
+
+you can see current behavior on
+0.3-FFT-convection-particles.webp
+0.3.0-FFT-convection-particles.webp
+
+also it show strange yellow color at top sometimes appears, i am not sure but looks like bug related to gaps or similar issue
