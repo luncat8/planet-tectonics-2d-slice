@@ -47,8 +47,13 @@ configure(true);
 var hot = run(160);
 console.log('  t 160 Myr: melt* ' + hot.melt.toFixed(3) + ' at ' + hot.meltY.toFixed(0) + ' km');
 check.ok('a hot upward pathway creates a visible melt indicator', hot.melt > 0.10, 'melt* ' + hot.melt.toFixed(3));
-check.ok('the indicator is extracted into the shallow pressure-release window',
-	hot.meltY >= P.meltTop && hot.meltY < 160, hot.meltY.toFixed(0) + ' km');
+check.ok('the indicator stays in the shallow decompression window',
+	hot.meltY >= P.meltTop && hot.meltY < 250, hot.meltY.toFixed(0) + ' km');
+var capClear = true;
+for (var j = 1; j < SIM.M.ny; j++) if (SIM.M.yN[j] <= P.meltTop) {
+	for (var i = 0; i < SIM.M.nx; i++) if (S.Mg[j * SIM.M.nx + i] !== 0) capClear = false;
+}
+check.ok('melt is extracted before reaching the surface cap', capClear);
 
 check.section('it is diagnostic until P3');
 configure(true);

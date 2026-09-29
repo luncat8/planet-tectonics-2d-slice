@@ -37,10 +37,10 @@ var F = {
 		this.melt(M, S, dt);
 	},
 
-	// P1 has one conserved thermal mantle phase, so this is deliberately an indicator rather
-	// than a second material ledger. Hot material rising through the pressure-release window
-	// creates it; it then segregates upward faster than the solid mantle and fades as it is
-	// extracted or cools. P3 replaces this field with conserved melt particles and conduits.
+	// P1 has one conserved thermal mantle phase, so this is an indicator rather than a second
+	// material ledger. Hot rising mantle creates it in the decompression window; it segregates
+	// upward and is removed at the shallow extraction cap instead of painting the surface wall.
+	// P3 replaces this diagnostic with conserved melt particles and conduits.
 	melt: function (M, S, dt) {
 		if (!P.meltProxy || !(dt > 0)) return;
 		var nx = M.nx, ny = M.ny, T = S.Tg, u = S.u, v = S.v, mg = S.Mg, out = S.MgS, row = S.rowT;
@@ -56,6 +56,7 @@ var F = {
 			if (decomp < 0) decomp = 0; else if (decomp > 1) decomp = 1;
 			for (i = 0; i < nx; i++) {
 				q = base + i;
+				if (y <= P.meltTop) { out[q] = 0; continue; }
 				ux = 0.5 * (u[(j - 1) * nx + i] + u[base + i]);
 				vy = v[q] - P.meltRise;
 				m = meltSample(M, mg, i * M.dx - ux * dt, j * M.dEta - vy * dt / M.jN[j]);

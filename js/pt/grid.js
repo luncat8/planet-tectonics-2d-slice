@@ -17,7 +17,7 @@
 // The Stokes solve is the plan's §4.1 physics (infinite-Prandtl Boussinesq, the formulation
 // pt-conv.js measures the clock with), on the stretched mesh:
 //
-//     lap(omega) = -RaK dT/dx        (omega = lap psi,  u = -dpsi/dy, v = +dpsi/dx)
+//     lap(omega) = -RaK dB/dx        (B is T plus a small hot-anomaly buoyancy boost)
 //
 // with lap = d2/dx2 + (1/J) d/deta((1/J) d/deta) written on the node mesh. The x operator
 // is diagonalised by one FFT per row, which leaves one tridiagonal system per wavenumber,
@@ -169,9 +169,18 @@ G.solveMode = solveMode;
 G.stokes = function (M, T, u, v, RaK) {
 	var nx = M.nx, ny = M.ny, half = nx >> 1, i, j, m, base, b;
 	var re = M.re, im = M.im, pr = M.pr, pi = M.pi;
+	// A small hot-side buoyancy boost represents the lower viscosity of warm plume
+	// material without changing the divergence-free Stokes solve.
 	for (j = 0; j <= ny; j++) {
 		base = j * nx;
-		for (i = 0; i < nx; i++) { re[base + i] = T[base + i]; im[base + i] = 0; }
+		var mean = 0;
+		for (i = 0; i < nx; i++) mean += T[base + i];
+		mean /= nx;
+		for (i = 0; i < nx; i++) {
+			var anomaly = T[base + i] - mean;
+			re[base + i] = T[base + i] + (anomaly > 0 ? P.upwellBuoyancyBoost * anomaly : 0);
+			im[base + i] = 0;
+		}
 		fft(M.plan, re, im, base, false);
 	}
 	// walls: psi = 0 on both node rows, and the spectrum is rebuilt below
@@ -181,7 +190,7 @@ G.stokes = function (M, T, u, v, RaK) {
 		var s = Math.sin(2 * Math.PI * m / nx) / M.dx;
 		for (j = 1; j < ny; j++) {
 			b = j * nx + m;
-			M.rr[j] = RaK * s * im[b];       // RHS_omega = -RaK * dT/dx
+			M.rr[j] = RaK * s * im[b];       // RHS_omega = -RaK * dB/dx
 			M.ri[j] = -RaK * s * re[b];
 		}
 		solveMode(M, M.lam[m], M.rr, M.ri, M.or, M.oi);   // lap(omega) = RHS
@@ -253,6 +262,25 @@ G.diffuse = function (M, T, dt, kappa, inc) {
 	var dtk = dt * kappa;
 	if (!(dtk > 0)) return;
 	G.lapXX(M, T, M.lx);
+	// Cold anomalies get a conservative lateral flux, broadening narrow downwellings
+	// without creating or removing heat from a row.
+	if (P.downwellMix > 0) {
+		var invDx2 = 1 / (M.dx * M.dx), mean, cold, coldL, coldR, iL, iR, base, q;
+		var mix = P.downwellMix / kappa;
+		for (j = 1; j < ny; j++) {
+			base = j * nx; mean = 0;
+			for (i = 0; i < nx; i++) mean += T[base + i];
+			mean /= nx;
+			for (i = 0; i < nx; i++) {
+				iL = i ? i - 1 : nx - 1; iR = i + 1 === nx ? 0 : i + 1; q = base + i;
+				cold = mean - T[q]; if (cold < 0) cold = 0;
+				coldL = mean - T[base + iL]; if (coldL < 0) coldL = 0;
+				coldR = mean - T[base + iR]; if (coldR < 0) coldR = 0;
+				M.lx[q] += mix * invDx2 * (0.5 * (cold + coldR) * (T[base + iR] - T[q])
+					- 0.5 * (cold + coldL) * (T[q] - T[base + iL]));
+			}
+		}
+	}
 	// factor (I - dtk * etaOp) once: the coefficients depend on eta only, so every one of
 	// the nx columns shares the same Thomas multipliers. The sweep's rhs update uses the
 	// *same* multiplier as the diagonal one (sub[j] / dp[j - 1]) — using the raw sub[j]

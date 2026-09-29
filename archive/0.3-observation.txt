@@ -12,4 +12,5 @@ you can see current behavior on
 0.3-FFT-convection-particles.webp
 0.3.0-FFT-convection-particles.webp
 
-also it show strange yellow color at top sometimes appears, i am not sure but looks like bug related to gaps or similar issue
+
+yellow color (probably melt overlay ) at top that reach surface, it look not very realistic and appears not related to visible upward flows.

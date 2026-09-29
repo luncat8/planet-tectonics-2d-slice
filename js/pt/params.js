@@ -20,10 +20,10 @@ var PTP = {
 	ny: 48,
 	// physics (plan §4.1)
 	kappa: 31.56,                // km2/Myr, thermal diffusivity (1e-6 m2/s)
-	Ra: 1e6,                     // Rayleigh number of the demonstration run. Above ~3e6 the
-	                             // grid-scale content of the flow outruns what 128x48 can
-	                             // resolve (measured: T undershoots past -0.5 at 3e6), so the
-	                             // quality switch, not this number, is how the demo goes finer.
+	Ra: 1e6,				// Rayleigh number of the demonstration run. Above ~3e6 the
+							 // grid-scale content outruns what 128x48 resolves.
+	upwellBuoyancyBoost: 0.1,	// hot-anomaly buoyancy proxy for lower-viscosity plumes
+	downwellMix: 500,			// km2/Myr, conservative lateral mixing of cold fingers
 	flip: 1,                     // marker temperature transfer: 1 = pure FLIP (exactly
 	                             // conservative), < 1 blends toward the grid (smoothing)
 	// clock (plan §2.3): the slider is kyr/frame; 50 kyr/frame is 3 Myr of geology per
@@ -47,11 +47,11 @@ var PTP = {
 	// for magma. It never feeds back into the P1 Stokes solve.
 	meltProxy: true,
 	meltDepth: 550,              // km: decompression melting begins above this depth
-	meltTop: 80,                 // km: full pressure-release factor above this depth
+	meltTop: 80,				// km: shallow extraction cap; melt indicator is removed above it
 	meltExcess: 0.008,           // T above the row mean before a source is active
 	meltRange: 0.04,             // T excess that reaches unit source strength
 	meltUpRef: 12,               // km/Myr of upward mantle flow for unit source strength
-	meltRise: 250,               // km/Myr of buoyant segregation through the mantle
+	meltRise: 400,               // km/Myr of buoyant segregation through the mantle
 	meltBuild: 1.2,              // 1/Myr, source to visible melt-potential conversion
 	meltDecay: 6,                // Myr, extraction/cooling time of the indicator
 	// particles (plan §3.1): one marker per interior node, each carrying its node's measure.
