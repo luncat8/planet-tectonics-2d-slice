@@ -16,5 +16,6 @@ for physics and deposits references
 make good collision of plates. need thing how plates and layers push each other and interact smooth, good looking and realistic way
 
 
-
+## make new plan of new engine html.
+because current plate collision and eruptions not for all purposes - we plan to make new engine that operate with particles. hybrid: fluid is grid and particles, solid are particles. so plates formed emergent from particles while planet cool, formed some smooth connections with strength proportional to temperature (and age). choose arbitrary demonstration time scale for particles to be visible convection, plumes and eruptions.
 
