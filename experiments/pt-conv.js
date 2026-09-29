@@ -170,6 +170,39 @@ function stats(m, T, u, v) {
 	return { mu: mu, mv: mv, nu: bot / nx, wells: upn >> 1 };
 }
 
+// The run loop, exported so pt-eng-conv.js can drive the reference itself instead of
+// re-implementing it: the box's own conduction profile plus one smooth perturbation of the
+// box's scale, semi-Lagrangian advection (mantle codes run it at Courant 10-100) with the
+// diffusion step capped at 0.2 dy^2.
+function convect(Ra, tEnd, nx, ny, aspect, report) {
+	var m = box(nx, ny, aspect), Tk = new Float64Array(nx * ny), i, j;
+	var uk = m.u, vk = m.v;
+	for (i = 0; i < nx; i++) for (j = 0; j < ny; j++) {
+		Tk[j * nx + i] = 1 - (j + 0.5) * m.dy
+			+ 0.02 * Math.sin(Math.PI * (j + 0.5) * m.dy) * Math.cos(2 * Math.PI * i / nx);
+	}
+	var t = 0, st = null, t0 = Date.now(), dtDiff = 0.2 * m.dy * m.dy, n = 0, mx = 0, dt = dtDiff;
+	var nextReport = 0;
+	while (t < tEnd && n < 400000) {
+		stokes(m, Ra, Tk, uk, vk);
+		mx = 0;
+		for (i = 0; i < nx * ny; i++) mx = Math.max(mx, Math.abs(uk[i]), Math.abs(vk[i]));
+		dt = Math.min(dtDiff, 8 * m.dx / (mx + 1e-30));
+		advance(m, Tk, uk, vk, dt);
+		t += dt;
+		n++;
+		if (report && t >= nextReport) {
+			st = stats(m, Tk, uk, vk);
+			console.log('    t ' + t.toFixed(3) + '  Nu ' + st.nu.toFixed(2) + '  max|u| ' + st.mu.toFixed(0)
+				+ '  max|v| ' + st.mv.toFixed(0) + '  upwellings ' + st.wells + '  CFL ' + (st.mu * dt / m.dx).toFixed(1));
+			nextReport = t + tEnd / 4;
+		}
+	}
+	st = stats(m, Tk, uk, vk);
+	st.t = t; st.steps = n; st.cfl = mx * dt / m.dx; st.ms = Date.now() - t0;
+	return st;
+}
+
 function main() {
 	// ---------------------------------------------------------------- checks
 
@@ -243,41 +276,7 @@ var Tb = Float64Array.from(T);
 
 	// ---------------------------------------------------------------- runs
 
-	function run(Ra, tEnd, report) {
-		var Tk = new Float64Array(nx * ny);
-		var mm = box(nx, ny, aspect);
-		var uk = mm.u, vk = mm.v;
-		for (i = 0; i < nx; i++) for (j = 0; j < ny; j++) {
-			// conduction profile plus one smooth perturbation of the box's own scale
-			Tk[j * nx + i] = 1 - (j + 0.5) * m.dy
-				+ 0.02 * Math.sin(Math.PI * (j + 0.5) * m.dy) * Math.cos(2 * Math.PI * i / nx);
-		}
-		var t = 0, st = null, t0 = Date.now(), dtDiff = 0.2 * mm.dy * mm.dy, n = 0, mx = 0, dt = dtDiff;
-		var nextReport = 0;
-		while (t < tEnd && n < 400000) {
-			stokes(mm, Ra, Tk, uk, vk);
-			mx = 0;
-			for (i = 0; i < nx * ny; i++) mx = Math.max(mx, Math.abs(uk[i]), Math.abs(vk[i]));
-			// semi-Lagrangian advection tolerates a large Courant number (mantle codes run it
-			// at 10-100); the diffusion term is explicit and caps the step at 0.2 dy^2
-			dt = Math.min(dtDiff, 8 * mm.dx / (mx + 1e-30));
-			advance(mm, Tk, uk, vk, dt);
-			t += dt;
-			n++;
-			if (report && t >= nextReport) {
-				st = stats(mm, Tk, uk, vk);
-				console.log('    t ' + t.toFixed(3) + '  Nu ' + st.nu.toFixed(2) + '  max|u| ' + st.mu.toFixed(0)
-					+ '  max|v| ' + st.mv.toFixed(0) + '  upwellings ' + st.wells + '  CFL ' + (st.mu * dt / mm.dx).toFixed(1));
-				nextReport = t + tEnd / 4;
-			}
-		}
-		st = stats(mm, Tk, uk, vk);
-		st.t = t;
-		st.steps = n;
-		st.cfl = mx * dt / mm.dx;
-		st.ms = Date.now() - t0;
-		return st;
-	}
+	function run(Ra, tEnd, report) { return convect(Ra, tEnd, nx, ny, aspect, report); }
 
 	var tEnd = Number(process.argv[2] || 0.5);
 	console.log('  runs: ' + nx + 'x' + ny + ', aspect 4, to t = ' + tEnd + ' diffusion times, dt = 0.2 dy^2\n');
@@ -306,4 +305,4 @@ var Tb = Float64Array.from(T);
 
 if (require.main === module) main();
 
-module.exports = { box: box, helmholtz: helmholtz, stokes: stokes, advance: advance, stats: stats, main: main, CM_YR_PER_ND: CM_YR_PER_ND };
+module.exports = { box: box, helmholtz: helmholtz, stokes: stokes, advance: advance, stats: stats, convect: convect, main: main, CM_YR_PER_ND: CM_YR_PER_ND };

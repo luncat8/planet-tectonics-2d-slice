@@ -1,0 +1,6 @@
+1.
+some instability or event at 150Myr that cause big changes in visual. seems like in any Clock settings kyr/f, but in big dt it break map to noise.
+
+2.
+convection behave ok, but looks reverted against earth expectations: it appears fast cold streams that fall deep to core (like in cup of tea)
+and smooth uplift streams. but i think mantle and magma should behave opposite: heat flows reach top because pressure fall, easy melted accumulates in flow, etc.

@@ -295,3 +295,53 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
 - **Rigid plates make the floor useless inside a plate.** A zero-crust marker on a plate
   moves with the column beside it, so no position correction can ever separate them; it
   steals that column's width for as long as the plate lives. Retire the marker instead.
+
+## 0.3.0 P1 — particles, deposits and the heat ledger
+
+- **A Lagrangian cloud folds, and the deposit kernel is what saves the field.** A convecting
+  flow at Ra >= 1e6 squeezes the marker sample along its strain lines: measured, half the nodes
+  ended up with one or two markers and a quarter with six or more. CIC (a one-cell kernel) then
+  leaves fields of nodes without any sample, and patching those from stale values is a buoyancy
+  source that does not exist. A 3x3 quadratic B-spline deposit reaches 1.5 cells, so every node
+  is fed by whatever is near it; `fillHoles` (three Gauss-Seidel sweeps over the holes only)
+  covers what is left, and the hole count is reported rather than hidden.
+- **Never re-deal a Lagrangian cloud onto its lattice to fix coverage.** It is a resampling of
+  the *field*, i.e. diffusion: re-dealing every 16 frames held a convecting box at Nu = 1.00
+  (pure conduction), and every 64 or 10^6 frames was no better once the local repair ran often
+  enough to matter. Fix the deposition and the field's own holes; only move markers the flow
+  misplaced, and only when the deposit says so.
+- **The marker<->grid heat exchange needs the adjoint of the deposit.** If a node's value is
+  `sum_p W_pk T_p / W_k`, the markers must be handed back `d_pk * mu_k / W_k` (mu the node's own
+  measure), or `sum_p m_p a_pk != mu_k` and the intake is not the integral the operator charged.
+  The error is not small: a 4% occupancy hole read as 360x the wall flux, because a convection
+  cell's increment is ~100x larger gross than net. With the adjoint pairing the conduction-only
+  ledger closes to 1.7e-7 and a live convecting run to 1-8%.
+- **Cap the renormalisation factor, or the *state* is read through an amplification.** A node
+  reached by a sliver of marker weight has `cw = mu/W` in the thousands; feeding that back into
+  the temperature (flip < 1, or any sync) diverges (T to 5e4 in 100 Myr). Trust a node's deposit
+  only above a sixteenth of its measure (or a quarter), and report the rest.
+- **A wall that clamps particles is a wall that collects them.** Pinning an out-of-bounds marker
+  at the boundary looks conservative and is not: near-wall velocities are ~0, so the marker never
+  comes back, and the near-wall flow is *convergent* in the upwelling/downwelling cells. One
+  convection cell swept 60% of a 24k cloud onto the two wall rows in 60 Myr. Reflect the normal
+  step instead (measure preserving, orientation reversing -- exclude the wall rows from any
+  Jacobian check).
+- **The conserved measure of a marker must be the measure of the operator's stencil.** The
+  conduction operator conserves `dEta * JN * dx` (the node metric); handing markers the *cell*
+  measure `dEta * JC * dx` puts a constant 2.62% offset between the two heats and every ledger
+  reading is then off by that. One number, and it looks exactly like a physics bug.
+- **A one-sided flux estimate belongs to the cell, not the node.** The boundary gradient across
+  the first cell must be divided by that cell's face metric (`dEta * JC`), not by the wall node's
+  own (`dEta * JN`): the two differ by the 2.6% above and it shows up as a phantom wall flux in
+  an otherwise exact conduction test.
+- **Interpolate the streamfunction, not the two velocity components.** One interpolant cannot
+  disagree with itself about a cell's circulation, so the marker map is area preserving to the
+  interpolation error (measured 1.3e-4 of the mean Jacobian) instead of the divergence error of
+  two separately interpolated staggered fields. And check the map with finite differences: an
+  accidental doubled `x += vx*dt` is invisible in a screenshot and obvious as a Jacobian of
+  1 + dt du/dx.
+- **A reference fixture's low-Ra end can be the fixture's own artifact.** `pt-conv.js` reports
+  Nu 125 with 9 upwellings at Ra 1e5, which no Ra 1e5 convection does; its semi-Lagrangian
+  advection at Courant 6 is the suspect. The engine, whose advection is Lagrangian, reads Nu 1.00
+  there. Agreeing with a reference is only meaningful where the reference is physical -- gate at
+  Ra >= 1e6 and flag the rest.

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>planet tectonics — particles</title>
+<style>
+	body { margin: 0; background: #05070c; color: #9aa7bd; font: 12px/1.5 monospace; display: flex; flex-direction: column; align-items: center; }
+	#bar { width: 1282px; box-sizing: border-box; padding: 6px 0; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+	#bar label { white-space: nowrap; }
+	input[type=range] { width: 220px; vertical-align: middle; }
+	button { background: #121826; color: #9aa7bd; border: 1px solid #2a3550; font: 11px monospace; padding: 1px 7px; cursor: pointer; }
+	button:hover { color: #dfe7f5; }
+	canvas { display: block; border: 1px solid #1c2438; cursor: crosshair; }
+	#wrap { position: relative; width: 1282px; height: 562px; }
+	#hud { position: absolute; left: 8px; top: 8px; white-space: pre; pointer-events: none; color: #9fd6b8; text-shadow: 0 0 3px #000; }
+	#keys { color: #55637d; font-size: 11px; padding: 4px 0 12px; width: 1282px; box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div id="bar">
+	<label>Clock <input id="sClock" type="range" min="0" max="500" value="500"> <span id="vClock"></span></label>
+	<button id="bPause">pause</button>
+	<button id="bStep">step</button>
+	<button id="bReset">reset</button>
+	<span>
+		<button id="bMark">markers</button>
+		<button id="bRuler">ruler</button>
+		<button id="bMesh">quality</button>
+	</span>
+	<span>
+		<button id="bLid">lid</button>
+		<button id="bDeep">deep</button>
+		<button id="bFull">mantle</button>
+	</span>
+</div>
+<div id="wrap">
+	<canvas id="c" width="1280" height="560"></canvas>
+	<div id="hud"></div>
+</div>
+<div id="keys">
+	space pause &middot; . step &middot; r reset &middot; m markers &middot; g ruler &middot; 1/2/3 quality &middot; l/d/f lid, deep, mantle &middot; wheel zoom &middot; drag pan
+</div>
+<!-- classic scripts, no build, file:// safe: params first, then the engine, then the view, and
+     the UI last because sim.js's bootstrap calls PTUI and PTRNDR as soon as it loads -->
+<script src="js/perf.js"></script>
+<script src="js/pt/params.js"></script>
+<script src="js/pt/grid.js"></script>
+<script src="js/pt/state.js"></script>
+<script src="js/pt/fluid.js"></script>
+<script src="js/pt/render.js"></script>
+<script src="js/pt/ui.js"></script>
+<script src="js/pt/sim.js"></script>
+</body>
+</html>
