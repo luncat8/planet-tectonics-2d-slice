@@ -140,12 +140,12 @@ function clusters(M, S, dt) {
 	// verdict cannot depend on the order the buckets were visited, and every pair sees the
 	// same (previous-frame) damage -- the old form added damage in place, so a marker's bond
 	// decision partly saw what earlier pairs had just charged it.
-	// The rate is per unit of the marker's *mean* excess load, not per pair: damage accrued
-	// per pair makes a crowded marker fail about as much faster as it has more partners, and
-	// the marker count per node varies by a factor of twenty across a convecting box (a
-	// crowded marker measured ~2x the median's damage rate) -- density is a property of the
-	// sample, not of the rock. Dividing by the pair count makes the law mesh-independent,
-	// which is what lets the sample be re-dealt or capped later without moving the physics.
+	// The rate is per unit of the marker's *mean* excess load, not the sum: a lid marker's
+	// partner count runs p10..p90 = 11..51 at 200 Myr (experiments/pt-load-check.js), and
+	// charging per pair correlated the damage rate with that count at 0.73 against 0.19 for
+	// the mean -- density is a property of the sample, not of the rock. Dividing by the pair
+	// count makes the law independent of the sample, which is what lets markers be re-dealt,
+	// merged or capped later without moving the failure physics.
 	for (p = 0; p < S.n; p++) {
 		if (S.cl[p] !== -2 || !S.pCnt[p]) continue;
 		d = S.dmg[p] + P.kDamage * (S.pLoad[p] / S.pCnt[p]);
@@ -163,8 +163,10 @@ function clusters(M, S, dt) {
 	for (p = 0; p < S.n; p++) if (S.dmg[p] > 0) S.mu[p] *= 1 - S.dmg[p];
 }
 
-// one candidate pair: the flow's relative velocity across it is the load; damage above the
-// pair's own yield, bond if what is left is strong enough. The load is taken from the flow
+// one candidate pair: the flow's relative velocity across it is the load, and the part above
+// the pair's own yield accumulates in both markers' integrals (clusters applies it after the
+// walk). Bond if what is left of the weaker marker's strength is enough to be plate. The
+// load is taken from the flow
 // (S.vx/vy at this point in the frame), never from the rigid motion that will replace it --
 // a fit that erased the load would erase the failure with it. Both senses count: a seam
 // stretched and a seam squeezed are both seams being worked (compression without contact is
