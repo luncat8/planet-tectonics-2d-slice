@@ -83,15 +83,22 @@ var PTP = {
 	clusterMin: 0.25,            // below this a marker is fluid; at it, it is plate
 	// failure (plan §4.2's damage, in rate form): a loaded bond is elastic below its own
 	// yield strain rate, yieldRate * mu, and accumulates damage above it at kDamage per unit
-	// excess per Myr. Damage reaches 1 and the marker's bonds are gone; a soft marker
-	// re-melts its damage to zero, and a cold quiet one anneals it away over tauHeal. This
-	// is what turns one planet-wide lid into plates that rift, drift and suture. The numbers
-	// are calibrated to the engine's own load distribution (experiments/pt-load-check.js):
-	// a healthy lid's pairs read 0.003-0.02 /Myr of flow strain rate and the hard-worked
-	// tail at the downwelling sheets reads 0.03-0.5, so 0.06 carries the body of a plate
-	// elastically and fails the tail in tens of Myr.
+	// of *mean* excess per Myr -- the mean over the pairs that contact the marker, not the
+	// sum (P2.2: damage charged per pair scales with local marker density, and a lid marker's
+	// partner count runs from ~10 to ~50 across the box; the sum made a crowded marker fail
+	// about as much faster as it had more partners, which is a property of the sample, not of
+	// the rock). Damage reaches 1 and the marker's bonds are gone; a soft marker re-melts its
+	// damage to zero, and a cold quiet one anneals it away over tauHeal. This is what turns
+	// one planet-wide lid into plates that rift, drift and suture. Both numbers come from
+	// experiments/pt-load-check.js, which measures the engine's own load distribution on an
+	// intact lid: a healthy lid's pairs read 0.003-0.02 /Myr of flow strain rate and the
+	// hard-worked tail at the downwelling sheets reads 0.03-0.5, so yieldRate 0.06 carries the
+	// body of a plate elastically and fails the tail in tens of Myr. kDamage is the rescale of
+	// P2.1's per-pair 3 by the measured ratio of the two laws' aggregate rates (24.6x at
+	// 50 Myr, 24.9x at 100, 33.9x at 200): 90 is inside that band, and the emergence gate
+	// (pt-crust) is what pins where inside it.
 	yieldRate: 0.06,             // 1/Myr a full-strength bond carries elastically
-	kDamage: 3,                  // 1/Myr per unit strain rate above yield
+	kDamage: 90,                 // 1/Myr per unit mean excess strain rate above yield
 	tauHeal: 40,                 // Myr of quiet annealing to clear one unit of damage
 	// particles (plan §3.1): one marker per interior node, each carrying its node's measure.
 	// The count is fixed in P1 -- no merging, no eruption, no absorb -- and a moving marker

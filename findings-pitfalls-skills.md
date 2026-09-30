@@ -409,4 +409,33 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   — on a periodic map a phase shift is the same planet rotated.
 - **Per-pair damage makes the failure rate scale with marker density.** A marker with 37
   partners accrues ~2x the damage of one with 20 under the same strain rate. Normalise by
-  the partner count before tuning or thinning the pair walk.
+  the partner count before tuning or thinning the pair walk. Done in P2.2 (worklog
+  `0.3.0-p2.2-damage-worklog.md`): accumulate the pair integral and the pair count during
+  the walk, apply `kDamage * sum/count * dt` in one pass after it.
+- **Accumulate-then-apply is what makes a pair walk order-independent.** Adding damage to a
+  marker *during* the walk means its own later bond decisions read a fraction of this
+  frame's charge, and the cluster partition depends on bucket order. Splitting the pass costs
+  one loop over candidates (~0.1 ms of G4's 1.9 ms) and buys a read-only scan.
+- **To rescale a changed rate law, measure both laws on the same intact state.** Convert
+  the old law into a per-marker quantity computable from the same run (here: the pair
+  integral), then take the ratio of the means over the population the law acts on —
+  `3 x 24.6..33.9 = 90`. The band is not a single number (the load tail crowds as the lid
+  ages), so the gate holds the constant inside the band and the behaviour fixture picks the
+  place inside it.
+
+## 0.3.0 P2.2 — the switch bar and its fixture
+
+- **A page with no headless harness accumulates dead controls.** `particles.html` loaded
+  fine in a browser and every key worked, but the quality *button* called
+  `cycleMesh(SIM)` — which re-applied the level it was already on — so clicking it rebuilt
+  the same mesh, and `SIM.mesh()` rebuilds by re-initialising and **resetting the planet**:
+  a control that silently threw the run away. `experiments/pt-ui.js` (DOM parsed from the
+  page, scripts loaded in page order in `vm`) caught it on its first run. Any page whose
+  buttons call engine functions needs the equivalent of `smoke.js`.
+- **Put toggle state in one attribute and derive the styling from it.** `aria-pressed` set
+  from the renderer's own flag (never a parallel copy) + one CSS rule gives the switch, the
+  screen reader and the style the same source; the harness then asserts the attribute after
+  every path that can flip a flag (click, key, cycle).
+- **Radio groups need an explicit "unspecified".** Camera presets stop describing the view
+  the moment the user pans or zooms, so the highlight is cleared by the *camera* events, not
+  by the next preset click; otherwise the bar lies about the view.

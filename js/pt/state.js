@@ -21,6 +21,10 @@ var PTS = {
 	mu: null,                       // strength 0..1 from T and age (plan §4.2); >=
 	                                // clusterMin means the marker is plate, not fluid
 	dmg: null,                      // accumulated bond damage (plan §4.2): 1 = bonds gone
+	pLoad: null, pCnt: null,        // this frame's load integral per marker: the sum of the
+	                                // pair excess and the number of pairs it was measured
+	                                // over, so the damage rate is per *mean* excess and does
+	                                // not scale with local marker density (solid.js pair)
 	Tg: null,                       // node temperature field (ny+1) * nx
 	mug: null,                      // node mean strength, the raster's crust overlay
 	Mg: null, MgS: null,            // pressure-release melt indicator and its transport scratch
@@ -56,6 +60,7 @@ var PTS = {
 			this.vx = new Float64Array(cap); this.vy = new Float64Array(cap);
 			this.age = new Float64Array(cap); this.mu = new Float64Array(cap);
 			this.dmg = new Float64Array(cap);
+			this.pLoad = new Float64Array(cap); this.pCnt = new Int32Array(cap);
 			this.par = new Int32Array(cap); this.cl = new Int32Array(cap); this.csOf = new Int32Array(cap);
 			this.csM = new Float64Array(cap); this.csX = new Float64Array(cap);
 			this.csY = new Float64Array(cap); this.csVX = new Float64Array(cap);
@@ -112,6 +117,7 @@ var PTS = {
 		this.moved = 0; this.redeals = 0; this.csN = 0;
 		this.Tg.fill(0); this.mug.fill(0); this.Mg.fill(0); this.MgS.fill(0); this.rowT.fill(0);
 		this.age.fill(0); this.mu.fill(0); this.dmg.fill(0);
+		this.pLoad.fill(0); this.pCnt.fill(0);
 		this.u.fill(0); this.v.fill(0);
 		for (i = 0; i < nx; i++) this.Tg[ny * nx + i] = 1;
 		this.d.nu = 0; this.d.uMax = 0; this.d.vMax = 0; this.d.wells = 0;

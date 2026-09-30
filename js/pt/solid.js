@@ -27,13 +27,17 @@
 //
 // Failure (plan §4.2's damage, in rate form) is what turns one planet-wide lid into plates.
 // A bond is elastic below its own yield strain rate, yieldRate * mu, and accumulates damage
-// above it at kDamage per unit excess per Myr; damage reaches 1 and the marker's bonds are
-// gone. The load is read from the *flow's* relative velocity across the pair -- the plate is
-// loaded by the mantle under it, and a rigid fit that erased the load would erase the
-// failure with it. This is pt-emerge's measured rule 1 in rate form: damage from any strain
-// at all (no yield) creeps every plate apart under a static load; elastic below the strength
-// is what holds a suture. A soft marker re-melts its damage; a cold quiet one anneals it
-// away over tauHeal, which is how a closed seam welds back together.
+// above it at kDamage per unit of *mean* excess per Myr -- the mean over the pairs that
+// contact the marker, not the sum, because the sum makes the rate proportional to local
+// marker density (measured: a crowded lid marker carries 2-5x the partner count of a sparse
+// one and failed about as much faster). The integral is accumulated during the pair walk and
+// applied after it, so the walk is read-only and order-independent. Damage reaches 1 and the
+// marker's bonds are gone. The load is read from the *flow's* relative velocity across the
+// pair -- the plate is loaded by the mantle under it, and a rigid fit that erased the load
+// would erase the failure with it. This is pt-emerge's measured rule 1 in rate form: damage
+// from any strain at all (no yield) creeps every plate apart under a static load; elastic
+// below the strength is what holds a suture. A soft marker re-melts its damage; a cold quiet
+// one anneals it away over tauHeal, which is how a closed seam welds back together.
 //
 // The heat bookkeeping does not pass through here: this kernel moves markers, never changes
 // T or m, so the ledger is untouched. What is not here yet is plan §4.2's rest shapes and
@@ -90,7 +94,7 @@ function strength(M, S, dt) {
 // scan visits each pair once.
 function clusters(M, S, dt) {
 	var nx = M.nx, ny = M.ny, counts = M.counts, slot = M.slot, order = S.order;
-	var p, q, i, j, c = 0, nCl = 0, q2, base, k, r;
+	var p, q, i, j, c = 0, nCl = 0, q2, base, k, r, d;
 	var strong = P.clusterMin, near = strong * 0.6;
 	counts.fill(0);
 	for (p = 0; p < S.n; p++) {
@@ -98,6 +102,7 @@ function clusters(M, S, dt) {
 		if (S.mu[p] * (1 - S.dmg[p]) < near) continue;
 		q = G.nodeOf(M, S, p);
 		S.cl[p] = -2;                       // candidate, not yet in a cluster
+		S.pLoad[p] = 0; S.pCnt[p] = 0;
 		counts[q]++;
 	}
 	for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) { q = j * nx + i; slot[q] = c; c += counts[q]; }
@@ -131,6 +136,21 @@ function clusters(M, S, dt) {
 			}
 		}
 	}
+	// The damage, applied in one pass *after* the walk: the pair scan is then read-only, its
+	// verdict cannot depend on the order the buckets were visited, and every pair sees the
+	// same (previous-frame) damage -- the old form added damage in place, so a marker's bond
+	// decision partly saw what earlier pairs had just charged it.
+	// The rate is per unit of the marker's *mean* excess load, not per pair: damage accrued
+	// per pair makes a crowded marker fail about as much faster as it has more partners, and
+	// the marker count per node varies by a factor of twenty across a convecting box (a
+	// crowded marker measured ~2x the median's damage rate) -- density is a property of the
+	// sample, not of the rock. Dividing by the pair count makes the law mesh-independent,
+	// which is what lets the sample be re-dealt or capped later without moving the physics.
+	for (p = 0; p < S.n; p++) {
+		if (S.cl[p] !== -2 || !S.pCnt[p]) continue;
+		d = S.dmg[p] + P.kDamage * (S.pLoad[p] / S.pCnt[p]);
+		S.dmg[p] = d > 1 ? 1 : d;
+	}
 	// number the clusters from the union-find roots, then fold the damage into mu so the
 	// raster and the projection read strength after failure, not before it
 	for (p = 0; p < S.n; p++) {
@@ -163,11 +183,11 @@ function pair(M, S, p, r, dt) {
 	var mu = S.mu[p] * (1 - S.dmg[p]), md = S.mu[r] * (1 - S.dmg[r]);
 	if (md < mu) mu = md;
 	var load = Math.abs((S.vx[r] - S.vx[p]) * dx + (S.vy[r] - S.vy[p]) * dy) / d2;
-	var over = load - P.yieldRate * mu;
+	var over = load - P.yieldRate * mu, add;
+	S.pCnt[p]++; S.pCnt[r]++;                     // the pair counts even when it is elastic
 	if (over > 0) {
-		var add = P.kDamage * over * dt, d;
-		d = S.dmg[p] + add; S.dmg[p] = d > 1 ? 1 : d;
-		d = S.dmg[r] + add; S.dmg[r] = d > 1 ? 1 : d;
+		add = over * dt;                          // the integral clusters() divides by pCnt
+		S.pLoad[p] += add; S.pLoad[r] += add;
 	}
 	if (mu < P.clusterMin) return;
 	var a = find(S, p), b = find(S, r);
