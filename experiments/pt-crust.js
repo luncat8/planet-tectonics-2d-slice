@@ -158,7 +158,7 @@ check.ok('and welds back into one body', S.cl[0] === S.cl[1] && S.cl[0] >= 0, ''
 check.section('the live run (the real pipeline, 300 Myr)');
 P.solid = true;
 P.ic = 'cool'; P.flip = 1;
-P.icMode = 4; P.icAmp = 0.02;    // the shipped planet draw (params.js)
+P.icMode = 4; P.icAmp = 0.02; P.icBand = 0.6; P.icBandMax = 12; P.seed = 1;   // the shipped planet draw (params.js)
 P.Ra = 1e6; P.RaK = P.Ra * P.kappa / (P.depth * P.depth * P.depth);
 P.sl.kyr = 50;
 SIM.init(); SIM.reset();

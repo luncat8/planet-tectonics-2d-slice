@@ -51,7 +51,7 @@ P.yLin = P.depth;
 P.mesh.nx = NX; P.mesh.ny = NY;
 P.solid = false;                 // pt-conv.js's reference is one-phase fluid, no lid
 P.ic = 'rb';
-P.icMode = 1;
+P.icMode = 1; P.icBand = 0;
 P.icAmp = 0.02;
 P.Ra = RA;
 P.RaK = P.Ra * P.kappa / (P.depth * P.depth * P.depth);

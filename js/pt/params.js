@@ -45,6 +45,14 @@ var PTP = {
 	icAmp: 0.02,                 // perturbation amplitude, fraction of the drop
 	icMode: 4,                   // x wavenumber of the perturbation: one per ~4000 km, the
 	                             // cell wavelength the box wants, so the cells arrive early
+	// The map is periodic, so a single-mode perturbation makes a planet that is icMode exact
+	// copies of one 4000 km box: the only thing that breaks the symmetry is the markers'
+	// sub-node jitter, and it takes ~300 Myr to show (experiments/pt-wrap.js measures it).
+	// icBand spreads that fraction of icAmp's energy over wavenumbers 1..icBandMax with
+	// seeded amplitudes and phases, so cells differ in size, plates are not mirror images
+	// and a new seed is a new planet rather than the same one rotated around the axis.
+	icBand: 0.6,                 // 0 = the pure single mode (the fixtures' validated draw)
+	icBandMax: 12,
 	seed: 1,
 	// pressure-release melt indicator. P1 does not yet turn markers into conserved melt
 	// particles (that is P3), but a separate diagnostic makes hot upward mantle visibly

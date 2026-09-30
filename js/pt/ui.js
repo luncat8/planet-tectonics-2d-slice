@@ -61,6 +61,7 @@ var PTUI = {
 		document.getElementById('bPause').addEventListener('click', function () { self.setPaused(!self.paused); });
 		document.getElementById('bStep').addEventListener('click', function () { self.paused = true; self.stepOnce = true; });
 		document.getElementById('bReset').addEventListener('click', function () { SIM.reset(); self.updateHud(SIM); });
+		document.getElementById('bNew').addEventListener('click', function () { self.newPlanet(SIM); });
 		document.getElementById('bMark').addEventListener('click', function () { PTRNDR.markers = !PTRNDR.markers; });
 		document.getElementById('bMelt').addEventListener('click', function () { PTRNDR.melt = !PTRNDR.melt; });
 		document.getElementById('bCrust').addEventListener('click', function () { PTRNDR.crust = !PTRNDR.crust; });
@@ -92,6 +93,7 @@ var PTUI = {
 		if (ev.key === ' ') { this.setPaused(!this.paused); ev.preventDefault(); }
 		else if (ev.key === '.') { this.paused = true; this.stepOnce = true; }
 		else if (ev.key === 'r') SIM.reset();
+		else if (ev.key === 'n') this.newPlanet(SIM);
 		else if (ev.key === 'm') PTRNDR.markers = !PTRNDR.markers;
 		else if (ev.key === 'v') PTRNDR.melt = !PTRNDR.melt;
 		else if (ev.key === 'c') PTRNDR.crust = !PTRNDR.crust;
@@ -104,6 +106,13 @@ var PTUI = {
 		else if (ev.key === 'f') PTRNDR.preset('mantle', SIM.M);
 		else return;
 		if (ev.key >= '1' && ev.key <= '3') this.cycleMesh(SIM);
+	},
+
+	// the next seed: a different draw of the initial perturbation's band (params.js icBand)
+	newPlanet: function (SIM) {
+		P.seed++;
+		SIM.reset();
+		this.updateHud(SIM);
 	},
 
 	setPaused: function (on) {
@@ -147,7 +156,7 @@ var PTUI = {
 	updateHud: function (SIM) {
 		var M = SIM.M, d = S.d, out;
 		var px = d.uMax * (P.sl.kyr / 1000) / P.view.kx;      // the fastest marker, px per frame
-		out = clock(SIM.t) + '   ' + (P.sl.kyr > 0 ? P.sl.kyr.toFixed(0) + ' kyr/f  ' + (P.sl.kyr * PERF.fps / 1000).toFixed(2) + ' Myr/s  fluid ' + SIM.sub + 'x' : 'paused')
+		out = clock(SIM.t) + '   seed ' + P.seed + '   ' + (P.sl.kyr > 0 ? P.sl.kyr.toFixed(0) + ' kyr/f  ' + (P.sl.kyr * PERF.fps / 1000).toFixed(2) + ' Myr/s  fluid ' + SIM.sub + 'x' : 'paused')
 			+ '\nNu ' + d.nu.toFixed(2) + '   max|u| ' + d.uMax.toFixed(1) + ' cm/yr   ' + px.toFixed(1) + ' px/f   wells ' + d.wells
 			+ '\nmarkers ' + S.n + '/' + P.partCap + '  ' + P.mpc + '/node   empty ' + S.empty
 			+ '   moved ' + S.moved + '  redeals ' + S.redeals + '   nodes ' + M.nx + 'x' + M.ny

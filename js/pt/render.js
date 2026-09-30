@@ -132,10 +132,14 @@ var PTR = {
 	// field it sits in, so crowding and drift are visible in the live view. A plate marker is
 	// drawn light and a fluid marker dark: the texture of the cloud then shows which material
 	// is riding a plate even where the raster's grey is zoomed out to a smear.
+	// The map is periodic, so a marker is drawn at its image nearest the view centre: the
+	// camera clamps the window to one period (zoomAt), so that image is the only one on screen.
 	stipple: function (M, S, px, w, h) {
-		var v = P.view, inv = (h - 1) / (v.eB - v.eT), p, x, xf, y, q, m;
+		var v = P.view, inv = (h - 1) / (v.eB - v.eT), W = M.wrap, p, x, xf, y, q, m, d;
 		for (p = 0; p < S.n; p++) {
-			xf = (S.x[p] - v.cx) / this.sx + w * 0.5;
+			d = S.x[p] - v.cx;
+			d -= Math.floor(d / W + 0.5) * W;
+			xf = d / this.sx + w * 0.5;
 			if (xf < 0 || xf >= w) continue;
 			y = (S.e[p] - v.eT) * inv;
 			if (y < 0 || y >= h) continue;
@@ -186,9 +190,10 @@ var PTR = {
 	zoomAt: function (mx, my, f, M) {
 		var v = P.view, xk = v.cx + (mx - this.w * 0.5) * v.kx;
 		var ek = v.eT + my / this.h * (v.eB - v.eT);
+		var kxMax = M.wrap / this.w;                      // one period across: no repeated tiles
 		v.kx *= f;
-		if (v.kx < 0.02) v.kx = 0.02; else if (v.kx > 40) v.kx = 40;
-		v.cx = xk - (mx - this.w * 0.5) * v.kx;
+		if (v.kx < 0.02) v.kx = 0.02; else if (v.kx > kxMax) v.kx = kxMax;
+		v.cx = wrapX(xk - (mx - this.w * 0.5) * v.kx, M.wrap);
 		var span = (v.eB - v.eT) * f;
 		if (span < 0.02) span = 0.02; else if (span > 5.2) span = 5.2;
 		v.eT = ek - my / this.h * span; v.eB = v.eT + span;
@@ -197,7 +202,7 @@ var PTR = {
 
 	panBy: function (dxPx, dyPx, M) {
 		var v = P.view, de = dyPx / this.h * (v.eB - v.eT);
-		v.cx -= dxPx * v.kx;
+		v.cx = wrapX(v.cx - dxPx * v.kx, M.wrap);
 		v.eT -= de; v.eB -= de;
 		this.build(M);
 	},
@@ -211,6 +216,9 @@ var PTR = {
 		this.build(M);
 	}
 };
+
+// the camera centre lives in [0, wrap): panning round the planet never loses precision
+function wrapX(x, W) { return x - Math.floor(x / W) * W; }
 
 var RULER = [0, 700, 1400, 2900, 1000];    // km: four depth lines and the distance bar
 

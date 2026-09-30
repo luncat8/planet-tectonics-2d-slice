@@ -17,7 +17,7 @@ function configure(proxy) {
 	P.mesh.nx = 128; P.mesh.ny = 48;
 	P.mpc = 4; P.partCap = 32768;
 	P.ic = 'cool'; P.flip = 1;
-	P.icMode = 1; P.icAmp = 0.02;   // the validated draw; the demo's planet uses other modes
+	P.icMode = 1; P.icAmp = 0.02; P.icBand = 0;   // the validated draw; the demo's planet uses other modes
 	P.solid = false;          // this fixture gates the fluid pipeline alone (pt-crust.js has the solid one)
 	P.Ra = 1e6;
 	P.RaK = P.Ra * P.kappa / (P.depth * P.depth * P.depth);

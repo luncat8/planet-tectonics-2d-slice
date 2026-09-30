@@ -39,6 +39,7 @@ var PTS = {
 	par: null, cl: null, csOf: null,
 	csM: null, csX: null, csY: null, csVX: null, csVY: null, csW: null, csR2: null,
 	csRef: null, csN: 0,            // csN: clusters of the last crust pass
+	bandA: null, bandP: null,       // the initial perturbation's seeded band (icT)
 	// per-frame diagnostics, mutated in place: the HUD formats them at 2 Hz
 	d: {
 		nu: 0, uMax: 0, vMax: 0, wells: 0, heat: 0, mHeat: 0, tMin: 0, tMax: 0,
@@ -85,6 +86,7 @@ var PTS = {
 	reset: function (M, phase) {
 		var nx = M.nx, ny = M.ny, i, j, k, p = 0, m, T, rnd = 12345, e;
 		var mpc = P.mpc, node = M.dEta * M.jN[0] * M.dx;
+		this.band(phase);
 		for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) {
 			m = M.dEta * M.jN[j] * M.dx / mpc;
 			T = this.icT(M, i, j, phase);
@@ -119,6 +121,25 @@ var PTS = {
 	},
 
 	// the initial temperature of the node at (i, j)
+	// the broadband part of the initial perturbation (params.js icBand): per-mode amplitude
+	// and phase drawn from the seed, normalised so the band carries icBand of the energy
+	band: function (phase) {
+		var K = P.icBandMax, k, a, sum = 0, rnd = (P.seed * 7919 + 1) & 0x7fffffff;
+		if (!this.bandA || this.bandA.length !== K + 1) {
+			this.bandA = new Float64Array(K + 1); this.bandP = new Float64Array(K + 1);
+		}
+		for (k = 1; k <= K; k++) {
+			rnd = (Math.imul(rnd, 1103515245) + 12345) & 0x7fffffff;
+			a = 0.25 + rnd / 0x7fffffff;
+			rnd = (Math.imul(rnd, 1103515245) + 12345) & 0x7fffffff;
+			this.bandA[k] = a;
+			this.bandP[k] = phase + 6.283185307179586 * rnd / 0x7fffffff;
+			sum += a * a;
+		}
+		a = Math.sqrt(P.icBand / sum);
+		for (k = 1; k <= K; k++) this.bandA[k] *= a;
+	},
+
 	icT: function (M, i, j, phase) {
 		var y = M.yN[j], f = y / M.depth, x = i * M.dx;
 		var base;
@@ -127,7 +148,9 @@ var PTS = {
 		else base = f;
 		var pert = Math.sin(Math.PI * f);
 		var ph = phase;
-		var T = base + P.icAmp * pert * Math.cos(2 * Math.PI * P.icMode * x / M.wrap + ph);
+		var k, wave = Math.sqrt(1 - P.icBand) * Math.cos(2 * Math.PI * P.icMode * x / M.wrap + ph);
+		for (k = 1; P.icBand > 0 && k <= P.icBandMax; k++) wave += this.bandA[k] * Math.cos(2 * Math.PI * k * x / M.wrap + this.bandP[k]);
+		var T = base + P.icAmp * pert * wave;
 		if (P.ic === 'blob') {
 			var dc = (x - 0.5 * M.wrap) / (0.08 * M.wrap), dz = (f - 0.72) / 0.12;
 			T += 0.25 * Math.exp(-dc * dc - dz * dz);

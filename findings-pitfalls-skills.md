@@ -392,3 +392,21 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   cluster pair scan measured 1 ms at 231 strong markers, 3.5 ms at 4.2k, 14 ms at 8.5k
   (both walls lidded). Budget gates should time the shipped configuration at the shipped
   clock and the worst case should be printed, not averaged away.
+
+## 0.3.0 P2.2a — the x wrap
+
+- **An FFT in x is a periodic boundary condition, so wrap is not optional.** Test it as
+  shift equivariance: translate the state by whole cells, run, translate back, compare
+  marker-by-marker (`pt-wrap.js`). Round-off agreement (1e-10 km) proves no stage treats
+  x = 0 as an edge; a seam bug shows up as tens of km and flipped plate memberships.
+- **The physics can wrap while the view does not.** The raster sampled modulo wrap and the
+  marker stipple did not: invisible at the default camera (one period, seam at the canvas
+  edges), broken as soon as the user pans. Gate the view headlessly (camera on the seam,
+  count lit pixels per half).
+- **On a periodic map a single-mode initial perturbation is N copies of one box.** Only
+  numerical noise breaks the symmetry and it takes hundreds of Myr. Seed a band of modes;
+  keep the single mode as a pinned fixture draw. And make the seed change more than a phase
+  — on a periodic map a phase shift is the same planet rotated.
+- **Per-pair damage makes the failure rate scale with marker density.** A marker with 37
+  partners accrues ~2x the damage of one with 20 under the same strain rate. Normalise by
+  the partner count before tuning or thinning the pair walk.
