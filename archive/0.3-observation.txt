@@ -14,3 +14,9 @@ you can see current behavior on
 
 
 yellow color (probably melt overlay ) at top that reach surface, it look not very realistic and appears not related to visible upward flows.
+
+3. 
+looks like vertical resolution we can make 2x less and horizontal 2x bigger map. because currently we have only 1-2 of convection flows per map.
+
+4.
+also investigate when crust should be formed, how it should be visual. currently i see all like fluid at 2Gyr

@@ -1,14 +1,16 @@
-// pt/sim.js — 0.3.0 P1: the frame pipeline (plan §5) and the page bootstrap. Slot G0 runs
+// pt/sim.js — 0.3.0 P1/P2: the frame pipeline (plan §5) and the page bootstrap. Slot G0 runs
 // inline (clocks and the slider); the rest sit in slots so the later milestones can fill
 // them without touching this file:
 //   G1 markers -> grid      G2 buoyancy + Stokes      G3 conduction + advection
 //   G4 solid   G5 phase change   G6 eruptions   G7 surface   G8 diagnostics   (P2..P5)
+// G4 is P2.1's crust law: age, strength, plate clusters and the rigid projection (solid.js).
 // Every kernel no-ops at dtGeo = 0: a paused frame reports, it does not change the state.
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
 var G = (typeof module !== 'undefined' && module.exports) ? require('./grid.js') : window.PTG;
 var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.PTS;
 var F = (typeof module !== 'undefined' && module.exports) ? require('./fluid.js') : window.PTF;
+var SC = (typeof module !== 'undefined' && module.exports) ? require('./solid.js') : window.PTSC;
 
 var SIM = {
 	M: null, S: S,
@@ -35,7 +37,7 @@ var SIM = {
 		this.phase = 6.283185307179586 * (P.seed * 0.6180339887498949 % 1);
 		this.t = 0; this.frame = 0;
 		S.reset(this.M, this.phase);
-		G.scatterT(this.M, S, S.Tg);       // a paused page at t = 0 already shows the planet
+		G.scatterT(this.M, S, S.Tg, S.mug);   // a paused page at t = 0 already shows the planet
 		F.diag(this.M, S);
 	},
 
@@ -80,11 +82,12 @@ var SIM = {
 	}
 };
 
-// the P1 kernels (plan §5). G2 needs the buoyancy coefficient: RaK is Ra * kappa / depth^3
-// (params.js), so a mesh change does not change the physics.
+// the P1 kernels (plan §5) and P2.1's G4 (solid.js). G2 needs the buoyancy coefficient: RaK
+// is Ra * kappa / depth^3 (params.js), so a mesh change does not change the physics.
 SIM.k[1] = function (M, S) { F.transfer(M, S); };
 SIM.k[2] = function (M, S) { F.flow(M, S, P.RaK); };
 SIM.k[3] = function (M, S, dt) { F.move(M, S, dt, P.kappa, P.flip); };
+SIM.k[4] = function (M, S, dt) { if (P.solid) SC.crust(M, S, dt); };
 SIM.k[8] = function (M, S) { F.diag(M, S); };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = SIM;

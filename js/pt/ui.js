@@ -13,14 +13,15 @@ var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js
 var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.PTS;
 
 var PTUI = {
-	paused: false, stepOnce: false, quality: 1,
+	paused: false, stepOnce: false, quality: 0,
 	cvs: null, hud: null, sClock: null, vClock: null,
 	mx: -1, my: -1, dragging: false, dragX: 0, dragY: 0,
 	probe: '', probeOn: false,
 
-	QUALITY: [[128, 48], [256, 96], [512, 192]],
-	mpc: [8, 4, 2],              // markers per node per quality level: the marker count is the
-	                             // frame's real cost, and it is the same at every level
+	QUALITY: [[256, 24], [512, 48], [1024, 96]],
+	mpc: [4, 2, 2],              // markers per node per quality level: the marker count is the
+	                             // frame's real cost (plan §7), and finer meshes carry fewer
+	                             // markers per node to keep it in the same decade
 
 	init: function (SIM) {
 		this.cvs = document.getElementById('c');
@@ -62,6 +63,7 @@ var PTUI = {
 		document.getElementById('bReset').addEventListener('click', function () { SIM.reset(); self.updateHud(SIM); });
 		document.getElementById('bMark').addEventListener('click', function () { PTRNDR.markers = !PTRNDR.markers; });
 		document.getElementById('bMelt').addEventListener('click', function () { PTRNDR.melt = !PTRNDR.melt; });
+		document.getElementById('bCrust').addEventListener('click', function () { PTRNDR.crust = !PTRNDR.crust; });
 		document.getElementById('bRuler').addEventListener('click', function () { PTRNDR.ruler = !PTRNDR.ruler; });
 		document.getElementById('bMesh').addEventListener('click', function () { self.cycleMesh(SIM); });
 		document.getElementById('bLid').addEventListener('click', function () { PTRNDR.preset('lid', SIM.M); self.updateHud(SIM); });
@@ -92,6 +94,7 @@ var PTUI = {
 		else if (ev.key === 'r') SIM.reset();
 		else if (ev.key === 'm') PTRNDR.markers = !PTRNDR.markers;
 		else if (ev.key === 'v') PTRNDR.melt = !PTRNDR.melt;
+		else if (ev.key === 'c') PTRNDR.crust = !PTRNDR.crust;
 		else if (ev.key === 'g') PTRNDR.ruler = !PTRNDR.ruler;
 		else if (ev.key === '1') this.quality = 0;
 		else if (ev.key === '2') this.quality = 1;
@@ -148,6 +151,8 @@ var PTUI = {
 			+ '\nNu ' + d.nu.toFixed(2) + '   max|u| ' + d.uMax.toFixed(1) + ' cm/yr   ' + px.toFixed(1) + ' px/f   wells ' + d.wells
 			+ '\nmarkers ' + S.n + '/' + P.partCap + '  ' + P.mpc + '/node   empty ' + S.empty
 			+ '   moved ' + S.moved + '  redeals ' + S.redeals + '   nodes ' + M.nx + 'x' + M.ny
+			+ '\ncrust ' + (d.lid * 100).toFixed(0) + '% of markers strong   plates ' + d.plates
+			+ '   plate drift ' + d.plV.toFixed(1) + ' cm/yr'
 			+ '\nledger ' + fmt(S.ledger) + '   walls ' + fmt(S.wall) + '   gap ' + (S.wall ? (S.ledger / S.wall).toFixed(1) + 'x' : '--')
 			+ '\nT ' + d.tMin.toFixed(3) + '..' + d.tMax.toFixed(3) + '   heat ' + fmt(d.heat)
 			+ '\nmelt* ' + d.melt.toFixed(2) + '   source depth ' + d.meltY.toFixed(0) + ' km'

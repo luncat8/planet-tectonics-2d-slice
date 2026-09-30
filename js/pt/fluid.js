@@ -17,7 +17,7 @@ var F = {
 	transfer: function (M, S) {
 		if (!S.n) return;
 		S.moved = 0;
-		G.scatterT(M, S, S.Tg);
+		G.scatterT(M, S, S.Tg, S.mug);
 		if (S.empty) G.reseed(M, S, false);
 	},
 
@@ -28,12 +28,15 @@ var F = {
 
 	// conduction on the grid, the increment back to the markers, then marker motion (G3).
 	// Coverage repair belongs to transfer, before this pass: after advection M.w is a stale
-	// description of where the markers used to be.
+	// description of where the markers used to be. The velocity is gathered from the psi map
+	// and the markers ride it; the solid pass (G4, solid.js) runs after this kernel and
+	// projects the strong markers onto their plates' rigid motion.
 	move: function (M, S, dt, kappa, flip) {
 		if (!(dt > 0)) return;
 		G.diffuse(M, S.Tg, dt, kappa, M.inc);
 		G.gatherDT(M, S, M.inc, S.Tg, flip);
-		G.gatherVel(M, S, M.pr, dt);
+		G.gatherVel(M, S, M.pr);
+		G.advect(M, S, dt);
 		this.melt(M, S, dt);
 	},
 

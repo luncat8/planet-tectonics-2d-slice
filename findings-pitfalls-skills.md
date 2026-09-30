@@ -345,3 +345,50 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   advection at Courant 6 is the suspect. The engine, whose advection is Lagrangian, reads Nu 1.00
   there. Agreeing with a reference is only meaningful where the reference is physical -- gate at
   Ra >= 1e6 and flag the rest.
+
+## 0.3.0 P2.1 — the crust: config, fixtures and calibrated failure
+
+- **One live source per config value, or the dead copy will be the one you edit.** `params.js`
+  carried the mesh twice: top-level `nx/ny` and the `mesh:{nx,ny}` block that `SIM.init` and
+  the UI actually read. The top-level pair was edited for the map change and every run kept
+  silently using the old mesh. The fix is deletion (one source), not a comment warning.
+- **A pipeline stage bound at module load ignores its switch.** `SIM.k[4] = SC.crust`
+  unconditionally meant `P.solid = false` did nothing: three fixtures ran a lid they had
+  pinned off (and the numbers moved). Read the switch where the work happens
+  (`if (P.solid) SC.crust(...)`) and make the fixtures' pins actually take effect.
+- **A fixture must pin every parameter it depends on, including the ones the demo owns.**
+  The demo's `icMode 1 -> 4` leaked into pt-melt-check (blob melt* 0.116 -> 0.090 against a
+  0.10 gate) and into pt-eng-conv (4-well draw instead of 1-well, velocity gate flipped).
+  Anything a fixture measures is a fixture setting, whatever params.js says.
+- **Comparing a transient to a reference's steady state passes and fails on the initial
+  planform.** pt-eng-conv's 2400-frame snapshot peaked and decayed through the reference's
+  gate band; the draw decided the verdict. Compare at matched nondimensional time or pin
+  and replay the exact recorded state. Measured the honest delta separately: at the engine's
+  own settled state the one-phase box runs ~2x weak (Nu ~15 vs 27.45) and mpc 16 does not
+  close it — the deficit is boundary-layer transport, not marker count. Printed as a caveat,
+  not buried.
+- **Hysteresis bands in a phase-adjacent state variable are load-bearing.** Age that accrued
+  at any T below the reset point clustered the whole mantle; age accrues at T <= TLock,
+  resets at T >= TSoft, holds between, and the T=0.4 age=10 band legitimately reads
+  mu = 0.383 (strong rock the hysteresis is holding) — assert against the law, not intuition.
+- **A healing gate on pristine markers passes trivially.** The anneal test must re-open the
+  seam (work it above yield for a while) right before the quiet period, or it only proves
+  `1 - dt/tau > 1 - dt/tau`. Likewise, a rigid-correction pass is only testable after the
+  flow's own advection has run: `SC.crust` applies `x += w*(vRigid - vFlow)*dt` on top of
+  G3, and unit tests that skip the pre-advect measure the mismatch as a "position gap".
+- **Failure constants belong to the engine's own load distribution, not to dimension
+  analysis.** The pair load `|(v_rel . r)|/d^2` is a strain-rate sample of a smooth field:
+  measure its percentiles on an intact lid (`pt-load-check.js`), put the yield above the
+  body (p80) and below the tail (p99), and note that loads grow ~3x with lid age — a
+  constant calibrated at one age is wrong at the next. 0.003-0.02/Myr body vs 0.03-0.5 tail
+  at 256x24 is what 0.06 sits between.
+- **Percentage-of-surface metrics are mesh-row-count dependent.** lid% 9% at 256x24 is the
+  same physical crust as 15-17% at 128x48. Compare crust thickness in km (the isotherm
+  depth it tracks), not percentages, across mesh changes.
+- **An overlay's onset must sit at the classification threshold.** `crustLevel` starting at
+  mug 0.12 painted half-strength rock grey over warm material and hid the plates the
+  overlay exists to show; onset at `clusterMin` (0.25), where a marker stops being fluid.
+- **Pair walks scale with candidate density, and young lids are the dense case.** The
+  cluster pair scan measured 1 ms at 231 strong markers, 3.5 ms at 4.2k, 14 ms at 8.5k
+  (both walls lidded). Budget gates should time the shipped configuration at the shipped
+  clock and the worst case should be printed, not averaged away.

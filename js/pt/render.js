@@ -24,9 +24,9 @@ var PTR = {
 	sx: 1,                                              // km per raster column
 	pal: null, meltPal: null, meltLevel: null,          // packed thermal and melt-overlay LUTs
 	ticks: null, labels: null, barPx: 0,                // the ruler
-	markers: true, ruler: true, melt: true,
+	markers: true, ruler: true, melt: true, crust: true,
 
-	SKY: 0xff1c1014, CMB: 0xff2e1a10, MARK: 0x404040,
+	SKY: 0xff1c1014, CMB: 0xff2e1a10, MARK: 0x404040, PM: 0xd8d4c8,
 
 	// The canvas is 5x the mesh in x and 6x in y, so the raster runs at half resolution and
 	// is scaled up: 4x fewer pixels and the stipple's scattered writes stay in cache, which
@@ -42,6 +42,19 @@ var PTR = {
 		this.px = new Uint32Array(this.img.data.buffer);
 		this.jOf = new Int32Array(this.oh); this.fyOf = new Float32Array(this.oh);
 		this.iOf = new Int32Array(this.ow); this.fxOf = new Float32Array(this.ow);
+		this.ticks = new Float64Array(4);
+		this.labels = ['surface', '700 km', '1400 km', '2900 km'];
+		this.build(M);
+	},
+
+	// the raster core with no DOM behind it (experiments/pt-snapshot.js paints PNGs with
+	// this): same tables, same buffers, no canvas
+	initHeadless: function (w, h, M) {
+		this.w = w; this.h = h;
+		this.ow = w; this.oh = h;
+		this.px = new Uint32Array(w * h);
+		this.jOf = new Int32Array(h); this.fyOf = new Float32Array(h);
+		this.iOf = new Int32Array(w); this.fxOf = new Float32Array(w);
 		this.ticks = new Float64Array(4);
 		this.labels = ['surface', '700 km', '1400 km', '2900 km'];
 		this.build(M);
@@ -70,13 +83,19 @@ var PTR = {
 		this.barPx = Math.round((RULER[4] / v.kx) / 50) * 50;      // the bar snaps to 50 px
 	},
 
-	// The field: T bilinear from the two node rows each screen row spans. The optional gold
-	// overlay is the pressure-release melt indicator, not a replacement for the cold/hot
-	// mantle colour: one-phase P1 still shows physically valid cold downwellings.
+	// The field: T bilinear from the two node rows each screen row spans. Two overlays sit on
+	// top of the thermal colour, in this order: the grey rock of the crust (the node's mean
+	// strength, solid.js), then the gold pressure-release melt indicator. The melt indicator
+	// is not a replacement for the cold/hot mantle colour: one-phase P1 still shows physically
+	// valid cold downwellings, and the crust overlay is what tells cold *plate* from cold
+	// *fluid*.
 	raster: function (M, S, px, w, h) {
-		var nx = M.nx, ny = M.ny, Tg = S.Tg, Mg = S.Mg, pal = this.pal, meltPal = this.meltPal;
-		var jOf = this.jOf, fyOf = this.fyOf, iOf = this.iOf, fxOf = this.fxOf, meltLevel = this.meltLevel;
-		var x, y, q, j, fy, base, base2, i, i1, fx, t0, t1, t, m0, m1, m, k, mk;
+		var nx = M.nx, ny = M.ny, Tg = S.Tg, Mg = S.Mg, mug = S.mug;
+		var pal = this.pal, meltPal = this.meltPal, crustPal = this.crustPal;
+		var jOf = this.jOf, fyOf = this.fyOf, iOf = this.iOf, fxOf = this.fxOf;
+		var meltLevel = this.meltLevel, crustLevel = this.crustLevel;
+		var doMelt = this.melt, doCrust = this.crust;
+		var x, y, q, j, fy, base, base2, i, i1, fx, t0, t1, t, m0, m1, m, k, mk, g0, g1, g, ck, c;
 		for (y = 0; y < h; y++) {
 			j = jOf[y]; fy = fyOf[y]; q = y * w;
 			if (j < 0) { for (x = 0; x < w; x++) px[q + x] = this.SKY; continue; }
@@ -89,20 +108,32 @@ var PTR = {
 				t = t0 + (t1 - t0) * fy;
 				k = (t * 255 + 0.5) | 0;
 				if (k < 0) k = 0; else if (k > 255) k = 255;
-				if (!this.melt) { px[q + x] = pal[k]; continue; }
-				m0 = Mg[base + i] + (Mg[base + i1] - Mg[base + i]) * fx;
-				m1 = Mg[base2 + i] + (Mg[base2 + i1] - Mg[base2 + i]) * fx;
-				m = m0 + (m1 - m0) * fy;
-				mk = meltLevel[(m * 255 + 0.5) | 0];
-				px[q + x] = mk ? meltPal[mk * 256 + k] : pal[k];
+				mk = 0; ck = 0;
+				if (doMelt) {
+					m0 = Mg[base + i] + (Mg[base + i1] - Mg[base + i]) * fx;
+					m1 = Mg[base2 + i] + (Mg[base2 + i1] - Mg[base2 + i]) * fx;
+					m = m0 + (m1 - m0) * fy;
+					mk = meltLevel[(m * 255 + 0.5) | 0];
+				}
+				if (doCrust) {
+					g0 = mug[base + i] + (mug[base + i1] - mug[base + i]) * fx;
+					g1 = mug[base2 + i] + (mug[base2 + i1] - mug[base2 + i]) * fx;
+					g = g0 + (g1 - g0) * fy;
+					ck = crustLevel[(g * 255 + 0.5) | 0];
+				}
+				c = pal[k];
+				if (ck) c = crustPal[ck * 256 + k];
+				px[q + x] = mk ? meltPal[mk * 256 + k] : c;
 			}
 		}
 	},
 
 	// the marker stipple: one dot per parcel at its own carried position, lifted out of the
-	// field it sits in, so crowding and drift are visible in the live view
+	// field it sits in, so crowding and drift are visible in the live view. A plate marker is
+	// drawn light and a fluid marker dark: the texture of the cloud then shows which material
+	// is riding a plate even where the raster's grey is zoomed out to a smear.
 	stipple: function (M, S, px, w, h) {
-		var v = P.view, inv = (h - 1) / (v.eB - v.eT), p, x, xf, y, q, m = this.MARK;
+		var v = P.view, inv = (h - 1) / (v.eB - v.eT), p, x, xf, y, q, m;
 		for (p = 0; p < S.n; p++) {
 			xf = (S.x[p] - v.cx) / this.sx + w * 0.5;
 			if (xf < 0 || xf >= w) continue;
@@ -110,6 +141,7 @@ var PTR = {
 			if (y < 0 || y >= h) continue;
 			x = xf | 0;
 			q = (y | 0) * w + x;
+			m = S.mu[p] >= P.clusterMin ? this.PM : this.MARK;
 			px[q] |= m;
 		}
 	},
@@ -185,6 +217,8 @@ var RULER = [0, 700, 1400, 2900, 1000];    // km: four depth lines and the dista
 PTR.pal = buildPal();                       // at load: the headless raster needs no init
 PTR.meltPal = buildMeltPal(PTR.pal);
 PTR.meltLevel = buildMeltLevel();
+PTR.crustPal = buildCrustPal(PTR.pal);
+PTR.crustLevel = buildCrustLevel();
 
 function buildPal() {
 	var pal = new Uint32Array(256), i, s, t, q, a, b2, r, g, bl;
@@ -219,6 +253,39 @@ function buildMeltLevel() {
 	var out = new Uint8Array(256), i, t;
 	for (i = 0; i < 256; i++) {
 		t = (i / 255 - 0.08) / 0.10;
+		if (t < 0) t = 0; else if (t > 1) t = 1;
+		out[i] = Math.sqrt(t) * 15 + 0.5;
+	}
+	return out;
+}
+
+// Sixteen preblended rock overlays: as strength rises the thermal colour is replaced by a
+// grey-brown rock ramp whose brightness still follows T a little (a hot crack in a plate
+// stays legible). The crust is meant to read as *material*, not as cold fluid -- the dark
+// blue end of the thermal palette is exactly what the mantle's cold downwellings look like,
+// and without this overlay a rigid lid and a cold drip are the same picture.
+function buildCrustPal(pal) {
+	var out = new Uint32Array(16 * 256), level, i, a, c, r, g, b, t, rr, rg, rb;
+	for (level = 0; level < 16; level++) {
+		a = level / 15 * 0.85;
+		for (i = 0; i < 256; i++) {
+			c = pal[i]; r = c & 255; g = (c >>> 8) & 255; b = (c >>> 16) & 255;
+			t = i / 255;
+			rr = 74 + 92 * t; rg = 68 + 84 * t; rb = 60 + 72 * t;
+			r += (rr - r) * a; g += (rg - g) * a; b += (rb - b) * a;
+			out[level * 256 + i] = 0xff000000 | ((b | 0) << 16) | ((g | 0) << 8) | (r | 0);
+		}
+	}
+	return out;
+}
+
+// the strength -> level curve: rock reads as crust only where it is actually plate (the
+// cluster threshold and above). Tinting half-strength material too made the whole cold
+// boundary layer grey and hid where the plates really are.
+function buildCrustLevel() {
+	var out = new Uint8Array(256), i, t;
+	for (i = 0; i < 256; i++) {
+		t = (i / 255 - 0.25) / 0.30;
 		if (t < 0) t = 0; else if (t > 1) t = 1;
 		out[i] = Math.sqrt(t) * 15 + 0.5;
 	}

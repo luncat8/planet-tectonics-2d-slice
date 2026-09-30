@@ -16,7 +16,13 @@ var PTS = {
 	T: null,                        // 0 at the surface, 1 at the CMB
 	m: null,                        // mass per unit out-of-plane depth, km2 (fixed in P1)
 	vx: null, vy: null,             // km/Myr, the interpolated grid velocity
-	Tg: null,                        // node temperature field (ny+1) * nx
+	age: null,                      // Myr since the marker last froze (plan §3.1): the
+	                                // welding clock of the crust law (solid.js)
+	mu: null,                       // strength 0..1 from T and age (plan §4.2); >=
+	                                // clusterMin means the marker is plate, not fluid
+	dmg: null,                      // accumulated bond damage (plan §4.2): 1 = bonds gone
+	Tg: null,                       // node temperature field (ny+1) * nx
+	mug: null,                      // node mean strength, the raster's crust overlay
 	Mg: null, MgS: null,            // pressure-release melt indicator and its transport scratch
 	rowT: null,                     // horizontally averaged T at each node row, reused by melt
 	u: null, v: null,               // staggered velocity fields
@@ -26,10 +32,18 @@ var PTS = {
 	wall: 0,                        // the same heat read from the operator's side (sim.js k[8])
 	moved: 0, redeals: 0,           // markers the last repair moved; lattice re-deals since reset
 	order: null,                    // marker indices, bucketed by node (grid.js reseed)
+	// cluster scratch for the crust pass (solid.js), sized with the marker set. Clusters are
+	// recomputed every frame from the strong markers' adjacency, so this is workspace, not
+	// state: par is the union-find, cl the cluster of each marker, and the cs* arrays are the
+	// per-cluster accumulators (mass, centroid, velocity fit)
+	par: null, cl: null, csOf: null,
+	csM: null, csX: null, csY: null, csVX: null, csVY: null, csW: null, csR2: null,
+	csRef: null, csN: 0,            // csN: clusters of the last crust pass
 	// per-frame diagnostics, mutated in place: the HUD formats them at 2 Hz
 	d: {
 		nu: 0, uMax: 0, vMax: 0, wells: 0, heat: 0, mHeat: 0, tMin: 0, tMax: 0,
-		fluxTop: 0, fluxBot: 0, wallRate: 0, drift: 0, melt: 0, meltY: 0
+		fluxTop: 0, fluxBot: 0, wallRate: 0, drift: 0, melt: 0, meltY: 0,
+		lid: 0, plates: 0, plV: 0
 	},
 
 	// allocate for a mesh (idempotent: the quality switch can change the mesh size)
@@ -39,10 +53,18 @@ var PTS = {
 			this.x = new Float64Array(cap); this.y = new Float64Array(cap); this.e = new Float64Array(cap);
 			this.T = new Float64Array(cap); this.m = new Float64Array(cap);
 			this.vx = new Float64Array(cap); this.vy = new Float64Array(cap);
+			this.age = new Float64Array(cap); this.mu = new Float64Array(cap);
+			this.dmg = new Float64Array(cap);
+			this.par = new Int32Array(cap); this.cl = new Int32Array(cap); this.csOf = new Int32Array(cap);
+			this.csM = new Float64Array(cap); this.csX = new Float64Array(cap);
+			this.csY = new Float64Array(cap); this.csVX = new Float64Array(cap);
+			this.csVY = new Float64Array(cap); this.csW = new Float64Array(cap);
+			this.csR2 = new Float64Array(cap); this.csRef = new Float64Array(cap);
 			this.order = new Int32Array(cap);
 		}
 		if (!this.Tg || this.Tg.length !== M.n) {
 			this.Tg = new Float64Array(M.n);
+			this.mug = new Float64Array(M.n);
 			this.Mg = new Float64Array(M.n); this.MgS = new Float64Array(M.n);
 			this.rowT = new Float64Array(M.ny + 1);
 			this.u = new Float64Array(M.ny * M.nx);
@@ -58,7 +80,8 @@ var PTS = {
 	// The initial temperature
 	// profile is the plan's §8 P1 state: 'rb' is pt-conv.js's own conduction profile plus one
 	// cosine perturbation (the fixture compares against it), 'cool' is a hot planet with a
-	// cold skin, 'blob' is one plume head under a conduction profile.
+	// cold skin, 'hot' is the P2 cooling start (nearly uniform hot, the lid has to grow from
+	// the wall), 'blob' is one plume head under a conduction profile.
 	reset: function (M, phase) {
 		var nx = M.nx, ny = M.ny, i, j, k, p = 0, m, T, rnd = 12345, e;
 		var mpc = P.mpc, node = M.dEta * M.jN[0] * M.dx;
@@ -84,13 +107,15 @@ var PTS = {
 		}
 		this.n = p;
 		this.empty = 0; this.clamp = 0; this.ledger = 0; this.wall = 0;
-		this.moved = 0; this.redeals = 0;
-		this.Tg.fill(0); this.Mg.fill(0); this.MgS.fill(0); this.rowT.fill(0);
+		this.moved = 0; this.redeals = 0; this.csN = 0;
+		this.Tg.fill(0); this.mug.fill(0); this.Mg.fill(0); this.MgS.fill(0); this.rowT.fill(0);
+		this.age.fill(0); this.mu.fill(0); this.dmg.fill(0);
 		this.u.fill(0); this.v.fill(0);
 		for (i = 0; i < nx; i++) this.Tg[ny * nx + i] = 1;
 		this.d.nu = 0; this.d.uMax = 0; this.d.vMax = 0; this.d.wells = 0;
 		this.d.heat = 0; this.d.tMin = 0; this.d.tMax = 0; this.d.fluxTop = 0; this.d.fluxBot = 0;
 		this.d.melt = 0; this.d.meltY = 0;
+		this.d.lid = 0; this.d.plates = 0; this.d.plV = 0;
 	},
 
 	// the initial temperature of the node at (i, j)
@@ -98,6 +123,7 @@ var PTS = {
 		var y = M.yN[j], f = y / M.depth, x = i * M.dx;
 		var base;
 		if (P.ic === 'cool') base = 1 - Math.exp(-y / P.skin);
+		else if (P.ic === 'hot') base = 1;
 		else base = f;
 		var pert = Math.sin(Math.PI * f);
 		var ph = phase;

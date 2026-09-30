@@ -111,6 +111,7 @@ G.alloc = function (M) {
 	M.lx = new Float64Array(n);                                 // explicit x laplacian
 	M.inc = new Float64Array(n);                                // conduction increment
 	M.sum = new Float64Array(n); M.w = new Float64Array(n);      // scatter accumulators
+	M.sumU = new Float64Array(n);                               // strength scatter (crust overlay)
 	M.counts = new Int32Array(n); M.slot = new Int32Array(n);    // marker occupancy, then slots
 	M.rr = new Float64Array(M.ny + 1); M.ri = new Float64Array(M.ny + 1);
 	M.xr = new Float64Array(M.ny + 1); M.xi = new Float64Array(M.ny + 1);
@@ -355,10 +356,10 @@ G.cellOf = cellOf;
 // exactly its measure, and the domain's whole intake is the operator's own integral to
 // round-off. With plain weights it is not, and the increments' x-structure amplifies the gap
 // brutally: a 4% occupancy hole read as 360x the wall flux.
-G.scatterT = function (M, S, Tg) {
-	var nx = M.nx, ny = M.ny, n = M.n, sum = M.sum, w = M.w, cw = M.cw;
+G.scatterT = function (M, S, Tg, mug) {
+	var nx = M.nx, ny = M.ny, n = M.n, sum = M.sum, w = M.w, cw = M.cw, sumU = M.sumU;
 	var p, q, i, j, base, ic, jc, ii, jj, di, dj, px, pe, wx, we, ww, tm, mm, e = 0, mu;
-	for (i = 0; i < n; i++) { sum[i] = 0; w[i] = 0; }
+	for (i = 0; i < n; i++) { sum[i] = 0; w[i] = 0; sumU[i] = 0; }
 	for (p = 0; p < S.n; p++) {
 		px = S.x[p] / M.dx; ic = Math.round(px); px -= ic;
 		pe = S.e[p] / M.dEta; jc = Math.round(pe); pe -= jc;
@@ -375,7 +376,7 @@ G.scatterT = function (M, S, Tg) {
 				wx = di === -1 ? wxm : di === 0 ? wx0 : wxp;
 				ww = wx * we;
 				q = base + ii;
-				sum[q] += ww * tm; w[q] += ww * mm;
+				sum[q] += ww * tm; w[q] += ww * mm; sumU[q] += ww * mm * S.mu[p];
 			}
 		}
 	}
@@ -384,13 +385,21 @@ G.scatterT = function (M, S, Tg) {
 		base = j * nx;
 		for (i = 0; i < nx; i++) {
 			q = base + i;
-			if (w[q] > M.cover * mu) { Tg[q] = sum[q] / w[q]; cw[q] = mu / w[q]; }
+			if (w[q] > M.cover * mu) {
+				Tg[q] = sum[q] / w[q]; cw[q] = mu / w[q];
+				if (mug) mug[q] = sumU[q] / w[q];
+			}
 			else { e++; cw[q] = 0; }                           // under M.cover: not a sample
 		}
 	}
 	if (e) fillHoles(M, S, Tg);
 	// the walls are boundary conditions, not marker averages
 	for (i = 0; i < nx; i++) { Tg[i] = 0; Tg[ny * nx + i] = 1; cw[i] = 0; cw[ny * nx + i] = 0; }
+	if (mug) {
+		// the surface carries the row below it so the crust colour reaches the top edge of
+		// the picture; the CMB wall is mantle and never crust
+		for (i = 0; i < nx; i++) { mug[i] = mug[nx + i]; mug[ny * nx + i] = 0; }
+	}
 	S.empty = e;
 };
 
@@ -444,41 +453,51 @@ G.gatherDT = function (M, S, inc, Tg, flip) {
 // that folded the cloud onto one row and one column within 10 Myr -- grid.js divMax asserts
 // the underlying field's divergence is zero to round-off).
 //
-// The walls clamp eta half a row inside the boundary row: v is exactly zero at the boundary,
-// so a marker held there could never be swept back in.
-G.gatherVel = function (M, S, psi, dt) {
-	var nx = M.nx, ny = M.ny, p, base, w0, w1, w2, w3, i, j0, j1, i0, i1, fx, fy, a, b, c, d;
+// This pass only reads the velocity; advect is what moves the markers, and the solid pass
+// (solid.js) is what may replace a marker's flow velocity with its plate's rigid one first.
+G.gatherVel = function (M, S, psi) {
+	var nx = M.nx, ny = M.ny, p, base, i0, i1, fx, fy, a, b, c, d, y;
 	for (p = 0; p < S.n; p++) {
 		cellOf(M, S.x[p], S.e[p], 0, 0, 0, ny - 1);
-		base = _j0 * nx; i0 = _i0; i1 = _i1; fx = _fx; fy = _fy; j0 = _j0; j1 = _j1;
-		w0 = (1 - fx) * (1 - fy); w1 = fx * (1 - fy); w2 = (1 - fx) * fy; w3 = fx * fy;
+		base = _j0 * nx; i0 = _i0; i1 = _i1; fx = _fx; fy = _fy;
 		a = psi[base + i0]; b = psi[base + i1];
 		c = psi[base + nx + i0]; d = psi[base + nx + i1];
-		var y = S.y[p];
+		y = S.y[p];
 		S.vx[p] = ((1 - fx) * (c - a) + fx * (d - b)) / M.dEta / Math.sqrt(M.yLin * M.yLin + y * y);
 		S.vy[p] = -((1 - fy) * (b - a) + fy * (d - c)) / M.dx;
-		if (dt > 0) {
-			S.x[p] += S.vx[p] * dt;
-			// eta steps through the metric: with y halfway through the frame, J = yLin*cosh(eta)
-			// = sqrt(yLin^2 + y^2), so dEta = dy / J. The walls reflect the normal step, half a
-			// row inside the boundary node: at the node itself v is exactly zero, so a marker
-			// pinned there would never come back. Reflection is what an impermeable wall does to
-			// material -- it redirects it, it does not collect it -- and it is measure
-			// preserving, so the parcel areas the heat bookkeeping rides on survive the
-			// encounter. Clamping instead measured as a sink: one convection cell swept the
-			// cloud onto the wall rows and left 60% of the nodes empty, and the stale patches
-			// that leaves behind are what drives the grid-scale instability.
-			var y2 = S.y[p] + S.vy[p] * dt;
-			var ym = S.y[p] + 0.5 * S.vy[p] * dt;
-			var e = S.e[p] + S.vy[p] * dt / Math.sqrt(M.yLin * M.yLin + ym * ym);
-			if (e < M.eMin) {
-				e = 2 * M.eMin - e; y2 = 2 * M.yMin - y2; S.vy[p] = -S.vy[p]; S.clamp++;
-			} else if (e > M.eMax) {
-				e = 2 * M.eMax - e; y2 = 2 * M.yMax - y2; S.vy[p] = -S.vy[p]; S.clamp++;
-			}
-			S.e[p] = e; S.y[p] = y2;
-			if (S.x[p] < 0) S.x[p] += M.wrap; else if (S.x[p] >= M.wrap) S.x[p] -= M.wrap;
-		}
+	}
+};
+
+// one marker's wall encounter: the normal step is reflected, half a row inside the boundary
+// node (at the node itself v is exactly zero, so a marker pinned there would never come
+// back). Reflection is what an impermeable wall does to material -- it redirects it, it does
+// not collect it -- and it is measure preserving, so the parcel areas the heat bookkeeping
+// rides on survive the encounter. Clamping instead measured as a sink: one convection cell
+// swept the cloud onto the wall rows and left 60% of the nodes empty, and the stale patches
+// that leaves behind are what drives the grid-scale instability.
+G.keepInside = function (M, S, p) {
+	var y = S.y[p], e = S.e[p];
+	if (e < M.eMin) {
+		e = 2 * M.eMin - e; y = 2 * M.yMin - y; S.vy[p] = -S.vy[p]; S.clamp++;
+	} else if (e > M.eMax) {
+		e = 2 * M.eMax - e; y = 2 * M.yMax - y; S.vy[p] = -S.vy[p]; S.clamp++;
+	}
+	S.e[p] = e; S.y[p] = y;
+	if (S.x[p] < 0) S.x[p] += M.wrap; else if (S.x[p] >= M.wrap) S.x[p] -= M.wrap;
+};
+
+// carry the markers with the velocity field for dt. Eta steps through the metric: with y
+// halfway through the frame, J = yLin*cosh(eta) = sqrt(yLin^2 + y^2), so dEta = dy / J.
+G.advect = function (M, S, dt) {
+	var p, ym, dy;
+	if (!(dt > 0)) return;
+	for (p = 0; p < S.n; p++) {
+		dy = S.vy[p] * dt;
+		ym = S.y[p] + 0.5 * dy;
+		S.x[p] += S.vx[p] * dt;
+		S.y[p] += dy;
+		S.e[p] += dy / Math.sqrt(M.yLin * M.yLin + ym * ym);
+		G.keepInside(M, S, p);
 	}
 };
 
@@ -630,5 +649,6 @@ function nodeOf(M, S, p) {
 	i -= Math.floor(i / M.nx) * M.nx;
 	return j * M.nx + i;
 }
+G.nodeOf = nodeOf;
 
 if (typeof module !== 'undefined' && module.exports) module.exports = G; else window.PTG = G;

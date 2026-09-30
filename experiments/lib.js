@@ -31,6 +31,10 @@ var check = { fails: 0, total: 0 };
 
 check.section = function (title) { console.log('\n' + title); };
 
+check.info = function (name, what) {
+	console.log('INFO  ' + name + (what === undefined ? '' : '   ' + what));
+};
+
 check.ok = function (name, cond, info) {
 	this.total++;
 	if (!cond) this.fails++;
