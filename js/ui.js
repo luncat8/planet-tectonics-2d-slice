@@ -15,6 +15,7 @@ var UI = {
 	paused: false,
 	cvs: null, hud: null, sGeo: null, sErupt: null, vGeo: null, vErupt: null,
 	sVZoom: null, sHZoom: null, vZoom: null, cScale: null,
+	bMesh: null, presets: null, presetName: 'def',
 
 	// log-feel slider maps (slider at 0 = pause)
 	sToGeo: function (s) { return s <= 0 ? 0 : P.geoMin * Math.pow(P.geoMax / P.geoMin, s); },
@@ -63,20 +64,23 @@ var UI = {
 		this.cScale = document.getElementById('cScale');
 		this.sVZoom.addEventListener('input', function () {
 			GEO.setZoomY(self.sToZ(this.value / 1000, GEO.zoomYMin));
+			self.unsetPreset();
 			self.afterView();
 		});
 		this.sHZoom.addEventListener('input', function () {
 			GEO.setZoomX(self.sToZ(this.value / 1000, P.zoomMin));
+			self.unsetPreset();
 			self.afterView();
 		});
 		RNDR.showScale = this.cScale.checked;
-		this.cScale.addEventListener('change', function () { RNDR.showScale = this.checked; });
+		this.cScale.addEventListener('change', function () { RNDR.showScale = this.checked; self.syncToggles(); });
 		var pres = document.querySelectorAll('#presets button');
 		for (var i = 0; i < pres.length; i++) (function (b) {
 			b.addEventListener('click', function () { self.preset(b.getAttribute('data-v')); });
 		})(pres[i]);
-		var bm = document.getElementById('bMesh');
-		if (bm) bm.addEventListener('click', function () { RNDR.mesh = !RNDR.mesh; });
+		this.presets = pres;
+		this.bMesh = document.getElementById('bMesh');
+		if (this.bMesh) this.bMesh.addEventListener('click', function () { RNDR.mesh = !RNDR.mesh; self.syncToggles(); });
 		this.cvs.addEventListener('mousedown', function (e) { self.down(e); });
 		this.cvs.addEventListener('mousemove', function (e) { self.move(e); });
 		window.addEventListener('mouseup', function () { self.dragging = false; });
@@ -86,7 +90,34 @@ var UI = {
 
 	preset: function (name) {
 		GEO.setPreset(name);
+		this.presetName = name;
 		this.afterView();
+	},
+
+	// the camera left the preset it was on (a wheel, a drag, one axis slider): the four
+	// preset buttons go out together, because none of them describes the view any more
+	unsetPreset: function () {
+		if (!this.presetName) return;
+		this.presetName = '';
+		this.syncToggles();
+	},
+
+	// the lit state of the switches, read back from the renderer and the camera rather than
+	// tracked beside them: one writer, so a button cannot disagree with what is drawn
+	syncToggles: function () {
+		var i;
+		this.setPressed('bMesh', RNDR.mesh);
+		this.cScale.checked = RNDR.showScale;
+		if (!this.presets) return;
+		for (i = 0; i < this.presets.length; i++) {
+			this.setPressed(this.presets[i], this.presetName === this.presets[i].getAttribute('data-v'));
+		}
+	},
+
+	setPressed: function (el, on) {
+		var s = on ? 'true' : 'false';
+		if (typeof el === 'string') el = document.getElementById(el);
+		if (el && el.getAttribute('aria-pressed') !== s) el.setAttribute('aria-pressed', s);
 	},
 
 	// every camera move ends here: sync the LUTs, read the two axis scales back into
@@ -96,6 +127,7 @@ var UI = {
 		this.sVZoom.value = Math.round(1000 * this.zToS(GEO.zoomY(), GEO.zoomYMin));
 		this.sHZoom.value = Math.round(1000 * this.zToS(GEO.zoomX(), P.zoomMin));
 		this.vZoom.textContent = this.fmtScale();
+		this.syncToggles();
 		this.updateCursor();
 	},
 
@@ -134,6 +166,7 @@ var UI = {
 			GEO.panBy(p.x - this.dragX, p.y - this.dragY);
 			this.dragX = p.x;
 			this.dragY = p.y;
+			this.unsetPreset();
 		}
 		this.afterView();
 	},
@@ -144,15 +177,15 @@ var UI = {
 		e.preventDefault();
 		var p = this.pos(e);
 		GEO.zoomAt(Math.pow(1.0015, -e.deltaY), p.x, p.y);
+		this.unsetPreset();
 		this.afterView();
 	},
 
 	key: function (e) {
-		var k = e.key;
+		var k = e.key, names = { '1': 'def', '2': 'ovw', '3': 'cru', '4': 'bas' };
 		if (k === ' ') { this.togglePause(); e.preventDefault(); return; }
-		if (k === 'm') { RNDR.mesh = !RNDR.mesh; return; }
-		if (k === 'g') { RNDR.showScale = !RNDR.showScale; this.cScale.checked = RNDR.showScale; return; }
-		var names = { '1': 'def', '2': 'ovw', '3': 'cru', '4': 'bas' };
+		if (k === 'm') { RNDR.mesh = !RNDR.mesh; this.syncToggles(); return; }
+		if (k === 'g') { RNDR.showScale = !RNDR.showScale; this.syncToggles(); return; }
 		if (names[k]) this.preset(names[k]);
 	},
 

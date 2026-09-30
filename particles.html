@@ -11,6 +11,10 @@
 	input[type=range] { width: 220px; vertical-align: middle; }
 	button { background: #121826; color: #9aa7bd; border: 1px solid #2a3550; font: 11px monospace; padding: 1px 7px; cursor: pointer; }
 	button:hover { color: #dfe7f5; }
+	/* an enabled switch is lit. The state lives in aria-pressed (set by pt/ui.js from the
+	   renderer's own flags), so the CSS rule and the screen reader read the same attribute */
+	button[aria-pressed="true"] { background: #16323c; border-color: #3f8f88; color: #d9f7ec; }
+	button[aria-pressed="true"]:hover { background: #1c4150; color: #f2fffb; }
 	canvas { display: block; border: 1px solid #1c2438; cursor: crosshair; }
 	#wrap { position: relative; width: 1282px; height: 562px; }
 	#hud { position: absolute; left: 8px; top: 8px; white-space: pre; pointer-events: none; color: #9fd6b8; text-shadow: 0 0 3px #000; }
@@ -20,21 +24,23 @@
 <body>
 <div id="bar">
 	<label>Clock <input id="sClock" type="range" min="0" max="500" value="500"> <span id="vClock"></span></label>
-	<button id="bPause">pause</button>
+	<!-- aria-pressed carries the initial state so the bar is honest before ui.js loads;
+	     syncToggles() re-asserts it from the renderer's flags at init and on every change -->
+	<button id="bPause" aria-pressed="false">pause</button>
 	<button id="bStep">step</button>
 	<button id="bReset">reset</button>
 	<button id="bNew">new planet</button>
 	<span>
-		<button id="bMark">markers</button>
-		<button id="bMelt">melt</button>
-		<button id="bCrust">crust</button>
-		<button id="bRuler">ruler</button>
-		<button id="bMesh">quality</button>
+		<button id="bMark" aria-pressed="true">markers</button>
+		<button id="bMelt" aria-pressed="true">melt</button>
+		<button id="bCrust" aria-pressed="true">crust</button>
+		<button id="bRuler" aria-pressed="true">ruler</button>
+		<button id="bMesh" aria-pressed="false">quality 1/3</button>
 	</span>
 	<span>
-		<button id="bLid">lid</button>
-		<button id="bDeep">deep</button>
-		<button id="bFull">mantle</button>
+		<button id="bLid" aria-pressed="false">lid</button>
+		<button id="bDeep" aria-pressed="false">deep</button>
+		<button id="bFull" aria-pressed="true">mantle</button>
 	</span>
 </div>
 <div id="wrap">

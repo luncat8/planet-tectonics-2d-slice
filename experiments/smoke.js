@@ -41,15 +41,31 @@ var ctx2d = new Proxy({
 	set: function (t, k, v) { t[k] = v; return true; }
 });
 
+// every attribute the element's own tag carries in index.html, so the harness reads the
+// same initial state a browser would: `checked` on the checkbox, aria-pressed on the
+// toggles. An element the page builds itself (a preset button) starts with none.
+function tagOf(id) {
+	var tags = html.match(/<[a-z]+[^>]*>/gi) || [], i;
+	for (i = 0; i < tags.length; i++) if (tags[i].indexOf('id="' + id + '"') >= 0) return tags[i];
+	return '';
+}
+
+function attrsIn(id) {
+	var attrs = {}, re = /([a-z-]+)(?:="([^"]*)")?/gi, m, tag = tagOf(id);
+	while ((m = re.exec(tag)) !== null) attrs[m[1]] = m[2] === undefined ? '' : m[2];
+	return attrs;
+}
+
 // `checked` comes from index.html itself, so the shipped default of a checkbox is what
 // the headless run exercises
 function checkedIn(id) {
-	return new RegExp('id="' + id + '"[^>]*\\bchecked\\b').test(html);
+	return 'checked' in attrsIn(id);
 }
 
 function makeEl(id, dataV) {
 	return {
 		id: id, value: '0', textContent: '', checked: checkedIn(id),
+		attrs: attrsIn(id),
 		dataset: dataV ? { v: dataV } : null,
 		listeners: {},
 		clientLeft: id === 'c' ? 1 : 0, clientTop: id === 'c' ? 1 : 0,
@@ -63,8 +79,9 @@ function makeEl(id, dataV) {
 		getContext: function () { return ctx2d; },
 		getAttribute: function (n) {
 			if (n === 'data-v') return this.dataset ? this.dataset.v : null;
-			return null;
-		}
+			return n in this.attrs ? this.attrs[n] : null;
+		},
+		setAttribute: function (n, v) { this.attrs[n] = String(v); }
 	};
 }
 
@@ -234,6 +251,42 @@ L.els.cScale.listeners.change.call(L.els.cScale);
 check.ok('the checkbox turns the scale lines off', L.sb.RNDR.showScale === false);
 key(ev('keydown', { key: 'g' }));
 check.ok('g turns them back on and re-ticks the checkbox',
+	L.sb.RNDR.showScale === true && L.els.cScale.checked === true);
+
+check.section('D3. the toggle highlight: one attribute per switch');
+check.ok('index.html carries the lit rule', /button\[aria-pressed="true"\]/.test(html));
+check.ok('the bar ships its state in the markup (a browser shows it before ui.js runs)',
+	attrsIn('bMesh')['aria-pressed'] === 'false' && attrsIn('cScale')['checked'] === '' &&
+	(html.match(/<button data-v="[a-z]+" aria-pressed="(true|false)">/g) || []).length === 4,
+	'mesh ' + attrsIn('bMesh')['aria-pressed'] + ', 4 preset buttons');
+function lit(el) { return el.attrs['aria-pressed'] === 'true'; }
+L.sb.UI.preset('def');
+check.ok('the startup preset is the lit one, and only it',
+	lit(L.btns[0]) && !lit(L.btns[1]) && !lit(L.btns[2]) && !lit(L.btns[3]),
+	L.btns.map(function (b) { return b.attrs['aria-pressed']; }).join(','));
+L.btns[2].listeners.click(ev('click', {}));
+check.ok('a preset click lights it and puts the previous one out', lit(L.btns[2]) && !lit(L.btns[0]));
+L.sb.UI.wheel(ev('wheel', { deltaY: -120, clientX: 400, clientY: 300 }));
+check.ok('a wheel zoom puts the whole preset group out',
+	!lit(L.btns[0]) && !lit(L.btns[1]) && !lit(L.btns[2]) && !lit(L.btns[3]));
+key(ev('keydown', { key: '2' }));
+check.ok('a preset key lights its button', lit(L.btns[1]));
+L.els.sHZoom.value = '300'; L.els.sHZoom.listeners.input.call(L.els.sHZoom);
+check.ok('one axis slider leaves the preset too', !lit(L.btns[1]));
+L.sb.UI.preset('bas');
+L.sb.UI.down(ev('mousedown', { clientX: 100, clientY: 100 }));
+L.sb.UI.move(ev('mousemove', { clientX: 140, clientY: 100 }));
+L.sb.__win.mouseup(ev('mouseup', {}));
+check.ok('a drag leaves the preset too', !lit(L.btns[3]));
+L.els.bMesh.listeners.click(ev('click', {}));
+check.ok('the mesh button lights while the overlay is on', lit(L.els.bMesh) && L.sb.RNDR.mesh === true);
+key(ev('keydown', { key: 'm' }));
+check.ok('the m key puts it out and the button with it', !lit(L.els.bMesh) && L.sb.RNDR.mesh === false);
+key(ev('keydown', { key: 'g' }));
+check.ok('g puts the scale lines out and unticks the box',
+	L.sb.RNDR.showScale === false && L.els.cScale.checked === false);
+key(ev('keydown', { key: 'g' }));
+check.ok('g turns them back on and re-ticks the box',
 	L.sb.RNDR.showScale === true && L.els.cScale.checked === true);
 
 check.section('E. determinism');

@@ -12,6 +12,12 @@
 	input[type=range] { width: 150px; vertical-align: middle; }
 	button { background: #121826; color: #9aa7bd; border: 1px solid #2a3550; font: 11px monospace; padding: 1px 7px; cursor: pointer; }
 	button:hover { color: #dfe7f5; }
+	/* an enabled toggle is lit, and the state lives in the one attribute ui.js sets from the
+	   renderer's own flags: the switch, the screen reader and the CSS agree by construction */
+	button[aria-pressed="true"] { background: #16323c; border-color: #3f8f88; color: #d9f7ec; }
+	button[aria-pressed="true"]:hover { background: #1c4150; color: #f2fffb; }
+	input[type=checkbox] { accent-color: #3f8f88; }
+	label:has(input:checked) { color: #d9f7ec; }
 	/* the camera controls sit on the axes they scale: vertical left, horizontal below */
 	#stage { display: grid; grid-template-columns: 22px 1282px; grid-template-rows: 562px auto; column-gap: 6px; row-gap: 3px; }
 	#sVZoom { grid-area: 1 / 1; width: 22px; height: 562px; margin: 0; writing-mode: vertical-lr; direction: rtl; }
@@ -27,13 +33,15 @@
 <div id="bar">
 	<label>Plates &amp; plumes <input id="sGeo" type="range" min="0" max="1000" value="0"> <span id="vGeo"></span></label>
 	<label>Lava &amp; eruptions <input id="sErupt" type="range" min="0" max="1000" value="0"> <span id="vErupt"></span></label>
+	<!-- aria-pressed is the initial state (ui.js re-asserts all of it at init from the
+	     renderer and the camera, so the markup cannot drift from the engine) -->
 	<span id="presets">
-		<button data-v="def">default</button>
-		<button data-v="ovw">overview</button>
-		<button data-v="cru">crust x10</button>
-		<button data-v="bas">basin x40</button>
+		<button data-v="def" aria-pressed="true">default</button>
+		<button data-v="ovw" aria-pressed="false">overview</button>
+		<button data-v="cru" aria-pressed="false">crust x10</button>
+		<button data-v="bas" aria-pressed="false">basin x40</button>
 	</span>
-	<button id="bMesh">mesh</button>
+	<button id="bMesh" aria-pressed="false">mesh</button>
 </div>
 <div id="stage">
 	<input id="sVZoom" type="range" min="0" max="1000" value="500" title="vertical scale">

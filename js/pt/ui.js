@@ -16,7 +16,14 @@ var PTUI = {
 	paused: false, stepOnce: false, quality: 0,
 	cvs: null, hud: null, sClock: null, vClock: null,
 	mx: -1, my: -1, dragging: false, dragX: 0, dragY: 0,
-	probe: '', probeOn: false,
+	probe: '', probeOn: false, presetName: 'mantle',
+
+	// the bar's switches, flat tables: every toggle button lights itself from the renderer's
+	// own flag (never a second copy of the state) and every preset button is a radio
+	TOGGLES: [['bMark', 'markers'], ['bMelt', 'melt'], ['bCrust', 'crust'], ['bRuler', 'ruler']],
+	PRESETS: [['bLid', 'lid'], ['bDeep', 'deep'], ['bFull', 'mantle']],
+	KEY_TOGGLE: { m: 'markers', v: 'melt', c: 'crust', g: 'ruler' },
+	KEY_PRESET: { l: 'lid', d: 'deep', f: 'mantle' },
 
 	QUALITY: [[256, 24], [512, 48], [1024, 96]],
 	mpc: [4, 2, 2],              // markers per node per quality level: the marker count is the
@@ -30,7 +37,7 @@ var PTUI = {
 		this.vClock = document.getElementById('vClock');
 		this.sClock.value = this.kyrToS(P.sl.kyr);       // the slider starts where the clock is
 		this.wire(SIM);
-		PTRNDR.preset('mantle', SIM.M);
+		this.preset('mantle', SIM);
 		this.clockLabel();
 		this.updateHud(SIM);
 	},
@@ -52,29 +59,25 @@ var PTUI = {
 	},
 
 	wire: function (SIM) {
-		var self = this, cvs = this.cvs;
+		var self = this, cvs = this.cvs, i;
 		this.sClock.addEventListener('input', function () {
 			P.sl.kyr = self.sToKyr(+self.sClock.value);
 			SIM.dt = P.sl.kyr / 1000;
 			self.clockLabel();
 		});
 		document.getElementById('bPause').addEventListener('click', function () { self.setPaused(!self.paused); });
-		document.getElementById('bStep').addEventListener('click', function () { self.paused = true; self.stepOnce = true; });
+		document.getElementById('bStep').addEventListener('click', function () { self.setPaused(true); self.stepOnce = true; });
 		document.getElementById('bReset').addEventListener('click', function () { SIM.reset(); self.updateHud(SIM); });
 		document.getElementById('bNew').addEventListener('click', function () { self.newPlanet(SIM); });
-		document.getElementById('bMark').addEventListener('click', function () { PTRNDR.markers = !PTRNDR.markers; });
-		document.getElementById('bMelt').addEventListener('click', function () { PTRNDR.melt = !PTRNDR.melt; });
-		document.getElementById('bCrust').addEventListener('click', function () { PTRNDR.crust = !PTRNDR.crust; });
-		document.getElementById('bRuler').addEventListener('click', function () { PTRNDR.ruler = !PTRNDR.ruler; });
-		document.getElementById('bMesh').addEventListener('click', function () { self.cycleMesh(SIM); });
-		document.getElementById('bLid').addEventListener('click', function () { PTRNDR.preset('lid', SIM.M); self.updateHud(SIM); });
-		document.getElementById('bDeep').addEventListener('click', function () { PTRNDR.preset('deep', SIM.M); self.updateHud(SIM); });
-		document.getElementById('bFull').addEventListener('click', function () { PTRNDR.preset('mantle', SIM.M); self.updateHud(SIM); });
+		for (i = 0; i < this.TOGGLES.length; i++) this.onClick(this.TOGGLES[i][0], this.toggle, this.TOGGLES[i][1], SIM);
+		for (i = 0; i < this.PRESETS.length; i++) this.onClick(this.PRESETS[i][0], this.preset, this.PRESETS[i][1], SIM);
+		document.getElementById('bMesh').addEventListener('click', function () { self.nextQuality(SIM); });
 		window.addEventListener('keydown', function (ev) { self.key(ev, SIM); });
 		cvs.addEventListener('wheel', function (ev) {
 			ev.preventDefault();
 			var r = cvs.getBoundingClientRect();
 			PTRNDR.zoomAt(ev.clientX - r.left, ev.clientY - r.top, ev.deltaY > 0 ? 1.15 : 1 / 1.15, SIM.M);
+			self.unsetPreset();
 		}, { passive: false });
 		cvs.addEventListener('mousedown', function (ev) { self.dragging = true; self.dragX = ev.clientX; self.dragY = ev.clientY; });
 		window.addEventListener('mouseup', function () { self.dragging = false; });
@@ -83,29 +86,71 @@ var PTUI = {
 			if (self.dragging) {
 				PTRNDR.panBy(ev.clientX - self.dragX, ev.clientY - self.dragY, SIM.M);
 				self.dragX = ev.clientX; self.dragY = ev.clientY;
+				self.unsetPreset();
 			}
 			self.mx = ev.clientX - r.left; self.my = ev.clientY - r.top;
 			self.probeAt(SIM.M);
 		});
+		this.syncToggles();
+	},
+
+	// the click binds its own arguments: a loop variable read inside the listener would be
+	// shared by every button in the table
+	onClick: function (id, fn, arg, SIM) {
+		var self = this;
+		document.getElementById(id).addEventListener('click', function () { fn.call(self, arg, SIM); });
+	},
+
+	// one attribute per switch: the CSS lights it, the screen reader announces it, and there
+	// is no second copy of the state to drift (see the comment on TOGGLES)
+	syncToggles: function () {
+		var i, t;
+		for (i = 0; i < this.TOGGLES.length; i++) {
+			t = this.TOGGLES[i];
+			this.press(t[0], !!PTRNDR[t[1]]);
+		}
+		for (i = 0; i < this.PRESETS.length; i++) {
+			t = this.PRESETS[i];
+			this.press(t[0], this.presetName === t[1]);
+		}
+		this.press('bPause', this.paused);
+		this.press('bMesh', this.quality > 0);        // lit when the mesh is above the light one
+		document.getElementById('bMesh').textContent = 'quality ' + (this.quality + 1) + '/' + this.QUALITY.length;
+	},
+
+	press: function (id, on) {
+		var el = document.getElementById(id), s = on ? 'true' : 'false';
+		if (el && el.getAttribute('aria-pressed') !== s) el.setAttribute('aria-pressed', s);
+	},
+
+	toggle: function (flag) {
+		PTRNDR[flag] = !PTRNDR[flag];
+		this.syncToggles();
+	},
+
+	// the three camera presets are a radio group: the clicked one lights, and any manual pan
+	// or zoom puts the group out because the camera no longer is a preset
+	preset: function (name, SIM) {
+		PTRNDR.preset(name, SIM.M);
+		this.presetName = name;
+		this.syncToggles();
+		this.updateHud(SIM);
+	},
+
+	unsetPreset: function () {
+		if (!this.presetName) return;
+		this.presetName = '';
+		this.syncToggles();
 	},
 
 	key: function (ev, SIM) {
-		if (ev.key === ' ') { this.setPaused(!this.paused); ev.preventDefault(); }
-		else if (ev.key === '.') { this.paused = true; this.stepOnce = true; }
-		else if (ev.key === 'r') SIM.reset();
-		else if (ev.key === 'n') this.newPlanet(SIM);
-		else if (ev.key === 'm') PTRNDR.markers = !PTRNDR.markers;
-		else if (ev.key === 'v') PTRNDR.melt = !PTRNDR.melt;
-		else if (ev.key === 'c') PTRNDR.crust = !PTRNDR.crust;
-		else if (ev.key === 'g') PTRNDR.ruler = !PTRNDR.ruler;
-		else if (ev.key === '1') this.quality = 0;
-		else if (ev.key === '2') this.quality = 1;
-		else if (ev.key === '3') this.quality = 2;
-		else if (ev.key === 'l') PTRNDR.preset('lid', SIM.M);
-		else if (ev.key === 'd') PTRNDR.preset('deep', SIM.M);
-		else if (ev.key === 'f') PTRNDR.preset('mantle', SIM.M);
-		else return;
-		if (ev.key >= '1' && ev.key <= '3') this.cycleMesh(SIM);
+		var k = ev.key, t = this.KEY_TOGGLE[k] || this.KEY_PRESET[k];
+		if (t) { if (this.KEY_TOGGLE[k]) this.toggle(t); else this.preset(t, SIM); return; }
+		if (k === ' ') { this.setPaused(!this.paused); ev.preventDefault(); return; }
+		if (k === '.') { this.setPaused(true); this.stepOnce = true; return; }
+		if (k === 'r') { SIM.reset(); this.updateHud(SIM); return; }
+		if (k === 'n') { this.newPlanet(SIM); return; }
+		if (k >= '1' && k <= '3') { this.quality = +k - 1; this.cycleMesh(SIM); }
 	},
 
 	// the next seed: a different draw of the initial perturbation's band (params.js icBand)
@@ -118,6 +163,13 @@ var PTUI = {
 	setPaused: function (on) {
 		this.paused = on;
 		document.getElementById('bPause').textContent = on ? 'play' : 'pause';
+		this.syncToggles();
+	},
+
+	// the button walks the three levels; the number keys pick one directly
+	nextQuality: function (SIM) {
+		this.quality = (this.quality + 1) % this.QUALITY.length;
+		this.cycleMesh(SIM);
 	},
 
 	// quality: one marker per interior node, so the cap has to follow the mesh before it is
@@ -126,8 +178,7 @@ var PTUI = {
 		var q = this.QUALITY[this.quality];
 		P.mpc = this.mpc[this.quality];
 		SIM.mesh(q[0], q[1]);
-		PTRNDR.preset('mantle', SIM.M);
-		this.updateHud(SIM);
+		this.preset('mantle', SIM);
 	},
 
 	// the cursor probe: world x, depth and the field's temperature there (mousemove only)
