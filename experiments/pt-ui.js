@@ -158,9 +158,9 @@ check.ok('the markup ships the renderer defaults before ui.js runs',
 	attrsIn('bPause')['aria-pressed'] === 'false',
 	'mark ' + attrsIn('bMark')['aria-pressed'] + ' mesh ' + attrsIn('bMesh')['aria-pressed']);
 frames(L, 1);
-check.ok('at load the four overlays are lit and agree with the renderer',
-	lit(L.els.bMark) && lit(L.els.bMelt) && lit(L.els.bCrust) && lit(L.els.bRuler) &&
-	R.markers && R.melt && R.crust && R.ruler);
+check.ok('at load the five overlays are lit and agree with the renderer',
+	lit(L.els.bMark) && lit(L.els.bMelt) && lit(L.els.bCrust) && lit(L.els.bRelief) && lit(L.els.bRuler) &&
+	R.markers && R.melt && R.crust && R.relief && R.ruler);
 L.els.bMark.listeners.click(ev('click', {}));
 check.ok('the markers button puts the stipple out', R.markers === false && !lit(L.els.bMark));
 L.els.bMark.listeners.click(ev('click', {}));
@@ -169,7 +169,7 @@ var key = L.sb.__win.keydown;
 key(ev('keydown', { key: 'm' }));
 check.ok('m flips the flag and the button together', R.markers === false && !lit(L.els.bMark));
 key(ev('keydown', { key: 'm' }));
-var keys = [['v', 'melt', 'bMelt'], ['c', 'crust', 'bCrust'], ['g', 'ruler', 'bRuler']];
+var keys = [['v', 'melt', 'bMelt'], ['c', 'crust', 'bCrust'], ['w', 'relief', 'bRelief'], ['g', 'ruler', 'bRuler']];
 check.ok('v/c/g each own a button', keys.every(function (k) {
 	key(ev('keydown', { key: k[0] }));
 	var off = R[k[1]] === false && !lit(L.els[k[2]]);

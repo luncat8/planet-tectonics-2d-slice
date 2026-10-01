@@ -20,9 +20,9 @@ var PTUI = {
 
 	// the bar's switches, flat tables: every toggle button lights itself from the renderer's
 	// own flag (never a second copy of the state) and every preset button is a radio
-	TOGGLES: [['bMark', 'markers'], ['bMelt', 'melt'], ['bCrust', 'crust'], ['bRuler', 'ruler']],
+	TOGGLES: [['bMark', 'markers'], ['bMelt', 'melt'], ['bCrust', 'crust'], ['bRelief', 'relief'], ['bRuler', 'ruler']],
 	PRESETS: [['bLid', 'lid'], ['bDeep', 'deep'], ['bFull', 'mantle']],
-	KEY_TOGGLE: { m: 'markers', v: 'melt', c: 'crust', g: 'ruler' },
+	KEY_TOGGLE: { m: 'markers', v: 'melt', c: 'crust', w: 'relief', g: 'ruler' },
 	KEY_PRESET: { l: 'lid', d: 'deep', f: 'mantle' },
 
 	QUALITY: [[256, 24], [512, 48], [1024, 96]],
@@ -213,6 +213,7 @@ var PTUI = {
 			+ '   moved ' + S.moved + '  redeals ' + S.redeals + '   nodes ' + M.nx + 'x' + M.ny
 			+ '\ncrust ' + (d.lid * 100).toFixed(0) + '% of markers strong   plates ' + d.plates
 			+ '   plate drift ' + d.plV.toFixed(1) + ' cm/yr'
+			+ '\nsurface ' + d.zMin.toFixed(1) + '..' + d.zMax.toFixed(1) + ' km   (zero mean, drawn x' + P.kRelief + ')'
 			+ '\nledger ' + fmt(S.ledger) + '   walls ' + fmt(S.wall) + '   gap ' + (S.wall ? (S.ledger / S.wall).toFixed(1) + 'x' : '--')
 			+ '\nT ' + d.tMin.toFixed(3) + '..' + d.tMax.toFixed(3) + '   heat ' + fmt(d.heat)
 			+ '\nmelt* ' + d.melt.toFixed(2) + '   source depth ' + d.meltY.toFixed(0) + ' km'

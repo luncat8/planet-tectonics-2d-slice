@@ -75,6 +75,94 @@ var F = {
 		mg.set(out);
 	},
 
+	// G7: the surface elevation profile (plan §4.5, §5, P2.3). The Stokes domain keeps its
+	// flat coordinate top eta = 0 -- the separable FFT + Thomas solve needs it -- so the
+	// visible horizon is a separate periodic 1D field: zh[i] in km above the reference sea
+	// level y = 0, zero horizontal mean, relaxed toward the three-term target of params.js
+	// over tauSurf.
+	//
+	// It is a *relative* field on purpose. The thermal term is taken against each node row's
+	// own horizontal mean, which makes the domain's sum zero by construction, and the crust
+	// term against the smoothed column thickness, so a broad uniform lid carries no relief at
+	// all: only the contrasts -- a plume swell against an old basin, an arc against its
+	// back-arc, a rift neck against its shoulders -- become elevation. The rock is moved by
+	// the slack in the convection, not by its own weight.
+	//
+	// Nothing here touches T, m or the markers' positions, so the heat ledger is untouched;
+	// the only coupling back into the physics is the ridge push (solid.js kinematics), which
+	// reads zh[] as a slope.
+	surface: function (M, S, dt) {
+		if (!(dt > 0) || !S.n) return;
+		var nx = M.nx, dx = M.dx, dEta = M.dEta;
+		var Tg = S.Tg, zh = S.zh, zr = S.zRaw, zt = S.zSmooth, u = S.u;
+		var hLid = S.hLid, hRaw = S.hRaw, rft = S.rft, colM = S.colM;
+		var i, j, p, base, y, m, sum, mean, k, a, im, ip;
+
+		// the column sample, top yCrust km only: welded lid thickness (mass * strength,
+		// divided back out by dx: a fully welded column of thickness Y reads Y) and the
+		// mass-weighted shallow damage
+		for (i = 0; i < nx; i++) { hLid[i] = 0; rft[i] = 0; colM[i] = 0; }
+		for (p = 0; p < S.n; p++) {
+			y = S.y[p];
+			if (y > P.yCrust) continue;
+			i = Math.round(S.x[p] / dx);
+			i -= Math.floor(i / nx) * nx;
+			m = S.m[p];
+			hLid[i] += m * S.mu[p];
+			rft[i] += m * S.dmg[p];
+			colM[i] += m;
+		}
+		// a column the sample missed takes its neighbour's thickness rather than reading as a
+		// hole in the plate: the profile is a smooth horizon, not a marker histogram
+		for (i = 0; i < nx; i++) {
+			hLid[i] /= dx;
+			if (colM[i] > 0) rft[i] /= colM[i];
+			else { rft[i] = i > 0 ? rft[i - 1] : 0; hLid[i] = i > 0 ? hLid[i - 1] : 0; }
+		}
+		// the thickness *anomaly* against its own flexural average: hRaw keeps the raw welded
+		// thickness, hLid comes back as the average flexure would give it. That difference is
+		// the flexural response itself, so this term is *not* filtered again below -- doing so
+		// applied the plate's stiffness twice and cancelled the load (measured: a 14 km band
+		// read as a 0.1 km ripple with +-1.3 km side lobes around it)
+		hRaw.set(hLid);
+		flex(nx, hLid, zt, P.lFlex);
+		for (i = 0; i < nx; i++) zr[i] = P.kLid * (hRaw[i] - hLid[i]) - P.kRift * rft[i];
+
+		// thermal isostasy: the column's temperature anomaly against its own rows' means,
+		// integrated to the compensation depth
+		for (i = 0; i < nx; i++) zt[i] = 0;
+		for (j = 1; j <= S.jIso; j++) {
+			base = j * nx; sum = 0;
+			for (i = 0; i < nx; i++) sum += Tg[base + i];
+			sum /= nx;
+			k = P.kIso * M.jN[j] * dEta;
+			for (i = 0; i < nx; i++) zt[i] += k * (Tg[base + i] - sum);
+		}
+		// dynamic: the shallowest cell row's horizontal convergence, times the compensation
+		// depth -- the vertical flow that convergence implies at yIso, by incompressibility
+		k = P.kDyn * P.yIso / (2 * dx);
+		for (i = 0; i < nx; i++) {
+			im = i === 0 ? nx - 1 : i - 1;
+			ip = i + 1 === nx ? 0 : i + 1;
+			zt[i] += k * (u[ip] - u[im]);
+		}
+		// one flexural filter over the thermal and dynamic part, which is the field that needs
+		// it. hRaw is spent by now, so it serves as the scratch and hLid keeps the smoothed
+		// thickness for the diagnostics
+		flex(nx, zt, hRaw, P.lFlex);
+		for (i = 0; i < nx; i++) zr[i] += zt[i];
+
+		a = 1 - Math.exp(-dt / P.tauSurf);
+		for (i = 0; i < nx; i++) zh[i] += a * (zr[i] - zh[i]);
+		// the zero mean, exactly: the filter and the relaxation both preserve it, but the
+		// target is re-derived from a marker field every frame and its own mean is only zero
+		// to round-off, so that residue would random-walk the sea level
+		mean = 0;
+		for (i = 0; i < nx; i++) mean += zh[i];
+		mean /= nx;
+		for (i = 0; i < nx; i++) zh[i] -= mean;
+	},
+
 	// The wall heat flux is needed after every fluid substep, while the full diagnostic is
 	// intentionally only sampled once per rendered frame. Keeping this short pass separate
 	// makes a 500 kyr display step conserve the same wall book as ten 50 kyr steps.
@@ -142,6 +230,14 @@ var F = {
 			if (mq > meltMax) meltMax = mq;
 		}
 		d.melt = meltMax; d.meltY = melt ? meltY / melt : 0;
+		// the surface profile's own extremes, for the panel (P2.3)
+		var zlo = 9e9, zhi = -9e9, zv;
+		for (i = 0; i < nx; i++) {
+			zv = S.zh[i];
+			if (zv < zlo) zlo = zv;
+			if (zv > zhi) zhi = zv;
+		}
+		d.zMin = zlo; d.zMax = zhi;
 	},
 
 	// The ledger is accumulated where the heat changes hands, in gatherDT: it is the marker
@@ -152,6 +248,28 @@ var F = {
 	// markers sample the conduction intake; that gap is the physics error, and it is what
 	// pt-check gates.
 };
+
+// The flexural filter of the surface profile (plan §4.5): `passes` of the periodic [1,2,1]/4
+// stencil, in place, with the caller's scratch. It is the cheap stand-in for a 1D flexure
+// solve and it is conservative -- the sum over the ring is exactly the sum that went in --
+// which is what keeps the profile's zero mean from needing a second correction.
+//
+// The result is in `a`; `tmp` is scratch and its contents afterwards are not defined. That
+// matters at the one call that needs the *input* as well: the crust term subtracts the raw
+// welded thickness from this average, so the kernel copies the raw field out first. An earlier
+// version read the scratch, which the last pass leaves equal to `a` -- the anomaly was exactly
+// zero and every welded plateau read flat, which is what pt-surface's band check catches.
+function flex(nx, a, tmp, passes) {
+	var i, s, im, ip;
+	for (s = 0; s < passes; s++) {
+		for (i = 0; i < nx; i++) {
+			im = i === 0 ? nx - 1 : i - 1;
+			ip = i + 1 === nx ? 0 : i + 1;
+			tmp[i] = 0.25 * a[im] + 0.5 * a[i] + 0.25 * a[ip];
+		}
+		a.set(tmp);
+	}
+}
 
 // Bilinear sample of the node-centred melt indicator. The scalar is extracted at both walls,
 // so a backtrace outside the mantle is zero rather than a reflected parcel.

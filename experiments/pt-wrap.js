@@ -47,7 +47,7 @@ console.log('  spin-up to ' + SIM.t.toFixed(1) + ' Myr: plates ' + S.d.plates + 
 // mug are rebuilt by the transfer, but a paused diag reads them; Mg is carried by the melt
 // indicator's semi-Lagrangian step)
 var MK = ['x', 'y', 'e', 'T', 'm', 'vx', 'vy', 'age', 'mu', 'dmg'];
-var GR = ['Tg', 'mug', 'Mg'];
+var GR = ['Tg', 'mug', 'Mg', 'zh'];      // zh is the P2.3 surface profile: a node field
 function save() {
 	var o = { n: S.n, t: SIM.t, frame: SIM.frame, ledger: S.ledger, wall: S.wall }, k;
 	for (k = 0; k < MK.length; k++) o[MK[k]] = S[MK[k]].slice(0, S.n);
@@ -69,6 +69,11 @@ function translate(cells) {
 	}
 	for (k = 0; k < GR.length; k++) {
 		a = S[GR[k]];
+		if (a.length === nx) {                     // a single node row: the P2.3 profile
+			for (i = 0; i < nx; i++) tmp[(i + s) % nx] = a[i];
+			a.set(tmp);
+			continue;
+		}
 		for (j = 0; j <= M.ny; j++) {
 			for (i = 0; i < nx; i++) tmp[(i + s) % nx] = a[j * nx + i];
 			a.set(tmp, j * nx);
@@ -120,6 +125,12 @@ check.ok('same cluster count', dB.csN === dA.csN, 'A ' + dA.csN + '  B ' + dB.cs
 check.ok('same plate count', dB.plates === dA.plates, 'A ' + dA.plates + '  B ' + dB.plates);
 check.near('same lid fraction', dB.lid, dA.lid, 1e-12);
 check.near('same heat ledger', Bs.ledger, A.ledger, 1e-9);
+// the P2.3 surface profile is a node field too, and it is built from a periodic central
+// difference of the flow plus a periodic flexural filter: a seam anywhere in that chain would
+// tilt the horizon at x = 0 and show up here as a plateau of km, not of round-off
+var zq, zhMax = 0;
+for (zq = 0; zq < nx; zq++) { v = Math.abs(A.zh[zq] - Bs.zh[zq]); if (v > zhMax) zhMax = v; }
+check.ok('same surface profile', zhMax < 1e-6, 'max d(zh) ' + zhMax.toExponential(2) + ' km');
 
 // ---------------------------------------------------------------- 2. a plate across the seam
 // Find the shift that puts the seam through the middle of the biggest plate, run a frame, and

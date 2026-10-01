@@ -42,14 +42,19 @@ var PTS = {
 	// per-cluster accumulators (mass, centroid, velocity fit)
 	par: null, cl: null, csOf: null,
 	csM: null, csX: null, csY: null, csVX: null, csVY: null, csW: null, csR2: null,
-	csS: null, csCnt: null,
-	csRef: null, csN: 0,            // csN: clusters of the last crust pass
+	csS: null, csP: null, csCnt: null,
+	csRef: null, csN: 0,            // csN: clusters of the last crust pass (plate markers only)
+	// the surface elevation profile (plan §4.5, G7): zh[i] is the horizon the view draws,
+	// zRaw the current frame's target before filtering, zSmooth the filter scratch, and
+	// hLid/rft/colM the per-column crust sample the target is built from
+	zh: null, zRaw: null, zSmooth: null,
+	hLid: null, hRaw: null, rft: null, colM: null, jIso: 1,
 	bandA: null, bandP: null,       // the initial perturbation's seeded band (icT)
 	// per-frame diagnostics, mutated in place: the HUD formats them at 2 Hz
 	d: {
 		nu: 0, uMax: 0, vMax: 0, wells: 0, heat: 0, mHeat: 0, tMin: 0, tMax: 0,
 		fluxTop: 0, fluxBot: 0, wallRate: 0, drift: 0, melt: 0, meltY: 0,
-		lid: 0, plates: 0, plV: 0
+		lid: 0, plates: 0, plV: 0, zMin: 0, zMax: 0
 	},
 
 	// allocate for a mesh (idempotent: the quality switch can change the mesh size)
@@ -67,7 +72,8 @@ var PTS = {
 			this.csY = new Float64Array(cap); this.csVX = new Float64Array(cap);
 			this.csVY = new Float64Array(cap); this.csW = new Float64Array(cap);
 			this.csR2 = new Float64Array(cap); this.csRef = new Float64Array(cap);
-			this.csS = new Float64Array(cap); this.csCnt = new Int32Array(cap);
+			this.csS = new Float64Array(cap); this.csP = new Float64Array(cap);
+			this.csCnt = new Int32Array(cap);
 			this.order = new Int32Array(cap);
 		}
 		if (!this.Tg || this.Tg.length !== M.n) {
@@ -78,6 +84,16 @@ var PTS = {
 			this.u = new Float64Array(M.ny * M.nx);
 			this.v = new Float64Array((M.ny + 1) * M.nx);
 		}
+		if (!this.zh || this.zh.length !== M.nx) {
+			this.zh = new Float64Array(M.nx); this.zRaw = new Float64Array(M.nx);
+			this.zSmooth = new Float64Array(M.nx);
+			this.hLid = new Float64Array(M.nx); this.hRaw = new Float64Array(M.nx);
+			this.rft = new Float64Array(M.nx); this.colM = new Float64Array(M.nx);
+		}
+		// the compensation depth as a node row: the last row at or above P.yIso (the top
+		// row, the surface boundary, is never included -- it carries no markers)
+		this.jIso = 1;
+		for (var jj = 1; jj < M.ny; jj++) if (M.yN[jj] <= P.yIso) this.jIso = jj;
 		this.reset(M, phase || 0);
 	},
 
@@ -121,11 +137,16 @@ var PTS = {
 		this.age.fill(0); this.mu.fill(0); this.dmg.fill(0);
 		this.pLoad.fill(0); this.pCnt.fill(0);
 		this.u.fill(0); this.v.fill(0);
+		// a fresh planet is flat: the horizon relaxes up from the reference sea level as the
+		// upper column's buoyancy, convergence and welded lid develop
+		this.zh.fill(0); this.zRaw.fill(0); this.zSmooth.fill(0);
+		this.hLid.fill(0); this.hRaw.fill(0); this.rft.fill(0); this.colM.fill(0);
 		for (i = 0; i < nx; i++) this.Tg[ny * nx + i] = 1;
 		this.d.nu = 0; this.d.uMax = 0; this.d.vMax = 0; this.d.wells = 0;
 		this.d.heat = 0; this.d.tMin = 0; this.d.tMax = 0; this.d.fluxTop = 0; this.d.fluxBot = 0;
 		this.d.melt = 0; this.d.meltY = 0;
 		this.d.lid = 0; this.d.plates = 0; this.d.plV = 0;
+		this.d.zMin = 0; this.d.zMax = 0;
 	},
 
 	// the initial temperature of the node at (i, j)

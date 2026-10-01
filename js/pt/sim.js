@@ -88,6 +88,9 @@ SIM.k[1] = function (M, S) { F.transfer(M, S); };
 SIM.k[2] = function (M, S) { F.flow(M, S, P.RaK); };
 SIM.k[3] = function (M, S, dt) { F.move(M, S, dt, P.kappa, P.flip); };
 SIM.k[4] = function (M, S, dt) { if (P.solid) SC.crust(M, S, dt); };
+// G7 runs after G4 because it reads the welded strength and damage the crust pass leaves
+// behind (plan §5)
+SIM.k[7] = function (M, S, dt) { F.surface(M, S, dt); };
 SIM.k[8] = function (M, S) { F.diag(M, S); };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = SIM;

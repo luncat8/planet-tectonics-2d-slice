@@ -20,13 +20,16 @@ var STOPS = [
 var PTR = {
 	ctx: null, img: null, px: null, w: 0, h: 0,
 	off: null, octx: null, ow: 0, oh: 0,                // the raster runs at half resolution
-	jOf: null, fyOf: null, iOf: null, fxOf: null,      // screen -> mesh resampling tables
+	row0: null, yRow: null, yUp: null, tRow: null,      // screen row -> mesh eta, depth, warp
+	iOf: null, fxOf: null,                              // screen -> mesh resampling tables
+	zVis: null,                                         // per raster column: the drawn horizon
 	sx: 1,                                              // km per raster column
 	pal: null, meltPal: null, meltLevel: null,          // packed thermal and melt-overlay LUTs
 	ticks: null, labels: null, barPx: 0,                // the ruler
-	markers: true, ruler: true, melt: true, crust: true,
+	markers: true, ruler: true, melt: true, crust: true, relief: true,
 
 	SKY: 0xff1c1014, CMB: 0xff2e1a10, MARK: 0x404040, PM: 0xd8d4c8,
+	WATER: 0xff7a3a12, HORIZON: 0xff9a968c,
 
 	// The canvas is 5x the mesh in x and 6x in y, so the raster runs at half resolution and
 	// is scaled up: 4x fewer pixels and the stipple's scattered writes stay in cache, which
@@ -40,10 +43,7 @@ var PTR = {
 		this.octx = this.off.getContext('2d');
 		this.img = this.octx.createImageData(this.ow, this.oh);
 		this.px = new Uint32Array(this.img.data.buffer);
-		this.jOf = new Int32Array(this.oh); this.fyOf = new Float32Array(this.oh);
-		this.iOf = new Int32Array(this.ow); this.fxOf = new Float32Array(this.ow);
-		this.ticks = new Float64Array(4);
-		this.labels = ['surface', '700 km', '1400 km', '2900 km'];
+		this.alloc();
 		this.build(M);
 	},
 
@@ -53,25 +53,40 @@ var PTR = {
 		this.w = w; this.h = h;
 		this.ow = w; this.oh = h;
 		this.px = new Uint32Array(w * h);
-		this.jOf = new Int32Array(h); this.fyOf = new Float32Array(h);
-		this.iOf = new Int32Array(w); this.fxOf = new Float32Array(w);
-		this.ticks = new Float64Array(4);
-		this.labels = ['surface', '700 km', '1400 km', '2900 km'];
+		this.alloc();
 		this.build(M);
 	},
 
-	// the view changed (zoom, pan, mesh): rebuild the tables and the ruler's screen rows
+	// the per-view buffers, allocated once (plan §0: nothing in this file allocates inside
+	// the frame loop; pt-surface.js times both passes and watches the heap)
+	alloc: function () {
+		var ow = this.ow, oh = this.oh;
+		this.row0 = new Float64Array(oh); this.yRow = new Float64Array(oh);
+		this.yUp = new Float64Array(oh); this.tRow = new Float64Array(oh);
+		this.iOf = new Int32Array(ow); this.fxOf = new Float64Array(ow);
+		this.zVis = new Float64Array(ow);
+		this.ticks = new Float64Array(4);
+		this.labels = ['surface', '700 km', '1400 km', '2900 km'];
+	},
+
+	// The view changed (zoom, pan, mesh): rebuild the tables and the ruler's screen rows.
+	// Three of the four row tables serve the terrain warp of §4.5: row0 is the mesh eta of the
+	// row in row units (continuous, negative above the reference surface), yRow its depth in
+	// km, and tRow the factor that turns one km of surface elevation into an eta displacement
+	// there -- d(eta) = dy / J(eta) with J = sqrt(yLin^2 + y^2), damped by exp(-y / yTaper) so
+	// the CMB at 2900 km stays flat however the surface moves. yUp is the row above's depth,
+	// which is what the 1 px horizon trace tests against.
 	build: function (M) {
-		var w = this.ow, h = this.oh, x, y, e, xk, i, j;
-		var v = P.view, sx = v.kx * this.w / this.ow;
+		var w = this.ow, h = this.oh, x, y, e, xk, i;
+		var v = P.view, sx = v.kx * this.w / this.ow, yT = P.yTaper, yc;
 		this.sx = sx;
 		for (y = 0; y < h; y++) {
 			e = v.eT + (y + 0.5) / h * (v.eB - v.eT);
-			j = Math.floor(e / M.dEta);
-			if (j < 0) { this.jOf[y] = -1; this.fyOf[y] = 0; continue; }
-			if (j >= M.ny) { this.jOf[y] = M.ny; this.fyOf[y] = 1; continue; }
-			this.jOf[y] = j;
-			this.fyOf[y] = e / M.dEta - j;
+			yc = M.yLin * Math.sinh(e);
+			this.row0[y] = e / M.dEta;
+			this.yRow[y] = yc;
+			this.yUp[y] = y > 0 ? this.yRow[y - 1] : -1e9;
+			this.tRow[y] = Math.exp(-yc / yT) / (Math.sqrt(M.yLin * M.yLin + yc * yc) * M.dEta);
 		}
 		for (x = 0; x < w; x++) {
 			xk = v.cx + (x + 0.5 - w * 0.5) * sx;
@@ -89,19 +104,41 @@ var PTR = {
 	// is not a replacement for the cold/hot mantle colour: one-phase P1 still shows physically
 	// valid cold downwellings, and the crust overlay is what tells cold *plate* from cold
 	// *fluid*.
+	//
+	// The terrain warp (P2.3, plan §4.5): the horizon of each column is its own elevation
+	// zh[x], drawn kRelief times exaggerated and damped with depth, so a column's rock starts
+	// at screen depth -zVis[x] and the field under it is sampled at yLookup = yCam + zVis[x] *
+	// exp(-yCam / yTaper), i.e. one multiply-add on that row's eta offset. Above the rock the
+	// column shows sky if that row is also above the flat sea level y = 0 and water if it is
+	// below it: the ocean surface stays at the reference level, which is what makes a
+	// mid-ocean ridge stand out of the water and a trench fill with it. The row above the
+	// rock takes one brighter pixel, the horizon trace.
 	raster: function (M, S, px, w, h) {
-		var nx = M.nx, ny = M.ny, Tg = S.Tg, Mg = S.Mg, mug = S.mug;
+		var nx = M.nx, ny = M.ny, Tg = S.Tg, Mg = S.Mg, mug = S.mug, zh = S.zh;
 		var pal = this.pal, meltPal = this.meltPal, crustPal = this.crustPal;
-		var jOf = this.jOf, fyOf = this.fyOf, iOf = this.iOf, fxOf = this.fxOf;
+		var row0 = this.row0, yRow = this.yRow, yUp = this.yUp, tRow = this.tRow;
+		var iOf = this.iOf, fxOf = this.fxOf, zVis = this.zVis;
 		var meltLevel = this.meltLevel, crustLevel = this.crustLevel;
-		var doMelt = this.melt, doCrust = this.crust;
+		var doMelt = this.melt, doCrust = this.crust, kRel = this.relief ? P.kRelief : 0;
 		var x, y, q, j, fy, base, base2, i, i1, fx, t0, t1, t, m0, m1, m, k, mk, g0, g1, g, ck, c;
+		var rowF, yc, yU, tR, zv, zTop = P.zVisMax;
+		for (x = 0; x < w; x++) {
+			i = iOf[x]; fx = fxOf[x]; i1 = i + 1 === nx ? 0 : i + 1;
+			zv = zh[i] + (zh[i1] - zh[i]) * fx;
+			if (zv > zTop) zv = zTop; else if (zv < -zTop) zv = -zTop;
+			zVis[x] = kRel * zv;
+		}
 		for (y = 0; y < h; y++) {
-			j = jOf[y]; fy = fyOf[y]; q = y * w;
-			if (j < 0) { for (x = 0; x < w; x++) px[q + x] = this.SKY; continue; }
-			if (j >= ny) { for (x = 0; x < w; x++) px[q + x] = this.CMB; continue; }
-			base = j * nx; base2 = base + nx;
+			q = y * w; yc = yRow[y]; yU = yUp[y]; tR = tRow[y];
 			for (x = 0; x < w; x++) {
+				zv = zVis[x];
+				if (yc < -zv) { px[q + x] = yc < 0 ? this.SKY : this.WATER; continue; }
+				rowF = row0[y] + zv * tR;
+				if (rowF < 0) { px[q + x] = this.SKY; continue; }
+				j = rowF | 0;
+				if (j >= ny) { px[q + x] = this.CMB; continue; }
+				fy = rowF - j;
+				base = j * nx; base2 = base + nx;
 				i = iOf[x]; fx = fxOf[x]; i1 = i + 1 === nx ? 0 : i + 1;
 				t0 = Tg[base + i] + (Tg[base + i1] - Tg[base + i]) * fx;
 				t1 = Tg[base2 + i] + (Tg[base2 + i1] - Tg[base2 + i]) * fx;
@@ -123,7 +160,7 @@ var PTR = {
 				}
 				c = pal[k];
 				if (ck) c = crustPal[ck * 256 + k];
-				px[q + x] = mk ? meltPal[mk * 256 + k] : c;
+				px[q + x] = mk ? meltPal[mk * 256 + k] : (yU < -zv ? this.HORIZON : c);
 			}
 		}
 	},
@@ -134,14 +171,30 @@ var PTR = {
 	// is riding a plate even where the raster's grey is zoomed out to a smear.
 	// The map is periodic, so a marker is drawn at its image nearest the view centre: the
 	// camera clamps the window to one period (zoomAt), so that image is the only one on screen.
+	// A marker rides the same terrain warp the raster draws (P2.3): its drawn eta is shifted by
+	// zVis / J(y), the km-to-eta metric at its own depth, damped by exp(-y / yTaper) -- one
+	// exp and one sqrt per shallow marker, and nothing at all below the taper is spent.
 	stipple: function (M, S, px, w, h) {
-		var v = P.view, inv = (h - 1) / (v.eB - v.eT), W = M.wrap, p, x, xf, y, q, m, d;
+		var v = P.view, inv = (h - 1) / (v.eB - v.eT), W = M.wrap, nx = M.nx;
+		var zh = S.zh, yT = P.yTaper, yL = M.yLin, kRel = this.relief ? P.kRelief : 0;
+		var zTop = P.zVisMax;
+		var p, x, xf, y, q, m, d, e, i, i1, f, fx, yy, zv;
 		for (p = 0; p < S.n; p++) {
 			d = S.x[p] - v.cx;
 			d -= Math.floor(d / W + 0.5) * W;
 			xf = d / this.sx + w * 0.5;
 			if (xf < 0 || xf >= w) continue;
-			y = (S.e[p] - v.eT) * inv;
+			e = S.e[p];
+			yy = S.y[p];
+			if (kRel && yy < 3 * yT) {
+				f = S.x[p] / M.dx; i = Math.floor(f); fx = f - i;
+				i -= Math.floor(i / nx) * nx;
+				i1 = i + 1 === nx ? 0 : i + 1;
+				zv = zh[i] + (zh[i1] - zh[i]) * fx;
+				if (zv > zTop) zv = zTop; else if (zv < -zTop) zv = -zTop;
+				e -= kRel * zv * Math.exp(-yy / yT) / Math.sqrt(yL * yL + yy * yy);
+			}
+			y = (e - v.eT) * inv;
 			if (y < 0 || y >= h) continue;
 			x = xf | 0;
 			q = (y | 0) * w + x;

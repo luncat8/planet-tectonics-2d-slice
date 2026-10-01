@@ -473,3 +473,63 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   raster and marker screen depths while feeding `-dzh/dx` (ridge push) back into `csVX` —
   gives realistic ridges, grabens, abyssal plains, and deep trenches without sacrificing the
   separable `O(nx ny log nx)` Stokes solve.
+
+## 0.3.0 P2.3 — the surface profile, and two bugs a "verify the values" gate caught
+
+- **Number the cluster ids from the strength test `pair()` uses, not from the candidate list.**
+  `solid.js`'s pair walk needs two kinds of candidate: the plate markers it bonds, and the
+  sub-threshold markers whose load it still has to integrate (they carry the damage that
+  eventually lets them fail). Numbering every candidate as a cluster made a lone soft marker a
+  one-marker "plate": measured at 240 Myr, **214 of 250 clusters were singletons of markers
+  below `clusterMin`**, and since `d.lid` counts `S.cl[p] >= 0` the HUD's lid fraction read ~1/8
+  high (4% really was 18%). The fix is three sentinels -- `-1` below the near threshold, `-3`
+  load-only, `-2` plate-capable -- with the `-3`s returned to `-1` after the pass. Any change
+  to `clusterMin`, `near`, or the failure law has to keep membership and bonding on the *same*
+  test, or the picture and the physics disagree.
+- **A flexure term is the flexural response: never filter it twice.** The crust term is
+  `kLid * (hLid - flex(hLid))`. The first version put the whole profile through the `[1,2,1]/4`
+  filter afterwards, which applied the plate's stiffness twice and cancelled the load: a 14 km
+  welded band read as a `-0.13 km` ripple with `+-1.3 km` side lobes. The kernel now filters
+  only the thermal and dynamic part, and adds the crust anomaly (already flexed) afterwards.
+- **A helper that writes through a caller's scratch must say so.** The same bug class bit twice
+  in one function: `flex(nx, a, tmp, passes)` leaves `tmp` equal to `a` after its last pass
+  (the stencil is in-place), so "the anomaly" `a - tmp` was **exactly zero** -- every welded
+  plateau read flat, and the whole term was dead while every check that only compared the
+  kernel against a copy of itself still passed. Rule: a kernel that consumes a scratch must
+  copy the value it needs *before* the call (`hRaw.set(hLid)`), and the fixture must recompute
+  the *physical* value (a band stands `+1 km` and its seam notches `-1.2 km`), not the formula
+  -- a value gate catches a dead term, a formula gate cannot.
+- **Pin the term's *value*, and the fixture will find the bugs above.** `pt-surface.js` writes
+  the three-term law out independently (thermal isostasy against each node row's own mean,
+  convergence times the compensation depth, `hLid - flex(hLid)`), then compares column by
+  column. Both bugs above survived `pt-check`, `pt-crust` and `pt-wrap` because those fixtures
+  only asked whether the pipeline ran and stayed periodic; a `check.near` against an
+  independent spelling of the definition is what exposed them.
+- **The plan's dynamic term on the *vertical* velocity at node row 1 is unusable: that row is
+  inside the welded lid.** Measured, `v` at row 1 is `0.03-0.4 km/Myr` against `uMax 20` --
+  the lid is rigid, which is the whole point of P2 -- so `z_dyn = -kDyn * v` would leave every
+  trench flat. Read the *shallowest cell row's* horizontal convergence instead: by
+  incompressibility the vertical flow at the compensation depth is `v = -(du/dx) * y`, so the
+  term is `kDyn * yIso * du/dx`, which measures `5-50x` larger and has the right sign pattern.
+- **Two isostasy terms at a convergent margin correlate, so calibrate the sum and not each
+  term.** At `kDyn = 1.0` the deepest column read `-16 km` (double the plan's band) because the
+  thermal term had already charged the same column `-6.1 km` while the dynamic term added
+  `-10.1 km`. `kDyn = 0.3` puts the deepest trench at `-8.7 km` and the deepest 5% at `-7.9`.
+  When a per-term "physical" constant is not available, say so in `params.js` and cite the
+  measurement that set it.
+- **Relative isostasy is the whole trick for a zero-mean horizon.** Every term subtracts the
+  same field's horizontal mean (each node row for the thermal part, the flexural average for
+  the crustal part), so a uniformly warm planet, a uniformly thick lid, and a uniformly moving
+  column read **zero relief** and the sea level cannot random-walk. The plan's `sum_i zh == 0`
+  is then not an extra correction but a property, and the only residual is round-off.
+- **Warp the view, not the solver.** The Stokes solve stays on the flat `(x, eta)` domain
+  (`0.6 ms`, `7e-17` divergence); the horizon is drawn by shifting each pixel's lookup row by
+  `zVis * exp(-y / yTaper) / J(y)`. Two details matter: the *markers* must get the identical
+  shift (`pt-surface.js` checks a single marker against the law to 0.12 px) and a physical clip
+  (`zVisMax`) plus a matching `kRelief` is needed, because `kRelief = 3` with a `-10 km` profile
+  floods a third of the `lid` preset with ocean. The `lid`/`mantle` presets also have to start
+  above `kRelief * zVisMax`, not above `y = 0`, or a swell leaves the frame.
+- **`a ? b : c` inside a `for` condition is a trap.** `for (jj = 0; jj < best || best < 0 ? h : best; jj++)`
+  parses as `((jj < best || best < 0) ? h : best)` and returns a *truthy* `best`, so the loop
+  never exits -- a 900 s fixture hang from one missing pair of parentheses. Floor division,
+  ternaries and `||` in a loop head: use a block.

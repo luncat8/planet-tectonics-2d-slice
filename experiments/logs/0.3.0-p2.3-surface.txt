@@ -1,0 +1,41 @@
+  surface: the P2.3 elevation profile, mesh 256x24, wrap 16000 km, kIso 0.09, yIso 150, kDyn 0.3, tauSurf 1.5 Myr
+
+
+the law: a hand-built state reads the plan's formula
+PASS  a hot column rises by kIso * sum(dT * dy) through the filter   rel 1.50e-15  got 1.4988010832439613e-15 km  want 0
+PASS  and it rises   zh 0.45 km at the column, -0.01 km eight columns away
+PASS  the shallow convergence pulls the horizon down by kDyn * yIso * du/dx   rel 2.66e-15  got 2.6645352591003757e-15 km  want 0
+PASS  the deepest column is the most convergent one   dzh/dx -0.0173 /Myr at column 128, zh -0.78 km
+PASS  a welded band and a damaged seam read the plan's crust formula   rel 5.11e-15  got 5.10702591327572e-15 km  want 0
+PASS  the welded band stands above its shoulders and the seam notches below them   band 1.04 km, seam -1.24 km, shoulder 0.08 km
+PASS  a flat quiet planet reads zero   max |zh| 0.00e+0 km
+
+the live run: swells, basins and trenches at 250 Myr
+  spin-up to 250.0 Myr in 49.0 s
+PASS  hot upwelling columns stand above the cold basins   hot 1.47 km vs cold -7.74 km
+PASS  the most convergent columns are the deepest trenches   mean zh -7.92 km, deepest -10.43 km
+PASS  and the most divergent ones are swells   divergent 1.69 km vs cold -7.74 km
+PASS  the horizon is thermal isostasy first (r > 0.4 with the upper-column integral)   r 0.93 over 256 columns
+PASS  the mean elevation is zero to machine precision after a live run   mean 1.09e-16 km
+PASS  the profile stays inside the drawn band   zh -10.43..7.67 km
+
+the view: the drawn horizon, the ocean band and the warp
+PASS  the ocean band exists only below the reference sea level   646 water pixels, 0 of them above y = 0
+PASS  the drawn rock top sits on the profile (within a row)   0 of 320 columns off, worst 0 rows
+PASS  the relief toggle off leaves the unwarped raster   0 water pixels, flat 1
+PASS  a marker on a swell is drawn up by the profile   abs 1.17e-1  got 7 rows (zh at the marker 3.77 km)  want 7.117139176062607
+PASS  and a marker in a basin is drawn down by it   abs 1.18e-1  got 15 rows (zh at the marker -9.35 km)  want 15.11767357902375
+PASS  the two warps really are opposite   swell 27->20, basin 27->42
+
+ridge push: a slope moves a plate, a flat planet does not
+PASS  a flat planet does not push   vx 0.00e+0 km/Myr
+PASS  a slope pushes the plate at kPush * (-dzh/dx)   rel 0.00e+0  got 6 km/Myr  want 6
+PASS  and the push is capped at vPushMax   rel 0.00e+0  got 15 km/Myr  want 15
+
+the price: no per-frame allocation
+PASS  the surface kernel and the warped view construct no arrays per frame   0 typed arrays over 400 frames
+PASS  and grow no ArrayBuffer memory   arrayBuffers 0 bytes, heap -1105088 bytes over 400 frames
+
+  total 49.4 s of spin-ups
+
+ALL PASS (24 checks)

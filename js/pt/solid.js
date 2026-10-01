@@ -101,15 +101,21 @@ function clusters(M, S, dt) {
 	counts.fill(0);
 	for (p = 0; p < S.n; p++) {
 		S.cl[p] = -1;
-		if (S.mu[p] * (1 - S.dmg[p]) < near) continue;
+		d = S.mu[p] * (1 - S.dmg[p]);
+		if (d < near) continue;
 		q = G.nodeOf(M, S, p);
-		S.cl[p] = -2;                       // candidate, not yet in a cluster
+		// Two candidate kinds, and the strength test is pair's own so membership and bonding
+		// cannot disagree: -2 is strong enough to be plate, -3 only carries load into the
+		// damage integral. Before the P2.2 review every candidate was numbered, so a soft
+		// marker with no partners became a one-marker "plate" and inflated both csN and the
+		// HUD's lid fraction (measured at 240 Myr: 214 of 250 clusters, 11% of the lid).
+		S.cl[p] = d >= strong ? -2 : -3;
 		S.pLoad[p] = 0; S.pCnt[p] = 0;
 		counts[q]++;
 	}
 	for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) { q = j * nx + i; slot[q] = c; c += counts[q]; }
 	for (p = 0; p < S.n; p++) {
-		if (S.cl[p] !== -2) continue;
+		if (S.cl[p] > -2) continue;         // -1: below the candidate threshold
 		q = G.nodeOf(M, S, p);
 		S.par[p] = p;
 		order[slot[q]++] = p;
@@ -119,7 +125,7 @@ function clusters(M, S, dt) {
 	// buckets (+x, +y, +x+y, -x+y), which visits every adjacent pair once through the
 	// neighbour buckets and twice harmlessly inside the bucket itself
 	for (p = 0; p < S.n; p++) {
-		if (S.cl[p] !== -2) continue;
+		if (S.cl[p] > -2) continue;
 		q = G.nodeOf(M, S, p);
 		j = (q / nx) | 0; i = q - j * nx;
 		var ii, jj, dj, di;
@@ -149,14 +155,17 @@ function clusters(M, S, dt) {
 	// count makes the law independent of the sample, which is what lets markers be re-dealt,
 	// merged or capped later without moving the failure physics.
 	for (p = 0; p < S.n; p++) {
-		if (S.cl[p] !== -2 || !S.pCnt[p]) continue;
+		if (S.cl[p] > -2 || !S.pCnt[p]) continue;
 		d = S.dmg[p] + P.kDamage * (S.pLoad[p] / S.pCnt[p]);
 		S.dmg[p] = d > 1 ? 1 : d;
 	}
 	// number the clusters from the union-find roots, then fold the damage into mu so the
-	// raster and the projection read strength after failure, not before it
+	// raster and the projection read strength after failure, not before it. Only the -2
+	// markers -- those pair would have bonded -- become clusters; a load-only candidate
+	// goes back to being fluid, because a marker that cannot reach clusterMin is not a plate
 	for (p = 0; p < S.n; p++) {
-		if (S.cl[p] !== -2) continue;
+		if (S.cl[p] > -2) continue;
+		if (S.cl[p] === -3) { S.cl[p] = -1; continue; }
 		r = find(S, p);
 		if (S.csOf[r] < 0) S.csOf[r] = nCl++;
 		S.cl[p] = S.csOf[r];
@@ -219,14 +228,24 @@ function find(S, i) {
 // A flat horizontal cluster has ry = 0 everywhere and rides the flow's mean unchanged; a
 // closed planet-wide ring (csR2/csM >= ringMax * wrap^2) has no free trench end and sits
 // still until it rifts.
+//
+// Ridge push (P2.3, plan §4.5) is the same summation over the surface slope: a swell crest
+// pushes material off both of its flanks and a trench floor pulls both ways, which is exactly
+// what the periodic central difference of S.zh gives:
+//   csP[c] = sum_p m * (-dzh/dx)   ->   csVX += kPush * csP / csM
+// It is capped separately from the slab pull, and it acts on every cluster (an unbroken ring
+// has no free trench end, but it does have a slope to slide down). With zh flat -- a fresh
+// reset, or a fixture that drives this pass directly -- csP is exactly zero.
 function kinematics(M, S, dt) {
 	var wrap = M.wrap, csM = S.csM, csX = S.csX, csY = S.csY;
 	var csVX = S.csVX, csVY = S.csVY, csW = S.csW, csR2 = S.csR2, csRef = S.csRef;
-	var csS = S.csS, csCnt = S.csCnt, ringR2 = P.ringMax * wrap * wrap;
-	var p, c, m, rx, ry, r2, pull, vRx, vRy, w, dvx, dvy, dy, ym, plates = 0, plV = 0, lid = 0;
+	var csS = S.csS, csCnt = S.csCnt, csP = S.csP, ringR2 = P.ringMax * wrap * wrap;
+	var zh = S.zh, nx = M.nx, invDx2 = 0.5 / M.dx;
+	var p, c, m, rx, ry, r2, pull, push, vRx, vRy, w, dvx, dvy, dy, ym, plates = 0, plV = 0, lid = 0;
+	var ci, im, ip;
 	for (c = 0; c < S.csN; c++) {
 		csM[c] = 0; csX[c] = 0; csY[c] = 0; csVX[c] = 0; csVY[c] = 0;
-		csW[c] = 0; csR2[c] = 0; csS[c] = 0; csCnt[c] = 0;
+		csW[c] = 0; csR2[c] = 0; csS[c] = 0; csCnt[c] = 0; csP[c] = 0;
 	}
 	for (p = 0; p < S.n; p++) {
 		c = S.cl[p];
@@ -256,6 +275,12 @@ function kinematics(M, S, dt) {
 		r2 = rx * rx + ry * ry;
 		csR2[c] += m * r2;
 		if (r2 > 1e-9 && ry > 0) csS[c] += m * (rx / Math.sqrt(r2)) * ry;
+		if (P.kPush > 0) {
+			ci = Math.round(S.x[p] / M.dx);
+			ci -= Math.floor(ci / nx) * nx;
+			im = ci === 0 ? nx - 1 : ci - 1; ip = ci + 1 === nx ? 0 : ci + 1;
+			csP[c] += m * (zh[im] - zh[ip]) * invDx2;
+		}
 	}
 	for (c = 0; c < S.csN; c++) {
 		csW[c] = csR2[c] > 1e-9 ? csW[c] / csR2[c] : 0;
@@ -264,6 +289,12 @@ function kinematics(M, S, dt) {
 			if (pull > P.vSlabMax) pull = P.vSlabMax;
 			else if (pull < -P.vSlabMax) pull = -P.vSlabMax;
 			csVX[c] += pull;
+		}
+		if (csM[c] > 0 && P.kPush > 0) {
+			push = P.kPush * (csP[c] / csM[c]);
+			if (push > P.vPushMax) push = P.vPushMax;
+			else if (push < -P.vPushMax) push = -P.vPushMax;
+			csVX[c] += push;
 		}
 		if (csCnt[c] >= 64) {
 			plates++;
