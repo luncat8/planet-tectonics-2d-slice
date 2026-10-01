@@ -182,8 +182,18 @@ check.ok('every number is finite', rows.every(function (r) {
 var mean = function (f) {
 	return rows.reduce(function (s, r) { return s + f(r); }, 0) / rows.length;
 };
-check.info('mean plate drift over all samples', mean(function (r) { return r.plate; }).toFixed(2) + ' cm/yr');
-check.info('mean own-marker flow', mean(function (r) { return r.own; }).toFixed(2) + ' cm/yr');
+var mPlate = mean(function (r) { return r.plate; });
+var mOwn = mean(function (r) { return r.own; });
+var maxPlate = rows.reduce(function (m, r) { return r.plate > m ? r.plate : m; }, 0);
+var lid100 = (byT[100] && byT[100][0]) ? byT[100][0].plate : 0;
+check.ok('an unbroken planet-wrapping lid is not pulled sideways', lid100 < 0.1,
+	't 100 Myr drift ' + lid100.toFixed(2) + ' cm/yr');
+check.ok('slab pull drives mean plate drift above the cancelled net flow', mPlate > 3 * mOwn,
+	'plate ' + mPlate.toFixed(2) + ' vs own ' + mOwn.toFixed(2) + ' cm/yr (' + (mPlate / mOwn).toFixed(1) + 'x)');
+check.ok('slab-bearing plates reach the 3-10 cm/yr demonstration scale', maxPlate >= 3 && maxPlate <= 10,
+	'peak ' + maxPlate.toFixed(2) + ' cm/yr');
+check.info('mean plate drift over all samples', mPlate.toFixed(2) + ' cm/yr');
+check.info('mean own-marker flow', mOwn.toFixed(2) + ' cm/yr');
 check.info('mean base flow under the plates', mean(function (r) { return r.base; }).toFixed(2) + ' cm/yr');
 check.info('mean flow at 150 km under the plates', mean(function (r) { return r.v150; }).toFixed(2) + ' cm/yr');
 check.info('mean flow at 300 km under the plates', mean(function (r) { return r.v300; }).toFixed(2) + ' cm/yr');

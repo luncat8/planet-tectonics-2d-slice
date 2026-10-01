@@ -439,3 +439,37 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
 - **Radio groups need an explicit "unspecified".** Camera presets stop describing the view
   the moment the user pans or zooms, so the highlight is cleared by the *camera* events, not
   by the next preset click; otherwise the bar lies about the view.
+
+## 0.3.0 P2.2 — slab pull, welding depth ceiling, and why the surface is flat
+
+- **Plates break at trenches (`du/dx < 0`), not over broad upwellings (`du/dx > 0`), so flow
+  traction cancels beneath them.** On the 256x24 convecting mesh, compressive strain rate at
+  narrow downwellings (`~-0.065 /Myr` over 150 km) exceeds `yieldRate = 0.06` while tensile
+  strain rate over broad upwellings (`~+0.013 /Myr` over 1,500 km) is ~5x smaller. Plates
+  therefore span across upwellings from trench to trench, and the leftward and rightward
+  branches of the cell cancel in `csVX` (`0.31 cm/yr` net vs `1.5-2.3 cm/yr` peak surface
+  flow). A rigid cluster `(csVX, csVY, csW)` has no hinge at the trench to turn vertical root
+  sinking into horizontal plate translation; an explicit horizontal slab-pull drive is
+  required.
+- **Sum the slab-pull depth moment over `ry > 0` only, or the trench roof cancels the root.**
+  At the trench end of a plate (`rx > 0`), the shallow lid markers sit above the cluster's
+  vertical centroid (`ry = y - csY < 0`) while the attached slab root hangs below it (`ry >
+  0`). Summing `m * (rx / |r|) * ry` over all cluster members lets the shallow trench roof
+  cancel half the root's moment; summing over `ry > 0` isolates the hanging root, preserves
+  zero pull for any flat plate (`ry = 0`), and raises mean plate drift `5.2x` (`0.31 -> 1.60
+  cm/yr`, with slab-bearing plates at `2.03-6.28 cm/yr`).
+- **Bound welding by depth (`yWeldMax`), or an unheated CMB cold pool becomes a bottom
+  plate.** In `'rb'` (no internal heating, `T_top = 0, T_bot = 1`), cold plumes pool along the
+  CMB at `T ≈ 0.25 < TLock = 0.35`. Without `S.y[p] <= P.yWeldMax` (`300 km`), 11,252 of
+  11,958 strong candidates sit in rows 14..23 (`364..2357 km`) by 150 Myr, costing `34
+  ms/frame` in the pair walk. Confining welding to `y <= 300 km` cuts the `'rb'` Ra 1e6 frame
+  time from `18.78 ms` to `9.38 ms`.
+- **A separable FFT + Thomas Stokes solver forces a flat coordinate top (`eta = 0`), so
+  surface relief must be a coupled 1D field (`zh[i]`) rather than raw marker tops.** Because
+  `psi = 0` (`v = 0`) at `eta = 0`, `keepInside` reflects markers at `yMin = 4.14 km`, and
+  `render.js` paints `SKY` for `eta < 0`, the raw particle top is ruler-flat. Deriving a
+  periodic zero-mean 1D elevation `zh[i]` from upper-column thermal isostasy, dynamic trench
+  normal stress, and crustal thickness / rift necking — and using it to warp the shallow
+  raster and marker screen depths while feeding `-dzh/dx` (ridge push) back into `csVX` —
+  gives realistic ridges, grabens, abyssal plains, and deep trenches without sacrificing the
+  separable `O(nx ny log nx)` Stokes solve.

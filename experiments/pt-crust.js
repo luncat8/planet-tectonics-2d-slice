@@ -75,6 +75,12 @@ cloud(M, [[0.3 * M.dx, M.yN[3], 0.85]]);
 S.age[0] = 1e6;
 SC.crust(M, S, dt);
 check.ok('hot rock is soft however old', S.mu[0] < P.clusterMin, 'mu ' + S.mu[0].toFixed(3));
+// deep mantle (> yWeldMax) stays in ductile creep even when cold: the 'rb' CMB cold pool
+// must not weld into a bottom plate
+cloud(M, [[0.3 * M.dx, M.yN[M.ny - 1], 0.05]]);
+S.age[0] = 100; S.dmg[0] = 0.5;
+for (i = 0; i < 20; i++) SC.crust(M, S, dt);
+check.near('cold rock below yWeldMax resets its age and never welds', S.mu[0], 0, 1e-9);
 
 // ---------------------------------------------------------------- 2. a strong pair rides
 check.section('a cluster rides the flow as one body');
@@ -94,6 +100,27 @@ check.near('the cluster travels at the mass-weighted mean', S.vx[0], 15, 1e-9);
 check.near('and so does its partner', S.vx[1], 15, 1e-9);
 var gap = Math.abs((S.x[1] - S.x[0]) - (xb - xa)) + Math.abs(S.y[1] - S.y[0]);
 check.near('the body holds its shape (no internal strain)', gap, 0, 1e-9);
+// slab pull: a cold root hanging below the lid at one end of a plate pulls the plate
+// horizontally toward the root; symmetric left/right roots pull in opposite directions, and
+// the pull is capped at vSlabMax
+var yLid = M.yN[2], yRoot = M.yN[3];
+cloud(M, [
+	[xa, yLid, 0.1, 0, 0, 100], [xa + M.dx, yLid, 0.1, 0, 0, 100],
+	[xa + 2 * M.dx, yLid, 0.1, 0, 0, 100], [xa + 3 * M.dx, yLid, 0.1, 0, 0, 100],
+	[xa + 3 * M.dx, yRoot, 0.1, 0, 0, 100]
+]);
+SC.crust(M, S, dt);
+var vRight = S.vx[0];
+check.ok('a cold root at the +x end pulls the plate in +x',
+	S.cl[0] === S.cl[4] && vRight > 0 && vRight <= P.vSlabMax, 'vx ' + vRight.toFixed(2) + ' km/Myr');
+cloud(M, [
+	[xa, yLid, 0.1, 0, 0, 100], [xa + M.dx, yLid, 0.1, 0, 0, 100],
+	[xa + 2 * M.dx, yLid, 0.1, 0, 0, 100], [xa + 3 * M.dx, yLid, 0.1, 0, 0, 100],
+	[xa, yRoot, 0.1, 0, 0, 100]
+]);
+SC.crust(M, S, dt);
+var vLeft = S.vx[3];
+check.near('a root at the -x end pulls in -x by the same speed', vLeft, -vRight, 1e-9);
 
 // ---------------------------------------------------------------- 3. a hot band rifts
 check.section('a hot band splits the lid');
@@ -163,7 +190,7 @@ P.Ra = 1e6; P.RaK = P.Ra * P.kappa / (P.depth * P.depth * P.depth);
 P.sl.kyr = 50;
 SIM.init(); SIM.reset();
 SIM.dt = 0.05;
-var lo = 9e9, hi = -9e9, empty = 0, moved = 0, lidMin = 9e9, lidMax = -9e9, platesMax = 0;
+var lo = 9e9, hi = -9e9, empty = 0, moved = 0, lidMin = 9e9, lidMax = -9e9, platesMax = 0, driftMax = 0;
 var W0 = S.wall, L0 = S.ledger;
 for (i = 0; i < 6000; i++) {
 	SIM.step();
@@ -175,14 +202,18 @@ for (i = 0; i < 6000; i++) {
 		if (S.d.lid < lidMin) lidMin = S.d.lid;
 		if (S.d.lid > lidMax) lidMax = S.d.lid;
 		if (S.d.plates > platesMax) platesMax = S.d.plates;
+		if (S.d.plV > driftMax) driftMax = S.d.plV;
 	}
 }
 var gapRatio = (S.ledger - L0) / (S.wall - W0);
 console.log('  t ' + SIM.t.toFixed(0) + ' Myr: lid ' + (S.d.lid * 100).toFixed(0) + '%, plates '
-	+ S.d.plates + ', Nu ' + S.d.nu.toFixed(1) + ', holes ' + empty + ', moved ' + moved + ', redeals ' + S.redeals);
+	+ S.d.plates + ', drift ' + S.d.plV.toFixed(2) + ' (max ' + driftMax.toFixed(2) + ') cm/yr, Nu '
+	+ S.d.nu.toFixed(1) + ', holes ' + empty + ', moved ' + moved + ', redeals ' + S.redeals);
 check.ok('the crust forms and stays plate through 300 Myr', lidMin > 0.05 && lidMax < 0.40,
 	'lid ' + (lidMin * 100).toFixed(0) + '..' + (lidMax * 100).toFixed(0) + '%');
 check.ok('and it carries at least one plate', platesMax >= 1, 'plates max ' + platesMax);
+check.ok('plates drift at the demonstration scale (3-10 cm/yr)', driftMax >= 3 && driftMax <= 10,
+	'peak drift ' + driftMax.toFixed(2) + ' cm/yr');
 check.ok('the field remains bounded under a rigid lid', lo > -0.5 && hi < 1.5, 'T ' + lo.toFixed(3) + '..' + hi.toFixed(3));
 check.ok('the rigid motion never re-deals the lattice', S.redeals === 0, 'redeals ' + S.redeals);
 check.ok('coverage survives the plates', empty < 0.15 * SIM.M.nx * (SIM.M.ny - 1), 'worst holes ' + empty);

@@ -2,31 +2,29 @@
 
    t/Myr  plate  markers   plate depth    |vPlate|   |vOwn|   |vBase|   |v150|   |v300|
      100      0    4842       4..100 km       0.01     0.01     0.01    0.01    0.01
-     200      0    1396       4..163 km       0.15     0.15     0.15    0.16    0.22
-     200     17     697        4..47 km       0.06     0.06     0.07    0.15    0.28
-     200     12     443        4..50 km       0.11     0.12     0.12    0.21    0.37
-     300     15     602        4..35 km       0.09     0.08     0.08    0.13    0.22
-     300     17     449        4..38 km       0.32     0.32     0.33    0.32    0.40
-     300     12     337        4..35 km       0.65     0.64     0.64    0.60    0.65
-     300      0     243        4..48 km       0.46     0.46     0.46    0.38    0.25
-     400     10     651        4..31 km       0.11     0.11     0.12    0.14    0.20
-     400     11     424        4..31 km       0.61     0.61     0.61    0.56    0.59
-     400      5     289        4..30 km       0.84     0.84     0.84    0.74    0.71
+     200      0    1120       4..111 km       4.95     0.48     0.48    0.46    0.54
+     200     20     484        4..50 km       2.03     0.65     0.65    0.58    0.57
+     200     18     406        4..60 km       0.96     0.09     0.09    0.18    0.32
+     300      0     465        4..70 km       0.56     0.22     0.22    0.24    0.34
+     300      8     342        4..36 km       2.76     0.30     0.31    0.32    0.42
+     300      1     291        4..31 km       0.39     0.38     0.38    0.39    0.49
+     400      1     700        4..34 km       1.15     0.33     0.34    0.29    0.27
 
   every plate at the last sample (>= 64 markers):
-   plate 10: 651 markers   drift 0.11 cm/yr   own 0.11   base 0.12   at 150 km 0.14   at 300 km 0.20 (mean speed there 0.69)
-   plate 11: 424 markers   drift 0.61 cm/yr   own 0.61   base 0.61   at 150 km 0.56   at 300 km 0.59 (mean speed there 0.92)
-   plate 5: 289 markers   drift 0.84 cm/yr   own 0.84   base 0.84   at 150 km 0.74   at 300 km 0.71 (mean speed there 0.79)
+   plate 1: 700 markers   drift 1.15 cm/yr   own 0.33   base 0.34   at 150 km 0.29   at 300 km 0.27 (mean speed there 0.79)
 
 the diagnostic is sane
 PASS  plates were found at every sample   100.04999999999646, 200.00000000001123, 300.00000000003394, 400.0000000000567
 PASS  every number is finite
-INFO  mean plate drift over all samples   0.31 cm/yr
+PASS  an unbroken planet-wrapping lid is not pulled sideways   t 100 Myr drift 0.00 cm/yr
+PASS  slab pull drives mean plate drift above the cancelled net flow   plate 1.60 vs own 0.31 cm/yr (5.2x)
+PASS  slab-bearing plates reach the 3-10 cm/yr demonstration scale   peak 4.95 cm/yr
+INFO  mean plate drift over all samples   1.60 cm/yr
 INFO  mean own-marker flow   0.31 cm/yr
 INFO  mean base flow under the plates   0.31 cm/yr
 INFO  mean flow at 150 km under the plates   0.31 cm/yr
-INFO  mean flow at 300 km under the plates   0.36 cm/yr
-INFO  mean speed (not net) at 300 km   0.71 cm/yr
-INFO  ratio net-300km/plate   1.15x
+INFO  mean flow at 300 km under the plates   0.37 cm/yr
+INFO  mean speed (not net) at 300 km   0.66 cm/yr
+INFO  ratio net-300km/plate   0.23x
 
-ALL PASS (2 checks)
+ALL PASS (5 checks)

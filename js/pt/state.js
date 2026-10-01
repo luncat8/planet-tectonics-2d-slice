@@ -42,6 +42,7 @@ var PTS = {
 	// per-cluster accumulators (mass, centroid, velocity fit)
 	par: null, cl: null, csOf: null,
 	csM: null, csX: null, csY: null, csVX: null, csVY: null, csW: null, csR2: null,
+	csS: null, csCnt: null,
 	csRef: null, csN: 0,            // csN: clusters of the last crust pass
 	bandA: null, bandP: null,       // the initial perturbation's seeded band (icT)
 	// per-frame diagnostics, mutated in place: the HUD formats them at 2 Hz
@@ -66,6 +67,7 @@ var PTS = {
 			this.csY = new Float64Array(cap); this.csVX = new Float64Array(cap);
 			this.csVY = new Float64Array(cap); this.csW = new Float64Array(cap);
 			this.csR2 = new Float64Array(cap); this.csRef = new Float64Array(cap);
+			this.csS = new Float64Array(cap); this.csCnt = new Int32Array(cap);
 			this.order = new Int32Array(cap);
 		}
 		if (!this.Tg || this.Tg.length !== M.n) {

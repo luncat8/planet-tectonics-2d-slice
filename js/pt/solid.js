@@ -65,13 +65,15 @@ function smoothstep(a, b, x) {
 	return t * t * (3 - 2 * t);
 }
 
-// the age hysteresis, the damage anneal, and the strength law, one pass over the markers
+// the age hysteresis, the damage anneal, and the strength law, one pass over the markers.
+// Below yWeldMax the mantle is in ductile creep regardless of T, so cold plumes that reach
+// the deep mantle or pool at the CMB reset their age and never weld into a bottom lid.
 function strength(M, S, dt) {
 	var p, T, a, heat, weld, d;
 	for (p = 0; p < S.n; p++) {
 		T = S.T[p];
 		d = S.dmg[p];
-		if (T >= P.TSoft) { S.age[p] = 0; S.dmg[p] = 0; }
+		if (T >= P.TSoft || S.y[p] > P.yWeldMax) { S.age[p] = 0; S.dmg[p] = 0; }
 		else if (T <= P.TLock) {
 			S.age[p] += dt;
 			if (d > 0) {
@@ -203,15 +205,29 @@ function find(S, i) {
 	return r;
 }
 
-// the rigid fit, then the projection. Three passes over the strong markers: the cluster's
-// mass and first moments, its rotation about the centroid, then the move. A cluster's x
-// centroid is measured from the first member's x with the periodic delta folded into
-// [-wrap/2, wrap/2), so a plate that straddles the wrap seam is one body, not two.
+// the rigid fit, the slab-pull drive, then the projection. Three passes over the strong
+// markers: the cluster's mass and first moments, its rotation and deep-root moment about
+// the centroid, then the move. A cluster's x centroid is measured from the first member's x
+// with the periodic delta folded into [-wrap/2, wrap/2), so a plate that straddles the wrap
+// seam is one body, not two.
+//
+// The mantle flow under a plate is largely convergent/divergent across the cell it spans, so
+// its net traction cancels (experiments/pt-drift.js). What breaks the cancellation is the
+// negative buoyancy of the cold root hanging below the cluster's centroid depth (ry > 0) at
+// the trench end, redirected horizontally along the plate by the trench hinge:
+//   csS[c] = sum_{ry > 0} m * (rx / |r|) * ry
+// A flat horizontal cluster has ry = 0 everywhere and rides the flow's mean unchanged; a
+// closed planet-wide ring (csR2/csM >= ringMax * wrap^2) has no free trench end and sits
+// still until it rifts.
 function kinematics(M, S, dt) {
 	var wrap = M.wrap, csM = S.csM, csX = S.csX, csY = S.csY;
 	var csVX = S.csVX, csVY = S.csVY, csW = S.csW, csR2 = S.csR2, csRef = S.csRef;
-	var p, c, m, rx, ry, vRx, vRy, w, dvx, dvy, dy, ym, plates = 0, plV = 0, lid = 0;
-	for (c = 0; c < S.csN; c++) { csM[c] = 0; csX[c] = 0; csY[c] = 0; csVX[c] = 0; csVY[c] = 0; csR2[c] = 0; }
+	var csS = S.csS, csCnt = S.csCnt, ringR2 = P.ringMax * wrap * wrap;
+	var p, c, m, rx, ry, r2, pull, vRx, vRy, w, dvx, dvy, dy, ym, plates = 0, plV = 0, lid = 0;
+	for (c = 0; c < S.csN; c++) {
+		csM[c] = 0; csX[c] = 0; csY[c] = 0; csVX[c] = 0; csVY[c] = 0;
+		csW[c] = 0; csR2[c] = 0; csS[c] = 0; csCnt[c] = 0;
+	}
 	for (p = 0; p < S.n; p++) {
 		c = S.cl[p];
 		if (c < 0) continue;
@@ -221,20 +237,13 @@ function kinematics(M, S, dt) {
 		dx -= Math.floor(dx / wrap + 0.5) * wrap;
 		csM[c] += m; csX[c] += m * dx; csY[c] += m * S.y[p];
 		csVX[c] += m * S.vx[p]; csVY[c] += m * S.vy[p];
-		csR2[c] += 1;                       // member count until the second pass
+		csCnt[c]++;
 		lid++;
 	}
 	for (c = 0; c < S.csN; c++) {
 		if (!(csM[c] > 0)) continue;
 		csX[c] = csRef[c] + csX[c] / csM[c];
 		csY[c] /= csM[c]; csVX[c] /= csM[c]; csVY[c] /= csM[c];
-		// the HUD's plates: clusters big enough to be called a plate, and their top speed
-		if (csR2[c] >= 64) {
-			plates++;
-			var sp = csVX[c] * csVX[c] + csVY[c] * csVY[c];
-			if (sp > plV) plV = sp;
-		}
-		csR2[c] = 0;
 	}
 	for (p = 0; p < S.n; p++) {
 		c = S.cl[p];
@@ -244,9 +253,24 @@ function kinematics(M, S, dt) {
 		ry = S.y[p] - csY[c];
 		m = S.m[p];
 		csW[c] += m * (rx * S.vy[p] - ry * S.vx[p]);      // omega numerator
-		csR2[c] += m * (rx * rx + ry * ry);
+		r2 = rx * rx + ry * ry;
+		csR2[c] += m * r2;
+		if (r2 > 1e-9 && ry > 0) csS[c] += m * (rx / Math.sqrt(r2)) * ry;
 	}
-	for (c = 0; c < S.csN; c++) csW[c] = csR2[c] > 1e-9 ? csW[c] / csR2[c] : 0;
+	for (c = 0; c < S.csN; c++) {
+		csW[c] = csR2[c] > 1e-9 ? csW[c] / csR2[c] : 0;
+		if (csM[c] > 0 && P.kSlab > 0 && csR2[c] < ringR2 * csM[c]) {
+			pull = P.kSlab * (csS[c] / csM[c]);
+			if (pull > P.vSlabMax) pull = P.vSlabMax;
+			else if (pull < -P.vSlabMax) pull = -P.vSlabMax;
+			csVX[c] += pull;
+		}
+		if (csCnt[c] >= 64) {
+			plates++;
+			var sp = csVX[c] * csVX[c] + csVY[c] * csVY[c];
+			if (sp > plV) plV = sp;
+		}
+	}
 	for (p = 0; p < S.n; p++) {
 		c = S.cl[p];
 		if (c < 0) continue;

@@ -100,6 +100,20 @@ var PTP = {
 	yieldRate: 0.06,             // 1/Myr a full-strength bond carries elastically
 	kDamage: 90,                 // 1/Myr per unit mean excess strain rate above yield
 	tauHeal: 40,                 // Myr of quiet annealing to clear one unit of damage
+	yWeldMax: 300,               // km, maximum depth at which rock can age and weld: below the
+	                             // upper-mantle slab regime pressure and adiabatic heating put
+	                             // cold downwellings into ductile creep, so the CMB cold pool
+	                             // of 'rb' stays fluid instead of welding into a bottom plate
+	// slab pull (plan §4.2, §8 P2.2): a plate's net mantle traction largely cancels across
+	// the cell it spans (experiments/pt-drift.js), so drift comes from the negative buoyancy
+	// of the cold root hanging below the cluster's centroid depth at its trench end, redirected
+	// along the plate by the trench hinge and capped at the convective velocity scale so a
+	// plate cannot outrun the flow that feeds it. A closed planet-wide ring (csR2/csM >=
+	// ringMax * wrap^2) has no free trench end and gets no pull until it rifts.
+	kSlab: 18,                   // 1/Myr of horizontal plate drive per km of root depth excess
+	vSlabMax: 45,                // km/Myr (4.5 cm/yr), maximum slab-pull velocity contribution
+	ringMax: 0.04,               // Second-moment cap (fraction of wrap^2) below which a cluster
+	                             // is a broken plate with free ends rather than a closed ring
 	// particles (plan §3.1): one marker per interior node, each carrying its node's measure.
 	// The count is fixed in P1 -- no merging, no eruption, no absorb -- and a moving marker
 	// keeps its mass, so the parcel heat is exactly what the walls put in (the ledger) and
