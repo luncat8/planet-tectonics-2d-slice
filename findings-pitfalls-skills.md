@@ -533,3 +533,41 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   parses as `((jj < best || best < 0) ? h : best)` and returns a *truthy* `best`, so the loop
   never exits -- a 900 s fixture hang from one missing pair of parentheses. Floor division,
   ternaries and `||` in a loop head: use a block.
+
+## 0.4.0 planning — two engines on one page, and a shared isostasy
+
+Found while writing `roadmap.md` and the 0.4-0.9 plans; each one changed a plan.
+
+- **A classic script's top-level `var` is a global, so the two engines already share one
+  namespace.** `js/params.js:11` is `var P = {...}` (so `window.P`), `js/pt/state.js:11` is
+  `var P = ... window.PTP` and then `js/pt/sim.js` assigns `var SIM`; `js/state.js` declares
+  `var S` and `js/pt/state.js` declares its own. Load both engines into one page and the second
+  one's `var P` / `var S` / `var SIM` overwrite the first one's, while the first engine's kernels
+  read those names at call time — a silent wrong-parameters bug, not a crash. Fix with the rule
+  "one file, one IIFE, one exported global", gated by loading both engines into one vm and
+  diffing the global list (`experiments/globals.js`, `0.4.0-plan.md` M0). The `PT*` export names
+  the particle engine already uses are the pattern; only the unexported `var`s leak.
+- **A fixture that parses the page is a DOM contract.** `experiments/pt-ui.js` reads ids and
+  buttons out of `particles.html`, and `smoke.js` does the same for `index.html`, so a shell that
+  renames `#c`/`#hud`, prefixes ids or drops a `<script>` fails a harness that has nothing to do
+  with the change. Prefer an id *table* plus a prefix that the fixture reads from the page over
+  hardcoded names, and move the page and its fixture in the same commit.
+- **The two crust engines already share their isostasy to the constant.** `SURF.elev` here and
+  `Surface.elevation` in `planet-geotectonics` are both
+  `-3342 + hFel/6 + (hMaf*350 + hSed*900)/3300 - [(1-ci)*350*sqrt(min(age,80)) + ci*2091] + zDyn`
+  with `ci = smoothstep(hFel, 5000, 20000)` and rho 3300/2750/2950/2400. Consequence worth
+  keeping: importing `(hFel, hMaf, hSed, age, zDyn)` from that project must reproduce its `z` to
+  `1e-3 m` before any evolution step. That turns "the reconstruction looks right" into a hard
+  gate, and any larger error is an import bug rather than a modelling choice.
+- **The section is a flattened planet, and the numbers are worth quoting.** Arc-length/radial-depth
+  flattening over the default 3000 km window: a horizontal distance is 0.94 % shorter on the
+  sphere than on the strip, and the direction of "down" rotates by 27 degrees across the window
+  (360 over the full circumference, which is why "up" is not a global direction in a 40 030 km
+  section). State it where the view is defined; it is the honest answer to "why is the section
+  flat" without pretending the error is zero.
+- **Resolution arithmetic between the two projects.** This repository's column engine has 512
+  columns over the 40 030 km circumference = 78.2 km per column; the map project's icosphere is
+  223 / 112 / 56 km per cell at L5 / L6 / L7, which is about 180 / 359 / 717 cells around a great
+  circle. So an L5 transect is *coarser* than the section (three columns per cell) and L7 is
+  finer. Say which case a pack is in the import report instead of leaving the viewer to infer it
+  from a blocky picture.
