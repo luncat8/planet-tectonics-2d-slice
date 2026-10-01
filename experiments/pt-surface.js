@@ -2,8 +2,8 @@
 //
 // The flat `eta = 0` top of the Stokes domain carries a separate periodic horizon. This
 // fixture checks the independent target law (thermal/dynamic relief, filtered lid and rift
-// proxies, convergent-plate uplift), zero-mean conservation, collision geometry, erosion,
-// live swells and trenches, ridge push, the terrain warp, and the no-allocation budget.
+// proxies, convergent-plate uplift), zero-mean conservation, collision geometry, profile-only
+// hillslope diffusion, live swells and trenches, ridge push, terrain warp, and no allocations.
 // Collision uplift is a proxy from plate-cluster velocities; it is not a contact or crust
 // composition model. Its role here is to build broad relief, while nonlinear diffusion rounds
 // the high-gradient part of the profile.
@@ -25,19 +25,32 @@ console.log('  surface: P2.3 relief, mesh ' + P.mesh.nx + 'x' + P.mesh.ny + ', w
 	+ P.kLid + '/' + P.kRift + ', crust/orogen depth ' + P.yCrust + '/' + P.yOrogen + ' km'
 	+ '\n    collision ' + P.kOrogen + ' km Myr, yield ' + P.collisionYield + ' /Myr, cap '
 	+ P.zOrogenMax + ' km, flex ' + P.lFlex + ', relax ' + P.tauSurf + ' Myr'
-	+ '\n    erosion ' + P.kErode + ' km2/Myr, slope scale ' + P.slopeErode + '\n');
+	+ '\n    profile diffusion ' + P.kProfileDiff + ' km2/Myr, slope scale ' + P.slopeProfileDiff + '\n');
 
 P.ic = 'cool'; P.sl.kyr = 50; P.solid = true; P.seed = 1;
 SIM.init(); SIM.reset(); SIM.dt = 0.05;
 var M = SIM.M, nx = M.nx, ny = M.ny;
-var erosionK = P.kErode, surfaceTau = P.tauSurf, lidScale = P.kLid, riftScale = P.kRift;
-P.kErode = 0;
+var profileDiffusivity = P.kProfileDiff, surfaceTau = P.tauSurf, lidScale = P.kLid, riftScale = P.kRift;
+var hashA, hashB, savedZ, savedDamage;
+
+check.section('deterministic state fingerprint');
+SIM.reset(); SIM.run(20); hashA = S.hash();
+SIM.reset(); SIM.run(20); hashB = S.hash();
+check.ok('the same seed replays the complete particle and surface state', hashA === hashB,
+	'fingerprints ' + hashA + ' / ' + hashB);
+savedZ = S.zh[0]; hashA = S.hash(); S.zh[0] = savedZ + 0.125;
+check.ok('a changed relief profile changes the state fingerprint', S.hash() !== hashA);
+S.zh[0] = savedZ;
+savedDamage = S.dmg[0]; hashA = S.hash(); S.dmg[0] = savedDamage + 0.125;
+check.ok('a changed plate-damage state changes the fingerprint', S.hash() !== hashA);
+S.dmg[0] = savedDamage;
+P.kProfileDiff = 0;
 
 // ---------------------------------------------------------------- the independent target law
-// The kernel's target is spelled here without calling F.surface: linear particle-to-column
-// deposition, shallowest strong-marker plate identity, convergence uplift, the thermal and
-// dynamic terms, then the periodic flexural filter. Erosion is disabled for these target-law
-// fixtures and checked separately as an evolution step.
+// The kernel's target is spelled here without calling F.surface: linear marker-to-column
+// load accumulation, shallowest strong-marker plate identity, convergence uplift, the thermal and
+// dynamic terms, then the periodic flexural filter. Profile diffusion is disabled for these
+// target-law fixtures and checked separately as an evolution step.
 function flex(M, a, tmp) {
 	var nx = M.nx, i, s, im, ip;
 	for (s = 0; s < P.lFlex; s++) {
@@ -230,8 +243,8 @@ check.ok('a divergent boundary does not uplift', S.zh[boundary] < S.zh[0],
 	'divergent ' + S.zh[boundary].toFixed(2) + ' km, convergent wrap seam ' + S.zh[0].toFixed(2) + ' km');
 P.kLid = lidScale; P.kRift = riftScale;
 
-check.section('slope-dependent erosion smooths sharp relief and conserves the mean');
-P.kErode = erosionK; P.tauSurf = 1e300;
+check.section('profile diffusion rounds sharp relief and conserves mean elevation');
+P.kProfileDiff = profileDiffusivity; P.tauSurf = 1e300;
 SIM.reset(); SIM.dt = 0.5;
 S.cl.fill(-1); S.mu.fill(0); S.dmg.fill(0); S.u.fill(0);
 for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) S.Tg[j * nx + i] = 0.5;
@@ -241,16 +254,16 @@ F.surface(M, S, 0.5);
 mean = 0;
 for (i = 0; i < nx; i++) mean += S.zh[i];
 mean /= nx;
-check.ok('erosion lowers a one-cell crest and deposits into its neighbours',
+check.ok('diffusion lowers a one-cell crest and raises adjacent elevations',
 	S.zh[0] < peakBefore - 0.05 && S.zh[1] > neighborBefore + 0.02
 		&& Math.abs(S.zh[1] - S.zh[nx - 1]) < 1e-12,
 	'crest ' + peakBefore.toFixed(3) + '->' + S.zh[0].toFixed(3) + ' km, shoulder '
 	+ neighborBefore.toFixed(3) + '->' + S.zh[1].toFixed(3) + ' km');
-check.ok('periodic erosion keeps the sea-level mean at zero', Math.abs(mean) < 1e-12,
+check.ok('periodic diffusion keeps the sea-level mean at zero', Math.abs(mean) < 1e-12,
 	'mean ' + mean.toExponential(2) + ' km');
-check.ok('erosion does not create a new undershoot', Math.min.apply(null, S.zh) >= floorBefore - 1e-9,
+check.ok('diffusion does not create a new undershoot', Math.min.apply(null, S.zh) >= floorBefore - 1e-9,
 	'min ' + Math.min.apply(null, S.zh).toFixed(4) + ' km from ' + floorBefore.toFixed(4) + ' km');
-P.tauSurf = surfaceTau; P.kErode = erosionK;
+P.tauSurf = surfaceTau; P.kProfileDiff = profileDiffusivity;
 
 // a flat, quiet planet must read zero: the profile is relative, so nothing to compensate is
 // nothing to draw, and a stale sea level would be a fake ocean

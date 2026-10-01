@@ -10,6 +10,21 @@
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
 
+// The fingerprint runs in fixtures and debug tools, not in the frame loop. Reuse one view
+// pair so it hashes the exact Float64 representation without allocating per call.
+var HASH_BUFFER = new ArrayBuffer(8);
+var HASH_F64 = new Float64Array(HASH_BUFFER);
+var HASH_U32 = new Uint32Array(HASH_BUFFER);
+var HASH_PRIME_A = 16777619;
+var HASH_PRIME_B = 2246822507;
+
+function mixHash(hash, value, prime) {
+	HASH_F64[0] = value;
+	hash = Math.imul(hash ^ HASH_U32[0], prime);
+	hash = Math.imul(hash ^ HASH_U32[1], prime);
+	return hash >>> 0;
+}
+
 var PTS = {
 	n: 0,
 	x: null, y: null, e: null,      // km, km (depth), asinh(y/yLin) — e is carried, not derived
@@ -136,7 +151,7 @@ var PTS = {
 		this.empty = 0; this.clamp = 0; this.ledger = 0; this.wall = 0;
 		this.moved = 0; this.redeals = 0; this.csN = 0;
 		this.Tg.fill(0); this.mug.fill(0); this.Mg.fill(0); this.MgS.fill(0); this.rowT.fill(0);
-		this.age.fill(0); this.mu.fill(0); this.dmg.fill(0);
+		this.age.fill(0); this.mu.fill(0); this.dmg.fill(0); this.cl.fill(-1);
 		this.pLoad.fill(0); this.pCnt.fill(0);
 		this.u.fill(0); this.v.fill(0);
 		// a fresh planet is flat: the horizon relaxes up from the reference sea level as the
@@ -202,11 +217,31 @@ var PTS = {
 		}
 	},
 
-	// a fingerprint of the state, for "did this frame change anything" checks
+	// a deterministic fingerprint for replay, pause and view-mutation checks. Include the
+	// material, mechanical and surface state: a marker-only checksum misses a changed relief
+	// profile or a different plate failure history.
 	hash: function () {
-		var s = 0, i;
-		for (i = 0; i < this.n; i += 7) s += this.x[i] * 1.7 + this.y[i] * 0.3 + this.T[i] * 31.1;
-		return (s % 1e9) + this.n;
+		var a = 2166136261, b = 2654435769, p, i, n = this.n;
+		a = mixHash(a, n, HASH_PRIME_A); b = mixHash(b, n, HASH_PRIME_B);
+		for (p = 0; p < n; p++) {
+			a = mixHash(a, this.x[p], HASH_PRIME_A); b = mixHash(b, this.x[p], HASH_PRIME_B);
+			a = mixHash(a, this.y[p], HASH_PRIME_A); b = mixHash(b, this.y[p], HASH_PRIME_B);
+			a = mixHash(a, this.e[p], HASH_PRIME_A); b = mixHash(b, this.e[p], HASH_PRIME_B);
+			a = mixHash(a, this.T[p], HASH_PRIME_A); b = mixHash(b, this.T[p], HASH_PRIME_B);
+			a = mixHash(a, this.m[p], HASH_PRIME_A); b = mixHash(b, this.m[p], HASH_PRIME_B);
+			a = mixHash(a, this.vx[p], HASH_PRIME_A); b = mixHash(b, this.vx[p], HASH_PRIME_B);
+			a = mixHash(a, this.vy[p], HASH_PRIME_A); b = mixHash(b, this.vy[p], HASH_PRIME_B);
+			a = mixHash(a, this.age[p], HASH_PRIME_A); b = mixHash(b, this.age[p], HASH_PRIME_B);
+			a = mixHash(a, this.mu[p], HASH_PRIME_A); b = mixHash(b, this.mu[p], HASH_PRIME_B);
+			a = mixHash(a, this.dmg[p], HASH_PRIME_A); b = mixHash(b, this.dmg[p], HASH_PRIME_B);
+			a = mixHash(a, this.cl[p], HASH_PRIME_A); b = mixHash(b, this.cl[p], HASH_PRIME_B);
+		}
+		if (this.zh) for (i = 0; i < this.zh.length; i++) {
+			a = mixHash(a, this.zh[i], HASH_PRIME_A); b = mixHash(b, this.zh[i], HASH_PRIME_B);
+		}
+		a = mixHash(a, this.ledger, HASH_PRIME_A); b = mixHash(b, this.ledger, HASH_PRIME_B);
+		a = mixHash(a, this.wall, HASH_PRIME_A); b = mixHash(b, this.wall, HASH_PRIME_B);
+		return a * 2097152 + (b & 0x1fffff);
 	}
 };
 

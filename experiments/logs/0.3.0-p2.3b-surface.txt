@@ -1,8 +1,13 @@
   surface: P2.3 relief, mesh 256x24, wrap 16000 km
     iso 0.09 / 150 km, dyn 0.3, lid/rift 0.05/2, crust/orogen depth 250/80 km
     collision 45 km Myr, yield 0.03 /Myr, cap 8 km, flex 4, relax 1.5 Myr
-    erosion 20 km2/Myr, slope scale 0.025
+    profile diffusion 20 km2/Myr, slope scale 0.025
 
+
+deterministic state fingerprint
+PASS  the same seed replays the complete particle and surface state   fingerprints 4086729653685774 / 4086729653685774
+PASS  a changed relief profile changes the state fingerprint
+PASS  a changed plate-damage state changes the fingerprint
 
 the target law: a hand-built state reads the independent formula
 PASS  a hot column rises by kIso * sum(dT * dy) through the filter   rel 1.28e-15  got 1.27675647831893e-15 km  want 0
@@ -19,14 +24,14 @@ PASS  convergence raises a broad crest, not a single-column needle   crest 1.77 
 PASS  relative motion inside one rigid cluster does not build a range   max |zh| 0.00e+0 km
 PASS  a divergent boundary does not uplift   divergent -0.03 km, convergent wrap seam 1.77 km
 
-slope-dependent erosion smooths sharp relief and conserves the mean
-PASS  erosion lowers a one-cell crest and deposits into its neighbours   crest 4.000->3.897 km, shoulder -0.016->0.036 km
-PASS  periodic erosion keeps the sea-level mean at zero   mean 2.57e-17 km
-PASS  erosion does not create a new undershoot   min -0.0157 km from -0.0157 km
+profile diffusion rounds sharp relief and conserves mean elevation
+PASS  diffusion lowers a one-cell crest and raises adjacent elevations   crest 4.000->3.897 km, shoulder -0.016->0.036 km
+PASS  periodic diffusion keeps the sea-level mean at zero   mean 2.57e-17 km
+PASS  diffusion does not create a new undershoot   min -0.0157 km from -0.0157 km
 PASS  a flat quiet planet reads zero   max |zh| 0.00e+0 km
 
 the live run: swells, basins and trenches at 250 Myr
-  spin-up to 250.0 Myr in 59.1 s
+  spin-up to 250.0 Myr in 60.8 s
 PASS  hot upwelling columns stand above the cold basins   hot 2.41 km vs cold -7.67 km
 PASS  the most convergent columns are the deepest trenches   mean zh -8.07 km, deepest -9.03 km
 PASS  and the most divergent ones are swells   divergent 2.65 km vs cold -7.67 km
@@ -50,8 +55,8 @@ PASS  and the push is capped at vPushMax   rel 0.00e+0  got 15 km/Myr  want 15
 
 the price: no per-frame allocation
 PASS  the surface kernel and the warped view construct no arrays per frame   0 typed arrays over 400 frames
-PASS  and grow no ArrayBuffer memory   arrayBuffers 0 bytes, heap -762936 bytes over 400 frames
+PASS  and grow no ArrayBuffer memory   arrayBuffers 0 bytes, heap 1343352 bytes over 400 frames
 
-  total 59.6 s of spin-ups
+  total 61.2 s of spin-ups
 
-ALL PASS (33 checks)
+ALL PASS (36 checks)

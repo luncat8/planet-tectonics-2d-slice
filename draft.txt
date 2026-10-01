@@ -19,3 +19,11 @@ make good collision of plates. need thing how plates and layers push each other 
 ## make new plan of new engine html.
 because current plate collision and eruptions not for all purposes - we plan to make new engine that operate with particles. hybrid: fluid is grid and particles, solid are particles. so plates formed emergent from particles while planet cool, formed some smooth connections with strength proportional to temperature (and age). choose arbitrary demonstration time scale for particles to be visible convection, plumes and eruptions.
 
+## >0.3
+
+need to update index.html because we left it behind particle.html
+
+need to plan sync/exchange features with base project https://github.com/luncat8/planet-geotectonics
+
+and plan to pick slice from top-view map: like draw line on top view map and reconstruct cross-section in this project.
+for some later version like 0.9 plan to have integrated globe with working together top view simulation and one of cross-section in sync

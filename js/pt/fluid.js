@@ -157,25 +157,27 @@ var F = {
 		a = 1 - Math.exp(-dt / P.tauSurf);
 		for (i = 0; i < nx; i++) zh[i] += a * (zr[i] - zh[i]);
 
-		// A conservative nonlinear diffusion transports material downhill. The capped slope
-		// multiplier makes sharp one-cell peaks erode faster than broad, low-gradient swells.
+		// A conservative nonlinear diffusion redistributes profile elevation downhill. It is
+		// a topographic proxy only: no marker mass moves and no sediment is created here.
+		// The capped slope multiplier rounds sharp crests faster than broad, low-gradient swells.
 		dtDx2 = dt / (dx * dx);
 		for (i = 0; i < nx; i++) {
 			im = i === 0 ? nx - 1 : i - 1;
 			ip = i + 1 === nx ? 0 : i + 1;
 			slope = (zh[i] - zh[im]) / dx;
-			ratio = Math.abs(slope) / P.slopeErode;
+			ratio = Math.abs(slope) / P.slopeProfileDiff;
 			if (ratio > 2) ratio = 2;
-			dL = P.kErode * (1 + ratio * ratio);
+			dL = P.kProfileDiff * (1 + ratio * ratio);
 			slope = (zh[ip] - zh[i]) / dx;
-			ratio = Math.abs(slope) / P.slopeErode;
+			ratio = Math.abs(slope) / P.slopeProfileDiff;
 			if (ratio > 2) ratio = 2;
-			dR = P.kErode * (1 + ratio * ratio);
+			dR = P.kProfileDiff * (1 + ratio * ratio);
 			zt[i] = zh[i] + dtDx2 * (dR * (zh[ip] - zh[i]) - dL * (zh[i] - zh[im]));
 		}
 		for (i = 0; i < nx; i++) zh[i] = zt[i];
 
-		// The zero mean is the sea-level datum; periodic erosion conserves it apart from roundoff.
+		// The zero mean is the sea-level datum; periodic profile diffusion conserves it apart
+		// from roundoff. This is not a particle-mass or sediment ledger.
 		mean = 0;
 		for (i = 0; i < nx; i++) mean += zh[i];
 		mean /= nx;

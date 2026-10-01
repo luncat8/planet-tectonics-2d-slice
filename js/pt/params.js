@@ -141,8 +141,9 @@ var PTP = {
 	vPushMax: 15,                // km/Myr (1.5 cm/yr), ridge-push velocity cap
 	tauSurf: 1.5,                // Myr, relaxation of zh toward the filtered target
 	lFlex: 4,                    // passes of the periodic [1,2,1]/4 flexural filter
-	kErode: 20,                  // km2/Myr; a 4 km sharp crest drops 0.103 km in 0.5 Myr
-	slopeErode: 0.025,           // slope where nonlinear erosion begins to accelerate
+	kProfileDiff: 20,           // km2/Myr; profile-only diffusivity, calibrated by pt-surface.js
+	slopeProfileDiff: 0.025,    // slope scale for profile diffusion; this does not move particles
+	                             // P4 material erosion/deposition needs a separate mass transfer
 	// the view warps by kRelief * zh, damped with depth; zVisMax clips outlier relief before
 	// exaggeration so a deep rift cannot fill the lid camera with ocean.
 	yTaper: 120,                 // km, e-folding depth of the view's terrain warp
