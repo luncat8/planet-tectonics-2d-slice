@@ -44,11 +44,11 @@ var PTS = {
 	csM: null, csX: null, csY: null, csVX: null, csVY: null, csW: null, csR2: null,
 	csS: null, csP: null, csCnt: null,
 	csRef: null, csN: 0,            // csN: clusters of the last crust pass (plate markers only)
-	// the surface elevation profile (plan §4.5, G7): zh[i] is the horizon the view draws,
-	// zRaw the current frame's target before filtering, zSmooth the filter scratch, and
-	// hLid/rft/colM the per-column crust sample the target is built from
+	// the surface elevation profile (G7): zh is the drawn horizon, zRaw its target, and the
+	// per-column buffers hold filtered crust samples and the shallow plate boundary state
 	zh: null, zRaw: null, zSmooth: null,
-	hLid: null, hRaw: null, rft: null, colM: null, jIso: 1,
+	hLid: null, hRaw: null, rft: null, colM: null,
+	surfaceY: null, surfaceV: null, surfaceCl: null, jIso: 1,
 	bandA: null, bandP: null,       // the initial perturbation's seeded band (icT)
 	// per-frame diagnostics, mutated in place: the HUD formats them at 2 Hz
 	d: {
@@ -89,6 +89,8 @@ var PTS = {
 			this.zSmooth = new Float64Array(M.nx);
 			this.hLid = new Float64Array(M.nx); this.hRaw = new Float64Array(M.nx);
 			this.rft = new Float64Array(M.nx); this.colM = new Float64Array(M.nx);
+			this.surfaceY = new Float64Array(M.nx); this.surfaceV = new Float64Array(M.nx);
+			this.surfaceCl = new Int32Array(M.nx);
 		}
 		// the compensation depth as a node row: the last row at or above P.yIso (the top
 		// row, the surface boundary, is never included -- it carries no markers)
@@ -141,6 +143,7 @@ var PTS = {
 		// upper column's buoyancy, convergence and welded lid develop
 		this.zh.fill(0); this.zRaw.fill(0); this.zSmooth.fill(0);
 		this.hLid.fill(0); this.hRaw.fill(0); this.rft.fill(0); this.colM.fill(0);
+		this.surfaceY.fill(0); this.surfaceV.fill(0); this.surfaceCl.fill(-1);
 		for (i = 0; i < nx; i++) this.Tg[ny * nx + i] = 1;
 		this.d.nu = 0; this.d.uMax = 0; this.d.vMax = 0; this.d.wells = 0;
 		this.d.heat = 0; this.d.tMin = 0; this.d.tMax = 0; this.d.fluxTop = 0; this.d.fluxBot = 0;

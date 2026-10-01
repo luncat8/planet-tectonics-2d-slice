@@ -1,0 +1,35 @@
+  wrap: shift equivariance of the whole pipeline, 256x24, wrap 16000 km, shift 97 cells (6062.5 km)
+
+  spin-up to 200.0 Myr: plates 3, lid 9%, 50.1 s
+
+the shifted twin, shifted back, is the same run
+PASS  every marker ends at the same x (folded)   max 5.51e-9 km
+PASS  every marker ends at the same depth   max d(eta) 1.03e-12
+PASS  every marker carries the same T   max 4.13e-13
+PASS  every marker has the same strength   max 6.85e-11
+PASS  every marker has the same damage   max 6.85e-11
+
+the diagnostics do not see the shift
+PASS  same Nusselt number   rel 6.75e-14  got 28.151062823014797  want 28.15106282301473
+PASS  same peak speed   rel 3.55e-15  got 2.3310452384236764  want 2.33104523842368
+PASS  same field heat   rel 5.22e-8  got 39608496.66683733  want 39608496.666837275
+PASS  same cluster count   A 34  B 34
+PASS  same plate count   A 3  B 3
+PASS  same lid fraction   rel 0.00e+0  got 0.07680876358695653  want 0.07680876358695653
+PASS  same heat ledger   rel 4.66e-10  got -811221.6738831323  want -811221.6738831318
+PASS  same surface profile   max d(zh) 2.48e-12 km
+
+a plate across the seam is one plate
+INFO  biggest plate   999 markers, centred at 15985 km, moved by 0 cells
+PASS  the seam cuts through it (plate markers on both sides of x = 0)   left 67  right 75
+PASS  and the markers at the seam carry one cluster id   1 ids
+PASS  the biggest plate is still whole after sitting on the seam   before 999  on the seam 997
+
+the view wraps: a camera centred on the seam draws both sides
+PASS  markers are drawn left and right of the seam   left 8934  right 10921
+PASS  panning round the planet keeps the camera in [0, wrap)   cx 0.000 km
+PASS  zooming out stops at one period across   16000 km across
+
+  total 52.3 s
+
+ALL PASS (19 checks)

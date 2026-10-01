@@ -1,27 +1,14 @@
-// pt-surface.js — 0.3.0 P2.3: the surface elevation profile `S.zh[i]`, gated in the engine.
+// pt-surface.js — P2.3: the surface elevation profile `S.zh[i]`, gated in the engine.
 //
-// The plan's §4.5 claim is that the flat `eta = 0` top of a separable Stokes domain can still
-// carry a real horizon: a periodic zero-mean 1D profile built from upper-column thermal
-// isostasy, the shallow convergence's dynamic pull, and the welded lid's thickness and rift
-// damage -- and coupled back into the plates as ridge push. This fixture gates six things:
+// The flat `eta = 0` top of the Stokes domain carries a separate periodic horizon. This
+// fixture checks the independent target law (thermal/dynamic relief, filtered lid and rift
+// proxies, convergent-plate uplift), zero-mean conservation, collision geometry, erosion,
+// live swells and trenches, ridge push, the terrain warp, and the no-allocation budget.
+// Collision uplift is a proxy from plate-cluster velocities; it is not a contact or crust
+// composition model. Its role here is to build broad relief, while nonlinear diffusion rounds
+// the high-gradient part of the profile.
 //
-//   1. the law      -- each term against a hand-built state, so the *values* are pinned and
-//                      not merely the signs: the plan's §4.5 formulas are written out here
-//                      independently of the kernel and compared column by column
-//   2. the mean     -- zero to machine precision on a long live run, and a flat quiet planet
-//                      reads zero instead of walking its sea level
-//   3. the physics  -- on a live run, the hot upwelling columns stand a band above the cold
-//                      basins and the most convergent columns are the deepest trenches; the
-//                      correlation between the profile and the thermal integral is measured
-//   4. the drive    -- ridge push moves a plate down a slope by kPush * (-dzh/dx), caps at
-//                      vPushMax, and a flat planet rides the flow's mean exactly as P2.2
-//                      measured (the slab-pull unit gates must not have moved)
-//   5. the view     -- the terrain warp puts the drawn rock top where the profile says, the
-//      (pt-wrap.js)  ocean band exists only below the reference sea level, the relief toggle
-//                      is honest, and the profile itself is periodic across x = 0
-//   6. the price    -- neither the surface kernel nor the warped renderer allocates per frame
-//
-// Run: node experiments/pt-surface.js [spinMyr=250] > experiments/logs/0.3.0-p2.3-surface.txt
+// Run: node experiments/pt-surface.js [spinMyr=250] > experiments/logs/0.3.0-p2.3b-surface.txt
 'use strict';
 
 var path = require('path');
@@ -33,23 +20,24 @@ var R = require(B + 'render.js');
 
 var spin = +(process.argv[2] || 250);
 
-console.log('  surface: the P2.3 elevation profile, mesh ' + P.mesh.nx + 'x' + P.mesh.ny
-	+ ', wrap ' + P.wrap + ' km, kIso ' + P.kIso + ', yIso ' + P.yIso + ', kDyn ' + P.kDyn
-	+ ', tauSurf ' + P.tauSurf + ' Myr\n');
+console.log('  surface: P2.3 relief, mesh ' + P.mesh.nx + 'x' + P.mesh.ny + ', wrap ' + P.wrap + ' km'
+	+ '\n    iso ' + P.kIso + ' / ' + P.yIso + ' km, dyn ' + P.kDyn + ', lid/rift '
+	+ P.kLid + '/' + P.kRift + ', crust/orogen depth ' + P.yCrust + '/' + P.yOrogen + ' km'
+	+ '\n    collision ' + P.kOrogen + ' km Myr, yield ' + P.collisionYield + ' /Myr, cap '
+	+ P.zOrogenMax + ' km, flex ' + P.lFlex + ', relax ' + P.tauSurf + ' Myr'
+	+ '\n    erosion ' + P.kErode + ' km2/Myr, slope scale ' + P.slopeErode + '\n');
 
 P.ic = 'cool'; P.sl.kyr = 50; P.solid = true; P.seed = 1;
 SIM.init(); SIM.reset(); SIM.dt = 0.05;
 var M = SIM.M, nx = M.nx, ny = M.ny;
+var erosionK = P.kErode, surfaceTau = P.tauSurf, lidScale = P.kLid, riftScale = P.kRift;
+P.kErode = 0;
 
-// ---------------------------------------------------------------- the plan's formulas
-// The kernel's target, written out from §4.5 rather than called: thermal isostasy against each
-// node row's own mean, the shallow convergence times the compensation depth, the welded-lid
-// thickness anomaly minus the rift damage. The filter is the same periodic [1,2,1]/4 the plan
-// names, so this is an independent spelling of the same definition, not a re-run of the kernel.
-//
-// The one structural thing this copy pins: the crust term (raw thickness minus its own flexural
-// average) *is* the flexural response and is not filtered again, while the thermal and dynamic
-// fields are filtered once. Applying the filter twice cancelled the load's own relief.
+// ---------------------------------------------------------------- the independent target law
+// The kernel's target is spelled here without calling F.surface: linear particle-to-column
+// deposition, shallowest strong-marker plate identity, convergence uplift, the thermal and
+// dynamic terms, then the periodic flexural filter. Erosion is disabled for these target-law
+// fixtures and checked separately as an evolution step.
 function flex(M, a, tmp) {
 	var nx = M.nx, i, s, im, ip;
 	for (s = 0; s < P.lFlex; s++) {
@@ -63,27 +51,44 @@ function flex(M, a, tmp) {
 var jIso = S.jIso, i, j, p, q;
 function profile(M, S, out) {
 	var nx = M.nx, Tg = S.Tg, u = S.u, hLid = S.hLid, rft = S.rft, colM = S.colM;
-	var i, j, p, base, y, m, sum, k, im, ip, zt = S.zSmooth, tmp = new Float64Array(nx), raw = new Float64Array(nx);
-	for (i = 0; i < nx; i++) { hLid[i] = 0; rft[i] = 0; colM[i] = 0; }
+	var sy = new Float64Array(nx), sv = new Float64Array(nx), sc = new Int32Array(nx);
+	var i, j, p, base, y, x, fx, w0, w1, m, sum, k, im, ip;
+	var zt = S.zSmooth, tmp = new Float64Array(nx);
+	for (i = 0; i < nx; i++) {
+		hLid[i] = 0; rft[i] = 0; colM[i] = 0; out[i] = 0;
+		sy[i] = 1e9; sv[i] = 0; sc[i] = -1;
+	}
 	for (p = 0; p < S.n; p++) {
 		y = S.y[p];
 		if (y > P.yCrust) continue;
-		i = Math.round(S.x[p] / M.dx); i -= Math.floor(i / nx) * nx;
-		m = S.m[p];
-		hLid[i] += m * S.mu[p]; rft[i] += m * S.dmg[p]; colM[i] += m;
+		x = S.x[p] / M.dx; i = Math.floor(x); fx = x - i;
+		i -= Math.floor(i / nx) * nx; ip = i + 1 === nx ? 0 : i + 1;
+		w0 = 1 - fx; w1 = fx; m = S.m[p];
+		hLid[i] += m * S.mu[p] * w0; hLid[ip] += m * S.mu[p] * w1;
+		rft[i] += m * S.dmg[p] * w0; rft[ip] += m * S.dmg[p] * w1;
+		colM[i] += m * w0; colM[ip] += m * w1;
+		if (y > P.yOrogen || S.cl[p] < 0 || S.mu[p] < P.clusterMin) continue;
+		i = Math.round(x); i -= Math.floor(i / nx) * nx;
+		if (y >= sy[i]) continue;
+		sy[i] = y; sv[i] = S.vx[p]; sc[i] = S.cl[p];
 	}
 	for (i = 0; i < nx; i++) {
 		hLid[i] /= M.dx;
 		if (colM[i] > 0) rft[i] /= colM[i];
-		else { rft[i] = i > 0 ? rft[i - 1] : 0; hLid[i] = i > 0 ? hLid[i - 1] : 0; }
 	}
-	// the thickness anomaly against its own flexural average: `raw` is the unfiltered field,
-	// which is the whole point of the term (the average alone carries no anomaly at all).
-	// This term *is* the flexural response, so it is not put through the filter below
-	raw.set(hLid);
+	for (i = 0; i < nx; i++) {
+		ip = i + 1 === nx ? 0 : i + 1;
+		if (sc[i] < 0 || sc[ip] < 0 || sc[i] === sc[ip]) continue;
+		k = (sv[i] - sv[ip]) / M.dx - P.collisionYield;
+		if (k <= 0) continue;
+		k *= P.kOrogen;
+		if (k > P.zOrogenMax) k = P.zOrogenMax;
+		out[i] += 0.5 * k; out[ip] += 0.5 * k;
+	}
+	flex(M, out, tmp);
 	flex(M, hLid, tmp);
-	for (i = 0; i < nx; i++) out[i] = P.kLid * (raw[i] - hLid[i]) - P.kRift * rft[i];
-	// the thermal and dynamic part, then one flexural filter over that field alone
+	flex(M, rft, tmp);
+	for (i = 0; i < nx; i++) out[i] += P.kLid * hLid[i] - P.kRift * rft[i];
 	for (i = 0; i < nx; i++) zt[i] = 0;
 	for (j = 1; j <= S.jIso; j++) {
 		base = j * nx; sum = 0;
@@ -119,8 +124,8 @@ function maxAbsDiff(a, b) {
 	return m;
 }
 
-// ---------------------------------------------------------------- 1. the three terms
-check.section('the law: a hand-built state reads the plan\'s formula');
+// ---------------------------------------------------------------- 1. the target law
+check.section('the target law: a hand-built state reads the independent formula');
 
 // thermal: one hot column over a uniform field. The profile carries it as
 // kIso * sum_j (Tg - rowMean) * jN * dEta, exactly before the filter and the mean
@@ -134,9 +139,8 @@ S.zh.fill(0);
 settle();
 var want = profile(M, S, new Float64Array(nx));
 check.near('a hot column rises by kIso * sum(dT * dy) through the filter', maxAbsDiff(S.zh, want), 0, 1e-6, 'km');
-// a single column is narrower than the flexural filter, so the fixed point is the filtered
-// value (0.375 of the raw law for 3 passes), not the raw one -- the near() above is what pins
-// the formula, this pins the sign and the scale of the visible result
+// the single-column anomaly is spread by the flexural filter; the near() above pins its
+// exact filtered value, while this pins the sign and a visible minimum scale
 check.ok('and it rises', S.zh[hot] > 0.25, 'zh ' + S.zh[hot].toFixed(2) + ' km at the column, '
 	+ S.zh[(hot + 8) % nx].toFixed(2) + ' km eight columns away');
 
@@ -163,31 +167,90 @@ check.ok('the deepest column is the most convergent one',
 	'dzh/dx ' + ((S.u[ip] - S.u[im]) / (2 * M.dx)).toFixed(4) + ' /Myr at column ' + lowI
 	+ ', zh ' + low.toFixed(2) + ' km');
 
-// crust: a thick welded band stands high, a fully damaged seam notches
+// crust proxy: a broad welded region lifts, while a damaged seam lowers its centre without
+// the old thickness-minus-flexure high-pass moats
 SIM.reset(); SIM.dt = 0.5;
-S.u.fill(0);
+S.cl.fill(-1); S.u.fill(0);
 for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) S.Tg[j * nx + i] = 0.5;
-// mu is the welding strength, so hLid reads the welded thickness of the column at the scale of
-// a young lid: 0.02 of the 250 km sample is ~5 km, and a 3-column band at 0.06 is ~14 km -- the
-// same 10 km step a real arc has. The term is a *flexural anomaly*, so only features narrower
-// than lFlex columns carry it: a plateau wider than the flexural wavelength has no local
-// anomaly to be supported by flexure, and real crustal thickness is P3's (see the plan)
 S.mu.fill(0.02); S.dmg.fill(0);
-var band = [(nx >> 2), (nx >> 2) + 1, (nx >> 2) + 2], seam = [(nx >> 2) + 1];
+var bandStart = nx >> 2, bandWidth = 12, seam = bandStart + 6, col;
 for (p = 0; p < S.n; p++) {
-	i = Math.round(S.x[p] / M.dx); i -= Math.floor(i / nx) * nx;
 	if (S.y[p] > P.yCrust) continue;
-	if (band.indexOf(i) >= 0) S.mu[p] = 0.06;            // a thicker welded lid: it stands
-	if (seam.indexOf(i) >= 0) S.dmg[p] = 1;              // and its middle is rifted apart
+	col = Math.round(S.x[p] / M.dx); col -= Math.floor(col / nx) * nx;
+	if (col >= bandStart && col < bandStart + bandWidth) S.mu[p] = 0.06;
+	if (col === seam) S.dmg[p] = 1;
 }
 S.zh.fill(0);
 settle();
 want = profile(M, S, new Float64Array(nx));
-check.near('a welded band and a damaged seam read the plan\'s crust formula', maxAbsDiff(S.zh, want), 0, 1e-6, 'km');
-check.ok('the welded band stands above its shoulders and the seam notches below them',
-	S.zh[band[0]] > 0.5 && S.zh[seam[0]] < -0.5 && S.zh[seam[0]] < S.zh[band[0]],
-	'band ' + S.zh[band[0]].toFixed(2) + ' km, seam ' + S.zh[seam[0]].toFixed(2) + ' km, shoulder '
-	+ S.zh[(nx >> 2) + 8].toFixed(2) + ' km');
+check.near('the welded-lid and rift terms match the filtered target', maxAbsDiff(S.zh, want), 0, 1e-6, 'km');
+check.ok('a thick lid makes a broad swell',
+	S.zh[bandStart + 3] > S.zh[bandStart + 20] + 0.2 && S.zh[bandStart + 9] > S.zh[bandStart + 20],
+	'band ' + S.zh[bandStart + 3].toFixed(2) + '/' + S.zh[bandStart + 9].toFixed(2)
+	+ ' km, outside ' + S.zh[bandStart + 20].toFixed(2) + ' km');
+check.ok('rift damage makes a rounded notch without high-pass side moats',
+	S.zh[seam] < S.zh[seam - 1] && S.zh[seam] < S.zh[seam + 1],
+	'notch ' + S.zh[seam].toFixed(2) + ' km, shoulders '
+	+ S.zh[seam - 1].toFixed(2) + '/' + S.zh[seam + 1].toFixed(2) + ' km');
+
+check.section('convergent plates build a smoothed mountain belt');
+P.kLid = 0; P.kRift = 0;
+function collisionState(vLeft, vRight, samePlate) {
+	SIM.reset(); SIM.dt = 0.5;
+	S.cl.fill(-1); S.mu.fill(0.8); S.dmg.fill(0); S.u.fill(0); S.vx.fill(0);
+	for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) S.Tg[j * nx + i] = 0.5;
+	for (p = 0; p < S.n; p++) {
+		var left = S.x[p] < M.wrap * 0.5;
+		S.cl[p] = samePlate ? 0 : (left ? 0 : 1);
+		S.vx[p] = left ? vLeft : vRight;
+	}
+	S.zh.fill(0);
+	settle();
+}
+var boundary = nx >> 1, beltPeak = -1e9, beltIndex = boundary, beltOutside = -1e9, d;
+collisionState(6, -6, false);
+want = profile(M, S, new Float64Array(nx));
+check.near('plates closing at 12 km/Myr follow the independent collision law', maxAbsDiff(S.zh, want), 0, 1e-6, 'km');
+for (i = 0; i < nx; i++) {
+	d = Math.abs(i - boundary); if (d > nx / 2) d = nx - d;
+	if (d <= 8 && S.zh[i] > beltPeak) { beltPeak = S.zh[i]; beltIndex = i; }
+	if (d > 8 && S.zh[i] > beltOutside) beltOutside = S.zh[i];
+}
+check.ok('convergence raises a broad crest, not a single-column needle',
+	beltPeak > 0.5 && S.zh[(beltIndex + nx - 1) % nx] > 0 && S.zh[(beltIndex + 1) % nx] > 0,
+	'crest ' + beltPeak.toFixed(2) + ' km at ' + beltIndex + ', neighbours '
+	+ S.zh[(beltIndex + nx - 1) % nx].toFixed(2) + '/' + S.zh[(beltIndex + 1) % nx].toFixed(2)
+	+ ' km, outside max ' + beltOutside.toFixed(2) + ' km');
+collisionState(6, -6, true);
+check.ok('relative motion inside one rigid cluster does not build a range',
+	maxAbsDiff(S.zh, new Float64Array(nx)) < 1e-9,
+	'max |zh| ' + maxAbsDiff(S.zh, new Float64Array(nx)).toExponential(2) + ' km');
+collisionState(-6, 6, false);
+check.ok('a divergent boundary does not uplift', S.zh[boundary] < S.zh[0],
+	'divergent ' + S.zh[boundary].toFixed(2) + ' km, convergent wrap seam ' + S.zh[0].toFixed(2) + ' km');
+P.kLid = lidScale; P.kRift = riftScale;
+
+check.section('slope-dependent erosion smooths sharp relief and conserves the mean');
+P.kErode = erosionK; P.tauSurf = 1e300;
+SIM.reset(); SIM.dt = 0.5;
+S.cl.fill(-1); S.mu.fill(0); S.dmg.fill(0); S.u.fill(0);
+for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) S.Tg[j * nx + i] = 0.5;
+S.zh.fill(-4 / (nx - 1)); S.zh[0] = 4;
+var peakBefore = S.zh[0], neighborBefore = S.zh[1], floorBefore = S.zh[1];
+F.surface(M, S, 0.5);
+mean = 0;
+for (i = 0; i < nx; i++) mean += S.zh[i];
+mean /= nx;
+check.ok('erosion lowers a one-cell crest and deposits into its neighbours',
+	S.zh[0] < peakBefore - 0.05 && S.zh[1] > neighborBefore + 0.02
+		&& Math.abs(S.zh[1] - S.zh[nx - 1]) < 1e-12,
+	'crest ' + peakBefore.toFixed(3) + '->' + S.zh[0].toFixed(3) + ' km, shoulder '
+	+ neighborBefore.toFixed(3) + '->' + S.zh[1].toFixed(3) + ' km');
+check.ok('periodic erosion keeps the sea-level mean at zero', Math.abs(mean) < 1e-12,
+	'mean ' + mean.toExponential(2) + ' km');
+check.ok('erosion does not create a new undershoot', Math.min.apply(null, S.zh) >= floorBefore - 1e-9,
+	'min ' + Math.min.apply(null, S.zh).toFixed(4) + ' km from ' + floorBefore.toFixed(4) + ' km');
+P.tauSurf = surfaceTau; P.kErode = erosionK;
 
 // a flat, quiet planet must read zero: the profile is relative, so nothing to compensate is
 // nothing to draw, and a stale sea level would be a fake ocean
@@ -254,6 +317,17 @@ check.ok('the mean elevation is zero to machine precision after a live run',
 check.ok('the profile stays inside the drawn band', Math.max.apply(null, zh) < P.zVisMax
 	&& Math.min.apply(null, zh) > -3 * P.zVisMax,
 	'zh ' + Math.min.apply(null, zh).toFixed(2) + '..' + Math.max.apply(null, zh).toFixed(2) + ' km');
+var activeOrogen = 0, maxClosure = 0, closure;
+for (i = 0; i < nx; i++) {
+	ip = i + 1 === nx ? 0 : i + 1;
+	if (S.surfaceCl[i] < 0 || S.surfaceCl[ip] < 0 || S.surfaceCl[i] === S.surfaceCl[ip]) continue;
+	closure = (S.surfaceV[i] - S.surfaceV[ip]) / M.dx;
+	if (closure <= P.collisionYield) continue;
+	activeOrogen++;
+	if (closure > maxClosure) maxClosure = closure;
+}
+check.ok('the live run contains active convergent plate boundaries', activeOrogen > 0,
+	activeOrogen + ' edges, max closure ' + maxClosure.toFixed(3) + ' /Myr');
 
 // ---------------------------------------------------------------- 3. the view
 check.section('the view: the drawn horizon, the ocean band and the warp');

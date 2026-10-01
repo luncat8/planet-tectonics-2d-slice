@@ -117,46 +117,34 @@ var PTP = {
 	// surface relief (plan §4.5, §8 P2.3). The Stokes domain keeps its flat coordinate top
 	// eta = 0 -- the FFT + Thomas solve needs it -- and the visible horizon is this separate
 	// periodic 1D profile S.zh[i]: km above the reference sea level y = 0, zero horizontal
-	// mean. Three terms, and all three scales come from a measurement rather than a knob:
-	//   thermal / Pratt isostasy over the upper yIso km against the same rows' horizontal
-	//   mean, with the rock's own expansion: kIso = alpha * dT = 3e-5 /K * 3000 K. Measured,
-	//   the upper-column integral runs -50..+20 km*T over a run, which after the filter puts
-	//   swells at +2.3 and the cold plains at -3 km -- the plan's band;
-	//   dynamic: the shallowest cell row's horizontal convergence, scaled by kDyn * yIso,
-	//   because incompressibility makes the vertical flow at the compensation depth
-	//   v = -(du/dx) * y. The plan's form on the *vertical* velocity at node row 1 is not
-	//   usable at all: that row sits inside the welded lid, where the measured v is 0.03-0.4
-	//   km/Myr against uMax 20, and it would leave every trench flat. kDyn is the one
-	//   calibrated number in this block, set so the trenches land inside the plan's band;
-	//   crust: the column's welded-lid thickness anomaly (a narrow thick margin stands high)
-	//   minus its shallow rift damage (a necked seam notches down). It is a *flexural*
-	//   anomaly against the column's own smoothed thickness, so a feature wider than the
-	//   flexural wavelength carries nothing: a broad plateau needs real crustal thickness,
-	//   which is P3's comp[i], not this proxy.
-	// The profile relaxes toward that target over tauSurf after a flexural filter, so the
-	// horizon moves with the geologic clock rather than with one frame's noise.
+	// mean. Its target combines upper-column thermal isostasy, shallow dynamic stress, a
+	// low-pass welded-lid/rift proxy and compression at converging plate-cluster boundaries.
+	// The particle samples are linearly splatted in x; every target term is flexurally filtered
+	// before the horizon relaxes toward it, so narrow marker-bin spikes do not become peaks.
+	// A conservative slope-dependent diffusion then transports relief from steep crests into
+	// adjacent lows. Collision uplift is a kinematic proxy, not a contact solve: the present
+	// solid model has no continental/oceanic crust distinction or inter-plate collision force.
 	kIso: 0.09,                  // km of relief per (normalised T * km) over the compensation
 	yIso: 150,                   // km, thermal compensation depth of the profile
-	kDyn: 0.3,                   // 0.3: measured, the deepest trench of a 300 Myr run reads
-	                             // zh -8.7 km and the deepest 5% -8.0, inside the plan's -4..-8
-	                             // band (at 1.0 it read -16 km, because the thermal and the
-	                             // dynamic term correlate at a convergent margin and charge the
-	                             // same column twice: the deepest columns read thermal -6.1
-	                             // against dynamic -10.1)
-	kLid: 0.35,                  // km of relief per km of welded-lid thickness anomaly
-	kRift: 2.0,                  // km of graben at unit shallow damage
+	kDyn: 0.3,                   // measured so the dynamic trench term stays in the model's
+	                             // target relief band without overwhelming thermal isostasy
+	kLid: 0.05,                  // km of relief per km of the lid proxy; a 12-column band rises ~0.4 km
+	kRift: 2.0,                  // km of graben at unit smoothed shallow damage
 	yCrust: 250,                 // km, depth of the column sample the crust terms read
+	yOrogen: 80,                 // km, upper layer sampled for surface plate motion
+	kOrogen: 45,                 // km Myr; a 12 km/Myr collision fixture makes a 1.77 km crest
+	collisionYield: 0.03,        // 1/Myr: ignore small within-plate velocity gradients
+	zOrogenMax: 8,               // km, cap per convergent plate boundary before smoothing
 	kPush: 3000,                 // km/Myr of ridge push per unit surface slope (-dzh/dx):
 	                             // the measured swell slope is 0.002-0.005, so a full plate's
 	                             // push lands in the 1 cm/yr band, next to the slab pull
 	vPushMax: 15,                // km/Myr (1.5 cm/yr), ridge-push velocity cap
-	tauSurf: 1.5,                // Myr, relaxation of zh toward its target
-	lFlex: 3,                    // passes of the periodic [1,2,1]/4 flexural filter
-	// the view warps by kRelief * zh, damped with depth. zVisMax clips the *physical* profile
-	// before the exaggeration: the deepest column of a 250 Myr run measures -12 km (a failed
-	// rift that became the downwelling), and at 3x that is a 150 px band of ocean in the lid
-	// preset, which reads as a hole rather than as a trench. The clip never bites the
-	// swells, so it costs no ridge relief.
+	tauSurf: 1.5,                // Myr, relaxation of zh toward the filtered target
+	lFlex: 4,                    // passes of the periodic [1,2,1]/4 flexural filter
+	kErode: 20,                  // km2/Myr; a 4 km sharp crest drops 0.103 km in 0.5 Myr
+	slopeErode: 0.025,           // slope where nonlinear erosion begins to accelerate
+	// the view warps by kRelief * zh, damped with depth; zVisMax clips outlier relief before
+	// exaggeration so a deep rift cannot fill the lid camera with ocean.
 	yTaper: 120,                 // km, e-folding depth of the view's terrain warp
 	kRelief: 2,                  // visual exaggeration of zh in the view: the lid camera's own
 	                             // asinh metric puts the top rows at ~0.5 km per raster row, so

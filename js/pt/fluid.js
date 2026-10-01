@@ -75,61 +75,67 @@ var F = {
 		mg.set(out);
 	},
 
-	// G7: the surface elevation profile (plan §4.5, §5, P2.3). The Stokes domain keeps its
-	// flat coordinate top eta = 0 -- the separable FFT + Thomas solve needs it -- so the
-	// visible horizon is a separate periodic 1D field: zh[i] in km above the reference sea
-	// level y = 0, zero horizontal mean, relaxed toward the three-term target of params.js
-	// over tauSurf.
-	//
-	// It is a *relative* field on purpose. The thermal term is taken against each node row's
-	// own horizontal mean, which makes the domain's sum zero by construction, and the crust
-	// term against the smoothed column thickness, so a broad uniform lid carries no relief at
-	// all: only the contrasts -- a plume swell against an old basin, an arc against its
-	// back-arc, a rift neck against its shoulders -- become elevation. The rock is moved by
-	// the slack in the convection, not by its own weight.
-	//
-	// Nothing here touches T, m or the markers' positions, so the heat ledger is untouched;
-	// the only coupling back into the physics is the ridge push (solid.js kinematics), which
-	// reads zh[] as a slope.
+	// G7: a separate periodic horizon keeps the separable Stokes domain's coordinate top flat.
+	// Its filtered target combines thermal buoyancy, shallow dynamic stress, the welded-lid
+	// and rift proxies, and uplift where distinct plate clusters converge. A conservative,
+	// slope-dependent hillslope flux rounds the resulting profile without changing its mean.
+	// This surface model never changes marker positions, temperature or mass; ridge push is
+	// the only mechanical feedback, read by solid.js on the next frame.
 	surface: function (M, S, dt) {
 		if (!(dt > 0) || !S.n) return;
 		var nx = M.nx, dx = M.dx, dEta = M.dEta;
 		var Tg = S.Tg, zh = S.zh, zr = S.zRaw, zt = S.zSmooth, u = S.u;
 		var hLid = S.hLid, hRaw = S.hRaw, rft = S.rft, colM = S.colM;
-		var i, j, p, base, y, m, sum, mean, k, a, im, ip;
+		var i, j, p, base, y, x, fx, w0, w1, m, sum, mean, k, a, im, ip;
+		var sY = S.surfaceY, sV = S.surfaceV, sCl = S.surfaceCl;
+		var slope, ratio, dL, dR, dtDx2;
 
-		// the column sample, top yCrust km only: welded lid thickness (mass * strength,
-		// divided back out by dx: a fully welded column of thickness Y reads Y) and the
-		// mass-weighted shallow damage
-		for (i = 0; i < nx; i++) { hLid[i] = 0; rft[i] = 0; colM[i] = 0; }
+		for (i = 0; i < nx; i++) {
+			hLid[i] = 0; rft[i] = 0; colM[i] = 0; zr[i] = 0;
+			sY[i] = 1e9; sV[i] = 0; sCl[i] = -1;
+		}
+		// Conservative linear splatting avoids the one-column histogram that made the crust
+		// term grow narrow ridges out of marker sampling noise. The shallowest strong marker
+		// also identifies each column's surface plate for the collision pass.
 		for (p = 0; p < S.n; p++) {
 			y = S.y[p];
 			if (y > P.yCrust) continue;
-			i = Math.round(S.x[p] / dx);
+			x = S.x[p] / dx;
+			i = Math.floor(x); fx = x - i;
 			i -= Math.floor(i / nx) * nx;
-			m = S.m[p];
-			hLid[i] += m * S.mu[p];
-			rft[i] += m * S.dmg[p];
-			colM[i] += m;
+			ip = i + 1 === nx ? 0 : i + 1;
+			w0 = 1 - fx; w1 = fx; m = S.m[p];
+			hLid[i] += m * S.mu[p] * w0; hLid[ip] += m * S.mu[p] * w1;
+			rft[i] += m * S.dmg[p] * w0; rft[ip] += m * S.dmg[p] * w1;
+			colM[i] += m * w0; colM[ip] += m * w1;
+			if (y > P.yOrogen || S.cl[p] < 0 || S.mu[p] < P.clusterMin) continue;
+			i = Math.round(x);
+			i -= Math.floor(i / nx) * nx;
+			if (y >= sY[i]) continue;
+			sY[i] = y; sV[i] = S.vx[p]; sCl[i] = S.cl[p];
 		}
-		// a column the sample missed takes its neighbour's thickness rather than reading as a
-		// hole in the plate: the profile is a smooth horizon, not a marker histogram
 		for (i = 0; i < nx; i++) {
 			hLid[i] /= dx;
 			if (colM[i] > 0) rft[i] /= colM[i];
-			else { rft[i] = i > 0 ? rft[i - 1] : 0; hLid[i] = i > 0 ? hLid[i - 1] : 0; }
 		}
-		// the thickness *anomaly* against its own flexural average: hRaw keeps the raw welded
-		// thickness, hLid comes back as the average flexure would give it. That difference is
-		// the flexural response itself, so this term is *not* filtered again below -- doing so
-		// applied the plate's stiffness twice and cancelled the load (measured: a 14 km band
-		// read as a 0.1 km ripple with +-1.3 km side lobes around it)
-		hRaw.set(hLid);
-		flex(nx, hLid, zt, P.lFlex);
-		for (i = 0; i < nx; i++) zr[i] = P.kLid * (hRaw[i] - hLid[i]) - P.kRift * rft[i];
 
-		// thermal isostasy: the column's temperature anomaly against its own rows' means,
-		// integrated to the compensation depth
+		// Shortening between distinct, strong surface clusters adds a broad orogenic load.
+		// The source is shared across the boundary's two columns and capped before filtering.
+		for (i = 0; i < nx; i++) {
+			ip = i + 1 === nx ? 0 : i + 1;
+			if (sCl[i] < 0 || sCl[ip] < 0 || sCl[i] === sCl[ip]) continue;
+			k = (sV[i] - sV[ip]) / dx - P.collisionYield;
+			if (k <= 0) continue;
+			k *= P.kOrogen;
+			if (k > P.zOrogenMax) k = P.zOrogenMax;
+			zr[i] += 0.5 * k; zr[ip] += 0.5 * k;
+		}
+		flex(nx, zr, hRaw, P.lFlex);
+		flex(nx, hLid, hRaw, P.lFlex);
+		flex(nx, rft, hRaw, P.lFlex);
+		for (i = 0; i < nx; i++) zr[i] += P.kLid * hLid[i] - P.kRift * rft[i];
+
+		// Thermal isostasy against each upper node row's horizontal mean.
 		for (i = 0; i < nx; i++) zt[i] = 0;
 		for (j = 1; j <= S.jIso; j++) {
 			base = j * nx; sum = 0;
@@ -138,25 +144,38 @@ var F = {
 			k = P.kIso * M.jN[j] * dEta;
 			for (i = 0; i < nx; i++) zt[i] += k * (Tg[base + i] - sum);
 		}
-		// dynamic: the shallowest cell row's horizontal convergence, times the compensation
-		// depth -- the vertical flow that convergence implies at yIso, by incompressibility
+		// Dynamic stress from the shallow horizontal convergence, scaled by yIso.
 		k = P.kDyn * P.yIso / (2 * dx);
 		for (i = 0; i < nx; i++) {
 			im = i === 0 ? nx - 1 : i - 1;
 			ip = i + 1 === nx ? 0 : i + 1;
 			zt[i] += k * (u[ip] - u[im]);
 		}
-		// one flexural filter over the thermal and dynamic part, which is the field that needs
-		// it. hRaw is spent by now, so it serves as the scratch and hLid keeps the smoothed
-		// thickness for the diagnostics
 		flex(nx, zt, hRaw, P.lFlex);
 		for (i = 0; i < nx; i++) zr[i] += zt[i];
 
 		a = 1 - Math.exp(-dt / P.tauSurf);
 		for (i = 0; i < nx; i++) zh[i] += a * (zr[i] - zh[i]);
-		// the zero mean, exactly: the filter and the relaxation both preserve it, but the
-		// target is re-derived from a marker field every frame and its own mean is only zero
-		// to round-off, so that residue would random-walk the sea level
+
+		// A conservative nonlinear diffusion transports material downhill. The capped slope
+		// multiplier makes sharp one-cell peaks erode faster than broad, low-gradient swells.
+		dtDx2 = dt / (dx * dx);
+		for (i = 0; i < nx; i++) {
+			im = i === 0 ? nx - 1 : i - 1;
+			ip = i + 1 === nx ? 0 : i + 1;
+			slope = (zh[i] - zh[im]) / dx;
+			ratio = Math.abs(slope) / P.slopeErode;
+			if (ratio > 2) ratio = 2;
+			dL = P.kErode * (1 + ratio * ratio);
+			slope = (zh[ip] - zh[i]) / dx;
+			ratio = Math.abs(slope) / P.slopeErode;
+			if (ratio > 2) ratio = 2;
+			dR = P.kErode * (1 + ratio * ratio);
+			zt[i] = zh[i] + dtDx2 * (dR * (zh[ip] - zh[i]) - dL * (zh[i] - zh[im]));
+		}
+		for (i = 0; i < nx; i++) zh[i] = zt[i];
+
+		// The zero mean is the sea-level datum; periodic erosion conserves it apart from roundoff.
 		mean = 0;
 		for (i = 0; i < nx; i++) mean += zh[i];
 		mean /= nx;
@@ -249,16 +268,8 @@ var F = {
 	// pt-check gates.
 };
 
-// The flexural filter of the surface profile (plan §4.5): `passes` of the periodic [1,2,1]/4
-// stencil, in place, with the caller's scratch. It is the cheap stand-in for a 1D flexure
-// solve and it is conservative -- the sum over the ring is exactly the sum that went in --
-// which is what keeps the profile's zero mean from needing a second correction.
-//
-// The result is in `a`; `tmp` is scratch and its contents afterwards are not defined. That
-// matters at the one call that needs the *input* as well: the crust term subtracts the raw
-// welded thickness from this average, so the kernel copies the raw field out first. An earlier
-// version read the scratch, which the last pass leaves equal to `a` -- the anomaly was exactly
-// zero and every welded plateau read flat, which is what pt-surface's band check catches.
+// The periodic [1,2,1]/4 flexural filter is a conservative low-pass on each surface source.
+// The result is in `a`; `tmp` is scratch and its contents afterwards are not defined.
 function flex(nx, a, tmp, passes) {
 	var i, s, im, ip;
 	for (s = 0; s < passes; s++) {
