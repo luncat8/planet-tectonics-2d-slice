@@ -1,5 +1,5 @@
 // view-check.js — the geometry, the fan stencil and the LUTs against the design
-// §1.2/§1.3/§1.4 tables. Loads the shipped js/ in index.html order through lib.js.
+// §1.2/§1.3/§1.4 tables. Loads the shipped js/ in columns.html order through lib.js.
 // Run: node experiments/view-check.js
 'use strict';
 

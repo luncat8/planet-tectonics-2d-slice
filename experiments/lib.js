@@ -1,4 +1,4 @@
-// lib.js — the node harness loader. It parses the <script src> tags of index.html and
+// lib.js — the node harness loader. It parses the <script src> tags of columns.html and
 // requires exactly that order, so node and the browser cannot drift (one source of
 // truth for load order). Also the tiny PASS/FAIL helper every experiment uses.
 //   const { mods, check } = require('./lib.js');
@@ -10,10 +10,10 @@ var path = require('path');
 var root = path.join(__dirname, '..');
 
 function scriptOrder() {
-	var html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+	var html = fs.readFileSync(path.join(root, 'columns.html'), 'utf8');
 	var re = /<script[^>]+src="([^"]+)"/g, files = [], m;
 	while ((m = re.exec(html)) !== null) files.push(m[1]);
-	if (!files.length) throw new Error('no <script src> tags found in index.html');
+	if (!files.length) throw new Error('no <script src> tags found in columns.html');
 	return files;
 }
 

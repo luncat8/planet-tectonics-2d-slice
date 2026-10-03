@@ -160,8 +160,9 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
 - a canvas polyline that `continue`s over unowned columns must track whether the path is
   open: `if (px === 0) moveTo else lineTo` draws a wrong first segment whenever column 0 is
   the one skipped (canvas promotes a leading lineTo to a moveTo, silently).
-- the smoke DOM stub reads `checked` straight out of index.html, so the shipped default of a
-  checkbox is what the headless run exercises — a flipped default fails the test, not the user.
+- the column smoke DOM stub reads `checked` straight out of columns.html, so the shipped
+  default of a checkbox is what the headless run exercises — a flipped default fails the test,
+  not the user.
 
 ## M2.2 gather / mass bookkeeping
 

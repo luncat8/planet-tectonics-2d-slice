@@ -1,10 +1,9 @@
-// pt-ui.js — the particle page's browser wiring check, the counterpart of smoke.js for
-// particles.html. It loads js/pt/* in particles.html's own order inside a vm context whose
-// DOM is parsed *from particles.html*, so a renamed id, a missing <script> or a dead button
-// fails here instead of in the browser.
+// pt-ui.js — the primary particle page's browser wiring check. It loads js/pt/* in
+// index.html's own order inside a vm context whose DOM is parsed from that page. The
+// particles.html entry remains an exact mirror, so a stale secondary URL fails here too.
 //
 // The part worth gating is the switch bar: every toggle button lights itself from the
-// renderer's own flag (aria-pressed, styled by particles.html) and every path that flips a
+// renderer's own flag (aria-pressed, styled by the page) and every path that flips a
 // flag -- the button, the keyboard, the quality cycle -- must leave the two in agreement.
 // The harness therefore drives every button and every key and reads the attribute back.
 //
@@ -17,7 +16,8 @@ var path = require('path');
 var check = require('./lib.js').check;
 
 var root = path.join(__dirname, '..');
-var html = fs.readFileSync(path.join(root, 'particles.html'), 'utf8');
+var html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+var aliasHtml = fs.readFileSync(path.join(root, 'particles.html'), 'utf8');
 
 // --- the page told the truth about its own scripts ------------------------------
 
@@ -125,11 +125,12 @@ function lit(el) { return el.attrs['aria-pressed'] === 'true'; }
 
 // --- A. the page -----------------------------------------------------------------
 
-check.section('A. page load (particles.html order, ' + ORDER.length + ' scripts)');
+check.section('A. page load (index.html order, ' + ORDER.length + ' scripts)');
+check.ok('particles.html stays in sync with the primary entry', html === aliasHtml);
 var onDisk = fs.readdirSync(path.join(root, 'js', 'pt')).filter(function (f) { return /\.js$/.test(f); })
 	.map(function (f) { return 'js/pt/' + f; });
 onDisk.push('js/perf.js');
-check.ok('particles.html loads every js/pt/*.js exactly once',
+check.ok('index.html loads every js/pt/*.js exactly once',
 	onDisk.length === ORDER.length && onDisk.every(function (f) { return ORDER.indexOf(f) >= 0; }),
 	ORDER.join(' '));
 check.ok('the DOM stub found the bar', IDS.length >= 16, IDS.join(','));
@@ -148,7 +149,7 @@ check.ok('the HUD is built', /^t .*\nNu /m.test(L.els.hud.textContent) || /Nu /.
 // --- B. the switch bar -----------------------------------------------------------
 
 check.section('B. the switch bar: every button wired, every state lit');
-check.ok('particles.html carries the lit rule', /button\[aria-pressed="true"\]/.test(html));
+check.ok('index.html carries the lit rule', /button\[aria-pressed="true"\]/.test(html));
 check.ok('every button in the bar is wired',
 	BUTTONS.every(function (id) { return typeof L.els[id].listeners.click === 'function'; }),
 	BUTTONS.join(','));

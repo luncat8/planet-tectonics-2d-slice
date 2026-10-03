@@ -96,7 +96,7 @@ SIM.k[8] = function (M, S) { F.diag(M, S); };
 if (typeof module !== 'undefined' && module.exports) module.exports = SIM;
 
 // the page bootstrap: the engine is built first, then the view and the panel, then the loop.
-// sim.js is loaded last in particles.html so both are defined by the time this runs.
+// sim.js is loaded last in both pages so PTRNDR and PTUI exist when bootstrap runs.
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 	SIM.init();
 	SIM.reset();

@@ -3,73 +3,64 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>planet tectonics — 2d slice</title>
+<title>planet tectonics — particles</title>
 <style>
 	body { margin: 0; background: #05070c; color: #9aa7bd; font: 12px/1.5 monospace; display: flex; flex-direction: column; align-items: center; }
-	/* 22 px slider + 6 px gap + 1282 px canvas box: the whole page lines up on the canvas */
-	#bar { width: 1310px; box-sizing: border-box; padding: 6px 0 6px 28px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+	#bar { width: 1282px; box-sizing: border-box; padding: 6px 0; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
 	#bar label { white-space: nowrap; }
-	input[type=range] { width: 150px; vertical-align: middle; }
+	input[type=range] { width: 220px; vertical-align: middle; }
 	button { background: #121826; color: #9aa7bd; border: 1px solid #2a3550; font: 11px monospace; padding: 1px 7px; cursor: pointer; }
 	button:hover { color: #dfe7f5; }
-	/* an enabled toggle is lit, and the state lives in the one attribute ui.js sets from the
-	   renderer's own flags: the switch, the screen reader and the CSS agree by construction */
+	/* an enabled switch is lit. The state lives in aria-pressed (set by pt/ui.js from the
+	   renderer's own flags), so the CSS rule and the screen reader read the same attribute */
 	button[aria-pressed="true"] { background: #16323c; border-color: #3f8f88; color: #d9f7ec; }
 	button[aria-pressed="true"]:hover { background: #1c4150; color: #f2fffb; }
-	input[type=checkbox] { accent-color: #3f8f88; }
-	label:has(input:checked) { color: #d9f7ec; }
-	/* the camera controls sit on the axes they scale: vertical left, horizontal below */
-	#stage { display: grid; grid-template-columns: 22px 1282px; grid-template-rows: 562px auto; column-gap: 6px; row-gap: 3px; }
-	#sVZoom { grid-area: 1 / 1; width: 22px; height: 562px; margin: 0; writing-mode: vertical-lr; direction: rtl; }
-	#wrap { grid-area: 1 / 2; position: relative; width: 1282px; height: 562px; }
-	#axis { grid-area: 2 / 2; display: flex; gap: 16px; align-items: center; }
-	#sHZoom { width: 380px; }
 	canvas { display: block; border: 1px solid #1c2438; cursor: crosshair; }
+	#wrap { position: relative; width: 1282px; height: 562px; }
 	#hud { position: absolute; left: 8px; top: 8px; white-space: pre; pointer-events: none; color: #9fd6b8; text-shadow: 0 0 3px #000; }
-	#help { width: 1310px; box-sizing: border-box; padding: 4px 0 12px 28px; color: #55637d; font-size: 11px; }
+	#keys { color: #55637d; font-size: 11px; padding: 4px 0 12px; width: 1282px; box-sizing: border-box; }
 </style>
 </head>
 <body>
 <div id="bar">
-	<label>Plates &amp; plumes <input id="sGeo" type="range" min="0" max="1000" value="0"> <span id="vGeo"></span></label>
-	<label>Lava &amp; eruptions <input id="sErupt" type="range" min="0" max="1000" value="0"> <span id="vErupt"></span></label>
-	<!-- aria-pressed is the initial state (ui.js re-asserts all of it at init from the
-	     renderer and the camera, so the markup cannot drift from the engine) -->
-	<span id="presets">
-		<button data-v="def" aria-pressed="true">default</button>
-		<button data-v="ovw" aria-pressed="false">overview</button>
-		<button data-v="cru" aria-pressed="false">crust x10</button>
-		<button data-v="bas" aria-pressed="false">basin x40</button>
+	<label>Clock <input id="sClock" type="range" min="0" max="500" value="500"> <span id="vClock"></span></label>
+	<!-- aria-pressed carries the initial state so the bar is honest before ui.js loads;
+	     syncToggles() re-asserts it from the renderer's flags at init and on every change -->
+	<button id="bPause" aria-pressed="false">pause</button>
+	<button id="bStep">step</button>
+	<button id="bReset">reset</button>
+	<button id="bNew">new planet</button>
+	<span>
+		<button id="bMark" aria-pressed="true">markers</button>
+		<button id="bMelt" aria-pressed="true">melt</button>
+		<button id="bCrust" aria-pressed="true">crust</button>
+		<button id="bRelief" aria-pressed="true">relief</button>
+		<button id="bRuler" aria-pressed="true">ruler</button>
+		<button id="bMesh" aria-pressed="false">quality 1/3</button>
 	</span>
-	<button id="bMesh" aria-pressed="false">mesh</button>
+	<span>
+		<button id="bLid" aria-pressed="false">lid</button>
+		<button id="bDeep" aria-pressed="false">deep</button>
+		<button id="bFull" aria-pressed="true">mantle</button>
+	</span>
 </div>
-<div id="stage">
-	<input id="sVZoom" type="range" min="0" max="1000" value="500" title="vertical scale">
-	<div id="wrap">
-		<canvas id="c" width="1280" height="560"></canvas>
-		<div id="hud"></div>
-	</div>
-	<div id="axis">
-		<input id="sHZoom" type="range" min="0" max="1000" value="500" title="horizontal scale">
-		<label><input id="cScale" type="checkbox" checked> scale lines</label>
-		<span id="vZoom"></span>
-	</div>
+<div id="wrap">
+	<canvas id="c" width="1280" height="560"></canvas>
+	<div id="hud"></div>
 </div>
-<div id="help">drag = pan &middot; wheel = zoom (cursor-anchored, both axes) &middot; left / bottom sliders = one axis at a time &middot; space = pause &middot; g = scale lines &middot; m = mesh (row edges, fan bands, column grid, plate boundaries) &middot; 1-4 = presets &middot; hover = geology probe</div>
-<script src="js/params.js"></script>
-<script src="js/rng.js"></script>
-<script src="js/geom.js"></script>
-<script src="js/state.js"></script>
-<script src="js/surface.js"></script>
-<script src="js/columns.js"></script>
-<script src="js/mantle.js"></script>
-<script src="js/slab.js"></script>
-<script src="js/plates.js"></script>
-<script src="js/magma.js"></script>
-<script src="js/crust.js"></script>
+<div id="keys">
+	space pause &middot; . step &middot; r reset &middot; n new planet (next seed) &middot; m markers &middot; v melt indicator &middot; c crust overlay &middot; w relief &middot; g ruler &middot; 1/2/3 quality &middot; l/d/f lid, deep, mantle &middot; wheel zoom &middot; drag pan (the map wraps round) &middot; grey = welded crust (strong markers ride rigid plates) &middot; blue = ocean over the drawn horizon &middot; melt* = pressure-release indicator, not yet conserved magma
+</div>
+<!-- classic scripts, no build, file:// safe: params first, then the engine, then the view, and
+     the UI last because sim.js's bootstrap calls PTUI and PTRNDR as soon as it loads -->
 <script src="js/perf.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/render.js"></script>
-<script src="js/sim.js"></script>
+<script src="js/pt/params.js"></script>
+<script src="js/pt/grid.js"></script>
+<script src="js/pt/state.js"></script>
+<script src="js/pt/fluid.js"></script>
+<script src="js/pt/solid.js"></script>
+<script src="js/pt/render.js"></script>
+<script src="js/pt/ui.js"></script>
+<script src="js/pt/sim.js"></script>
 </body>
 </html>

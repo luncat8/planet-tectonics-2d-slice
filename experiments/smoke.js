@@ -1,5 +1,5 @@
-// smoke.js — the browser wiring check. Loads js/* in index.html order inside a vm
-// context whose DOM is parsed *from index.html* (so a missing id or a renamed preset
+// smoke.js — the column-engine browser wiring check. Loads js/* in columns.html order
+// inside a vm context whose DOM is parsed from columns.html (so a missing id or a renamed preset
 // button fails here, not in the browser), then exercises every control and checks the
 // clocks, the view, the probe and run determinism.
 // Run: node experiments/smoke.js
@@ -12,10 +12,10 @@ var lib = require('./lib.js');
 var check = lib.check;
 
 var root = lib.root;
-var html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+var html = fs.readFileSync(path.join(root, 'columns.html'), 'utf8');
 var order = lib.scriptOrder();
 
-// --- a DOM derived from index.html ---------------------------------------------
+// --- a DOM derived from columns.html ---------------------------------------------
 
 function idsIn(src) {
 	var re = /id="([^"]+)"/g, out = [], m;
@@ -41,7 +41,7 @@ var ctx2d = new Proxy({
 	set: function (t, k, v) { t[k] = v; return true; }
 });
 
-// every attribute the element's own tag carries in index.html, so the harness reads the
+// every attribute the element's own tag carries in columns.html, so the harness reads the
 // same initial state a browser would: `checked` on the checkbox, aria-pressed on the
 // toggles. An element the page builds itself (a preset button) starts with none.
 function tagOf(id) {
@@ -56,7 +56,7 @@ function attrsIn(id) {
 	return attrs;
 }
 
-// `checked` comes from index.html itself, so the shipped default of a checkbox is what
+// `checked` comes from columns.html itself, so the shipped default of a checkbox is what
 // the headless run exercises
 function checkedIn(id) {
 	return 'checked' in attrsIn(id);
@@ -126,12 +126,12 @@ function ev(type, o) {
 	return e;
 }
 
-check.section('A. page load (index.html order, ' + order.length + ' scripts)');
+check.section('A. page load (columns.html order, ' + order.length + ' scripts)');
 var onDisk = fs.readdirSync(path.join(root, 'js')).filter(function (f) { return /\.js$/.test(f); });
-check.ok('index.html loads every js/*.js file exactly once', onDisk.length === order.length &&
+check.ok('columns.html loads every js/*.js file exactly once', onDisk.length === order.length &&
 	onDisk.every(function (f) { return order.indexOf('js/' + f) >= 0; }), order.join(' '));
-check.ok('the DOM stub found every id in index.html', IDS.length >= 8, IDS.join(','));
-check.ok('the preset buttons come from index.html', BUTTONS.length === 4, BUTTONS.join(','));
+check.ok('the DOM stub found every id in columns.html', IDS.length >= 8, IDS.join(','));
+check.ok('the preset buttons come from columns.html', BUTTONS.length === 4, BUTTONS.join(','));
 var L = load();
 check.ok('page loaded and started the frame loop', typeof L.sb.__next === 'function');
 check.ok('SIM ran a planet reset', L.sb.SIM.t === 0 && L.sb.S.nCol === 512,
@@ -224,7 +224,7 @@ check.ok('space pauses the geologic clock', L.sb.P.sl.geo === 0 && L.sb.SIM.dG =
 key(ev('keydown', { key: ' ' }));
 check.near('space resumes it', L.sb.P.sl.geo, g1, 1e-12, 'yr/f');
 var meshBtn = L.els.bMesh;
-check.ok('the mesh button is wired in index.html', typeof meshBtn.listeners.click === 'function');
+check.ok('the mesh button is wired in columns.html', typeof meshBtn.listeners.click === 'function');
 
 check.section('D2. axis scale sliders and the scale-lines toggle');
 L.sb.UI.preset('def');
@@ -245,7 +245,7 @@ check.near('a preset drives both sliders back', Number(L.els.sVZoom.value),
 	1000 * L.sb.UI.zToS(10, L.sb.GEO.zoomYMin), 1, 'slider');
 check.ok('the scale readout is built', /km\/px/.test(L.els.vZoom.textContent),
 	JSON.stringify(L.els.vZoom.textContent));
-check.ok('scale lines are on by default, as index.html says', L.sb.RNDR.showScale === true);
+check.ok('scale lines are on by default, as columns.html says', L.sb.RNDR.showScale === true);
 L.els.cScale.checked = false;
 L.els.cScale.listeners.change.call(L.els.cScale);
 check.ok('the checkbox turns the scale lines off', L.sb.RNDR.showScale === false);
@@ -254,7 +254,7 @@ check.ok('g turns them back on and re-ticks the checkbox',
 	L.sb.RNDR.showScale === true && L.els.cScale.checked === true);
 
 check.section('D3. the toggle highlight: one attribute per switch');
-check.ok('index.html carries the lit rule', /button\[aria-pressed="true"\]/.test(html));
+check.ok('columns.html carries the lit rule', /button\[aria-pressed="true"\]/.test(html));
 check.ok('the bar ships its state in the markup (a browser shows it before ui.js runs)',
 	attrsIn('bMesh')['aria-pressed'] === 'false' && attrsIn('cScale')['checked'] === '' &&
 	(html.match(/<button data-v="[a-z]+" aria-pressed="(true|false)">/g) || []).length === 4,
