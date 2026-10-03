@@ -47,6 +47,16 @@ volcano formation: lave fluid time is more like minutes or hours per frame, to b
 
 ## files
 
+pages (one engine per page, no build, file:// safe):
+- index.html - primary entry, the particle engine (js/pt/*); particles.html is a byte-identical
+mirror of it, so a descriptive URL cannot go stale. experiments/pt-ui.js gates the parity.
+- columns.html - the column engine (js/*), the earlier work; its own plans are 0.1.x and 0.2.x.
+The pages cross-link each other; keep the mirror in sync when editing index.html.
+
+harnesses (node, no runner script): experiments/pt-ui.js (page wiring, particle),
+experiments/smoke.js + view-check.js (column engine), plus the per-milestone pt-*.js checks.
+Each prints PASS/FAIL and exits non-zero on failure.
+
 findings-pitfalls-skills.md - notes and pitfalls for LLM agents. write here if found good way to do something.
 
 archive/ - for implemented plans

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>planet tectonics — particles</title>
+<title>planet tectonics — particle engine</title>
 <style>
 	body { margin: 0; background: #05070c; color: #9aa7bd; font: 12px/1.5 monospace; display: flex; flex-direction: column; align-items: center; }
 	#bar { width: 1282px; box-sizing: border-box; padding: 6px 0; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
@@ -19,6 +19,8 @@
 	#wrap { position: relative; width: 1282px; height: 562px; }
 	#hud { position: absolute; left: 8px; top: 8px; white-space: pre; pointer-events: none; color: #9fd6b8; text-shadow: 0 0 3px #000; }
 	#keys { color: #55637d; font-size: 11px; padding: 4px 0 12px; width: 1282px; box-sizing: border-box; }
+	#keys a { color: #7f8ea8; text-decoration: none; }
+	#keys a:hover { color: #dfe7f5; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -49,7 +51,7 @@
 	<div id="hud"></div>
 </div>
 <div id="keys">
-	space pause &middot; . step &middot; r reset &middot; n new planet (next seed) &middot; m markers &middot; v melt indicator &middot; c crust overlay &middot; w relief &middot; g ruler &middot; 1/2/3 quality &middot; l/d/f lid, deep, mantle &middot; wheel zoom &middot; drag pan (the map wraps round) &middot; grey = welded crust (strong markers ride rigid plates) &middot; blue = ocean over the drawn horizon &middot; melt* = pressure-release indicator, not yet conserved magma
+	space pause &middot; . step &middot; r reset &middot; n new planet (next seed) &middot; m markers &middot; v melt indicator &middot; c crust overlay &middot; w relief &middot; g ruler &middot; 1/2/3 quality &middot; l/d/f lid, deep, mantle &middot; wheel zoom &middot; drag pan (the map wraps round) &middot; grey = welded crust (strong markers ride rigid plates) &middot; blue = ocean over the drawn horizon &middot; melt* = pressure-release indicator, not yet conserved magma &middot; <a href="columns.html">column engine &rarr;</a>
 </div>
 <!-- classic scripts, no build, file:// safe: params first, then the engine, then the view, and
      the UI last because sim.js's bootstrap calls PTUI and PTRNDR as soon as it loads -->
