@@ -573,3 +573,25 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   asserts `columns.html` loads every `js/*.js` exactly once, so anything shared-identical with
   the counterpart goes in `port/`; then the manifest has one directory to list and the gate keeps
   its meaning.
+- **Two engines that share `var P` / `var S` / `var SIM` cannot share a page.** A classic
+  script's top-level `var` is a global; loading the second engine silently rewires the first.
+  The `PT*` export names are already correct — the leak is the unexported `var`s. One global per
+  file (the name it exports, everything else inside an IIFE) is the fix; it is a prerequisite of
+  a one-page 0.9, not of the cut, and wrapping every existing file while P3 is being written is
+  the expensive version of it. New files do not add a second global.
+- **The two crust engines already share an isostasy law, so a seeded `z` is an identity test.**
+  `SURF.elev` here and `Surface.elevation` there are the same expression with the same constants.
+  `|z − zM| ≤ 1e-3 m` at frame 0 is then a mapping check, not a modelling tolerance; a larger
+  error is a bug in the import, not a choice about flexure. The residual still belongs in `zDyn`.
+- **Do not vendor the other engine in order to get one page.** The globe owns the map, the grid
+  and the picker; this repository owns the section. A pinned copy of a 6 k-line engine inverts
+  that. The smaller one-page path is C1 on the column engine here and `start(host)` so the
+  globe's page can host it. Two documents plus clipboard remain the path that always works on
+  `file://`.
+- **A variable column count is not a resample.** `w0` (gap floor, flexure `kf ∝ w0²`, collapse)
+  is calibrated at 512. Following the source level (`n = records`) changes what those constants
+  mean, and at L7 the measured cell count (811) already exceeds `colCap` 768. Keep the section's
+  columns and box-filter the cut onto them.
+- **An open window must not invent crust.** Repeating the end columns to fill `[length, wrap)`
+  is a clamp that looks imported. Clock-off is the honest answer until the engine has end
+  boundary conditions.

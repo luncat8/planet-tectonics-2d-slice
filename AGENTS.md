@@ -65,6 +65,8 @@ that columns.html loads every js/*.js exactly once, and a shared format is not a
 plans: 0.4.0-sync-plan.md (what is exchanged with the reference project, in which direction),
 0.4.1-plan.md (the cut: a line on the globe's map -> a section here), 0.9.0-draft-sync.md
 (the integrated globe, later). drafts are 0.3.0-draft.md and 0.4.1-draft.md.
+roadmap.md — which release owns what, the runtime-authority table, what is deferred; each
+release's own plan is still the authority for its milestones.
 
 findings-pitfalls-skills.md - notes and pitfalls for LLM agents. write here if found good way to do something.
 
