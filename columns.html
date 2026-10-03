@@ -29,6 +29,17 @@
 	#help { width: 1310px; box-sizing: border-box; padding: 4px 0 12px 28px; color: #55637d; font-size: 11px; }
 	#help a { color: #7f8ea8; text-decoration: none; }
 	#help a:hover { color: #dfe7f5; text-decoration: underline; }
+	/* section mode (?start=section): the engine bar is the cut's bar. #slice is hidden by
+	   the CSS, so the shipped markup is honest before any script runs */
+	#slice { display: none; }
+	body.section-mode #bar > label, body.section-mode #presets, body.section-mode #bMesh { display: none; }
+	body.section-mode #slice { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; width: 100%; box-sizing: border-box; }
+	#slice label { white-space: nowrap; }
+	#slice textarea { width: 660px; height: 42px; background: #0a0f18; color: #9aa7bd; border: 1px solid #2a3550; font: 10px/1.4 monospace; padding: 3px 4px; resize: vertical; }
+	#slice input[type=file] { font: 11px monospace; color: #9aa7bd; }
+	#slice select { background: #121826; color: #9aa7bd; border: 1px solid #2a3550; font: 11px monospace; }
+	#slice #sMsg { white-space: pre-wrap; max-width: 1310px; color: #7f8ea8; }
+	#slice #sMsg.bad { color: #e08585; }
 </style>
 </head>
 <body>
@@ -44,6 +55,14 @@
 		<button data-v="bas" aria-pressed="false">basin x40</button>
 	</span>
 	<button id="bMesh" aria-pressed="false">mesh</button>
+	<!-- the Slice panel (0.4.1 M1): visible in section mode only. A paste or the button
+	     runs the load; a file and a bundled id go through the same bytes -->
+	<div id="slice">
+		<label>Paste a cut <textarea id="sText" spellcheck="false" placeholder="pgt-slice-pack JSON — draw a line on the globe, copy the slice, paste here"></textarea> <button id="sPaste">load</button></label>
+		<label>Load a cut file <input id="sFile" type="file" accept=".json,application/json"></label>
+		<label>Cut from <select id="sPick"><option value=""></option></select></label>
+		<span id="sMsg" role="status"></span>
+	</div>
 </div>
 <div id="stage">
 	<input id="sVZoom" type="range" min="0" max="1000" value="500" title="vertical scale">
@@ -58,6 +77,7 @@
 	</div>
 </div>
 <div id="help">drag = pan &middot; wheel = zoom (cursor-anchored, both axes) &middot; left / bottom sliders = one axis at a time &middot; space = pause &middot; g = scale lines &middot; m = mesh (row edges, fan bands, column grid, plate boundaries) &middot; 1-4 = presets &middot; hover = geology probe &middot; <a href="index.html">particle engine &rarr;</a></div>
+<script src="port/slice-format.js"></script>
 <script src="js/params.js"></script>
 <script src="js/rng.js"></script>
 <script src="js/geom.js"></script>
@@ -71,6 +91,7 @@
 <script src="js/crust.js"></script>
 <script src="js/perf.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/section-pack.js"></script>
 <script src="js/render.js"></script>
 <script src="js/sim.js"></script>
 </body>

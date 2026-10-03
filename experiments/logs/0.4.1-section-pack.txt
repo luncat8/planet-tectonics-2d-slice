@@ -1,0 +1,64 @@
+  section pack: the reader half of the cut (the page in ?start=section mode)
+  (packs from experiments/pack-fixture.js; the shared format is port/slice-format.js)
+
+
+A. section mode: the boot
+PASS  the page boots in section mode
+PASS  no engine world is built (until M2 seeds one, the cut is a view, not a planet)   hFel non-zero cols=0 nCol=512
+PASS  the frame loop is running
+PASS  the HUD says the clock is off   section mode · cut · plate clock off
+PASS  the body is in section mode (the engine bar is off, the Slice panel is on)
+PASS  the Slice panel ids are on the page   sText,sPaste,sFile,sPick,sMsg
+PASS  the URL params are read (seed/geo/erupt travel to M2)   {"start":"section","seed":"7","geo":"0","erupt":"0"}
+
+A2. the normal boot is untouched
+PASS  without ?start=section the engine boots as before (and its world is built)   mode=false nCol=512 hFel non-zero cols=205
+
+B. the reader accepts the cutter-shaped bytes
+PASS  a paste of the pinned cut loads   loaded L5 · 202 km cells · 40 030 km circle · t 120.5 Myr · checksum f5ba5e065ebdfb05
+PASS  the readout says what the cut is (level, cell span, arc, mode, checksum)   L5 · 202 km cells · 40 030 km circle · t 120.5 Myr · checksum f5ba5e065ebdfb05
+
+C. the reader refuses the twelve corruptions
+PASS  refuses a foreign format tag   not a pgt-slice-pack (pgt-something-else)
+PASS  refuses a future version   pack version 2, this build reads 1
+PASS  refuses a pack with no license line   the pack carries no license line
+PASS  refuses an edited sample (the checksum catches it)   checksum mismatch: the pack was edited or truncated
+PASS  refuses a sample out of order   sKm is not increasing at 6
+PASS  refuses a field of the wrong length   field zM has 10 values for n = 64
+PASS  refuses a host code outside the table   host code 9 at 2
+PASS  refuses a negative thickness   a negative thickness at 4
+PASS  refuses a number that is not finite   checksum mismatch: the pack was edited or truncated
+PASS  refuses a boundary code the section does not have   boundary code 7 at 1
+PASS  refuses a polarity outside -1/0/+1   polarity 3 at 2
+PASS  refuses a path that is neither circle nor polyline   path.kind must be circle or polyline
+PASS  refuses bytes that are not JSON (and keeps the shown cut)   not JSON: Expected property name or '}' in JSON at position 2 (line 1 column 3)
+
+D. paste and file of the same bytes
+PASS  the pack checksum is the same   f5ba5e065ebdfb05
+PASS  the origin names the transport and nothing else changes
+PASS  the raw strip draws identically (every call, every argument)   A 3994 calls, B 3994 calls
+PASS  the HUD agrees on everything but the transport line   cut · plate clock off · t 120.5 Myr   file
+L5 · 202 km cells · 40 030 km circle · t 120.5 Myr · checksum f5ba5e065ebdfb05
+arc scale 1.00   out-of-plane 9.97 cm/yr   seed 7
+
+E. the raw strip says what the pack says
+PASS  the crust is drawn in the stack order (sediment / felsic / mafic)
+PASS  the plate band is drawn (a stable colour per plate id)
+PASS  the boundary ticks are drawn (the fixture has subducts and opens)
+PASS  the six potential strips are labelled
+PASS  the ruler carries the lat/lon from the shared path block
+PASS  the surface is a stroked line, the sea level a dashed one
+PASS  a gap sample owns no crust (the strip shows the hole)   gaps 4, mafic columns drawn 194 of 194
+
+F. the ?pack= id path
+PASS  a bundled id loads through the same verify path   loaded L5 · 202 km cells · 40 030 km circle · t 120.5 Myr · checksum f5ba5e065ebdfb05
+PASS  an id with no bundle is a message, not a guess   no bundled pack 'no-such-pack' (the bake lands in M4) — paste a cut
+
+G. the idle strip and the clear
+PASS  before a cut the strip names the section mode and the panel
+PASS  clear drops the cut and the panel says so   cut cleared
+PASS  and the next draw is the idle strip again
+
+  total 0.4 s
+
+ALL PASS (39 checks)

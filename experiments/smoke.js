@@ -127,9 +127,15 @@ function ev(type, o) {
 }
 
 check.section('A. page load (columns.html order, ' + order.length + ' scripts)');
+// the page modules are js/*.js, each exactly once; port/*.js is shared with the
+// counterpart (port/PORT.json) and is loaded by name, not by directory scan
 var onDisk = fs.readdirSync(path.join(root, 'js')).filter(function (f) { return /\.js$/.test(f); });
-check.ok('columns.html loads every js/*.js file exactly once', onDisk.length === order.length &&
-	onDisk.every(function (f) { return order.indexOf('js/' + f) >= 0; }), order.join(' '));
+var pageScripts = order.filter(function (f) { return f.indexOf('js/') === 0; });
+check.ok('columns.html loads every js/*.js file exactly once', onDisk.length === pageScripts.length &&
+	onDisk.every(function (f) { return pageScripts.indexOf('js/' + f) >= 0; }), pageScripts.join(' '));
+var portScripts = order.filter(function (f) { return f.indexOf('port/') === 0; });
+check.ok('the shared slice format loads exactly once, from port/',
+	portScripts.length === 1 && portScripts[0] === 'port/slice-format.js', portScripts.join(' '));
 check.ok('the DOM stub found every id in columns.html', IDS.length >= 8, IDS.join(','));
 check.ok('the preset buttons come from columns.html', BUTTONS.length === 4, BUTTONS.join(','));
 var L = load();

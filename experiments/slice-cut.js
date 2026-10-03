@@ -203,55 +203,15 @@ check.section('B. the cell walk along a drawn great circle');
 });
 
 // ------------------------------------------------------------------ a synthetic pack
-// A stand-in for the globe's state: deterministic, in range, with more plate runs than the
-// section has plates, so the merge rule the plan specifies is exercised rather than assumed.
-function lcg(seed) {
-	var s = seed >>> 0;
-	return function () { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
-}
-function syntheticPack(n, runs) {
-	var rnd = lcg(20261003), i, k;
-	var pack = SP.make(n, { kind: 'circle', lat0: 12, lon0: -40, az0: 35, closes: true,
-		arcKm: 2 * Math.PI * R, cellKm: 2 * Math.PI * R / n });
-	pack.source = { repo: 'planet-geotectonics', commit: 'd909476', pack: '', epochMa: 0, rotModel: '',
-		built: '2026-10-03T00:00:00Z', tMyr: 120.5, level: 5, gridSeed: 12345, simSeed: 7 };
-	pack.license = 'synthetic fixture, no data license';
-	var s = 0, run = 0, runLen = Math.ceil(n / runs), step = pack.path.arcKm / n;
-	for (i = 0; i < n; i++) {
-		pack.sKm[i] = s; s += step;
-		var z = -5500 + 9500 * rnd();
-		pack.zM[i] = Math.round(z);
-		var oceanic = rnd() < 0.6;
-		pack.hFelM[i] = Math.round(oceanic ? 0 : 28000 + 17000 * rnd());
-		pack.hMafM[i] = Math.round(oceanic ? 6000 + 1500 * rnd() : 12000 + 6000 * rnd());
-		pack.hSedM[i] = Math.round(rnd() < 0.4 ? 4000 * rnd() : 0);
-		pack.ageMyr[i] = 200 * rnd();
-		pack.fert[i] = 0.5 + 1.5 * rnd();
-		pack.damage[i] = rnd();
-		pack.host[i] = oceanic ? 1 : (pack.hSedM[i] > 2000 ? 4 : 2);
-		pack.plate[i] = run;
-		pack.alive[i] = rnd() < 0.02 ? 0 : 1;
-		pack.wet[i] = z < 0 ? 1 : 0;
-		pack.vt[i] = (rnd() - 0.5) * 2e5;
-		pack.vp[i] = rnd() * 1e5;
-		for (k = 0; k < 6; k++) pack.pot[i * 6 + k] = rnd();
-		if ((i + 1) % runLen === 0 && run + 1 < runs) {
-			pack.bnd[i] = rnd() < 0.5 ? SP.EDGE.subduct : SP.EDGE.open;
-			pack.pol[i] = rnd() < 0.5 ? -1 : 1;
-			run++;
-		}
-	}
-	pack.plates = [];
-	for (i = 0; i < runs; i++) pack.plates.push({ id: i, n: runLen });
-	return pack;
-}
+// The cutter's output, built the way the cutter builds it: one builder shared with the
+// reader's gate (experiments/pack-fixture.js), so the two harnesses cannot disagree.
+var FIX = require('./pack-fixture.js');
+function syntheticPack(n, runs) { return FIX.build(n, runs); }
 
 check.section('C. the pack: size, checksum, round trip');
 var sizes = {};
 [198, 400, REAL_L7].forEach(function (n) {
 	var pack = syntheticPack(n, Math.max(4, Math.round(n / 28)));
-	SP.quantize(pack);
-	pack.checksum = SP.checksum(pack);
 	var text = SP.encode(pack);
 	sizes[n] = text.length;
 	check.ok('n=' + n + ': the pack validates and verifies',
@@ -278,7 +238,6 @@ check.ok('the usual cut (L5/L6) still fits a clipboard and a gist-sized file',
 check.section('D. the decoder refuses what it must');
 function refuses(name, mutate) {
 	var pack = syntheticPack(64, 8);
-	SP.quantize(pack); pack.checksum = SP.checksum(pack);
 	mutate(pack);
 	var msg = SP.validate(pack) || SP.verify(pack);
 	check.ok('rejects ' + name, msg !== '', msg);
@@ -296,6 +255,21 @@ refuses('a boundary code the section does not have', function (p) { p.bnd[1] = 7
 refuses('a polarity outside -1/0/+1', function (p) { p.pol[2] = 3; });
 refuses('a path that is neither circle nor polyline', function (p) { p.path.kind = 'spiral'; });
 refuses('a cut that does not reach its own arc length', function (p) { p.path.arcKm *= 2; });
+// The checksum covers the snapshot identity, not just the buffers: a different world time,
+// a different source commit, a different license or a different arc is a different cut.
+function checksumDiffers(name, mutate) {
+	var a = syntheticPack(64, 8), b = syntheticPack(64, 8);
+	var ha = SP.checksum(a);
+	mutate(b);
+	var hb = SP.checksum(b);
+	check.ok('the checksum sees ' + name, ha !== hb, hb + ' vs ' + ha);
+}
+checksumDiffers('an edited world time (source.tMyr)', function (p) { p.source.tMyr += 0.1; });
+checksumDiffers('an edited epoch (source.epochMa)', function (p) { p.source.epochMa = 100; });
+checksumDiffers('an edited seed (source.gridSeed)', function (p) { p.source.gridSeed = 1; });
+checksumDiffers('an edited source commit', function (p) { p.source.commit = '0000000'; });
+checksumDiffers('an edited license line', function (p) { p.license += ' (amended)'; });
+checksumDiffers('an edited arc length (path.arcKm)', function (p) { p.path.arcKm = 40000; });
 
 check.section('E. the fit into the section');
 var big = syntheticPack(400, 16);

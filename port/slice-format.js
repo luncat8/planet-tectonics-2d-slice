@@ -14,9 +14,12 @@
    Number rule: six significant digits (the upstream Deposits.round convention), so a JSON
    round trip is exact and the same cut yields the same bytes on another machine.
 
-   The checksum is the upstream's two-lane FNV-1a over the quantised buffers
-   (Deposits.fnvBytes / Deposits.hex): a 64-bit identity over what the pack says, not a
-   security hash — it exists so two machines can agree that they hold the same cut.
+   The checksum is the upstream's two-lane FNV-1a (Deposits.fnvBytes / Deposits.hex) over
+   the header scalars, the source commit, the license line and the quantised buffers: a
+   64-bit identity over what the pack says, not a security hash — it exists so two
+   machines can agree that they hold the same cut. A cut is a snapshot and it says what
+   it is a snapshot of (0.4.1-plan.md §1.4): world time, epoch, level, both seeds, the
+   source commit and the license travel with it, and the checksum covers all of it.
 */
 'use strict';
 
@@ -33,8 +36,24 @@ var SlicePack = {
 	// subduction or a collision depending on its polarity, which is the one conversion in
 	// the whole pack that is not a straight copy.
 	GLOBE_EDGE: { interior: 0, convergent: 1, divergent: 2, transform: 3 },
-	// Header scalars the checksum covers, in this order.
-	HEAD: ['n', 'arcKm', 'cellKm', 'epochMa', 'tMyr', 'level', 'gridSeed', 'simSeed', 'closes'],
+	// Header scalars the checksum covers, in this order, with where each one lives on the
+	// pack. The scalars are not top-level (they sit under path./source.), so the checksum
+	// reads them through the location table; a scalar that is missing hashes as 0, which
+	// is exactly what validate() then refuses, so the table cannot quietly drop coverage.
+	HEAD: [
+		['n', 'n'],
+		['arcKm', 'path.arcKm'],
+		['cellKm', 'path.cellKm'],
+		['closes', 'path.closes'],
+		['epochMa', 'source.epochMa'],
+		['tMyr', 'source.tMyr'],
+		['level', 'source.level'],
+		['gridSeed', 'source.gridSeed'],
+		['simSeed', 'source.simSeed']
+	],
+	// Text the checksum covers after the scalars: a different source commit or a different
+	// license line is a different cut, even over identical buffers.
+	TEXT: ['source.commit', 'license'],
 	// Per-sample columnar arrays, in the order the checksum walks them. `stride` marks the
 	// one field that is six numbers per sample (the six ore potentials, ORE order).
 	FIELDS: [
@@ -127,24 +146,70 @@ SlicePack.normalize = function (pack) {
 
 // Quantise every field in place. Called by the writer before the checksum and by the reader
 // after decode, so a number that travelled through JSON is the number that was hashed.
+// The header scalars round too: the checksum covers them, and a world clock that drifts
+// in its last ulp must not become a different cut.
 SlicePack.quantize = function (pack) {
 	for (var k = 0; k < SlicePack.FIELDS.length; k++) {
 		var f = SlicePack.FIELDS[k], a = pack[f.name], isFloat = f.dtype === 'f32' || f.dtype === 'f64';
 		if (!isFloat) continue;
 		for (var i = 0; i < a.length; i++) a[i] = round6(a[i]);
 	}
+	var p = pack.path, s = pack.source;
+	if (p) {
+		p.arcKm = round6(p.arcKm); p.cellKm = round6(p.cellKm);
+		if (p.kind === 'circle') { p.lat0 = round6(p.lat0); p.lon0 = round6(p.lon0); p.az0 = round6(p.az0); }
+		if (p.verts) for (i = 0; i < p.verts.length; i++) p.verts[i] = round6(p.verts[i]);
+	}
+	if (s) {
+		s.epochMa = round6(s.epochMa); s.tMyr = round6(s.tMyr);
+		s.level = round6(s.level); s.gridSeed = round6(s.gridSeed); s.simSeed = round6(s.simSeed);
+	}
 	return pack;
 };
 
-SlicePack.checksum = function (pack) {
-	var head = [], i;
-	for (i = 0; i < SlicePack.HEAD.length; i++) {
-		var v = pack[SlicePack.HEAD[i]];
-		head.push(v === undefined || v === null ? 0 : (v === true ? 1 : v === false ? 0 : +v));
+// Walk a dotted location ('path.arcKm') on the pack.
+function at(pack, loc) {
+	var v = pack, parts = loc.split('.'), i;
+	for (i = 0; i < parts.length; i++) {
+		if (v === undefined || v === null) return undefined;
+		v = v[parts[i]];
 	}
-	var lanes = SlicePack.fnvBytes(new Uint8Array(new Float64Array(head).buffer), [0x811c9dc5, 0x9747b28c]);
-	for (var k = 0; k < SlicePack.FIELDS.length; k++) {
-		var a = pack[SlicePack.FIELDS[k].name];
+	return v;
+}
+// UTF-8 without a TextEncoder dependency (file://, node and the browser must agree byte
+// for byte — the checksum is the identity that lets two machines compare cuts).
+function utf8(str, out) {
+	var i, c;
+	for (i = 0; i < str.length; i++) {
+		c = str.charCodeAt(i);
+		if (c < 0x80) out.push(c);
+		else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));
+		else if (c >= 0xd800 && c < 0xdc00 && i + 1 < str.length) {
+			c = 0x10000 + ((c - 0xd800) << 10) + (str.charCodeAt(++i) - 0xdc00);
+			out.push(0xf0 | (c >> 18), 0x80 | ((c >> 12) & 63), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+		} else out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+	}
+	return out;
+}
+var _head = new Float64Array(SlicePack.HEAD.length), _u8 = [];
+
+SlicePack.checksum = function (pack) {
+	var i, k, a, v, t;
+	for (i = 0; i < SlicePack.HEAD.length; i++) {
+		v = at(pack, SlicePack.HEAD[i][1]);
+		if (v === undefined || v === null) _head[i] = 0;
+		else if (v === true) _head[i] = 1;
+		else if (v === false) _head[i] = 0;
+		else { v = +v; _head[i] = isFinite(v) ? v : 0; }
+	}
+	var lanes = SlicePack.fnvBytes(new Uint8Array(_head.buffer), [0x811c9dc5, 0x9747b28c]);
+	for (i = 0; i < SlicePack.TEXT.length; i++) {
+		t = at(pack, SlicePack.TEXT[i]);
+		_u8.length = 0;
+		SlicePack.fnvBytes(new Uint8Array(utf8(t == null ? '' : String(t), _u8)), lanes);
+	}
+	for (k = 0; k < SlicePack.FIELDS.length; k++) {
+		a = pack[SlicePack.FIELDS[k].name];
 		if (!a) continue;
 		SlicePack.fnvBytes(new Uint8Array(a.buffer, a.byteOffset, a.byteLength), lanes);
 	}

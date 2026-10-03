@@ -1,0 +1,15 @@
+{
+	"$doc": "port/PORT.json — the shared-identical manifest (0.4.0-sync-plan.md §1.2). Every file listed here is byte-identical with the counterpart (planet-geotectonics) and asserted by experiments/port-check.js on this side and a matching test on that side. A byte that drifts on one side is a shared file that is no longer shared: the sha256 is the drift gate, not a review.",
+	"upstream": {
+		"repo": "luncat8/planet-geotectonics",
+		"commit": "d909476",
+		"note": "the commit every upstream field name in 0.4.1-plan.md was read against"
+	},
+	"files": [
+		{
+			"path": "port/slice-format.js",
+			"sha256": "941f2617265e7298eef78f274e19f9bc0ef06b1ad8aaf1d337612de121dd7118",
+			"what": "pgt-slice-pack v1: the field table, quantisation, checksum, validation and path maths (0.4.1-plan.md §3.3, §4.1)"
+		}
+	]
+}

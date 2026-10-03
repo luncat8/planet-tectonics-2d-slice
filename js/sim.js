@@ -16,6 +16,7 @@ var PLT = (typeof module !== 'undefined' && module.exports) ? require('./plates.
 var MAG = (typeof module !== 'undefined' && module.exports) ? require('./magma.js') : window.MAG;
 var CRU = (typeof module !== 'undefined' && module.exports) ? require('./crust.js') : window.CRU;
 var SURF = (typeof module !== 'undefined' && module.exports) ? require('./surface.js') : window.SURF;
+var SEC = (typeof module !== 'undefined' && module.exports) ? require('./section-pack.js') : window.SectionPack;
 COL.slab = SLAB;
 
 function simK1(st, dt, t, Tm) {
@@ -91,20 +92,27 @@ var SIM = {
 };
 
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-	SIM.reset();
-	UI.init();
-	RNDR.init(document.getElementById('c'));
-	GEO.setPreset('def');
-	UI.afterView();
+	// section mode (?start=section): the page is a view of a cut, not the engine's world —
+	// no planet reset, no engine clock; the canvas is the raw strip until M2 seeds the
+	// engine from the pack (plan §4.4: both run modes start stopped and say so)
+	if (SEC.sectionStart()) {
+		SEC.init();
+	} else {
+		SIM.reset();
+		UI.init();
+		RNDR.init(document.getElementById('c'));
+		GEO.setPreset('def');
+		UI.afterView();
+	}
 	function tick(now) {
 		var a = performance.now();
-		SIM.step();
+		if (SEC.mode) SEC.frame(); else SIM.step();
 		var b = performance.now();
-		RNDR.redraw();
+		if (SEC.mode) SEC.draw(); else RNDR.redraw();
 		var c = performance.now();
 		PERF.msSim = PERF.f(PERF.msSim, b - a);
 		PERF.msDraw = PERF.f(PERF.msDraw, c - b);
-		if (PERF.tick(now)) UI.updateHud();
+		if (PERF.tick(now)) { if (SEC.mode) SEC.hud(); else UI.updateHud(); }
 		window.requestAnimationFrame(tick);
 	}
 	window.requestAnimationFrame(tick);
