@@ -72,15 +72,16 @@ var SEED = (function () {
 	// last partial column is dropped and booked instead (§4.4).
 	SEED.measure = function (pack) {
 		var arcM = pack.path.arcKm * KM, n;
-		SEED.window = !pack.path.closes;
-		SEED.scale = SEED.window ? 1 : P.wrap / arcM;
-		if (SEED.window && arcM > P.wrap) {
+		var windowCut = !pack.path.closes;
+		if (windowCut && arcM > P.wrap) {
 			return 'a window of ' + Math.round(arcM / KM) + ' km is longer than the section wrap of '
 				+ Math.round(P.wrap / KM) + ' km, and only a closed cut may be scaled to it';
 		}
-		n = SEED.window ? Math.floor(arcM / P.w0) : P.nCols;
+		n = windowCut ? Math.floor(arcM / P.w0) : P.nCols;
 		if (n < 3) return 'the cut covers ' + n + ' whole section columns; a section needs three '
 			+ 'to hold a boundary and a margin on each side of it';
+		SEED.window = windowCut;
+		SEED.scale = windowCut ? 1 : P.wrap / arcM;
 		SEED.nCut = n;
 		SEED.tailKm = SEED.window ? (arcM - n * P.w0) / KM : 0;
 		return '';

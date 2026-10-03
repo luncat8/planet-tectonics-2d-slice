@@ -57,7 +57,8 @@ PASS  L7 (811 samples, 39 runs): capped to plateCap, with the merges and the los
 PASS  and the identity still holds, because the resample is the same rule at any density   max 9.09e-13 m
 PASS  as does the ledger   abs 3.66e-4  got 939501580474.3536 m3/m  want 939501580474.354
 PASS  the coarse cut (64 samples over 512 columns) is the other end of the same rule   identity and ledger at 625 km cells
+PASS  a rejected measurement preserves the active mapping metadata
 
   total 1.0 s
 
-ALL PASS (34 checks)
+ALL PASS (35 checks)

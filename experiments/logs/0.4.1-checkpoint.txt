@@ -1,0 +1,25 @@
+PASS  section arrays, clocks and reconstruction ledger round trip
+PASS  restored section resumes deterministically
+PASS  unaligned file views load
+PASS  refuses damaged header or table at 0 atomically
+PASS  refuses damaged header or table at 4 atomically
+PASS  refuses damaged header or table at 8 atomically
+PASS  refuses damaged header or table at 12 atomically
+PASS  refuses damaged header or table at 16 atomically
+PASS  refuses damaged header or table at 20 atomically
+PASS  refuses damaged header or table at 24 atomically
+PASS  refuses damaged header or table at 28 atomically
+PASS  refuses damaged header or table at 32 atomically
+PASS  refuses damaged header or table at 36 atomically
+PASS  refuses damaged header or table at 448 atomically
+PASS  refuses non-finite state scalar atomically
+PASS  refuses out-of-capacity column count atomically
+PASS  refuses negative geologic step atomically
+PASS  refuses invalid event remainder atomically
+PASS  refuses fractional event count atomically
+PASS  refuses seed inconsistent with header atomically
+PASS  refuses fractional RNG word atomically
+PASS  refuses slider beyond the runtime range atomically
+PASS  refuses truncated data
+
+ALL PASS (23 checks)

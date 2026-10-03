@@ -156,7 +156,7 @@ viaPaste(L, text);
 check.ok('a paste of the pinned cut loads', L.sb.SectionPack.pack !== null
 	&& L.sb.SectionPack.pack.checksum === pin.checksum, L.sb.SectionPack.msg);
 check.ok('the readout says what the cut is (level, both resolutions, arc, mode, checksum)',
-	new RegExp('L5 · \\d+ km cells → 512 columns · 78 km · \\d[\\d ]+ km circle · t 120\\.5 Myr · checksum '
+	new RegExp('L5 · \\d+ km cells → 512 columns · 78 km · \\d[\\d ]+ km circle · t 120\\.5 Myr · seed 7 · mapping 1 · checksum '
 		+ pin.checksum).test(L.sb.SectionPack.describe(L.sb.SectionPack.pack)),
 	L.sb.SectionPack.describe(L.sb.SectionPack.pack));
 check.ok('the cut has been laid as a section (the stacks carry the cut mass, the clock stays off)',
@@ -209,6 +209,35 @@ var threw2 = false;
 try { L.sb.SectionPack.load('{ this is not json', 'paste'); } catch (e) { threw2 = true; }
 check.ok('refuses bytes that are not JSON (and keeps the shown cut)', threw2
 	&& L.sb.SectionPack.pack.checksum === pin.checksum, L.sb.SectionPack.msg);
+var shownPack = L.sb.SectionPack.pack, shownHash = L.sb.S.hash(), primitiveRefused = false;
+try { L.sb.SectionPack.load('null', 'paste'); } catch (e) { primitiveRefused = true; }
+check.ok('refuses a JSON primitive with a clear message and no live-state change',
+	primitiveRefused && L.sb.SectionPack.pack === shownPack && L.sb.SectionPack.world
+		&& L.sb.S.hash() === shownHash && /must be a JSON object/.test(L.sb.SectionPack.msg),
+	L.sb.SectionPack.msg);
+
+check.section('C2. layout refusal is atomic against a running section');
+L.sb.P.sl.geo = 10000;
+L.els.bRun.listeners.click.call(L.els.bRun);
+L.sb.SectionPack.frame();
+var activePack = L.sb.SectionPack.pack;
+var activeHash = L.sb.S.hash();
+var activeClock = [L.sb.SIM.t, L.sb.SIM.Tm, L.sb.SIM.dG, L.sb.SIM.frame, L.sb.SIM.evT,
+	L.sb.SIM.event, L.sb.SectionPack.running].join(',');
+var activeMap = [L.sb.SEED.window, L.sb.SEED.scale, L.sb.SEED.nCut, L.sb.SEED.tailKm].join(',');
+var refusedLayout = false;
+try { L.sb.SectionPack.load(SP.encode(FIX.windowCut(64, 8, 45000)), 'paste'); } catch (e) { refusedLayout = true; }
+check.ok('a valid but unplaceable cut is refused without replacing the running section',
+	refusedLayout && L.sb.SectionPack.pack === activePack && L.sb.SectionPack.world
+		&& L.sb.S.hash() === activeHash && L.sb.SectionPack.running
+		&& [L.sb.SIM.t, L.sb.SIM.Tm, L.sb.SIM.dG, L.sb.SIM.frame, L.sb.SIM.evT,
+			L.sb.SIM.event, L.sb.SectionPack.running].join(',') === activeClock
+		&& [L.sb.SEED.window, L.sb.SEED.scale, L.sb.SEED.nCut, L.sb.SEED.tailKm].join(',') === activeMap,
+	L.sb.SectionPack.msg);
+viaPaste(L, text);
+check.ok('a successful replacement stops a previously running section before laying the new cut',
+	L.sb.SectionPack.pack.checksum === pin.checksum && L.sb.SectionPack.world
+		&& !L.sb.SectionPack.running && L.sb.SIM.dG === 0 && L.sb.SIM.t === pin.source.tMyr);
 
 check.section('D. paste and file of the same bytes');
 var A = load('?start=section'), B = load('?start=section');
@@ -274,9 +303,9 @@ check.ok('a bundled id loads through the same verify path',
 	D.sb.SectionPack.pack !== null && D.sb.SectionPack.pack.checksum === pin.checksum
 		&& D.sb.SectionPack.origin === 'earth-100Ma-gc0', D.sb.SectionPack.msg);
 var E = load('?start=section&pack=no-such-pack');
-check.ok('an id with no bundle is a message, not a guess',
-	E.sb.SectionPack.pack === null && /no bundled pack 'no-such-pack'/.test(E.els.sMsg.textContent),
-	E.els.sMsg.textContent);
+check.ok('an id with no bundle is a visible refusal, not a guess',
+	E.sb.SectionPack.pack === null && E.sb.SectionPack.bad === true
+		&& /no bundled pack 'no-such-pack'/.test(E.els.sMsg.textContent), E.els.sMsg.textContent);
 
 check.section('G2. the three switches');
 var V = load('?start=section');

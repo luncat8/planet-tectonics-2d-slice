@@ -117,10 +117,37 @@ var SectionPack = (function () {
 		// The one verify path (plan §4.1): a rejected pack is an error with the reason, the
 		// currently shown cut is not touched, and there is no partial load.
 		loadPack: function (pack, origin) {
-			SP.normalize(pack);
-			SP.quantize(pack);
+			if (!pack || typeof pack !== 'object' || Array.isArray(pack)) {
+				var typeError = 'a slice pack must be a JSON object';
+				this.refuse(typeError);
+				throw new Error(typeError);
+			}
+			try {
+				SP.normalize(pack);
+				SP.quantize(pack);
+			} catch (e) {
+				this.refuse('invalid slice pack: ' + e.message);
+				throw e;
+			}
 			var bad = SP.validate(pack) || SP.verify(pack);
 			if (bad) { this.refuse(bad); throw new Error(bad); }
+			bad = SEED.measure(pack);
+			SEED.refused = bad;
+			if (bad) {
+				if (!this.pack) {
+					this.pack = pack;
+					this.origin = origin || 'text';
+					this.cache = null;
+					this.world = false;
+					this.running = false;
+					this.raw = true;
+					this.spin = null;
+				}
+				this.refuse(bad);
+				this.syncButtons();
+				this.hud();
+				throw new Error(bad);
+			}
 			this.pack = pack;
 			this.origin = origin || 'text';
 			this.cache = null;
@@ -150,23 +177,24 @@ var SectionPack = (function () {
 			var p = this.pack;
 			if (!p) return;
 			var g = page(), t0 = p.source.tMyr;
+			var Tm = g ? P.Tfloor + (P.Tm0 - P.Tfloor) * Math.exp(-t0 / P.tauCool) : P.Tm0;
+			var bad = SEED.layout(p, { seed: P.seed, t: t0, Tm: Tm });
+			if (bad) { this.refuse(bad); return bad; }
 			if (g) {
 				g.SIM.t = t0;
 				g.SIM.cool();
-				this.t0 = t0;
-			}
-			var bad = SEED.layout(p, { seed: P.seed, t: g ? g.SIM.t : 0, Tm: g ? g.SIM.Tm : P.Tm0 });
-			if (bad) { this.world = false; this.running = false; this.raw = true; this.refuse(bad); return; }
-			if (g) {
 				g.SIM.tErupt = 0; g.SIM.frame = 0; g.SIM.evT = 0; g.SIM.event = 0;
 				g.SIM.setGeo(0);                       // both modes start stopped (§4.4)
 			}
+			this.t0 = t0;
+			this.running = false;
 			this.spin = this.baseline();
 			this.world = true;
 			this.raw = false;
 			this.enterView();
 			this.syncButtons();
 			this.hud();
+			return '';
 		},
 
 		// the panel readout and the HUD share it (plan §4.2): both resolutions, because a feature
@@ -177,7 +205,7 @@ var SectionPack = (function () {
 				' columns · ' + (P.w0 / KM).toFixed(0) + ' km · ' +
 				fmtKm(p.arcKm) + ' km ' + (p.closes ? 'circle' : 'window') +
 				' · t ' + s.tMyr + ' Myr' + (s.pack ? ' · ' + s.pack : '') +
-				' · checksum ' + pack.checksum;
+				' · seed ' + P.seed + ' · mapping ' + SEED.MAP + ' · checksum ' + pack.checksum;
 		},
 
 		// ---------------------------------------------------------------- section mode
@@ -253,7 +281,6 @@ var SectionPack = (function () {
 				else this.refuse("no bundled pack '" + this.start.pack + "' (the bake lands in M4) — paste a cut");
 			}
 			this.msg = this.msg || 'paste a cut, load a .json, or open ?start=section&pack=<id>';
-			this.bad = false;
 			this.paintMsg();
 			this.syncButtons();
 			this.hud();
@@ -377,6 +404,8 @@ var SectionPack = (function () {
 		lines: function () {
 			var p = this.pack;
 			if (!p) return ['section mode · cut · plate clock off', this.msg];
+			if (!this.world) return ['cut · not reconstructed · ' + this.origin, this.describe(p),
+				'mapping refused: ' + this.msg];
 			var s = p.source, r = S.recon, st = SEED, g = page(), vpMax = 0, i, L = [];
 			for (i = 0; i < p.n; i++) if (p.vp[i] > vpMax) vpMax = p.vp[i];
 			var clock = !this.world ? 'plate clock off · not yet a section'

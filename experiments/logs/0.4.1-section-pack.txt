@@ -15,11 +15,11 @@ A2. the normal boot is untouched
 PASS  without ?start=section the engine boots as before (and its world is built)   mode=false nCol=512 hFel non-zero cols=205
 
 B. the reader accepts the cutter-shaped bytes
-PASS  a paste of the pinned cut loads   loaded source L5 · 202 km cells → 512 columns · 78 km · 40 030 km circle · t 120.5 Myr · checksum 5e6a558adccfde21
-PASS  the readout says what the cut is (level, both resolutions, arc, mode, checksum)   source L5 · 202 km cells → 512 columns · 78 km · 40 030 km circle · t 120.5 Myr · checksum 5e6a558adccfde21
+PASS  a paste of the pinned cut loads   loaded source L5 · 202 km cells → 512 columns · 78 km · 40 030 km circle · t 120.5 Myr · seed 7 · mapping 1 · checksum 5e6a558adccfde21
+PASS  the readout says what the cut is (level, both resolutions, arc, mode, checksum)   source L5 · 202 km cells → 512 columns · 78 km · 40 030 km circle · t 120.5 Myr · seed 7 · mapping 1 · checksum 5e6a558adccfde21
 PASS  the cut has been laid as a section (the stacks carry the cut mass, the clock stays off)   cut at t 120.5 Myr · plate clock off · the cut as it stands   paste
 PASS  the HUD books what the seeding assumed and what it mapped (plan §4.3.3, §4.3.5)   cut at t 120.5 Myr · plate clock off · the cut as it stands   paste
-source L5 · 202 km cells → 512 columns · 78 km · 40 030 km circle · t 120.5 Myr · checksum 5e6a558adccfde21
+source L5 · 202 km cells → 512 columns · 78 km · 40 030 km circle · t 120.5 Myr · seed 7 · mapping 1 · checksum 5e6a558adccfde21
 arc scale 1.00   ring · 512 of 512 columns   out-of-plane 6.53 cm/yr   seed 7
 start: 3 layers from the cut, their beds aged from the cut; the section dates its own beds from t 120.5 Myr   gap-thinned 6   plate runs 12 -> 12 (merged 0)
 assumed: sediment age 510 · sub-Moho T 512 · plumes 6 · no mobile load 512 · lid cap 74 · vp>vt 17 · sea datum 6
@@ -46,6 +46,11 @@ PASS  refuses a boundary code the section does not have   boundary code 7 at 1
 PASS  refuses a polarity outside -1/0/+1   polarity 3 at 2
 PASS  refuses a path that is neither circle nor polyline   path.kind must be circle or polyline
 PASS  refuses bytes that are not JSON (and keeps the shown cut)   not JSON: Expected property name or '}' in JSON at position 2 (line 1 column 3)
+PASS  refuses a JSON primitive with a clear message and no live-state change   a slice pack must be a JSON object
+
+C2. layout refusal is atomic against a running section
+PASS  a valid but unplaceable cut is refused without replacing the running section   a window of 45000 km is longer than the section wrap of 40030 km, and only a closed cut may be scaled to it
+PASS  a successful replacement stops a previously running section before laying the new cut
 
 D. paste and file of the same bytes
 PASS  the pack checksum is the same   5e6a558adccfde21
@@ -53,7 +58,7 @@ PASS  the origin names the transport and nothing else changes
 PASS  the two transports draw identically (every call, every argument)   A 3251 calls, B 3251 calls
 PASS  paste and file lay the same state (S.hash of the seeded planet)   1716292187
 PASS  the HUD agrees on everything but the transport line   cut at t 120.5 Myr · plate clock off · the cut as it stands   file
-source L5 · 202 km cells → 512 columns · 78 km · 40 030 km circle · t 120.5 Myr · checksum 5e6a558adccfde21
+source L5 · 202 km cells → 512 columns · 78 km · 40 030 km circle · t 120.5 Myr · seed 1 · mapping 1 · checksum 5e6a558adccfde21
 arc scale 1.00   ring · 512 of 512 columns   out-of-plane 6.53 cm/yr   seed 7
 start: 3 layers from the cut, their beds aged from the cut; the section dates its own beds from t 120.5 Myr   gap-thinned 6   plate runs 12 -> 12 (merged 0)
 assumed: sediment age 510 · sub-Moho T 512 · plumes 4 · no mobile load 512 · lid cap 74 · vp>vt 17 · sea datum 6
@@ -76,8 +81,8 @@ PASS  the surface is a stroked line, the sea level a dashed one
 PASS  a gap sample owns no crust (the strip shows the hole)   gaps 2, mafic columns drawn 196 of 196
 
 F. the ?pack= id path
-PASS  a bundled id loads through the same verify path   loaded source L5 · 202 km cells → 512 columns · 78 km · 40 030 km circle · t 120.5 Myr · checksum 5e6a558adccfde21
-PASS  an id with no bundle is a message, not a guess   no bundled pack 'no-such-pack' (the bake lands in M4) — paste a cut
+PASS  a bundled id loads through the same verify path   loaded source L5 · 202 km cells → 512 columns · 78 km · 40 030 km circle · t 120.5 Myr · seed 1 · mapping 1 · checksum 5e6a558adccfde21
+PASS  an id with no bundle is a visible refusal, not a guess   no bundled pack 'no-such-pack' (the bake lands in M4) — paste a cut
 
 G2. the three switches
 PASS  the overlay is on, the run switch is off, and both are lit from the state (plan §4.2)   aria-pressed bRun=false disabled=false
@@ -87,7 +92,7 @@ PASS  and stopping it leaves the world where the clock put it, without re-laying
 PASS  the overlay paints the cut zM line, the hatch below the crust, and its own label   112210 calls with it, 90080 without
 PASS  switching it off leaves the engine view alone, exactly   false
 PASS  r and o are the same two switches on the keyboard, and a field being typed into keeps its keys
-PASS  a window is laid as a section but cannot be put on the clock (plan §4.4)   loaded source L5 · 78 km cells → 512 columns · 78 km · 12 400 km window · t 120.5 Myr · checksum 23c32b6d7e47c75e
+PASS  a window is laid as a section but cannot be put on the clock (plan §4.4)   loaded source L5 · 78 km cells → 512 columns · 78 km · 12 400 km window · t 120.5 Myr · seed 1 · mapping 1 · checksum 23c32b6d7e47c75e
 PASS  and the frame loop leaves a window alone however it is asked   0
 PASS  a cut the section cannot lay keeps its strip up, with the reason, and no half-world   a window of 45000 km is longer than the section wrap of 40030 km, and only a closed cut may be scaled to it
 PASS  the panel says which of the two answers it is giving (the reader took the bytes)   a window of 45000 km is longer than the section wrap of 40030 km, and only a closed cut may be scaled to it
@@ -99,6 +104,6 @@ PASS  the empty Cut-from option drops the cut, its world and its overlay   cut c
 PASS  and an id the bundle does not have is a message from the same control   no bundled pack 'no-such-pack' (the bake lands in M4) — paste a cut
 PASS  and the next draw is the idle strip again
 
-  total 4.6 s
+  total 6.3 s
 
-ALL PASS (57 checks)
+ALL PASS (60 checks)

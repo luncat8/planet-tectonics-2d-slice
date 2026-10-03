@@ -369,5 +369,11 @@ check.ok('the coarse cut (64 samples over 512 columns) is the other end of the s
 			&& Math.abs(m.seed + m.tail - m.cut) < 1e-9 * m.cut;
 	})(), 'identity and ledger at 625 km cells');
 
+check.ok('a rejected measurement preserves the active mapping metadata', (function () {
+	var before = [SEED.window, SEED.scale, SEED.nCut, SEED.tailKm].join(',');
+	SEED.measure(FIX.windowCut(64, 8, 45000));
+	return before === [SEED.window, SEED.scale, SEED.nCut, SEED.tailKm].join(',');
+})());
+
 console.log('\n  total ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s');
 check.done();
