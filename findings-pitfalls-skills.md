@@ -534,3 +534,42 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   parses as `((jj < best || best < 0) ? h : best)` and returns a *truthy* `best`, so the loop
   never exits -- a 900 s fixture hang from one missing pair of parentheses. Floor division,
   ternaries and `||` in a loop head: use a block.
+
+## 0.4.1 — the cut: a line on the globe's map (see experiments/slice-cut.js)
+
+- **A line crossing a lattice meets a new cell every ~0.8 of a cell spacing, not every full
+  one.** "Cells crossed = circumference / mean neighbour distance" undercounts by ~20 %; measured
+  on the counterpart's own grid (L5 198 not 166, L6 400 not 333, **L7 811 not 665**). The
+  difference is what puts L7 over the section's `colCap` of 768 and L6 comfortably under it, so
+  the estimate would have shipped a broken fit. Measure a count, never divide for it.
+- **A lat/lon bucket grid cannot find a point's neighbours near a pole**: there, points far apart
+  in longitude are a few hundred metres apart on the sphere, so a 3x3 window in (lat, lon) misses
+  them and cells come out with zero neighbours. A spatial hash on the unit cube with a cell of
+  one neighbour radius costs one pass and is correct everywhere; radius ~1.8 x the nominal
+  spacing catches the first ring plus a margin, which is also what a nearest-centre hill climb
+  needs to be exact (too tight a ring and the climb cannot reach the cell it should jump to).
+- **`JSON.stringify` of a typed array is an object, not an array** (`{"0":1.5,...}`): three times
+  the bytes, and `new Float32Array(obj)` silently yields length 0, which looks like a validation
+  bug downstream. One replacer in the encoder
+  (`v && v.BYTES_PER_ELEMENT ? Array.prototype.slice.call(v) : v`) fixes both directions.
+- **An arc-length box filter is mass-exact in both directions**, which is the only reason a
+  reader may keep its own resolution instead of adopting the writer's: give every source sample
+  the span it covers, tile `[0, total]` with the output columns, weight each source value by the
+  overlap, and `sum(out * dOut) == sum(src * span)` to double precision (checked at 128, 512 and
+  1024 columns). It works upsampling and downsampling because a thickness is intensive: the
+  widths, not the values, carry the mass. The bug to avoid is consuming the *absolute* position
+  of each output centre instead of the delta to the previous one.
+- **Six significant digits is a format rule, not a rounding habit** (the upstream
+  `Deposits.round`): it makes a JSON round trip bit-exact and two machines hash the same bytes.
+  Adopt the counterpart's rounding and checksum rather than inventing a second pair — the point
+  of a checksum on a shared file is that both sides compute the same one.
+- **Two `file://` documents have no reliable channel.** `postMessage` between null origins,
+  `localStorage` shared across all file pages and `BroadcastChannel` on an opaque origin are each
+  browser-dependent, and `navigator.clipboard.readText` needs a permission a file page will not
+  get. Ladder: `postMessage` if the handshake answers, `localStorage` if it is shared, and
+  **paste into a textarea / a file input always** — the manual rung is the contract, not the
+  fallback, because it is the one that works everywhere.
+- **A shared file needs a home the page-scanning harness does not own.** `experiments/smoke.js`
+  asserts `columns.html` loads every `js/*.js` exactly once, so anything shared-identical with
+  the counterpart goes in `port/`; then the manifest has one directory to list and the gate keeps
+  its meaning.
