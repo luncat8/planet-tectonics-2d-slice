@@ -595,3 +595,35 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
 - **An open window must not invent crust.** Repeating the end columns to fill `[length, wrap)`
   is a clamp that looks imported. Clock-off is the honest answer until the engine has end
   boundary conditions.
+
+## 0.4.1 M2 (the reconstruction)
+
+- **A wide hole is not a sliver.** The engine's `colGhost` record is a trench that has *closed*: a
+  run of columns owning no mass whose gaps are already at the floor, which is why retiring one hands
+  back a hundredth of a column. Data you import can be a hole that is several full-width columns
+  wide, and the same retirement then moves 50 km of crust into one neighbour in a single frame
+  (measured, L5, 10 kyr/f). Import the hole as *data* — a zero in the box filter thins the columns
+  it covers, conserves mass by construction, and leaves every elevation identity intact — and keep
+  the sliver record for what the model itself drains.
+- **A rate law's comment is a test you can write.** `P.kBelt` is documented as "0.12 /Myr per km of
+  excess" and the code reads `kBelt * excess * 1000 * dt`, where `excess` is a difference of `hTot`
+  — metres. The factor should have been 1e-3. Any "per km of X" law that multiplies a metre-valued
+  X by 1000 is a porting residue from a reference that kept X in km, and its `never more than half
+  in one frame` cap hides it: the model then runs at the cap on every frame size, which *looks* like
+  a working ceiling. Measure one frame's flux against the documented rate before believing either.
+- **Feed a corruption through the transport that can carry it.** A `NaN` in a pack cannot survive
+  JSON (`stringify` writes `null`, the decoder reads 0), so a harness that mutates a `NaN` and
+  encodes is testing the *checksum*, not the field check — and it passes for the wrong reason until
+  the mutated value happens to be one the format already stores as 0. Test non-finiteness on the
+  object path (`loadPack`), which is also the path a bundled pack really takes.
+- **Bound a spin-up against the engine's own norm, not against zero.** "The first frame must move no
+  column more than a few hundred metres" is unfalsifiable in the useful direction: a freshly reset
+  planet of the same model moves 3.4 km on its first frame, because `zDyn` relaxes and the fan cools.
+  The claim that means something is "the seeded state costs the view no more than the state the
+  model makes for itself", measured in the same run, with the mechanism named (frame 0 the identity,
+  frame 1 nothing re-signed, `edgeAge` 0 keeping the topology shut for `P.evAge`).
+- **`S.recon` is a plain object on purpose.** `S.hash()` walks the numeric fields and the typed
+  arrays, so a `Float64Array` of assumption counters would move the state hash of every column
+  fixture in the repo. Counters belong to the *capture*, not to the world: keep them off the hash and
+  assert it (write to them, compare the hash) rather than trusting the shape.
+

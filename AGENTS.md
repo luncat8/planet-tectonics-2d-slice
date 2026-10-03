@@ -55,7 +55,9 @@ The pages cross-link each other; keep the mirror in sync when editing index.html
 
 harnesses (node, no runner script): experiments/pt-ui.js (page wiring, particle),
 experiments/smoke.js + view-check.js (column engine), plus the per-milestone pt-*.js checks,
-and experiments/slice-cut.js (the cut: the cell walk, the pack, the resample).
+and the cut in three: experiments/slice-cut.js (the walk, the pack, the resample),
+section-pack.js (the section page: transports, refusals, switches, HUD) and section-seed.js (the
+mapping: the z identity, the ledger, the quiet start, the two run modes).
 Each prints PASS/FAIL and exits non-zero on failure.
 
 port/ - files shared byte-identical with planet-geotectonics (0.4.0-sync-plan.md §1.2);

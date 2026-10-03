@@ -144,6 +144,31 @@ var S = {
 	depCls: new Int8Array(P.depCap),        // OCLS enum
 	depGr: new Float32Array(P.depCap),
 
+	// 0.4.1 M2: the assumption record of a reconstruction (0.4.1-plan.md §4.3.3). One named
+	// line per quantity a seeded column needed and the cut did not carry, plus the two
+	// volumes the ledger owes (§4.3.5). Read by the HUD, the capture and the fixture. Not in
+	// the state hash: it says how the state was made, not what it is, so a world the section
+	// built for itself and a world seeded from a cut hash alike when their state agrees.
+	recon: {
+		sedimentAge: 0,             // beds whose age is the crust's, because the globe gives none
+		subMohoThermal: 0,          // columns whose sub-Moho temperature is the fan's own law
+		lithosphereDepth: 0,        // columns whose lid hit the age cap the fan law uses
+		plumeDefault: 0,            // plumes seeded from the section's seed, not from the cut
+		mobileAbsent: 0,            // columns whose mobile load the pack cannot carry (hMob)
+		overCollapse: 0,            // columns imported above hCollapse, which the seed does not push
+		overCollapseVol: 0,         // m3 of that excess
+		shortPlateMerge: 0,         // narrowest-run merges it took to fit plateCap
+		clampedSpan: 0,             // spans clamped to reach the section's arc: never, in this version
+		discardedNormalVelocity: 0, // samples whose out-of-plane speed is larger than the seen one
+		seaDatumDisplay: 0,         // columns whose wet flag moves when the datum becomes the section's
+		bndCollapsed: 0,            // crossings that had to share a column pair, or fell in a tail
+		bndLost: 0,                 // crossings inside one plate after the resample: not representable
+		edgeFallback: 0,            // plate seams the cut left without a boundary, called neutral
+		gapColumns: 0,              // columns whose crust the cut thinned by crossing a gap
+		outsideCut: 0,              // columns of the ring an open window leaves with no data
+		tailArcKm: 0,               // the arc of a window no whole column could take
+		tailVol: 0                  // m3 of crust that arc carried
+	},
 	// mass ledger (design §6): produced / consumed volume per LITH, m3
 	ledProd: new Float64Array(P.LITH.n),
 	ledCons: new Float64Array(P.LITH.n),
@@ -164,7 +189,8 @@ S.reset = function () {
 	this.ledMix = 0; this.spawnSkipped = 0;
 	this.waterIn = 0; this.waterReleased = 0; this.waterUsed = 0;
 	this.meltArc = 0; this.meltPlume = 0; this.meltSill = 0;
-	for (var k in this) {
+	for (var k in this.recon) this.recon[k] = 0;
+	for (k in this) {
 		var v = this[k];
 		if (v && v.fill) v.fill(0);
 	}

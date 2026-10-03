@@ -51,6 +51,14 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   conditions.
 - **C1 on the column engine** (one global per file, `start(host)`): prerequisite of 0.9, not of
   the cut. New files do not add a second global.
+- **The crust kernel's ×1000 (found in 0.4.1 M2):** `CRU.belt` and `CRU.delaminate` scale their flow
+  by `1000` on an excess that is already in metres, where their constants are documented as rates
+  *per km* (`0.1.5-plan.md` §M2(b), §M2(d)) — measured: a 5 406 m belt excess moves 13.0 km of
+  felsic crust in one frame at 10 kyr/f, where the documented law gives 6.5 m. Deferred because it
+  changes the model, not the cut: every 0.1.x number that quotes a plateau, a ceiling or a belt
+  width is measured with it in place, and `0.1.6-plan.md`'s "the belt never widens" finding may be
+  partly this. It needs its own milestone, its own re-measurement, and the constants' comments and
+  units settled together (`js/crust.js:170`, `js/crust.js:274`).
 
 ## 4. Not planned
 

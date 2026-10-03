@@ -63,7 +63,7 @@ SURF.profile = function (dt) {
 // P.tauSliver, which is a trench filling in as the margin grows over it, and one that
 // was already on the line stays on it.
 SURF.morph = function (dt) {
-	var n = S.nCol, i, a, b, x0, x1, g, span, rel, zt, ht;
+	var n = S.nCol, i, a, b, x0, x1, g, span, rel, zt, ht, lm, rm;
 	if (n < 3) return;
 	rel = dt > 0 && P.tauSliver > 0 ? 1 - Math.exp(-dt / P.tauSliver) : 1;
 	for (i = 0; i < n; i++) {
@@ -72,8 +72,13 @@ SURF.morph = function (dt) {
 		while (a > 0 && S.colGhost[a - 1]) a--;
 		b = i;
 		while (b + 1 < n && S.colGhost[b + 1]) b++;
-		x0 = S.colX[a - 1];
-		x1 = S.colX[b + 1 < n ? b + 1 : 0];
+		// both margins wrap: a run that starts at column 0 has its left margin at n-1, and
+		// reading colX[-1] there handed the run NaN instead of a line (0.4.1 M2: a cut can
+		// seed a gap at the first column of the ring, which no engine kernel ever did)
+		lm = a > 0 ? a - 1 : n - 1;
+		rm = b + 1 < n ? b + 1 : 0;
+		x0 = S.colX[lm];
+		x1 = S.colX[rm];
 		if (x1 < x0) x1 += P.wrap;
 		span = x1 - x0;
 		if (!(span > 0)) continue;
@@ -81,8 +86,8 @@ SURF.morph = function (dt) {
 			g = S.colX[k] - x0;
 			if (g < 0) g += P.wrap;
 			g /= span;
-			zt = S.z[a - 1] + (S.z[b + 1 < n ? b + 1 : 0] - S.z[a - 1]) * g;
-			ht = S.hTot[a - 1] + (S.hTot[b + 1 < n ? b + 1 : 0] - S.hTot[a - 1]) * g;
+			zt = S.z[lm] + (S.z[rm] - S.z[lm]) * g;
+			ht = S.hTot[lm] + (S.hTot[rm] - S.hTot[lm]) * g;
 			if (rel >= 1) { S.z[k] = zt; S.hDraw[k] = ht; }
 			else { S.z[k] += (zt - S.z[k]) * rel; S.hDraw[k] += (ht - S.hDraw[k]) * rel; }
 			// a pinned sliver is a new profile value, so the three gradients that read

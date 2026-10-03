@@ -183,6 +183,10 @@ var UI = {
 
 	key: function (e) {
 		var k = e.key, names = { '1': 'def', '2': 'ovw', '3': 'cru', '4': 'bas' };
+		// keys are for the page, not for whatever is being typed into: the section's paste box
+		// (columns.html, 0.4.1 M1) is a textarea, and 'm' inside it must not move the mesh
+		var t = e.target, tag = t && t.tagName;
+		if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') return;
 		if (k === ' ') { this.togglePause(); e.preventDefault(); return; }
 		if (k === 'm') { RNDR.mesh = !RNDR.mesh; this.syncToggles(); return; }
 		if (k === 'g') { RNDR.showScale = !RNDR.showScale; this.syncToggles(); return; }
@@ -229,8 +233,10 @@ var UI = {
 			'   trenches ' + sub + '   collisions ' + col;
 	},
 
-	// 2 Hz: the only place HUD strings are built
-	updateHud: function () {
+	// 2 Hz: the only place HUD strings are built. The text is a function of its own so the
+	// section page (js/section-pack.js) can put its lines above the engine's without owning a
+	// second HUD.
+	hudText: function () {
 		var s = 't ' + SIM.t.toFixed(3) + ' Myr   Tm ' + SIM.Tm.toFixed(3) + '   frame ' + SIM.frame;
 		s += '\nplates ' + this.fmtGeo(P.sl.geo) + '   lava ' + this.fmtErupt(P.sl.erupt);
 		s += '\nfps ' + PERF.fps.toFixed(1) + '   ms ' + (PERF.msSim + PERF.msDraw).toFixed(2) +
@@ -239,8 +245,10 @@ var UI = {
 			'   ribbons ' + S.nRib + '   plumes ' + S.nPlm + '   deposits ' + S.nDep + '   seed ' + P.seed;
 		s += '\n' + this.tectonics();
 		s += '   arc melt ' + Math.round(S.meltArc) + ' m2   plume melt ' + Math.round(S.meltPlume) + ' m2';
-		this.hud.textContent = s;
-	}
+		return s;
+	},
+
+	updateHud: function () { this.hud.textContent = this.hudText(); }
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = UI;
