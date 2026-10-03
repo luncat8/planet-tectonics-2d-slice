@@ -15,6 +15,7 @@ var SectionPack = (function () {
 	var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
 	var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.S;
 	var SEED = (typeof module !== 'undefined' && module.exports) ? require('./section-seed.js') : window.SEED;
+	var CP = (typeof module !== 'undefined' && module.exports) ? require('./checkpoint.js') : window.Checkpoint;
 
 	// sim.js is the last script on the page, so the page globals (UI, RNDR, GEO, SIM) are reached
 	// at call time through this and never captured at load — which is also what lets the module
@@ -77,6 +78,7 @@ var SectionPack = (function () {
 		t0: 0,                  // the cut's world time: the label says how far the section ran
 		cvs: null, ctx: null, hudEl: null, sliceEl: null, msgEl: null,
 		textEl: null, fileEl: null, pickEl: null, rawBtn: null, ovlBtn: null, runBtn: null,
+		saveBtn: null, loadEl: null,
 		view: false, cache: null,
 
 		// ---------------------------------------------------------------- the URL
@@ -224,6 +226,8 @@ var SectionPack = (function () {
 			this.rawBtn = document.getElementById('bRaw');
 			this.ovlBtn = document.getElementById('bOvl');
 			this.runBtn = document.getElementById('bRun');
+			this.saveBtn = document.getElementById('sSave');
+			this.loadEl = document.getElementById('sLoad');
 			var self = this;
 			// the section's own knobs: ?seed= is the plume/flow/noise seed, ?geo= and ?erupt= the
 			// two clocks the section may run after it detaches (plan §4.2)
@@ -271,6 +275,37 @@ var SectionPack = (function () {
 			if (this.rawBtn) this.rawBtn.addEventListener('click', function () { self.caught(function () { self.toggleRaw(); }); });
 			if (this.ovlBtn) this.ovlBtn.addEventListener('click', function () { self.toggleOverlay(); });
 			if (this.runBtn) this.runBtn.addEventListener('click', function () { self.caught(function () { self.detach(); }); });
+			if (this.saveBtn) {
+				this.saveBtn.addEventListener('click', function () {
+					self.caught(function () {
+						var s = CP.saveSession();
+						var json = JSON.stringify(s, null, 1);
+						if (typeof document !== 'undefined' && document.createElement) {
+							var blob = new Blob([json], { type: 'application/json' });
+							var a = document.createElement('a');
+							a.href = URL.createObjectURL(blob);
+							a.download = 'session-' + (self.pack ? self.pack.checksum : 'planet') + '-t' + Math.round(self.t0) + '.json';
+							a.click();
+						}
+						self.msg = 'saved session (' + (json.length / 1024).toFixed(1) + ' KB)';
+						self.bad = false;
+						self.paintMsg();
+					});
+				});
+			}
+			if (this.loadEl) {
+				this.loadEl.addEventListener('change', function () {
+					var f = this.files && this.files[0];
+					if (!f) return;
+					var r = new FileReader();
+					r.onload = function () {
+						self.caught(function () {
+							CP.loadSession(r.result);
+						});
+					};
+					r.readAsText(f);
+				});
+			}
 			// r and o are the section's two view keys, on the same binding ui.js uses (window),
 			// and the same rule: a field being typed into keeps its keys
 			window.addEventListener('keydown', function (e) { self.key(e); });
@@ -451,6 +486,10 @@ var SectionPack = (function () {
 			for (i = 0; i < L.length; i++) s += (i ? '\n' : '') + L[i];
 			if (this.world && g) s += '\n' + g.UI.hudText();
 			this.hudEl.textContent = s;
+		},
+
+		exportWorld: function (opts) {
+			return SEED.exportSection(opts);
 		},
 
 		// ---------------------------------------------------------------- the engine view's overlay

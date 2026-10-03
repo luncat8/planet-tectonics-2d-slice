@@ -68,6 +68,8 @@
 		<button id="bRaw" aria-pressed="false" title="the cut as the paste said it, before the seeding">raw cut</button>
 		<button id="bOvl" aria-pressed="true" title="the pack's own zM line, and the hatch below the crust where the model starts">overlay</button>
 		<button id="bRun" aria-pressed="false" title="start the plate clock: the section becomes its own planet from here">detach and run</button>
+		<button id="sSave" title="save current section and runtime state as a session checkpoint">save session</button>
+		<label>Load session <input id="sLoad" type="file" accept=".json,application/json"></label>
 		<span id="sMsg" role="status"></span>
 	</div>
 </div>
@@ -98,6 +100,7 @@
 <script src="js/crust.js"></script>
 <script src="js/perf.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/deposits.js"></script>
 <script src="js/section-seed.js"></script>
 <script src="js/checkpoint.js"></script>
 <script src="js/section-pack.js"></script>

@@ -626,4 +626,21 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   arrays, so a `Float64Array` of assumption counters would move the state hash of every column
   fixture in the repo. Counters belong to the *capture*, not to the world: keep them off the hash and
   assert it (write to them, compare the hash) rather than trusting the shape.
+- **Typed arrays in JSON session objects need plain conversion.** `JSON.stringify` on a TypedArray
+  produces an object map `{"0": v0, "1": v1, ...}` rather than an Array `[v0, v1, ...]`. Passing such
+  an object to `new Float64Array(plainObj)` yields an empty array of length 0. When embedding slice packs
+  into JSON session checkpoints, encode via `SlicePack.encode()` or convert typed arrays to standard
+  plain arrays; deserialize with a fallback `Array.from(plainObj.length ? plainObj : Object.values(plainObj))`
+  to ensure round-trip integrity across JSON transports.
+- **Continuous box filter round-trips are exact to cell coordinate quantization.** When exporting
+  a 2D column state to a slice pack and re-importing via the SEED box filter, cell boundaries `sKm`
+  rounded to 6 significant digits cause sub-metre edge interpolations. The volume ledger closes to
+  $< 10^{-15}$ relative and frame-0 isostasy identity $|z - z_{\text{M}}| \le 10^{-3}$ m holds, confirming
+  that mass and profile are conserved across self round-trips without artificial spin-up drift.
+- **3D to 2D deposit catalogue reduction via out-of-plane support projection.** For deposits generated
+  from 3D geological potentials intersecting a 2D section plane, the effective 2D radius is
+  $R_{2\text{D}} = \sqrt{R_{3\text{D}}^2 - y_{\text{out}}^2}$ when $|y_{\text{out}}| \le R_{3\text{D}}$,
+  and empty otherwise. Deterministic hashing combining world seed, pack checksum, cell position, and
+  deposit family ensures identical catalogue generation across sessions and transports.
+
 

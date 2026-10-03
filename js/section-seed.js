@@ -23,6 +23,7 @@ var SEED = (function () {
 	var SURF = (typeof module !== 'undefined' && module.exports) ? require('./surface.js') : window.SURF;
 	var PLT = (typeof module !== 'undefined' && module.exports) ? require('./plates.js') : window.PLT;
 	var MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.MNT;
+	var SP = (typeof module !== 'undefined' && module.exports) ? require('../port/slice-format.js') : window.SlicePack;
 
 	var KM = 1000;
 
@@ -374,6 +375,78 @@ var SEED = (function () {
 		SEED.model(pack, o);
 		SEED.ledger(pack);
 		return '';
+	};
+
+	// ---------------------------------------------------------------- export
+	// M3 self round-trip: export the current column state as a verified pgt-slice-pack v1.
+	SEED.exportSection = function (opts) {
+		opts = opts || {};
+		var n = S.nCol, w0 = P.w0, wrap = P.wrap;
+		var path = {
+			kind: 'circle', lat0: 0, lon0: 0, az0: 90, closes: true,
+			arcKm: wrap / KM, cellKm: w0 / KM
+		};
+		var pack = SP.make(n, path);
+		pack.source = {
+			repo: 'planet-tectonics-2d-slice',
+			commit: 'self-export',
+			pack: opts.pack || 'column-engine',
+			epochMa: 0,
+			rotModel: '',
+			built: new Date().toISOString(),
+			tMyr: SP.round(opts.t !== undefined ? opts.t : (typeof SIM !== 'undefined' ? SIM.t : 0)),
+			level: 6,
+			gridSeed: P.seed,
+			simSeed: P.seed
+		};
+		pack.license = 'CC0-1.0 column engine self-export';
+		pack.sea = {
+			mode: 'level',
+			levelM: 0,
+			volScale: 1
+		};
+		for (var j = 0; j < n; j++) {
+			pack.sKm[j] = SP.round((j * w0) / KM);
+			pack.zM[j] = Math.round(S.z[j]);
+			pack.hFelM[j] = Math.round(S.hFel[j]);
+			pack.hMafM[j] = Math.round(S.hMaf[j]);
+			pack.hSedM[j] = Math.round(S.hSed[j]);
+			pack.ageMyr[j] = SP.round(S.colAge[j]);
+			pack.fert[j] = SP.round(S.fert[j]);
+			pack.damage[j] = SP.round(S.damage[j]);
+			var hTot = pack.hFelM[j] + pack.hMafM[j] + pack.hSedM[j];
+			if (S.colGhost[j] || hTot <= 0) pack.host[j] = 0;
+			else if (pack.hSedM[j] > 2000 || pack.hSedM[j] > pack.hFelM[j]) pack.host[j] = 4;
+			else if (pack.hFelM[j] > 35000) pack.host[j] = 3;
+			else if (pack.hFelM[j] > 1000) pack.host[j] = 2;
+			else pack.host[j] = 1;
+			pack.plate[j] = S.colPlate[j];
+			pack.bnd[j] = S.edge[j] || 0;
+			pack.pol[j] = S.edgePol[j] || 0;
+			pack.alive[j] = S.colGhost[j] ? 0 : 1;
+			pack.wet[j] = S.wet[j] ? 1 : 0;
+			pack.vt[j] = SP.round(S.colU[j]);
+			pack.vp[j] = 0;
+			pack.pot[j * 6 + 0] = SP.round(S.oVms[j]);
+			pack.pot[j * 6 + 1] = SP.round(S.oMaf[j]);
+			pack.pot[j * 6 + 2] = SP.round(S.oArc[j]);
+			pack.pot[j * 6 + 3] = SP.round(S.oOro[j]);
+			pack.pot[j * 6 + 4] = SP.round(S.oBas[j]);
+			pack.pot[j * 6 + 5] = SP.round(S.oPla[j]);
+		}
+		var plateRuns = [];
+		for (j = 0; j < n; j++) {
+			var p = pack.plate[j];
+			if (plateRuns.length === 0 || plateRuns[plateRuns.length - 1].id !== p) {
+				plateRuns.push({ id: p, n: 1 });
+			} else {
+				plateRuns[plateRuns.length - 1].n++;
+			}
+		}
+		pack.plates = plateRuns;
+		SP.quantize(pack);
+		pack.checksum = SP.checksum(pack);
+		return pack;
 	};
 
 	return SEED;

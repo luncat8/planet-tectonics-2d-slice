@@ -1,5 +1,5 @@
 // Column checkpoint: upstream's 64-byte header and padded records, slice-local magic.
-// This stores runtime state, not a cut or a deposit catalogue. Bump VERSION for schema changes.
+// Stores runtime state and full section session envelopes. Bump VERSION for schema changes.
 'use strict';
 var Checkpoint = (function () {
 	var node = typeof module !== 'undefined' && module.exports;
@@ -21,6 +21,10 @@ var Checkpoint = (function () {
 	arrays.forEach(function (k) { total += pad(S[k].byteLength); });
 	function pad(n) { return Math.ceil(n / 8) * 8; }
 	function sim() { return node ? require('./sim.js') : window.SIM; }
+	function secPack() { return node ? require('./section-pack.js') : window.SectionPack; }
+	function secSeed() { return node ? require('./section-seed.js') : window.SEED; }
+	function sliceFormat() { return node ? require('../port/slice-format.js') : window.SlicePack; }
+
 	function code(a) {
 		var i = dtypes.indexOf(a.constructor.name);
 		if (i < 0) throw new TypeError('unsupported checkpoint array ' + a.constructor.name);
@@ -32,8 +36,28 @@ var Checkpoint = (function () {
 		clocks.forEach(function (k) { v.push(runtime[k]); });
 		return v.concat([P.seed, P.sl.geo, P.sl.erupt], RNG.state(), [RNG.gs, +RNG.gh]);
 	}
+
+	function b64enc(bytes) {
+		if (typeof Buffer !== 'undefined') return Buffer.from(bytes).toString('base64');
+		var s = '', len = bytes.length;
+		for (var i = 0; i < len; i++) s += String.fromCharCode(bytes[i]);
+		return btoa(s);
+	}
+	function b64dec(str) {
+		if (typeof Buffer !== 'undefined') return new Uint8Array(Buffer.from(str, 'base64'));
+		var s = atob(str), len = s.length, out = new Uint8Array(len);
+		for (var i = 0; i < len; i++) out[i] = s.charCodeAt(i);
+		return out;
+	}
+
 	return {
-		MAGIC: 0x31435450, VERSION: 1,
+		MAGIC: 0x31435450,
+		VERSION: 1,
+		SESSION_FORMAT: 'pgt-slice-session',
+		SESSION_VERSION: 1,
+		b64enc: b64enc,
+		b64dec: b64dec,
+
 		save: function () {
 			var runtime = sim();
 			if (!runtime) throw new Error('simulation is not ready');
@@ -49,10 +73,10 @@ var Checkpoint = (function () {
 			});
 			return new Uint8Array(b);
 		},
+
 		load: function (bytes) {
 			var src = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes;
 			if (!(src instanceof Uint8Array) || src.byteLength !== total) throw new RangeError('checkpoint data length');
-			// Copy also accepts an unaligned file view and prevents aliasing live buffers.
 			var b = new Uint8Array(src).buffer, h = new Uint32Array(b, 0, 16);
 			if (h[0] !== this.MAGIC) throw new RangeError('not a column checkpoint');
 			if (h[1] !== this.VERSION) throw new RangeError('checkpoint version ' + h[1]);
@@ -106,6 +130,115 @@ var Checkpoint = (function () {
 			MNT.init(P.seed); MNT.setTime(runtime.t, runtime.Tm);
 			SLAB.reset();
 			return S;
+		},
+
+		saveSession: function () {
+			var sec = secPack(), seed = secSeed(), sp = sliceFormat();
+			var runtimeBytes = this.save();
+			var platesFrom = [];
+			if (seed && seed.platesFrom) {
+				for (var p = 0; p < S.nPl; p++) platesFrom.push(seed.platesFrom[p]);
+			}
+			var packCopy = null;
+			if (sec && sec.pack) {
+				try { packCopy = JSON.parse(sp.encode(sec.pack)); }
+				catch (e) { packCopy = sec.pack; }
+			}
+			return {
+				format: this.SESSION_FORMAT,
+				version: this.SESSION_VERSION,
+				created: new Date().toISOString(),
+				session: {
+					mode: !!(sec && sec.mode),
+					origin: (sec && sec.origin) || '',
+					world: !!(sec && sec.world),
+					raw: !!(sec && sec.raw),
+					overlay: sec ? !!sec.overlay : true,
+					running: !!(sec && sec.running),
+					t0: (sec && sec.t0) || 0,
+					spin: (sec && sec.spin) || null
+				},
+				mapper: {
+					MAP: (seed && seed.MAP) || 1,
+					scale: (seed && seed.scale) || 1,
+					window: !!(seed && seed.window),
+					nCut: (seed && seed.nCut) || 0,
+					tailKm: (seed && seed.tailKm) || 0,
+					mapEquiv: (seed && seed.mapEquiv) || 1,
+					runs: (seed && seed.runs) || 0,
+					merges: (seed && seed.merges) || 0,
+					platesFrom: platesFrom
+				},
+				pack: packCopy,
+				runtime: b64enc(runtimeBytes)
+			};
+		},
+
+		loadSession: function (sessionInput) {
+			var obj = sessionInput;
+			if (typeof sessionInput === 'string') {
+				try { obj = JSON.parse(sessionInput); }
+				catch (e) { throw new RangeError('session not JSON: ' + e.message); }
+			}
+			if (!obj || typeof obj !== 'object' || Array.isArray(obj)) throw new RangeError('session must be an object');
+			if (obj.format !== this.SESSION_FORMAT) throw new RangeError('not a slice session (' + obj.format + ')');
+			if (obj.version !== this.SESSION_VERSION) throw new RangeError('session version ' + obj.version);
+			if (!obj.runtime || typeof obj.runtime !== 'string') throw new RangeError('session missing runtime payload');
+
+			var sp = sliceFormat();
+			if (obj.pack) {
+				for (var k = 0; k < sp.FIELDS.length; k++) {
+					var fn = sp.FIELDS[k].name, val = obj.pack[fn];
+					if (val && typeof val === 'object' && !Array.isArray(val) && !ArrayBuffer.isView(val)) {
+						var arr = [];
+						for (var idx = 0; idx in val; idx++) arr.push(val[idx]);
+						obj.pack[fn] = arr;
+					}
+				}
+				sp.normalize(obj.pack);
+				sp.quantize(obj.pack);
+				var badPack = sp.validate(obj.pack) || sp.verify(obj.pack);
+				if (badPack) throw new RangeError('session pack invalid: ' + badPack);
+			}
+
+			var bytes = b64dec(obj.runtime);
+			this.load(bytes);
+
+			var seed = secSeed(), sec = secPack();
+			if (seed && obj.mapper) {
+				seed.MAP = obj.mapper.MAP || 1;
+				seed.scale = obj.mapper.scale || 1;
+				seed.window = !!obj.mapper.window;
+				seed.nCut = obj.mapper.nCut || P.nCols;
+				seed.tailKm = obj.mapper.tailKm || 0;
+				seed.mapEquiv = obj.mapper.mapEquiv || 1;
+				seed.runs = obj.mapper.runs || 0;
+				seed.merges = obj.mapper.merges || 0;
+				if (obj.mapper.platesFrom && seed.platesFrom) {
+					for (var p = 0; p < obj.mapper.platesFrom.length && p < P.plateCap; p++) {
+						seed.platesFrom[p] = obj.mapper.platesFrom[p];
+					}
+				}
+				seed.pack = obj.pack || null;
+			}
+			if (sec && obj.session) {
+				sec.mode = !!obj.session.mode;
+				sec.origin = obj.session.origin || 'checkpoint';
+				sec.world = !!obj.session.world;
+				sec.raw = !!obj.session.raw;
+				sec.overlay = obj.session.overlay !== false;
+				sec.running = !!obj.session.running;
+				sec.t0 = obj.session.t0 || 0;
+				sec.spin = obj.session.spin || null;
+				sec.pack = obj.pack || null;
+				sec.cache = null;
+				sec.msg = 'restored session ' + (obj.pack ? sec.describe(obj.pack) : 'planet');
+				sec.bad = false;
+				if (sec.paintMsg) sec.paintMsg();
+				if (sec.syncButtons) sec.syncButtons();
+				if (sec.hud) sec.hud();
+			}
+			return obj;
 		}
 	};
 })();

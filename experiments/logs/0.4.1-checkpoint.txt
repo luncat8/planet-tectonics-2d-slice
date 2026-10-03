@@ -1,3 +1,5 @@
+
+A. runtime checkpoint codec & validation
 PASS  section arrays, clocks and reconstruction ledger round trip
 PASS  restored section resumes deterministically
 PASS  unaligned file views load
@@ -22,4 +24,31 @@ PASS  refuses fractional RNG word atomically
 PASS  refuses slider beyond the runtime range atomically
 PASS  refuses truncated data
 
-ALL PASS (23 checks)
+B. session envelope save & load
+PASS  session format and version are declared
+PASS  session carries mapper and section metadata
+PASS  base64 runtime encoding round-trips bit-identically
+PASS  loadSession restores exact runtime state, mapper and section pack
+PASS  refuses not an object without state corruption
+PASS  refuses foreign format without state corruption
+PASS  refuses future version without state corruption
+PASS  refuses missing runtime without state corruption
+PASS  refuses corrupted embedded pack without state corruption
+
+C. deposit catalogue core & 3D->2D snapshot
+PASS  snapshotSection produces valid snapshot with checksum
+PASS  deposit catalogue is deterministic across repeated generations   2657 bodies generated
+PASS  deposit body identity incorporates pack checksum and 3D->2D projection
+PASS  drill returns column stratigraphy and intersecting deposit bodies   beds 3 deposits 5
+PASS  probe detects bodies within support footprint
+
+D. self round-trip export & re-import
+PASS  exportSection produces a valid pgt-slice-pack v1
+PASS  exported slice pack passes format validation and checksum verification   valid
+PASS  reconstructed exported slice pack without refusal   ok
+PASS  re-imported thicknesses match exported world within 6-digit cell quantisation   max thickness diff: 10.92 m
+PASS  re-imported volume ledger closes to 1e-9 relative   rel 4.69e-16
+PASS  frame-0 isostasy identity holds on self-exported world (|z - zM| <= 1e-3 m)   worst z identity diff: 9.09e-13 m
+PASS  forward simulation after self round-trip stays within spin-up bound   relative mass change over 100 frames: 0.00e+0
+
+ALL PASS (44 checks)
