@@ -10,6 +10,18 @@
 			"path": "port/slice-format.js",
 			"sha256": "941f2617265e7298eef78f274e19f9bc0ef06b1ad8aaf1d337612de121dd7118",
 			"what": "pgt-slice-pack v1: the field table, quantisation, checksum, validation and path maths (0.4.1-plan.md §3.3, §4.1)"
+		},
+		{
+			"path": "port/deposit-models.js",
+			"sha256": "9f10887285891fb6cec86dcb47cf818d2fabea37152b3b2394934de5d31f74cb",
+			"upstreamPath": "js/data/deposit-models.js",
+			"what": "the synthetic catalogue's versioned priors: 3 families (vms, arc, orogenic), tileN/slots/maxExtentM/truncationSigma/potentialFloor and the two published grade-tonnage correlations (0.4.0-sync-plan.md §2.5.2)"
+		},
+		{
+			"path": "port/deposit-economics.js",
+			"sha256": "97008fa9e8b6681d7ce98a1c5196e1d1b2e2d22c615e1e1565f2c3d919876140",
+			"upstreamPath": "js/data/deposit-economics.js",
+			"what": "the screening scenario (prices, recovery, costs, cutoff) and screen(): a filter over a body, never an NPV; bumping it changes no body (0.4.0-sync-plan.md §2.5.2)"
 		}
 	]
 }

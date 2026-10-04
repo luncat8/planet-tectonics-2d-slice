@@ -103,7 +103,7 @@ check.ok('loadSession restores exact runtime state, mapper and section pack',
 });
 
 check.section('C. deposit catalogue core & 3D->2D snapshot');
-var snap = DEP.snapshotSection(S, { packChecksum: SEC.pack ? SEC.pack.checksum : 'local' });
+var snap = DEP.snapshotSection(S, { seed: P.seed, packChecksum: SEC.pack ? SEC.pack.checksum : 'local', pack: SEC.pack });
 check.ok('snapshotSection produces valid snapshot with checksum',
 	snap.format === 'pgt-section-snapshot' && snap.nCol === S.nCol &&
 	/^[0-9a-f]{16}$/.test(snap.checksum));
@@ -111,22 +111,23 @@ check.ok('snapshotSection produces valid snapshot with checksum',
 var cat1 = DEP.generateCatalogue(snap);
 var cat2 = DEP.generateCatalogue(snap);
 check.ok('deposit catalogue is deterministic across repeated generations',
-	cat1.length === cat2.length && JSON.stringify(cat1) === JSON.stringify(cat2),
-	cat1.length + ' bodies generated');
+	cat1.checksum === cat2.checksum && JSON.stringify(cat1.bodies) === JSON.stringify(cat2.bodies),
+	cat1.inPlane + ' bodies in plane of ' + cat1.candidates + ' candidates');
 
-var body = cat1[0];
-check.ok('deposit body identity incorporates pack checksum and 3D->2D projection',
-	body && body.packChecksum === snap.packChecksum && body.projectedRadiusKm <= body.radiusKm &&
-	Math.abs(body.outOfPlaneKm) <= body.radiusKm);
+var body = cat1.bodies[0];
+check.ok('deposit body identity incorporates the pack checksum and the plane reduction',
+	!!body && body.packChecksum === snap.packChecksum && DEP.validate(body) === '' &&
+	Math.abs(body.outOfPlaneKm) * 1000 <= Math.sqrt(body.fp.n2) + 1e-6,
+	body ? body.id : 'no bodies in plane');
 
-var drillLog = DEP.drill(S, body.col, 5000, cat1);
-check.ok('drill returns column stratigraphy and intersecting deposit bodies',
-	drillLog && drillLog.col === body.col && drillLog.beds.length > 0 &&
+var drillLog = DEP.drill(S, body.sKm, 5000, cat1);
+check.ok('drill returns column stratigraphy and the bodies the hole crosses',
+	drillLog && drillLog.beds.length > 0 &&
 	drillLog.deposits.some(function (d) { return d.id === body.id; }),
 	'beds ' + drillLog.beds.length + ' deposits ' + drillLog.deposits.length);
 
 var probed = DEP.probe(cat1, body.sKm, body.yM, 5.0);
-check.ok('probe detects bodies within support footprint',
+check.ok('probe detects bodies within its footprint',
 	probed.length > 0 && probed.some(function (d) { return d.id === body.id; }));
 
 check.section('D. self round-trip export & re-import');
@@ -142,22 +143,53 @@ var valMsg = SP.validate(expWorld) || SP.verify(expWorld);
 check.ok('exported slice pack passes format validation and checksum verification',
 	valMsg === '', valMsg || 'valid');
 
-var origHThick = [];
+var origHThick = [], origAge = [], origHost = [], origPot = [], origPlate = [], origTot = [];
 for (var col = 0; col < S.nCol; col++) {
-	origHThick.push([Math.round(S.hFel[col]), Math.round(S.hMaf[col]), Math.round(S.hSed[col]), Math.round(S.z[col])]);
+	origHThick.push([S.hFel[col], S.hMaf[col], S.hSed[col]]);
+	origAge.push(S.colAge[col]);
+	origHost.push(DEP.hostCode(S.hFel[col], S.hMaf[col], S.hSed[col], S.colGhost[col]));
+	origPot.push([S.oVms[col], S.oMaf[col], S.oArc[col], S.oOro[col], S.oBas[col], S.oPla[col]]);
+	origPlate.push(S.colPlate[col]);
+	origTot.push(S.hTot[col]);
 }
 var reRefused = SEED.layout(expWorld, { seed: 12345, t: SIM.t, Tm: SIM.Tm });
 check.ok('reconstructed exported slice pack without refusal', !reRefused, reRefused || 'ok');
 
-var maxHDiff = 0;
-for (col = 0; col < S.nCol; col++) {
-	var dF = Math.abs(S.hFel[col] - origHThick[col][0]);
-	var dM = Math.abs(S.hMaf[col] - origHThick[col][1]);
-	var dS = Math.abs(S.hSed[col] - origHThick[col][2]);
-	maxHDiff = Math.max(maxHDiff, dF, dM, dS);
+// The pack stores sKm at six significant digits, so on the 40 030 km ring a sample boundary
+// sits up to `quantM` (~50 m) from where the section planted it. A column then trades that
+// fraction of its span with a neighbour, and the residue is that fraction times the field's
+// own contrast, so it is neither zero nor a number to guess: the bound below is the largest
+// one-column contrast on the ring times that fraction, doubled for the two ends of a column.
+// A column that really moved or a bed that really vanished shows up in whole metres and Myr,
+// and the quarter-column shift at the end of this section proves the bound can see it.
+var quantM = 0, i2;
+for (i2 = 0; i2 < expWorld.n; i2++) quantM = Math.max(quantM, Math.abs(expWorld.sKm[i2] * 1000 - i2 * P.w0));
+var adjH = 0, adjA = 0, prev = SEED.nCut - 1;
+for (col = 0; col < SEED.nCut; col++) {
+	adjH = Math.max(adjH, Math.abs(origHThick[col][0] - origHThick[prev][0]),
+		Math.abs(origHThick[col][1] - origHThick[prev][1]), Math.abs(origHThick[col][2] - origHThick[prev][2]));
+	adjA = Math.max(adjA, Math.abs(origAge[col] - origAge[prev]));
+	prev = col;
 }
-check.ok('re-imported thicknesses match exported world within 6-digit cell quantisation',
-	maxHDiff < 15.0, 'max thickness diff: ' + maxHDiff.toFixed(2) + ' m');
+var frac = quantM / P.w0, boundH = 2 * frac * adjH, boundA = 2 * frac * adjA;
+var maxHDiff = 0, maxAgeDiff = 0, maxPotDiff = 0, hostBad = 0, plateBad = 0;
+for (col = 0; col < S.nCol; col++) {
+	maxHDiff = Math.max(maxHDiff, Math.abs(S.hFel[col] - origHThick[col][0]),
+		Math.abs(S.hMaf[col] - origHThick[col][1]), Math.abs(S.hSed[col] - origHThick[col][2]));
+	maxAgeDiff = Math.max(maxAgeDiff, Math.abs(S.colAge[col] - origAge[col]));
+	if (DEP.hostCode(S.hFel[col], S.hMaf[col], S.hSed[col], S.colGhost[col]) !== origHost[col]) hostBad++;
+	if (SEED.platesFrom[S.colPlate[col]] !== expWorld.plate[col]) plateBad++;
+	for (i2 = 0; i2 < 6; i2++) maxPotDiff = Math.max(maxPotDiff, Math.abs(S[DEP.POTENTIALS[i2]][col] - origPot[col][i2]));
+}
+check.ok('re-imported thicknesses and ages are inside the pack\'s own arc quantum',
+	maxHDiff <= boundH && maxAgeDiff <= boundA,
+	'max ' + maxHDiff.toFixed(1) + ' m / ' + maxAgeDiff.toFixed(3) + ' Myr, bound ' +
+	boundH.toFixed(0) + ' m / ' + boundA.toFixed(3) + ' Myr at a ' + quantM.toFixed(0) +
+	' m quantum over a ' + (P.w0 / 1000).toFixed(1) + ' km column');
+check.ok('re-imported potentials are the exported ones inside the same quantum, and the host class survives it',
+	maxPotDiff <= 2 * frac && hostBad <= 2,
+	'max potential diff ' + maxPotDiff.toExponential(2) + ', ' + hostBad + ' host flips');
+check.ok('every column maps back to the plate the cut named', plateBad === 0, plateBad + ' mismatches');
 
 var massLedgerErr = Math.abs(SEED.seedMass - SEED.cutMass) / SEED.cutMass;
 check.ok('re-imported volume ledger closes to 1e-9 relative',
@@ -184,12 +216,43 @@ for (col = 0; col < nCut; col++) {
 check.ok('frame-0 isostasy identity holds on self-exported world (|z - zM| <= 1e-3 m)',
 	worstZId <= 1e-3, 'worst z identity diff: ' + worstZId.toExponential(2) + ' m');
 
+// The spin-up bound is not "no mass moves": the engine's own dynamics move crust, and a fresh
+// reset planet at the same plate rate is the baseline the imported state must not beat. So the
+// same 1000 frames are run on both and compared.
 var spinStartMass = SEED.seedMass;
-SIM.run(100);
+SIM.run(1000);
 var spinEndMass = 0;
 for (col = 0; col < S.nCol; col++) spinEndMass += S.hTot[col] * S.colW[col];
 var spinDeltaRel = Math.abs(spinEndMass - spinStartMass) / spinStartMass;
-check.ok('forward simulation after self round-trip stays within spin-up bound',
-	spinDeltaRel < 1e-3, 'relative mass change over 100 frames: ' + spinDeltaRel.toExponential(2));
+check.planet(12345);
+SIM.setGeo(50e3);
+var freshStart = 0;
+for (col = 0; col < S.nCol; col++) freshStart += S.hTot[col] * S.colW[col];
+SIM.run(1000);
+var freshEnd = 0;
+for (col = 0; col < S.nCol; col++) freshEnd += S.hTot[col] * S.colW[col];
+var freshDeltaRel = Math.abs(freshEnd - freshStart) / freshStart;
+check.ok('forward simulation after self round-trip stays inside the spin-up bound',
+	spinDeltaRel <= freshDeltaRel + 1e-3,
+	'imported ' + spinDeltaRel.toExponential(2) + ' vs fresh planet ' + freshDeltaRel.toExponential(2) +
+	' over 1000 frames');
+
+// The round-trip caps above are only worth having if a moved cut fails them. Shifting every
+// sample boundary a quarter column, alternately in and out so the ring still fits its path,
+// moves a quarter of every column's span into its neighbour's reach; the same comparison then
+// has to leave the caps far behind.
+var shifted = { sKm: expWorld.sKm.slice() };
+for (i2 = 0; i2 < expWorld.n; i2++) shifted.sKm[i2] = SP.round(expWorld.sKm[i2] + (i2 % 2 ? 0.25 : -0.25) * P.w0 / 1000);
+var copy = JSON.parse(SP.encode(expWorld));
+copy.sKm = Array.prototype.slice.call(shifted.sKm);
+copy.checksum = SP.checksum(SP.normalize(copy));
+var shiftedRefused = SEED.layout(copy, { seed: 12345, t: SIM.t, Tm: SIM.Tm });
+var shiftedH = 0;
+for (col = 0; col < S.nCol; col++) shiftedH = Math.max(shiftedH,
+	Math.abs(S.hFel[col] - origHThick[col][0]), Math.abs(S.hMaf[col] - origHThick[col][1]),
+	Math.abs(S.hSed[col] - origHThick[col][2]));
+check.ok('a quarter-column shift of the cut moves the reconstruction orders past the cap',
+	!shiftedRefused && shiftedH > 100 * maxHDiff && shiftedH > boundH,
+	shiftedH.toFixed(0) + ' m vs the round-trip\'s ' + maxHDiff.toFixed(1) + ' m');
 
 check.done();

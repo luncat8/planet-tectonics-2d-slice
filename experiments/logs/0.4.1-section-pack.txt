@@ -104,6 +104,6 @@ PASS  the empty Cut-from option drops the cut, its world and its overlay   cut c
 PASS  and an id the bundle does not have is a message from the same control   no bundled pack 'no-such-pack' (the bake lands in M4) — paste a cut
 PASS  and the next draw is the idle strip again
 
-  total 6.3 s
+  total 4.7 s
 
 ALL PASS (60 checks)

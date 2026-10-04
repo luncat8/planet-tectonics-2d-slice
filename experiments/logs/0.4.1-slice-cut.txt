@@ -31,16 +31,16 @@ PASS  n=40962 (402 cells): the cut reads the same from either end (up to where i
 PASS  n=40962 (402 cells): the same cut yields the same cells twice
 
 C. the pack: size, checksum, round trip
-PASS  n=198: the pack validates and verifies   46.3 KB, checksum 42c2142115dbffc8
+PASS  n=198: the pack validates and verifies   44.4 KB, checksum 8c5416043e24f38f
 PASS  n=198: every field is bit-exact through JSON   max |delta| 0
-PASS  n=400: the pack validates and verifies   93.3 KB, checksum 4b6a0c9795ff7f9a
+PASS  n=400: the pack validates and verifies   90.8 KB, checksum bd224293b46d8870
 PASS  n=400: every field is bit-exact through JSON   max |delta| 0
-PASS  n=811: the pack validates and verifies   188.7 KB, checksum 81573f222607742b
+PASS  n=811: the pack validates and verifies   187.9 KB, checksum c0cac33347a8df1a
 PASS  n=811: every field is bit-exact through JSON   max |delta| 0
-INFO  pack size (JSON, six significant digits)   L5 (198) 46.3 KB · L6 (400) 93.3 KB · L7 (811) 188.7 KB
-INFO  bytes per sample   239 B
-PASS  a cut is at least 5 x smaller than the pack it came out of (536 KB)   93.3 KB vs 536 KB
-PASS  the usual cut (L5/L6) still fits a clipboard and a gist-sized file   46.3 / 93.3 KB
+INFO  pack size (JSON, six significant digits)   L5 (198) 44.4 KB · L6 (400) 90.8 KB · L7 (811) 187.9 KB
+INFO  bytes per sample   232 B
+PASS  a cut is at least 5 x smaller than the pack it came out of (536 KB)   90.8 KB vs 536 KB
+PASS  the usual cut (L5/L6) still fits a clipboard and a gist-sized file   44.4 / 90.8 KB
 
 D. the decoder refuses what it must
 PASS  rejects a foreign format tag   not a pgt-slice-pack (pgt-something-else)
@@ -56,12 +56,12 @@ PASS  rejects a boundary code the section does not have   boundary code 7 at 1
 PASS  rejects a polarity outside -1/0/+1   polarity 3 at 2
 PASS  rejects a path that is neither circle nor polyline   path.kind must be circle or polyline
 PASS  rejects a cut that does not reach its own arc length   the last sample is wider than a cell
-PASS  the checksum sees an edited world time (source.tMyr)   12aefe70210ec1f1 vs 207a9570e33847d9
-PASS  the checksum sees an edited epoch (source.epochMa)   46284d1354a879e4 vs 207a9570e33847d9
-PASS  the checksum sees an edited seed (source.gridSeed)   7f01095336318da2 vs 207a9570e33847d9
-PASS  the checksum sees an edited source commit   3dae2b55b7c515f8 vs 207a9570e33847d9
-PASS  the checksum sees an edited license line   149b0b09d566f51e vs 207a9570e33847d9
-PASS  the checksum sees an edited arc length (path.arcKm)   dc44b4f9c90db1bc vs 207a9570e33847d9
+PASS  the checksum sees an edited world time (source.tMyr)   e1ab49e90e4ba922 vs ef76e0e9199b3efa
+PASS  the checksum sees an edited epoch (source.epochMa)   ac83fbf6c984839f vs ef76e0e9199b3efa
+PASS  the checksum sees an edited seed (source.gridSeed)   5c8118366132f491 vs ef76e0e9199b3efa
+PASS  the checksum sees an edited source commit   36037fec0b4783eb vs ef76e0e9199b3efa
+PASS  the checksum sees an edited license line   98a7a8f882ab4415 vs ef76e0e9199b3efa
+PASS  the checksum sees an edited arc length (path.arcKm)   252a8c88d10016e7 vs ef76e0e9199b3efa
 
 E. the fit into the section
 PASS  one column per crossed cell fits colCap 768 at L5 and L6   198 / 400 <= 768

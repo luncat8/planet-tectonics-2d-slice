@@ -24,6 +24,7 @@ var SEED = (function () {
 	var PLT = (typeof module !== 'undefined' && module.exports) ? require('./plates.js') : window.PLT;
 	var MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.MNT;
 	var SP = (typeof module !== 'undefined' && module.exports) ? require('../port/slice-format.js') : window.SlicePack;
+	var DEP = (typeof module !== 'undefined' && module.exports) ? require('./deposits.js') : window.Deposits;
 
 	var KM = 1000;
 
@@ -414,18 +415,16 @@ var SEED = (function () {
 			pack.ageMyr[j] = SP.round(S.colAge[j]);
 			pack.fert[j] = SP.round(S.fert[j]);
 			pack.damage[j] = SP.round(S.damage[j]);
-			var hTot = pack.hFelM[j] + pack.hMafM[j] + pack.hSedM[j];
-			if (S.colGhost[j] || hTot <= 0) pack.host[j] = 0;
-			else if (pack.hSedM[j] > 2000 || pack.hSedM[j] > pack.hFelM[j]) pack.host[j] = 4;
-			else if (pack.hFelM[j] > 35000) pack.host[j] = 3;
-			else if (pack.hFelM[j] > 1000) pack.host[j] = 2;
-			else pack.host[j] = 1;
+			// the host class has one owner (js/deposits.js): the pack's code and the section's
+			// own reader must not be two opinions about what "thick continental" means
+			pack.host[j] = DEP.hostCode(S.hFel[j], S.hMaf[j], S.hSed[j], S.colGhost[j]);
 			pack.plate[j] = S.colPlate[j];
 			pack.bnd[j] = S.edge[j] || 0;
 			pack.pol[j] = S.edgePol[j] || 0;
 			pack.alive[j] = S.colGhost[j] ? 0 : 1;
 			pack.wet[j] = S.wet[j] ? 1 : 0;
 			pack.vt[j] = SP.round(S.colU[j]);
+			// the ring has no out-of-plane motion, so vp (the field a globe cut fills) is 0
 			pack.vp[j] = 0;
 			pack.pot[j * 6 + 0] = SP.round(S.oVms[j]);
 			pack.pot[j * 6 + 1] = SP.round(S.oMaf[j]);

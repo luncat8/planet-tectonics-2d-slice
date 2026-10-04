@@ -115,6 +115,7 @@ var P = {
 	// crust (design §4.3, §4.4)
 	hRiftBreakup: 15e3,
 	hOceanic: 8e3,
+	hOro: 45e3,                  // m, felsic crust above this is the thick-continental host class
 	hCollapse: 50e3,
 	hMafNewBase: 7e3,            // hMafNew = base * (1 + hMafNewTm * max(0, Tm - 1))
 	hMafNewTm: 1.5,

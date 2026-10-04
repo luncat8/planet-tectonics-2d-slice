@@ -134,8 +134,15 @@ var pageScripts = order.filter(function (f) { return f.indexOf('js/') === 0; });
 check.ok('columns.html loads every js/*.js file exactly once', onDisk.length === pageScripts.length &&
 	onDisk.every(function (f) { return pageScripts.indexOf('js/' + f) >= 0; }), pageScripts.join(' '));
 var portScripts = order.filter(function (f) { return f.indexOf('port/') === 0; });
-check.ok('the shared slice format loads exactly once, from port/',
-	portScripts.length === 1 && portScripts[0] === 'port/slice-format.js', portScripts.join(' '));
+var portOnDisk = fs.readdirSync(path.join(root, 'port')).filter(function (f) { return /\.js$/.test(f); });
+var manifest = JSON.parse(fs.readFileSync(path.join(root, 'port', 'PORT.json'), 'utf8'));
+var listed = manifest.files.map(function (e) { return e.path; });
+check.ok('every shared port/ file loads exactly once and is in the manifest',
+	portOnDisk.length === portScripts.length &&
+	portOnDisk.every(function (f) { return portScripts.indexOf('port/' + f) >= 0; }) &&
+	portScripts.every(function (f) { return listed.indexOf(f) >= 0; }), portScripts.join(' '));
+check.ok('the shared format loads before any page module reads it',
+	portScripts[0] === 'port/slice-format.js', portScripts[0]);
 check.ok('the DOM stub found every id in columns.html', IDS.length >= 8, IDS.join(','));
 check.ok('the preset buttons come from columns.html', BUTTONS.length === 4, BUTTONS.join(','));
 var L = load();

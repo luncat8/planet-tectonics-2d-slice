@@ -1,0 +1,93 @@
+
+A. the shared core against the counterpart fixture
+PASS  the fixture records the counterpart file it came from   6deb214ef094
+PASS  mix32(0) is the counterpart's
+PASS  mix32(1) is the counterpart's
+PASS  mix32(7) is the counterpart's
+PASS  mix32(2654435769) is the counterpart's
+PASS  mix32(4294967295) is the counterpart's
+PASS  mix32(2147483648) is the counterpart's
+PASS  mix32(123456789) is the counterpart's
+PASS  mix32(-1) is the counterpart's
+PASS  mix32(-2000000000) is the counterpart's
+PASS  combine(0, 0) is the counterpart's
+PASS  combine(1, 0) is the counterpart's
+PASS  combine(7, 12345) is the counterpart's
+PASS  combine(2654435769, -1) is the counterpart's
+PASS  combine(4294967295, 2147483647) is the counterpart's
+PASS  combine(42, 24575) is the counterpart's
+PASS  combine(123456789, 3) is the counterpart's
+PASS  fnvText("") is the counterpart's
+PASS  fnvText("pgt-slice-pack") is the counterpart's
+PASS  fnvText("abc123") is the counterpart's
+PASS  fnvText("BEEF0000BEEF0000") is the counterpart's
+PASS  fnvText("fixed point") is the counterpart's
+PASS  fnvBytes case 0 (0 bytes) is the counterpart's   2166136261/2538058380
+PASS  fnvBytes case 1 (1 bytes) is the counterpart's   84696351/711847054
+PASS  fnvBytes case 2 (7 bytes) is the counterpart's   1448194398/1513038419
+PASS  fnvBytes case 3 (20 bytes) is the counterpart's   2556363826/3414892621
+PASS  every key sequence draws the counterpart's 40 uniforms   8/8 sequences
+PASS  truncatedNormal case 0 is the counterpart's
+PASS  truncatedNormal case 1 is the counterpart's
+PASS  truncatedNormal case 2 is the counterpart's
+PASS  truncatedNormal case 3 is the counterpart's
+PASS  truncatedNormal case 4 is the counterpart's
+PASS  round(0) is the counterpart's
+PASS  round(1) is the counterpart's
+PASS  round(-1) is the counterpart's
+PASS  round(1234.56789) is the counterpart's
+PASS  round(1e-9) is the counterpart's
+PASS  round(-0.000123456789) is the counterpart's
+PASS  round(999999.5) is the counterpart's
+PASS  axisUnits is the counterpart's
+PASS  the body geometry (extent, volume, metal) is the counterpart's
+PASS  the host law is the counterpart's Extract.host on its fixtures   10/10
+PASS  a column with no crust at all is none, not an ocean floor
+
+B. the declared plane reduction
+PASS  the body frame in the plane is the globe frame after the change of basis   worst component 8.88e-16
+PASS  every projected ellipsoid point is inside the stored footprint   5043 samples, worst overshoot 0.00e+0
+
+C. the snapshot on the ring
+PASS  a ghost column carries no potential and host none
+PASS  the blur of a covered column beside a ghost excludes the hole   rel 1.19e-8  got 0.699999988079071  want 0.7
+PASS  a column between two covered neighbours averages three values   rel 0.00e+0  got 0.5  want 0.5
+PASS  a covered column that samples a high potential keeps it   0.6333330273628235
+PASS  the snapshot is self-describing and checksummed
+PASS  the same state, seed and pack checksum give the same snapshot
+PASS  a different pack checksum is a different snapshot
+
+D. the catalogue
+PASS  the scan is deterministic   22 bodies in plane
+PASS  the rejection ledger adds up   10000 candidates, 677 accepted
+PASS  the catalogue says where it came from
+PASS  every body passes the model's own validation
+PASS  bodies are sorted along the cut
+PASS  every body is inside the plane it claims
+PASS  a click's tile returns exactly the scan's bodies for it   1 of 22 bodies in tile 185
+PASS  the pack checksum is part of the body identity
+PASS  a catalogue round-trips through JSON exactly
+PASS  an edited body is refused by the checksum
+INFO  families   orogenic,vms,arc
+
+E. the instruments
+PASS  a drill at a body's arc returns beds and the body   2 beds, 1 bodies
+PASS  the intersection brackets the body's centre depth   217..337 m
+PASS  a drill that stops above the body does not report it
+PASS  a probe at a body's centre finds it
+PASS  a probe outside the footprint does not
+PASS  a probe far along the cut does not
+PASS  a drill at a column's own arc finds its beds   column 3
+
+F. the section's own gate: click, scan, re-import
+PASS  a session restore reproduces the catalogue bit for bit   22 bodies
+PASS  the self-exported pack carries the section's own host codes and a valid checksum
+PASS  the self-export round-trips through the shared codec
+PASS  the same pack and seed give the same catalogue from a re-import
+
+G. the economics scenario screens, it does not generate
+PASS  screening a body twice is the same answer   7 of 22 scenario-positive
+PASS  the scenario reports value, opex, capex and a reason
+PASS  the priors and the scenario are the shared versions
+
+ALL PASS (76 checks)
