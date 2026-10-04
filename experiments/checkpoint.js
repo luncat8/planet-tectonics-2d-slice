@@ -131,9 +131,15 @@ check.ok('probe detects bodies within its footprint',
 	probed.length > 0 && probed.some(function (d) { return d.id === body.id; }));
 
 check.section('D. self round-trip export & re-import');
+// D1. The lattice-matched round trip. A cut of the pinned ring is laid on the section's fixed
+// lattice, so the export's arc table and the reader's box filter are one grid: the plan's
+// "identical carried fields" is testable here, and the residual is the pack's own six-digit
+// arcs amplified by the contrast between neighbouring beds. The wider, non-uniform ring the
+// engine grows as it runs is a re-cut rather than a restore (D3 below).
 check.planet(12345);
-SIM.setGeo(50e3);
-SIM.run(20);
+var laidD = SEED.layout(FIX.pinned(), { seed: 12345, t: t0, Tm: SIM.Tm });
+check.ok('the self-test lays a cut of the pinned ring without refusal', !laidD, laidD || 'ok');
+SIM.t = t0; SIM.cool();
 var expWorld = SEED.exportSection({ pack: 'self-test' });
 check.ok('exportSection produces a valid pgt-slice-pack v1',
 	expWorld.format === SP.FORMAT && expWorld.version === SP.VERSION &&
@@ -152,16 +158,16 @@ for (var col = 0; col < S.nCol; col++) {
 	origPlate.push(S.colPlate[col]);
 	origTot.push(S.hTot[col]);
 }
-var reRefused = SEED.layout(expWorld, { seed: 12345, t: SIM.t, Tm: SIM.Tm });
+var reRefused = SEED.layout(expWorld, { seed: 12345, t: t0, Tm: SIM.Tm });
 check.ok('reconstructed exported slice pack without refusal', !reRefused, reRefused || 'ok');
 
 // The pack stores sKm at six significant digits, so on the 40 030 km ring a sample boundary
-// sits up to `quantM` (~50 m) from where the section planted it. A column then trades that
-// fraction of its span with a neighbour, and the residue is that fraction times the field's
-// own contrast, so it is neither zero nor a number to guess: the bound below is the largest
-// one-column contrast on the ring times that fraction, doubled for the two ends of a column.
-// A column that really moved or a bed that really vanished shows up in whole metres and Myr,
-// and the quarter-column shift at the end of this section proves the bound can see it.
+// sits up to `quantM` from where the section planted it. A column then trades that fraction of
+// its span with a neighbour, and the residue is that fraction times the field's own contrast,
+// so it is neither zero nor a number to guess: the bound below is the largest one-column
+// contrast on the ring times that fraction, doubled for the two ends of a column. A column
+// that really moved or a bed that really vanished shows up in whole metres and Myr, and the
+// quarter-column shift at the end of D1 proves the bound can see it.
 var quantM = 0, i2;
 for (i2 = 0; i2 < expWorld.n; i2++) quantM = Math.max(quantM, Math.abs(expWorld.sKm[i2] * 1000 - i2 * P.w0));
 var adjH = 0, adjA = 0, prev = SEED.nCut - 1;
@@ -216,27 +222,6 @@ for (col = 0; col < nCut; col++) {
 check.ok('frame-0 isostasy identity holds on self-exported world (|z - zM| <= 1e-3 m)',
 	worstZId <= 1e-3, 'worst z identity diff: ' + worstZId.toExponential(2) + ' m');
 
-// The spin-up bound is not "no mass moves": the engine's own dynamics move crust, and a fresh
-// reset planet at the same plate rate is the baseline the imported state must not beat. So the
-// same 1000 frames are run on both and compared.
-var spinStartMass = SEED.seedMass;
-SIM.run(1000);
-var spinEndMass = 0;
-for (col = 0; col < S.nCol; col++) spinEndMass += S.hTot[col] * S.colW[col];
-var spinDeltaRel = Math.abs(spinEndMass - spinStartMass) / spinStartMass;
-check.planet(12345);
-SIM.setGeo(50e3);
-var freshStart = 0;
-for (col = 0; col < S.nCol; col++) freshStart += S.hTot[col] * S.colW[col];
-SIM.run(1000);
-var freshEnd = 0;
-for (col = 0; col < S.nCol; col++) freshEnd += S.hTot[col] * S.colW[col];
-var freshDeltaRel = Math.abs(freshEnd - freshStart) / freshStart;
-check.ok('forward simulation after self round-trip stays inside the spin-up bound',
-	spinDeltaRel <= freshDeltaRel + 1e-3,
-	'imported ' + spinDeltaRel.toExponential(2) + ' vs fresh planet ' + freshDeltaRel.toExponential(2) +
-	' over 1000 frames');
-
 // The round-trip caps above are only worth having if a moved cut fails them. Shifting every
 // sample boundary a quarter column, alternately in and out so the ring still fits its path,
 // moves a quarter of every column's span into its neighbour's reach; the same comparison then
@@ -246,7 +231,7 @@ for (i2 = 0; i2 < expWorld.n; i2++) shifted.sKm[i2] = SP.round(expWorld.sKm[i2] 
 var copy = JSON.parse(SP.encode(expWorld));
 copy.sKm = Array.prototype.slice.call(shifted.sKm);
 copy.checksum = SP.checksum(SP.normalize(copy));
-var shiftedRefused = SEED.layout(copy, { seed: 12345, t: SIM.t, Tm: SIM.Tm });
+var shiftedRefused = SEED.layout(copy, { seed: 12345, t: t0, Tm: SIM.Tm });
 var shiftedH = 0;
 for (col = 0; col < S.nCol; col++) shiftedH = Math.max(shiftedH,
 	Math.abs(S.hFel[col] - origHThick[col][0]), Math.abs(S.hMaf[col] - origHThick[col][1]),
@@ -254,5 +239,69 @@ for (col = 0; col < S.nCol; col++) shiftedH = Math.max(shiftedH,
 check.ok('a quarter-column shift of the cut moves the reconstruction orders past the cap',
 	!shiftedRefused && shiftedH > 100 * maxHDiff && shiftedH > boundH,
 	shiftedH.toFixed(0) + ' m vs the round-trip\'s ' + maxHDiff.toFixed(1) + ' m');
+
+// D2. The spin-up bound. The imported section is run 1000 frames against a freshly laid one
+// of the same cut and rate: an import that leaves the world agitated shows up as a mass ratio
+// the fresh run does not have. The engine's own dynamics move crust on both sides, so the gate
+// is the difference, not zero.
+// S.mass() is the engine's own accounting: crust plus the mobile load, the chamber and the
+// ribbons, so an eroding section does not read as a leaker.
+function crustalMass() {
+	var m = S.mass(), sum = 0, k;
+	for (k = 0; k < m.length; k++) sum += m[k];
+	return sum;
+}
+var importedStartMass = crustalMass();
+SIM.t = t0; SIM.cool();
+SIM.setGeo(50e3);
+SIM.run(1000);
+var importedDeltaRel = Math.abs(crustalMass() - importedStartMass) / importedStartMass;
+var freshRefused = SEED.layout(FIX.pinned(), { seed: 12345, t: t0, Tm: SIM.Tm });
+SIM.t = t0; SIM.cool();
+SIM.setGeo(50e3);
+var freshStartMass = crustalMass();
+SIM.run(1000);
+var freshDeltaRel = Math.abs(crustalMass() - freshStartMass) / freshStartMass;
+check.ok('forward simulation after self round-trip stays inside the spin-up bound',
+	!freshRefused && importedDeltaRel <= freshDeltaRel + 1e-3,
+	'imported ' + importedDeltaRel.toExponential(2) + ' vs fresh section ' + freshDeltaRel.toExponential(2) +
+	' over 1000 frames');
+
+// D3. What the engine's ring becomes is not what it was laid: transported columns differ in
+// width, so the export's arc table is no longer the section's lattice and the reader re-cuts
+// rather than restores. A column's crust may then slide up to one cell sideways — the mass
+// identity is what must not move, and it is the same gate the M5 sequence has to close.
+SIM.t = t0; SIM.cool();
+SIM.setGeo(50e3);
+SIM.run(20);
+var evolved = SEED.exportSection({ pack: 'self-test-evolved' });
+var evOrig = [], i3, prev3;
+for (i3 = 0; i3 < S.nCol; i3++) evOrig.push(S.hFel[i3] + S.hMaf[i3] + S.hSed[i3]);
+// The reader gives each destination cell the arc-weighted mean of the source cells it covers,
+// so the re-cut cannot put more crust in a column than the ring's own deepest cell, nor less
+// than its thinnest: every value is a convex combination. A residual outside that range, or a
+// column outside it, is crust the filter invented rather than moved. The move itself is
+// reported, not gated — at a 20 km cell beside 88 km ones it is a whole contrast wide.
+var srcMin = Infinity, srcMax = 0;
+for (i3 = 0; i3 < S.nCol; i3++) {
+	if (evOrig[i3] < srcMin) srcMin = evOrig[i3];
+	if (evOrig[i3] > srcMax) srcMax = evOrig[i3];
+}
+var evRefused = SEED.layout(evolved, { seed: 12345, t: SIM.t, Tm: SIM.Tm });
+var evDiff = 0, evOutside = 0, h3;
+for (i3 = 0; i3 < S.nCol; i3++) {
+	h3 = S.hFel[i3] + S.hMaf[i3] + S.hSed[i3];
+	evDiff = Math.max(evDiff, Math.abs(h3 - evOrig[i3]));
+	evOutside = Math.max(evOutside, h3 - srcMax, srcMin - h3);
+}
+var evMassErr = Math.abs(SEED.seedMass - SEED.cutMass) / SEED.cutMass;
+check.ok('a re-cut of the engine\'s own widened ring closes the mass identity to 1e-9',
+	!evRefused && evMassErr < 1e-9, 'rel ' + evMassErr.toExponential(2));
+check.ok('the re-cut invents no crust: every column stays inside the ring\'s own range',
+	evOutside <= 1e-6, 'worst outside by ' + evOutside.toFixed(3) + ' m of ' +
+	(srcMin / 1000).toFixed(1) + '..' + (srcMax / 1000).toFixed(1) + ' km');
+check.info('the re-cut residual of the evolved ring',
+	'max thickness move ' + evDiff.toFixed(0) + ' m over ' + S.nCol + ' columns, ring ' +
+	(P.w0 / 1000).toFixed(1) + ' km nominal');
 
 check.done();

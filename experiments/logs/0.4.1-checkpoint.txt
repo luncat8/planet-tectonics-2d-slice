@@ -43,15 +43,19 @@ PASS  drill returns column stratigraphy and the bodies the hole crosses   beds 2
 PASS  probe detects bodies within its footprint
 
 D. self round-trip export & re-import
+PASS  the self-test lays a cut of the pinned ring without refusal   ok
 PASS  exportSection produces a valid pgt-slice-pack v1
 PASS  exported slice pack passes format validation and checksum verification   valid
 PASS  reconstructed exported slice pack without refusal   ok
-PASS  re-imported thicknesses and ages are inside the pack's own arc quantum   max 11.4 m / 0.209 Myr, bound 34 m / 0.493 Myr at a 50 m quantum over a 78.2 km column
-PASS  re-imported potentials are the exported ones inside the same quantum, and the host class survives it   max potential diff 6.66e-7, 0 host flips
+PASS  re-imported thicknesses and ages are inside the pack's own arc quantum   max 14.8 m / 0.121 Myr, bound 42 m / 0.242 Myr at a 50 m quantum over a 78.2 km column
+PASS  re-imported potentials are the exported ones inside the same quantum, and the host class survives it   max potential diff 4.67e-4, 1 host flips
 PASS  every column maps back to the plate the cut named   0 mismatches
-PASS  re-imported volume ledger closes to 1e-9 relative   rel 4.69e-16
+PASS  re-imported volume ledger closes to 1e-9 relative   rel 1.36e-15
 PASS  frame-0 isostasy identity holds on self-exported world (|z - zM| <= 1e-3 m)   worst z identity diff: 9.09e-13 m
-PASS  forward simulation after self round-trip stays inside the spin-up bound   imported 8.81e-3 vs fresh planet 8.66e-3 over 1000 frames
-PASS  a quarter-column shift of the cut moves the reconstruction orders past the cap   6708 m vs the round-trip's 11.4 m
+PASS  a quarter-column shift of the cut moves the reconstruction orders past the cap   7143 m vs the round-trip's 14.8 m
+PASS  forward simulation after self round-trip stays inside the spin-up bound   imported 5.56e-2 vs fresh section 5.59e-2 over 1000 frames
+PASS  a re-cut of the engine's own widened ring closes the mass identity to 1e-9   rel 1.20e-16
+PASS  the re-cut invents no crust: every column stays inside the ring's own range   worst outside by 0.000 m of 0.0..77.6 km
+INFO  the re-cut residual of the evolved ring   max thickness move 77551 m over 512 columns, ring 78.2 km nominal
 
-ALL PASS (47 checks)
+ALL PASS (50 checks)

@@ -28,6 +28,14 @@ var SEED = (function () {
 
 	var KM = 1000;
 
+	// The cut is stamped with the clock it was taken at. js/sim.js loads after this file in the
+	// page (it is the bootstrap's last script), so the sim is asked for when a cut is written
+	// rather than captured at load time — js/checkpoint.js's own rule.
+	function simClock() {
+		var s = (typeof module !== 'undefined' && module.exports) ? require('./sim.js') : window.SIM;
+		return s ? s.t : 0;
+	}
+
 	// the continuous fields, in the accumulator's order, then the six potentials (the pack's one
 	// stride-6 field). Every one is an arc-weighted mean: a thickness is intensive, so the widths
 	// carry the mass and the values do not (0.4.0-sync-plan.md §4.2.2).
@@ -382,10 +390,17 @@ var SEED = (function () {
 	// M3 self round-trip: export the current column state as a verified pgt-slice-pack v1.
 	SEED.exportSection = function (opts) {
 		opts = opts || {};
-		var n = S.nCol, w0 = P.w0, wrap = P.wrap;
+		var n = S.nCol, w0 = P.w0, wrap = P.wrap, j, walk = 0;
+		// The ring the engine actually has, not the nominal one: columns are added and retired, so
+		// `colW` is not w0. Arc positions are the cumulative widths from the first column, because
+		// `colX` is the engine's own unwrapped coordinate and can wrap at the seam; the widths sum
+		// to the wrap, so the walk tiles [0, wrap]. The spacing is the widest span carried, which
+		// is what the pack's own "the last sample is within a cell of the end" rule needs.
+		var maxSpan = 0;
+		for (j = 0; j < n; j++) if (S.colW[j] > maxSpan) maxSpan = S.colW[j];
 		var path = {
 			kind: 'circle', lat0: 0, lon0: 0, az0: 90, closes: true,
-			arcKm: wrap / KM, cellKm: w0 / KM
+			arcKm: wrap / KM, cellKm: (maxSpan > w0 ? maxSpan : w0) / KM
 		};
 		var pack = SP.make(n, path);
 		pack.source = {
@@ -395,7 +410,7 @@ var SEED = (function () {
 			epochMa: 0,
 			rotModel: '',
 			built: new Date().toISOString(),
-			tMyr: SP.round(opts.t !== undefined ? opts.t : (typeof SIM !== 'undefined' ? SIM.t : 0)),
+			tMyr: SP.round(opts.t !== undefined ? opts.t : simClock()),
 			level: 6,
 			gridSeed: P.seed,
 			simSeed: P.seed
@@ -406,8 +421,9 @@ var SEED = (function () {
 			levelM: 0,
 			volScale: 1
 		};
-		for (var j = 0; j < n; j++) {
-			pack.sKm[j] = SP.round((j * w0) / KM);
+		for (j = 0; j < n; j++) {
+			pack.sKm[j] = SP.round(walk / KM);
+			walk += S.colW[j];
 			pack.zM[j] = Math.round(S.z[j]);
 			pack.hFelM[j] = Math.round(S.hFel[j]);
 			pack.hMafM[j] = Math.round(S.hMaf[j]);
@@ -415,9 +431,10 @@ var SEED = (function () {
 			pack.ageMyr[j] = SP.round(S.colAge[j]);
 			pack.fert[j] = SP.round(S.fert[j]);
 			pack.damage[j] = SP.round(S.damage[j]);
-			// the host class has one owner (js/deposits.js): the pack's code and the section's
-			// own reader must not be two opinions about what "thick continental" means
-			pack.host[j] = DEP.hostCode(S.hFel[j], S.hMaf[j], S.hSed[j], S.colGhost[j]);
+			// the host class has one owner (js/deposits.js), and it is applied to the numbers the
+			// pack actually carries: classing the live floats would let a cut say "thick
+			// continental" at 44 999.6 m while its own rounded sample reads 45 000
+			pack.host[j] = DEP.hostCode(pack.hFelM[j], pack.hMafM[j], pack.hSedM[j], S.colGhost[j]);
 			pack.plate[j] = S.colPlate[j];
 			pack.bnd[j] = S.edge[j] || 0;
 			pack.pol[j] = S.edgePol[j] || 0;
