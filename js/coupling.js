@@ -1,27 +1,22 @@
-// coupling.js — 0.4.1 M5 step 1: the coupling envelope (`pgt-coupling` v1, plan §8.3).
+// coupling.js — 0.4.1 M5: the `pgt-coupling` v1 envelope and C4 reconcile (plan §8.1–§8.3).
 //
-// The globe owns kinematics and crustal inventory; the section owns beds. What travels
-// between them is not a pack: it is this message, sent every N Myr of globe time, matched
-// to the section's cut by `pathChecksum` and refused if it belongs to another line. A pack
-// is a superset of the message, so `fromPack` derives one from a verified cut: the local
-// sequence harness uses that, and a globe adapter can call it for free.
-//
-// Two reductions are the section's, and they are declared rather than implied: the message
-// carries interval tables (plates split where the plate, its boundary type or its polarity
-// changes; crust one entry per sample), and a section column joins a crust interval when
-// their midpoints are within `JOIN_SPACING` local spacings (plan §8.1). Nothing here mutates
-// section state: the module defines the message, checks it, and measures what a C4 reconcile
-// would have in front of it (`deltas`). Applying the reconcile is the next M5 step and owns
-// the ledger lines of `S.recon`.
+// The globe owns kinematics and aggregate crust; the section owns beds. A message is matched
+// to the active cut before any write. Matched columns keep their stack and receive class-wise
+// growth/removal through the stack primitives; a column outside the geographic join is retired
+// and rebuilt fresh. The aggregate fields remain caches derived by COL.sums, never a second
+// crust that can disagree with the beds.
 //
 // Arc arithmetic is the cut's own on both sides: a sample's sKm and a column's position are
-// cumulative widths, never `S.colX`, which is an unwrapped ring coordinate whose origin drifts
-// as the ring turns (the section's first column is not the globe's zero meridian).
+// cumulative widths, never `S.colX`, whose unwrapped origin drifts as the ring turns.
 'use strict';
 var COUP = (function () {
 	var node = typeof module !== 'undefined' && module.exports;
 	var SP = node ? require('../port/slice-format.js') : window.SlicePack;
 	var Core = node ? require('./deposit-core.js') : window.DepositCore;
+	var P = node ? require('./params.js') : window.P;
+	var State = node ? require('./state.js') : window.S;
+	var COL = node ? require('./columns.js') : window.COL;
+	var PLT = node ? require('./plates.js') : window.PLT;
 
 	var KM = 1000;
 	var FORMAT = 'pgt-coupling';
@@ -29,8 +24,41 @@ var COUP = (function () {
 	var CADENCE_MYR = 5;      // plan §8.3: one message per N Myr of globe time, N default 5
 	var JOIN_SPACING = 2;     // plan §8.1: interval midpoints within 2 x the local spacing
 	var HEX = /^[0-9a-f]{16}$/;
+	var joined = new Int32Array(P.colCap);
+	var target = new Int32Array(P.colCap);
+	var last = {
+		matched: 0, freshColumns: 0, retiredColumns: 0,
+		before: 0, after: 0, added: 0, removed: 0,
+		fresh: 0, retired: 0, reconciled: 0, diverged: 0,
+		identityError: 0
+	};
+	var slaveW = new Float64Array(P.plateCap);
+	var slaveU = new Float64Array(P.plateCap);
+	var liveMsg = null, liveN = 0;
 
 	function round(v) { return SP.round(v); }
+
+	// The path identity excludes resolution (`cellKm`) and every sampled field: a re-cut of
+	// the same geographic line at a different level must still join the section it updates.
+	function pathBody(pack) {
+		var p = pack.path || pack, out = {
+			kind: p.kind, closes: !!p.closes, arcKm: round(p.arcKm)
+		};
+		if (p.kind === 'circle') {
+			out.lat0 = round(p.lat0); out.lon0 = round(p.lon0); out.az0 = round(p.az0);
+		} else {
+			out.verts = [];
+			for (var i = 0; p.verts && i < p.verts.length; i++) {
+				var v = p.verts[i];
+				out.verts.push(Array.isArray(v) ? [round(v[0]), round(v[1])] : round(v));
+			}
+		}
+		return out;
+	}
+
+	function pathChecksum(pack) {
+		return Core.fnvText(JSON.stringify(pathBody(pack)));
+	}
 
 	// ------------------------------------------------------------------ the message
 	// Plate intervals: one entry per run of (id, bnd, pol), with the run's mean motion, so a
@@ -69,7 +97,7 @@ var COUP = (function () {
 		opts = opts || {};
 		var msg = {
 			format: FORMAT, version: VERSION,
-			pathChecksum: opts.pathChecksum || pack.checksum,
+			pathChecksum: opts.pathChecksum || pathChecksum(pack),
 			tMyr: pack.source.tMyr, epochMa: pack.source.epochMa,
 			sea: { mode: pack.sea.mode, levelM: pack.sea.levelM },
 			plates: plateRuns(pack), crust: crustRuns(pack),
@@ -164,7 +192,7 @@ var COUP = (function () {
 			if (!(pl.id >= 0 && pl.id === Math.floor(pl.id))) return 'plate id ' + i + ' is not a whole number';
 			if (!(isFinite(pl.vt) && isFinite(pl.vp) && pl.vp >= 0)) return 'plate ' + i + ' motion is not finite';
 			if (!(pl.bnd >= 0 && pl.bnd <= SP.EDGE.collide && pl.bnd === Math.floor(pl.bnd))) return 'plate ' + i + ' bnd out of range: ' + pl.bnd;
-			if (!(Math.abs(pl.pol) <= 1)) return 'plate ' + i + ' pol out of range: ' + pl.pol;
+			if (!(Math.abs(pl.pol) <= 1 && pl.pol === Math.floor(pl.pol))) return 'plate ' + i + ' pol out of range: ' + pl.pol;
 		}
 		for (i = 0; i < msg.crust.length; i++) {
 			cr = msg.crust[i];
@@ -172,6 +200,7 @@ var COUP = (function () {
 			if (!(cr.ageMyr >= 0)) return 'crust ' + i + ' has a negative age';
 			if (!(isFinite(cr.fert) && isFinite(cr.damage) && cr.damage >= 0 && cr.damage <= 1)) return 'crust ' + i + ' fertility or damage out of range';
 		}
+		if (!Array.isArray(msg.trenches)) return 'trenches must be an array';
 		var arc = c.end, prev = -1;
 		for (i = 0; i < msg.trenches.length; i++) {
 			t = msg.trenches[i];
@@ -182,6 +211,7 @@ var COUP = (function () {
 		if (!msg.ledger || !(msg.ledger.fel >= 0 && msg.ledger.maf >= 0 && msg.ledger.sed >= 0) ||
 			!isFinite(msg.ledger.fel + msg.ledger.maf + msg.ledger.sed)) return 'ledger must carry three finite volumes';
 		if (msg.checksum) {
+			if (!HEX.test(msg.checksum)) return 'checksum must be 16 hex digits';
 			var want;
 			try { want = checksum(msg); } catch (e) { return 'the message cannot be serialised'; }
 			if (msg.checksum !== want) return 'checksum mismatch';
@@ -208,7 +238,7 @@ var COUP = (function () {
 
 	// The section's guard: a message for another line is refused, not blended.
 	function matches(msg, pack) {
-		return !!msg && msg.pathChecksum === pack.checksum;
+		return !!msg && !!pack && msg.pathChecksum === pathChecksum(pack);
 	}
 
 	// ------------------------------------------------------------------ the section's half
@@ -279,67 +309,204 @@ var COUP = (function () {
 		return '';
 	}
 
-	// M5 step 2: the C4 reconcile (§8.3, §4.3.5). Matched columns take the message's interval
-	// values; unmatched columns are fresh; the ledger books reconciled / diverged / fresh /
-	// retired. Nothing deletes beds: the aggregate is corrected, the beds stay the section's.
-	function apply(st, msg, opts) {
-		opts = opts || {};
-		var n = opts.nCut === undefined ? (st.nCol || 0) : opts.nCut;
-		var cellKm = opts.cellKm || ((st.colW && st.colW[0]) ? st.colW[0] : 78000) / KM;
-		if (!msg || typeof msg !== 'object') return 'apply needs a message object';
-		var why = validate(msg);
-		if (why) return 'message refused: ' + why;
-		var j, i, r, w, mid, walk = 0;
-		var matchedInt = {}, unmatchedCol = 0, freshVol = 0, retiredVol = 0;
-		var reconciledVol = 0, divergedAtImport = 0;
-		for (i = 0; i < msg.crust.length; i++) matchedInt[i] = false;
-		if (st.recon) {
-			st.recon.reconciled = 0;
-			st.recon.diverged = 0;
-			st.recon.divergedAtImport = 0;
-			st.recon.fresh = 0;
-			st.recon.retired = 0;
-		}
+	// C3: prescribe one rigid velocity per section plate from the globe intervals under its
+	// columns. K2 calls this instead of its force solve while a live message is active; K3 and
+	// the section's own crust/surface kernels remain unchanged.
+	function slave(st, msg, n) {
+		n = n || st.nCol;
+		var rows = msg.plates, arc = rows[rows.length - 1].s1Km;
+		var p, i = 0, j, w, mid, walk = 0;
+		for (p = 0; p < st.nPl; p++) { slaveW[p] = 0; slaveU[p] = 0; }
 		for (j = 0; j < n; j++) {
-			w = (st.colW && st.colW[j]) ? st.colW[j] : 78000;
+			w = st.colW[j];
 			mid = (walk + w * 0.5) / KM;
-			i = joinTo(msg, mid, cellKm);
-			if (i >= 0) {
-				matchedInt[i] = true;
-				r = msg.crust[i];
-				var dF = r.hFelM - (st.hFel ? st.hFel[j] : 0);
-				var dM = r.hMafM - (st.hMaf ? st.hMaf[j] : 0);
-				var dS = r.hSedM - (st.hSed ? st.hSed[j] : 0);
-				var deltaVol = (dF + dM + dS) * w;
-				reconciledVol += Math.abs(deltaVol);
-				divergedAtImport += Math.abs(deltaVol);
-				if (st.hFel) st.hFel[j] = r.hFelM;
-				if (st.hMaf) st.hMaf[j] = r.hMafM;
-				if (st.hSed) st.hSed[j] = r.hSedM;
-				if (st.colAge) st.colAge[j] = r.ageMyr;
-				if (st.fert) st.fert[j] = r.fert;
-				if (st.damage) st.damage[j] = r.damage;
-			} else {
-				unmatchedCol++;
-				freshVol += (st.hTot ? (st.hTot[j] || 0) : 0) * w;
+			mid -= Math.floor(mid / arc) * arc;
+			while (i + 1 < rows.length && mid >= rows[i].s1Km) i++;
+			p = st.colPlate[j];
+			if (p >= 0 && p < st.nPl) {
+				slaveW[p] += w;
+				slaveU[p] += rows[i].vt * w;
 			}
 			walk += w;
 		}
-		for (i = 0; i < msg.crust.length; i++) {
-			if (!matchedInt[i]) {
-				r = msg.crust[i];
-				retiredVol += (r.hFelM + r.hMafM + r.hSedM) * (r.s1Km - r.s0Km) * KM;
+		for (p = 0; p < st.nPl; p++) {
+			st.plUP[p] = st.plU[p];
+			if (slaveW[p] > 0) st.plU[p] = slaveU[p] / slaveW[p];
+		}
+		for (j = 0; j < n; j++) st.colU[j] = st.plU[st.colPlate[j]];
+		PLT.extension(st);
+		return true;
+	}
+
+	function activate(msg, n) {
+		liveMsg = msg;
+		liveN = n || 0;
+	}
+
+	function deactivate() {
+		liveMsg = null;
+		liveN = 0;
+	}
+
+	function k2(st, dt) {
+		if (!liveMsg) return false;
+		if (dt > 0) slave(st, liveMsg, liveN || st.nCol);
+		return true;
+	}
+
+	// The interval that owns an arc point, independent of whether it is close enough to
+	// inherit a stack. A valid table tiles the complete arc, so this always finds one.
+	function intervalAt(msg, midKm) {
+		var rows = msg.crust, wrap = rows[rows.length - 1].s1Km;
+		var x = midKm - Math.floor(midKm / wrap) * wrap, i;
+		for (i = 0; i < rows.length; i++) {
+			if (x >= rows[i].s0Km && x < rows[i].s1Km) return i;
+		}
+		return rows.length - 1;
+	}
+
+	function resetLast() {
+		last.matched = 0; last.freshColumns = 0; last.retiredColumns = 0;
+		last.before = 0; last.after = 0; last.added = 0; last.removed = 0;
+		last.fresh = 0; last.retired = 0; last.reconciled = 0; last.diverged = 0;
+		last.identityError = 0;
+	}
+
+	function stateError(st, n) {
+		if (st !== State) return 'apply needs the live section state';
+		if (!(Number.isInteger(n) && n > 0 && n <= st.nCol && n <= P.colCap)) {
+			return 'no reconstructed section is ready for coupling';
+		}
+		var fields = ['colW', 'colNL', 'layTh', 'layLi', 'layAg', 'layFl',
+			'hFel', 'hMaf', 'hSed', 'hTot', 'colAge', 'fert', 'damage',
+			'syncFel', 'syncMaf', 'syncSed', 'syncValid'];
+		for (var i = 0; i < fields.length; i++) {
+			if (!st[fields[i]] || st[fields[i]].length < n) return 'section state is missing ' + fields[i];
+		}
+		if (!st.recon) return 'section state has no reconstruction ledger';
+		return '';
+	}
+
+	// A fresh column has no stack identity to preserve. It receives the three aggregate beds
+	// the same way an initial cut does; depth-resolved deposits on the retired stack lose their
+	// horizon rather than pointing into unrelated new geology.
+	function freshStack(st, c, row) {
+		var LC = P.layerCap, b = c * LC, k, n = 0;
+		for (k = 0; k < LC; k++) {
+			st.layTh[b + k] = 0; st.layLi[b + k] = 0;
+			st.layAg[b + k] = 0; st.layFl[b + k] = 0;
+		}
+		for (k = 0; k < st.nDep; k++) {
+			if (st.depCol[k] === c) st.depLay[k] = -1;
+		}
+		var flags = st.wet[c] ? P.FLAG.wet : 0;
+		if (row.hMafM > 0) {
+			st.layTh[b + n] = row.hMafM; st.layLi[b + n] = P.LITH.maf;
+			st.layAg[b + n] = row.ageMyr; st.layFl[b + n++] = flags;
+		}
+		if (row.hFelM > 0) {
+			st.layTh[b + n] = row.hFelM; st.layLi[b + n] = P.LITH.fel;
+			st.layAg[b + n] = row.ageMyr; st.layFl[b + n++] = flags;
+		}
+		if (row.hSedM > 0) {
+			st.layTh[b + n] = row.hSedM; st.layLi[b + n] = P.LITH.sed;
+			st.layAg[b + n] = row.ageMyr; st.layFl[b + n++] = flags;
+		}
+		st.colNL[c] = n;
+		st.colBevel[c] = 0;
+		COL.sums(c);
+	}
+
+	// C4 is one guarded transaction. All format, checksum, cut-identity and state checks, plus
+	// the complete geographic map, are resolved before a bed is touched. Once that preflight
+	// passes, stack primitives cannot refuse: growth consolidates at the cap and class removal
+	// takes no more than the aggregate COL.sums just measured.
+	function apply(st, msg, opts) {
+		opts = opts || {};
+		if (!msg || typeof msg !== 'object') return 'message refused: apply needs a message object';
+		var why = validate(msg);
+		if (why) return 'message refused: ' + why;
+		if (!msg.checksum || !HEX.test(msg.checksum) || msg.checksum !== checksum(msg)) {
+			return 'message refused: checksum mismatch';
+		}
+		var expected = opts.pathChecksum || (opts.pack && pathChecksum(opts.pack)) || '';
+		if (!HEX.test(expected)) return 'message refused: no verified active cut identity';
+		if (msg.pathChecksum !== expected) return 'message refused: pathChecksum does not match the active cut';
+		var n = opts.nCut === undefined ? st.nCol : opts.nCut;
+		why = stateError(st, n);
+		if (why) return 'message refused: ' + why;
+		var cellKm = opts.cellKm || ((st.colW && st.colW[0]) ? st.colW[0] : 78000) / KM;
+		if (!(isFinite(cellKm) && cellKm > 0)) return 'message refused: local spacing is not positive';
+
+		var j, i, w, mid, walk = 0;
+		for (j = 0; j < n; j++) {
+			w = st.colW[j];
+			if (!(isFinite(w) && w > 0)) return 'message refused: column ' + j + ' has no positive width';
+			mid = (walk + w * 0.5) / KM;
+			joined[j] = joinTo(msg, mid, cellKm);
+			target[j] = joined[j] >= 0 ? joined[j] : intervalAt(msg, mid);
+			walk += w;
+		}
+
+		resetLast();
+		var row, dF, dM, dS, dv, old, now, flags;
+		for (j = 0; j < n; j++) {
+			w = st.colW[j];
+			COL.sums(j);
+			old = st.hTot[j] * w;
+			last.before += old;
+			row = msg.crust[target[j]];
+			if (joined[j] < 0) {
+				last.freshColumns++;
+				last.retiredColumns++;
+				last.retired += old;
+				freshStack(st, j, row);
+				now = st.hTot[j] * w;
+				last.fresh += now;
+			} else {
+				last.matched++;
+				if (st.syncValid[j]) {
+					last.diverged += (Math.abs(st.hFel[j] - st.syncFel[j]) +
+						Math.abs(st.hMaf[j] - st.syncMaf[j]) +
+						Math.abs(st.hSed[j] - st.syncSed[j])) * w;
+				}
+				dF = row.hFelM - st.hFel[j];
+				dM = row.hMafM - st.hMaf[j];
+				dS = row.hSedM - st.hSed[j];
+				dv = dF * w;
+				if (dv >= 0) last.added += dv; else last.removed -= dv;
+				dv = dM * w;
+				if (dv >= 0) last.added += dv; else last.removed -= dv;
+				dv = dS * w;
+				if (dv >= 0) last.added += dv; else last.removed -= dv;
+				flags = st.wet[j] ? P.FLAG.wet : 0;
+				// Shrink first: a message that trades one class for another makes room before
+				// inserting its dated beds, so a transient full stack cannot force a mix.
+				if (dF < 0) COL.removeClass(st, j, 1, -dF);
+				if (dM < 0) COL.removeClass(st, j, 2, -dM);
+				if (dS < 0) COL.removeClass(st, j, 0, -dS);
+				if (dF > 0) COL.insertVol(st, j, P.LITH.fel, dF, msg.tMyr, flags, 'bottom');
+				if (dM > 0) COL.insertVol(st, j, P.LITH.maf, dM, msg.tMyr, flags, 'bottom');
+				if (dS > 0) COL.insertVol(st, j, P.LITH.sed, dS, msg.tMyr, flags, 'top');
+				COL.sums(j);
 			}
+			st.colAge[j] = row.ageMyr;
+			st.fert[j] = row.fert;
+			st.damage[j] = row.damage;
+			st.syncFel[j] = row.hFelM;
+			st.syncMaf[j] = row.hMafM;
+			st.syncSed[j] = row.hSedM;
+			st.syncValid[j] = 1;
+			last.after += st.hTot[j] * w;
 		}
-		if (st.recon) {
-			st.recon.reconciled = reconciledVol;
-			st.recon.diverged = 0;
-			st.recon.divergedAtImport = divergedAtImport;
-			st.recon.fresh = unmatchedCol;
-			var matchedCount = 0;
-			for (i = 0; i < msg.crust.length; i++) if (matchedInt[i]) matchedCount++;
-			st.recon.retired = msg.crust.length - matchedCount;
-		}
+		last.reconciled = last.added + last.removed;
+		last.identityError = last.before + last.added + last.fresh -
+			last.removed - last.retired - last.after;
+		st.recon.reconciled += last.reconciled;
+		st.recon.diverged += last.diverged;
+		st.recon.divergedAtImport = last.diverged;
+		st.recon.fresh += last.fresh;
+		st.recon.retired += last.retired;
 		return '';
 	}
 
@@ -347,9 +514,12 @@ var COUP = (function () {
 		FORMAT: FORMAT, VERSION: VERSION,
 		CADENCE_MYR: CADENCE_MYR, JOIN_SPACING: JOIN_SPACING,
 		body: body, checksum: checksum, quantize: quantize, validate: validate,
+		pathBody: pathBody, pathChecksum: pathChecksum,
 		json: json, parse: parse, matches: matches,
 		fromPack: fromPack, plateRuns: plateRuns, crustRuns: crustRuns,
-		joinTo: joinTo, deltas: deltas, clockOk: clockOk, apply: apply
+		joinTo: joinTo, deltas: deltas, clockOk: clockOk,
+		slave: slave, activate: activate, deactivate: deactivate, k2: k2,
+		last: last, apply: apply
 	};
 })();
 

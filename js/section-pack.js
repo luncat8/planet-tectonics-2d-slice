@@ -21,6 +21,9 @@ var SectionPack = (function () {
 	// at call time through this and never captured at load — which is also what lets the module
 	// require cleanly under node, where they do not exist.
 	function page() { return typeof document === 'undefined' || typeof window === 'undefined' ? null : window; }
+	function coupling() {
+		return (typeof module !== 'undefined' && module.exports) ? require('./coupling.js') : window.COUP;
+	}
 
 	// raw-strip layout (the canvas is fixed size, so these are constants, not state)
 	var ML = 48, MR = 10, LEG = 16, POT0 = LEG + 4, POT_H = 6, POT_G = 1, POTN = 6;
@@ -76,6 +79,15 @@ var SectionPack = (function () {
 		spin: null,         // the frame-0 crust and mean z, so the HUD can report the spin-up
 		running: false,         // mode G only, and only after the user detaches (plan §4.4)
 		t0: 0,                  // the cut's world time: the label says how far the section ran
+		syncTMyr: -1,           // latest accepted coupling snapshot; -1 means detached/no coupling
+		syncImports: 0,
+		syncLive: false,
+		syncPaused: false,
+		syncCadence: 5,
+		couplingMsg: null,
+		link: null,
+		linkRung: 'clipboard/file',
+		linkStage: 'idle',
 		cvs: null, ctx: null, hudEl: null, sliceEl: null, msgEl: null,
 		textEl: null, fileEl: null, pickEl: null, rawBtn: null, ovlBtn: null, runBtn: null,
 		saveBtn: null, loadEl: null,
@@ -150,9 +162,15 @@ var SectionPack = (function () {
 				this.hud();
 				throw new Error(bad);
 			}
+			this.setLiveKinematics(false);
 			this.pack = pack;
 			this.origin = origin || 'text';
 			this.cache = null;
+			this.syncTMyr = -1;
+			this.syncImports = 0;
+			this.syncLive = false;
+			this.syncPaused = false;
+			this.couplingMsg = null;
 			this.msg = 'loaded ' + this.describe(pack);
 			this.bad = false;
 			this.paintMsg();
@@ -160,10 +178,48 @@ var SectionPack = (function () {
 			return pack;
 		},
 		load: function (text, origin) {
-			var obj;
-			try { obj = JSON.parse(String(text)); }
+			var wire = String(text), obj;
+			try { obj = JSON.parse(wire); }
 			catch (e) { this.refuse('not JSON: ' + e.message); throw e; }
+			if (obj && obj.format === 'pgt-coupling') return this.applyCoupling(wire, origin);
 			return this.loadPack(obj, origin);
+		},
+		applyCoupling: function (text, origin) {
+			if (!this.pack || !this.world) {
+				var noWorld = 'coupling message refused: no reconstructed section is active';
+				this.refuse(noWorld);
+				throw new Error(noWorld);
+			}
+			var c = coupling(), msg;
+			if (!c || !c.parse || !c.apply) {
+				var unavailable = 'coupling message refused: coupling reader is unavailable';
+				this.refuse(unavailable);
+				throw new Error(unavailable);
+			}
+			try { msg = c.parse(String(text)); }
+			catch (e) {
+				this.refuse('coupling message refused: ' + e.message);
+				throw e;
+			}
+			var n = SEED.window ? SEED.nCut : S.nCol;
+			var bad = c.apply(S, msg, {
+				pack: this.pack, nCut: n,
+				cellKm: this.pack.path.cellKm
+			});
+			if (bad) { this.refuse(bad); throw new Error(bad); }
+			this.syncTMyr = msg.tMyr;
+			this.syncImports++;
+			this.syncLive = /^link:/.test(origin || '');
+			if (this.syncLive) this.linkRung = origin.slice(5);
+			else this.syncPaused = false;
+			this.couplingMsg = msg;
+			this.setLiveKinematics(this.syncLive);
+			this.msg = 'coupling snapshot t ' + msg.tMyr + ' Myr applied from ' + (origin || 'text') +
+				' · reconciled ' + Math.round(c.last.reconciled) + ' m3/m';
+			this.bad = false;
+			this.paintMsg();
+			this.hud();
+			return msg;
 		},
 		// the page shows the reason in one line; the load itself threw
 		refuse: function (reason) {
@@ -248,41 +304,13 @@ var SectionPack = (function () {
 			// has nobody to catch it, so it says the reason and carries on
 			this.textEl.addEventListener('paste', function (e) {
 				var t = e.clipboardData ? e.clipboardData.getData('text') : this.value;
-				if (t) self.caught(function () {
-					try {
-						var msgObj = JSON.parse(t.trim());
-						if (msgObj && msgObj.format === 'pgt-coupling') {
-							if (typeof COUP !== 'undefined' && COUP.apply) {
-								var res = COUP.apply(window.S || {}, msgObj, { nCut: SEED ? SEED.nCut : 0, cellKm: (self.pack ? self.pack.path.cellKm : 78) });
-								self.msg = 'coupling message applied: ' + (res || 'ok');
-								if (res) self.refuse(res); else { self.bad = false; self.paintMsg(); self.hud(); }
-							} else { self.refuse('COUP.apply not available'); }
-						} else { self.load(t, 'paste'); }
-					} catch (e2) { self.load(t, 'paste'); }
-				});
+				if (t) self.caught(function () { self.load(t, 'paste'); });
 			});
 			this.textEl.addEventListener('keydown', function (e) {
 				if (e.key === 'Enter' && this.value) self.caught(function () { self.load(self.textEl.value, 'paste'); });
 			});
 			document.getElementById('sPaste').addEventListener('click', function () {
-				if (self.textEl.value) self.caught(function () {
-					// Try the message format first (M5 coupling envelope), then fall back to pack
-					try {
-						var msgText = self.textEl.value.trim();
-						var msgObj = JSON.parse(msgText);
-						if (msgObj && msgObj.format === 'pgt-coupling') {
-							if (typeof COUP !== 'undefined' && COUP.apply) {
-								var res = COUP.apply(window.S || {}, msgObj, { nCut: SEED ? SEED.nCut : 0, cellKm: (self.pack ? self.pack.path.cellKm : 78) });
-								self.msg = 'coupling message applied: ' + (res || 'ok');
-								if (res) self.refuse(res); else { self.bad = false; self.paintMsg(); self.hud(); }
-							} else {
-								self.refuse('COUP.apply not available');
-							}
-						} else {
-							self.load(msgText, 'paste');
-						}
-					} catch (e) { self.load(msgText, 'paste'); }
-				});
+				if (self.textEl.value) self.caught(function () { self.load(self.textEl.value, 'paste'); });
 			});
 			// a loaded file goes through the same bytes: read the text, run load()
 			this.fileEl.addEventListener('change', function () {
@@ -343,7 +371,75 @@ var SectionPack = (function () {
 				if (bp) this.caught(function () { self.loadPack(bp, self.start.pack); });
 				else this.refuse("no bundled pack '" + this.start.pack + "' (the bake lands in M4) — paste a cut");
 			}
+			this.startLink();
 			this.msg = this.msg || 'paste a cut, load a .json, or open ?start=section&pack=<id>';
+			this.paintMsg();
+			this.syncButtons();
+			this.hud();
+		},
+
+		setLiveKinematics: function (on) {
+			var g = page(), c = coupling();
+			if (on && this.couplingMsg) {
+				c.activate(this.couplingMsg, SEED.window ? SEED.nCut : 0);
+				if (g) g.SIM.kinematic = c.k2;
+				return;
+			}
+			c.deactivate();
+			if (g) g.SIM.kinematic = null;
+		},
+
+		startLink: function () {
+			var g = page(), self = this;
+			if (!g || !g.LINK || !g.LINK.create || this.link) return;
+			this.link = g.LINK.create(g, {
+				onRung: function (rung, stage) {
+					self.linkRung = rung;
+					self.linkStage = stage;
+					self.hud();
+				},
+				onMessage: function (type, payload, rung) {
+					self.linkMessage(type, payload, rung);
+				}
+			});
+			this.link.start();
+		},
+
+		linkMessage: function (type, payload, rung) {
+			var self = this;
+			if (type === 'coupling') {
+				this.caught(function () { self.applyCoupling(JSON.stringify(payload), 'link:' + rung); });
+				return;
+			}
+			if (type === 'clock') this.applyClock(payload, rung);
+		},
+
+		applyClock: function (clock, rung) {
+			if (!clock || !this.pack || !this.world) return;
+			var c = coupling(), expected = c.pathChecksum(this.pack);
+			if (clock.pathChecksum !== expected) {
+				this.refuse('clock refused: pathChecksum does not match the active cut');
+				return;
+			}
+			if (!(isFinite(clock.tMyr) && clock.tMyr >= 0)) {
+				this.refuse('clock refused: tMyr is not finite');
+				return;
+			}
+			if (!clock.paused && !this.couplingMsg) {
+				this.refuse('clock refused: no coupling snapshot has supplied kinematics');
+				return;
+			}
+			this.syncLive = true;
+			this.syncPaused = !!clock.paused;
+			this.syncTMyr = clock.tMyr;
+			if (isFinite(clock.cadenceMyr) && clock.cadenceMyr > 0) this.syncCadence = clock.cadenceMyr;
+			this.linkRung = rung || this.linkRung;
+			this.running = !this.syncPaused && !SEED.window;
+			this.setLiveKinematics(!!this.couplingMsg);
+			var g = page();
+			if (g) g.SIM.setGeo(this.running ? P.sl.geo : 0);
+			this.bad = false;
+			this.msg = this.syncPaused ? 'live clock paused by globe' : 'live clock resumed at t ' + clock.tMyr + ' Myr';
 			this.paintMsg();
 			this.syncButtons();
 			this.hud();
@@ -387,6 +483,13 @@ var SectionPack = (function () {
 		detach: function () {
 			if (!this.world || SEED.window) return;
 			var g = page();
+			if (this.syncLive) {
+				this.syncLive = false;
+				this.syncPaused = false;
+				this.couplingMsg = null;
+				this.setLiveKinematics(false);
+				this.running = false;
+			}
 			this.running = !this.running;
 			if (g) g.SIM.setGeo(this.running ? P.sl.geo : 0);
 			this.syncButtons();
@@ -404,12 +507,18 @@ var SectionPack = (function () {
 		},
 
 		clear: function () {
+			this.setLiveKinematics(false);
 			this.pack = null;
 			this.origin = '';
 			this.cache = null;
 			this.spin = null;
 			this.world = false;
 			this.running = false;
+			this.syncTMyr = -1;
+			this.syncImports = 0;
+			this.syncLive = false;
+			this.syncPaused = false;
+			this.couplingMsg = null;
 			this.raw = false;
 			this.overlay = true;
 			SEED.pack = null;
@@ -449,7 +558,11 @@ var SectionPack = (function () {
 		frame: function () {
 			var g = page();
 			if (!g || !this.world || this.raw) return;
-			if (SEED.window) g.SIM.dG = 0;
+			if (SEED.window || this.syncPaused) g.SIM.dG = 0;
+			if (this.syncLive && this.couplingMsg &&
+				coupling().clockOk(g.SIM.t + g.SIM.dG, this.couplingMsg, this.syncCadence)) {
+				g.SIM.dG = 0;
+			}
 			g.SIM.step();
 		},
 
@@ -466,15 +579,18 @@ var SectionPack = (function () {
 		// assumption record, above the engine's own lines
 		lines: function () {
 			var p = this.pack;
-			if (!p) return ['section mode · cut · plate clock off', this.msg];
-			if (!this.world) return ['cut · not reconstructed · ' + this.origin, this.describe(p),
+			var linkLine = 'link: ' + (this.linkStage === 'ready' ? this.linkRung : this.linkStage);
+			if (!p) return ['section mode · cut · plate clock off', linkLine, this.msg];
+			if (!this.world) return ['cut · not reconstructed · ' + this.origin, this.describe(p), linkLine,
 				'mapping refused: ' + this.msg];
 			var s = p.source, r = S.recon, st = SEED, g = page(), vpMax = 0, i, L = [];
 			for (i = 0; i < p.n; i++) if (p.vp[i] > vpMax) vpMax = p.vp[i];
-			var clock = !this.world ? 'plate clock off · not yet a section'
+			var clock = this.syncLive
+				? (this.syncPaused ? 'live · globe paused' : 'live · globe t ' + this.syncTMyr + ' Myr')
 				: this.running ? 'running +' + (g ? (g.SIM.t - this.t0) : 0).toFixed(1) + ' Myr'
-				: 'plate clock off · the cut as it stands';
+					: 'plate clock off · the cut as it stands';
 			L.push((this.world ? 'cut at t ' + s.tMyr + ' Myr · ' : 'cut · ') + clock + '   ' + this.origin);
+			L.push(linkLine);
 			L.push(this.describe(p));
 			L.push('arc scale ' + st.scale.toFixed(2) + (st.window
 				? '   window · plate clock off (no end conditions)'
@@ -495,6 +611,16 @@ var SectionPack = (function () {
 				r.edgeFallback + ' neutral' +
 				(st.window ? ', tail ' + r.tailArcKm.toFixed(0) + ' km / ' + Math.round(r.tailVol) + ' m3' : '') +
 				'   clamped ' + r.clampedSpan + '   map v' + st.MAP);
+			if (this.syncTMyr >= 0) {
+				var syncMass = 0;
+				for (i = 0; i < S.nCol; i++) syncMass += S.hTot[i] * S.colW[i];
+				L.push('coupling: ' + (this.syncLive ? 'live ' + this.linkRung : 'manual snapshot') + ' ' +
+					this.syncImports + ' · globe t ' + this.syncTMyr +
+					' Myr · reconciled ' + (syncMass > 0 ? r.reconciled / syncMass : 0).toFixed(6) +
+					' · diverged ' + (syncMass > 0 ? r.diverged / syncMass : 0).toFixed(6) +
+					' · residual ' + Math.round(r.divergedAtImport) + ' · fresh/retired ' +
+					Math.round(r.fresh) + '/' + Math.round(r.retired) + ' m3/m');
+			}
 			if (this.spin) {
 				// §4.3.4: the imported state is not a fixed point, so what the model makes of it
 				// in the first frames is printed rather than left for a viewer to explain away

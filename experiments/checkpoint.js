@@ -67,6 +67,8 @@ SEC.raw = false;
 SEC.overlay = true;
 SEC.running = true;
 SEC.t0 = t0;
+SEC.syncTMyr = t0 + 5;
+SEC.syncImports = 2;
 SEC.spin = { m: 988692889403, z: 0, n: 512 };
 
 var sessionObj = CP.saveSession();
@@ -74,7 +76,8 @@ check.ok('session format and version are declared',
 	sessionObj.format === 'pgt-slice-session' && sessionObj.version === 1);
 check.ok('session carries mapper and section metadata',
 	sessionObj.mapper && sessionObj.mapper.MAP === SEED.MAP && sessionObj.mapper.nCut === SEED.nCut &&
-	sessionObj.session && sessionObj.session.running === true && sessionObj.pack.checksum === FIX.pinned().checksum);
+	sessionObj.session && sessionObj.session.running === true && sessionObj.session.syncTMyr === t0 + 5 &&
+	sessionObj.session.syncImports === 2 && sessionObj.pack.checksum === FIX.pinned().checksum);
 check.ok('base64 runtime encoding round-trips bit-identically',
 	equal(CP.b64dec(sessionObj.runtime), saved));
 
@@ -84,7 +87,8 @@ SIM.run(5);
 CP.loadSession(jsonSession);
 check.ok('loadSession restores exact runtime state, mapper and section pack',
 	S.hash() === beforeHash && SEC.pack.checksum === FIX.pinned().checksum &&
-	SEED.nCut === 512 && SEC.running === true && SEC.t0 === t0);
+	SEED.nCut === 512 && SEC.running === true && SEC.t0 === t0 &&
+	SEC.syncTMyr === t0 + 5 && SEC.syncImports === 2 && !SEC.syncLive);
 
 [
 	['not an object', 'null'],

@@ -18,6 +18,7 @@ var lib = require('./lib.js');
 var check = lib.check;
 var SP = require('../port/slice-format.js');
 var FIX = require('./pack-fixture.js');
+var COUP = lib.mods.coupling;
 
 var root = lib.root;
 var html = fs.readFileSync(path.join(root, 'columns.html'), 'utf8');
@@ -132,6 +133,8 @@ check.ok('no engine world is built before a cut arrives',
 check.ok('the frame loop is running', typeof L.sb.__next === 'function');
 check.ok('the HUD says the clock is off', /plate clock off/.test(L.els.hud.textContent),
 	L.els.hud.textContent.split('\n')[0]);
+check.ok('with no peer, the handshake announces the manual clipboard/file rung',
+	/link: clipboard\/file/.test(L.els.hud.textContent), L.els.hud.textContent.split('\n')[1]);
 check.ok('the body is in section mode (the engine bar is off, the Slice panel is on)',
 	(L.sb.__classes || []).indexOf('section-mode') >= 0);
 check.ok('the Slice panel ids are on the page',
@@ -257,6 +260,70 @@ check.ok('paste and file lay the same state (S.hash of the seeded planet)',
 check.ok('the HUD agrees on everything but the transport line',
 	A.els.hud.textContent.split('\n').slice(1).join('\n') === B.els.hud.textContent.split('\n').slice(1).join('\n'),
 	B.els.hud.textContent);
+
+check.section('D2. coupling text uses the guarded reader on paste and file');
+var couplingMsg = COUP.fromPack(pin), couplingText = COUP.json(couplingMsg);
+var C = load('?start=section');
+viaPaste(C, text);
+viaPaste(C, couplingText);
+check.ok('a checksummed coupling snapshot for the active path applies through paste',
+	C.sb.SectionPack.syncImports === 1 && C.sb.SectionPack.syncTMyr === couplingMsg.tMyr &&
+	/coupling snapshot/.test(C.els.sMsg.textContent), C.els.sMsg.textContent);
+check.ok('the HUD identifies the manual coupling rung and its reconciliation fractions',
+	/coupling: manual snapshot 1/.test(C.els.hud.textContent) && /reconciled/.test(C.els.hud.textContent));
+var coupledHash = C.sb.S.hash(), coupledRecon = JSON.stringify(C.sb.S.recon);
+var noStamp = JSON.stringify(COUP.body(couplingMsg));
+viaPaste(C, noStamp);
+check.ok('the page refuses an unsigned coupling message without state mutation',
+	/checksum mismatch/.test(C.els.sMsg.textContent) && C.sb.S.hash() === coupledHash &&
+	JSON.stringify(C.sb.S.recon) === coupledRecon, C.els.sMsg.textContent);
+var wrongPath = JSON.parse(couplingText);
+wrongPath.pathChecksum = '0123456789abcdef';
+wrongPath.checksum = COUP.checksum(wrongPath);
+viaPaste(C, JSON.stringify(wrongPath));
+check.ok('the page refuses a checksummed message for another cut without state mutation',
+	/pathChecksum/.test(C.els.sMsg.textContent) && C.sb.S.hash() === coupledHash &&
+	JSON.stringify(C.sb.S.recon) === coupledRecon, C.els.sMsg.textContent);
+var CFile = load('?start=section');
+viaPaste(CFile, text);
+viaFile(CFile, couplingText);
+check.ok('a coupling file goes through the same reader and produces the same state',
+	CFile.sb.SectionPack.syncImports === 1 && CFile.sb.S.hash() === coupledHash);
+var CIdle = load('?start=section');
+viaPaste(CIdle, couplingText);
+check.ok('a coupling message cannot apply before a cut is reconstructed',
+	/no reconstructed section/.test(CIdle.els.sMsg.textContent) && CIdle.sb.SectionPack.syncImports === 0,
+	CIdle.els.sMsg.textContent);
+
+// The carrier delivers the same envelope object; the page still runs parse/apply rather than
+// trusting the channel. Clock status is a separate handshake message and has the same path guard.
+C.sb.SectionPack.linkMessage('coupling', JSON.parse(couplingText), 'postMessage');
+check.ok('a live carrier uses the same coupling reader, rung and C3 K2 owner',
+	C.sb.SectionPack.syncLive && C.sb.SectionPack.syncImports === 2 &&
+	C.sb.SIM.kinematic === C.sb.COUP.k2 &&
+	/coupling: live postMessage/.test(C.els.hud.textContent));
+var livePath = C.sb.COUP.pathChecksum(C.sb.SectionPack.pack), liveT = C.sb.SIM.t;
+C.sb.SectionPack.linkMessage('clock', {
+	pathChecksum: livePath, tMyr: couplingMsg.tMyr, cadenceMyr: 5, paused: true
+}, 'postMessage');
+C.sb.SectionPack.frame();
+check.ok('a paused globe pins the section clock and its label',
+	C.sb.SectionPack.syncPaused && C.sb.SIM.dG === 0 && C.sb.SIM.t === liveT &&
+	/globe paused/.test(C.els.hud.textContent), C.els.hud.textContent.split('\n')[0]);
+C.sb.SectionPack.linkMessage('clock', {
+	pathChecksum: livePath, tMyr: couplingMsg.tMyr, cadenceMyr: 5, paused: false
+}, 'postMessage');
+C.sb.SectionPack.frame();
+check.ok('an unpaused handshake resumes inside the advertised cadence',
+	!C.sb.SectionPack.syncPaused && C.sb.SIM.t > liveT && /live · globe t/.test(C.els.hud.textContent),
+	't ' + C.sb.SIM.t.toFixed(3) + ' dG ' + C.sb.SIM.dG);
+var clockT = C.sb.SIM.t;
+C.sb.SectionPack.linkMessage('clock', {
+	pathChecksum: '0123456789abcdef', tMyr: couplingMsg.tMyr, paused: true
+}, 'postMessage');
+check.ok('a clock for another path is refused without pausing the section',
+	/pathChecksum/.test(C.els.sMsg.textContent) && C.sb.SIM.t === clockT && !C.sb.SectionPack.syncPaused,
+	C.els.sMsg.textContent);
 
 check.section('E. the raw strip says what the pack says');
 // the view the page switches to after a load is the reconstruction; `raw cut` (the button,

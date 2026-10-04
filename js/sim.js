@@ -26,12 +26,18 @@ function simK1(st, dt, t, Tm) {
 	MAG.k1(st, dt, t, Tm);
 }
 
+function simK2(st, dt, t, Tm) {
+	if (SIM.kinematic && SIM.kinematic(st, dt, t, Tm)) return;
+	PLT.k2(st, dt, t, Tm);
+}
+
 var SIM = {
 	// kernel slots; each is (state, dtGeo Myr, t Myr, Tm) and must no-op at dtGeo = 0
-	k: [null, simK1, PLT.k2, PLT.k3, function (st, dt, t, Tm) {
+	k: [null, simK1, simK2, PLT.k3, function (st, dt, t, Tm) {
 		if (COL.k4(st, dt, t, Tm)) { PLT.classify(st, 0); PLT.trench(st); }
 	}, CRU.k5, SURF.k6, null, null, null],
 	dG: 0,          // Myr per frame, from the plates slider
+	kinematic: null, // optional C3 K2 owner; returns true when it supplied plate velocities
 	t: 0,           // Myr
 	tErupt: 0,      // s, the eruptive clock (the only seconds quantity)
 	Tm: 0, frame: 0, evT: 0, event: 0,
@@ -44,6 +50,7 @@ var SIM = {
 
 	reset: function () {
 		this.t = 0; this.tErupt = 0; this.frame = 0; this.evT = 0; this.event = 0;
+		this.kinematic = null;
 		this.dG = P.sl.geo / 1e6;
 		this.cool();
 		S.reset();

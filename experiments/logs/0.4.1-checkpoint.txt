@@ -13,7 +13,7 @@ PASS  refuses damaged header or table at 24 atomically
 PASS  refuses damaged header or table at 28 atomically
 PASS  refuses damaged header or table at 32 atomically
 PASS  refuses damaged header or table at 36 atomically
-PASS  refuses damaged header or table at 448 atomically
+PASS  refuses damaged header or table at 488 atomically
 PASS  refuses non-finite state scalar atomically
 PASS  refuses out-of-capacity column count atomically
 PASS  refuses negative geologic step atomically

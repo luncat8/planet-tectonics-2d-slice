@@ -28,6 +28,13 @@ var S = {
 	hMaf: new Float64Array(P.colCap),
 	hSed: new Float64Array(P.colCap),
 	hTot: new Float64Array(P.colCap),       // cached stack total, m
+	// Last accepted C4 targets travel with their Lagrangian column. A zero syncValid marks a
+	// newborn or a section that has not received a coupling message, so its first import is
+	// not misreported as section divergence.
+	syncFel: new Float64Array(P.colCap),
+	syncMaf: new Float64Array(P.colCap),
+	syncSed: new Float64Array(P.colCap),
+	syncValid: new Uint8Array(P.colCap),
 	z: new Float64Array(P.colCap),          // isostatic elevation, m (surface.js)
 	slope: new Float64Array(P.colCap),      // wrapped central difference of z
 	wet: new Uint8Array(P.colCap),          // below sea level
@@ -168,12 +175,13 @@ var S = {
 		outsideCut: 0,              // columns of the ring an open window leaves with no data
 		tailArcKm: 0,               // the arc of a window no whole column could take
 		tailVol: 0,                  // m3 of crust that arc carried
-		// M5 step 2: the reconcile ledger booked by COUP.apply (§4.3.5)
-		reconciled: 0,               // volume pulled toward the message's interval
-		diverged: 0,                 // volume the section's own kernels changed since the import
-		divergedAtImport: 0,         // the residual diverged at the moment of import
-		fresh: 0,                    // unmatched columns: no ancestor interval
-		retired: 0                    // matched intervals that have no descendant column
+		// M5 C4 ledger, all volumes in m3 per metre out of section. Four lines are
+		// cumulative; divergedAtImport is the one current residual shown beside them.
+		reconciled: 0,               // absolute volume added or removed on matched columns
+		diverged: 0,                 // own-kernel change from the previous accepted targets
+		divergedAtImport: 0,         // current own-kernel residual before this reconcile
+		fresh: 0,                    // target volume built where no ancestor is close enough
+		retired: 0                   // old stack volume retired where no descendant is close
 	},
 	// mass ledger (design §6): produced / consumed volume per LITH, m3
 	ledProd: new Float64Array(P.LITH.n),

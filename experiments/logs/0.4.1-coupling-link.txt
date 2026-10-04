@@ -1,0 +1,21 @@
+
+A. postMessage is the first rung
+PASS  the first probe is a postMessage handshake
+PASS  an acknowledgement selects postMessage and announces it   idle/probing postMessage -> postMessage/ready
+PASS  a selected postMessage rung delivers typed payloads
+PASS  outbound payloads use the selected rung
+
+B. a silent postMessage peer falls through to localStorage
+PASS  no postMessage answer starts a localStorage probe
+PASS  the storage acknowledgement selects and announces the second rung   idle/probing postMessage -> idle/probing localStorage -> localStorage/ready
+PASS  outbound payloads use the storage event bus
+
+C. no automated answer settles on the manual contract
+PASS  the complete probe order is postMessage, localStorage, clipboard/file   idle/probing postMessage -> idle/probing localStorage -> clipboard/file/ready
+PASS  manual is a declared rung, not a send failure disguised as live
+PASS  stop removes both listeners and returns the channel to idle
+
+D. restricted file storage is a normal fallback
+PASS  a throwing localStorage getter selects the manual rung without throwing
+
+ALL PASS (11 checks)

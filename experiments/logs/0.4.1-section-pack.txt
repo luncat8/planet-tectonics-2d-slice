@@ -7,6 +7,7 @@ PASS  the page boots in section mode
 PASS  no engine world is built before a cut arrives   hFel non-zero cols=0 nCol=512
 PASS  the frame loop is running
 PASS  the HUD says the clock is off   section mode · cut · plate clock off
+PASS  with no peer, the handshake announces the manual clipboard/file rung   link: clipboard/file
 PASS  the body is in section mode (the engine bar is off, the Slice panel is on)
 PASS  the Slice panel ids are on the page   sText,sPaste,sFile,sPick,sMsg
 PASS  the URL params are read and applied (the section sets its own seed and clocks)   {"start":"section","seed":"7","geo":"0","erupt":"0"}
@@ -19,6 +20,7 @@ PASS  a paste of the pinned cut loads   loaded source L5 · 202 km cells → 512
 PASS  the readout says what the cut is (level, both resolutions, arc, mode, checksum)   source L5 · 202 km cells → 512 columns · 78 km · 40 030 km circle · t 120.5 Myr · seed 7 · mapping 1 · checksum 5e6a558adccfde21
 PASS  the cut has been laid as a section (the stacks carry the cut mass, the clock stays off)   cut at t 120.5 Myr · plate clock off · the cut as it stands   paste
 PASS  the HUD books what the seeding assumed and what it mapped (plan §4.3.3, §4.3.5)   cut at t 120.5 Myr · plate clock off · the cut as it stands   paste
+link: clipboard/file
 source L5 · 202 km cells → 512 columns · 78 km · 40 030 km circle · t 120.5 Myr · seed 7 · mapping 1 · checksum 5e6a558adccfde21
 arc scale 1.00   ring · 512 of 512 columns   out-of-plane 6.53 cm/yr   seed 7
 start: 3 layers from the cut, their beds aged from the cut; the section dates its own beds from t 120.5 Myr   gap-thinned 6   plate runs 12 -> 12 (merged 0)
@@ -30,7 +32,7 @@ plates pause   lava pause
 fps 0.0   ms 0.00 (sim 0.00 + draw 0.00)
 cols 512/768   plates 12   vents 0   ribbons 0   plumes 6   deposits 0   seed 7
 fastest plate 13.62 cm/yr   opening 6   trenches 4   collisions 2   arc melt 0 m2   plume melt 0 m2
-PASS  the engine's own HUD lines come under the section's   spin-up since the cut: crust +0 m3/m · mean z 0.0 m · 0 frames · 512 records of 512
+PASS  the engine's own HUD lines come under the section's   ledger: map-equivalent 1.000000   crust 988692889403 of 988692889403 m3/m   over-collapse 60 cols / 14136673103 m3   crossings 0 collapsed, 0 unplaceable, 0 neutral   clamped 0   map v1
 
 C. the reader refuses the twelve corruptions
 PASS  refuses a foreign format tag   not a pgt-slice-pack (pgt-something-else)
@@ -56,8 +58,9 @@ D. paste and file of the same bytes
 PASS  the pack checksum is the same   5e6a558adccfde21
 PASS  the origin names the transport and nothing else changes
 PASS  the two transports draw identically (every call, every argument)   A 3251 calls, B 3251 calls
-PASS  paste and file lay the same state (S.hash of the seeded planet)   1716292187
+PASS  paste and file lay the same state (S.hash of the seeded planet)   1502832219
 PASS  the HUD agrees on everything but the transport line   cut at t 120.5 Myr · plate clock off · the cut as it stands   file
+link: clipboard/file
 source L5 · 202 km cells → 512 columns · 78 km · 40 030 km circle · t 120.5 Myr · seed 1 · mapping 1 · checksum 5e6a558adccfde21
 arc scale 1.00   ring · 512 of 512 columns   out-of-plane 6.53 cm/yr   seed 7
 start: 3 layers from the cut, their beds aged from the cut; the section dates its own beds from t 120.5 Myr   gap-thinned 6   plate runs 12 -> 12 (merged 0)
@@ -69,6 +72,18 @@ plates 50 kyr/f   lava 30.0 min/f
 fps 0.0   ms 0.00 (sim 0.00 + draw 0.00)
 cols 512/768   plates 12   vents 0   ribbons 0   plumes 4   deposits 0   seed 1
 fastest plate 13.62 cm/yr   opening 6   trenches 4   collisions 2   arc melt 0 m2   plume melt 0 m2
+
+D2. coupling text uses the guarded reader on paste and file
+PASS  a checksummed coupling snapshot for the active path applies through paste   coupling snapshot t 120.5 Myr applied from paste · reconciled 29794539101 m3/m
+PASS  the HUD identifies the manual coupling rung and its reconciliation fractions
+PASS  the page refuses an unsigned coupling message without state mutation   coupling message refused: checksum mismatch
+PASS  the page refuses a checksummed message for another cut without state mutation   message refused: pathChecksum does not match the active cut
+PASS  a coupling file goes through the same reader and produces the same state
+PASS  a coupling message cannot apply before a cut is reconstructed   coupling message refused: no reconstructed section is active
+PASS  a live carrier uses the same coupling reader, rung and C3 K2 owner
+PASS  a paused globe pins the section clock and its label   cut at t 120.5 Myr · live · globe paused   paste
+PASS  an unpaused handshake resumes inside the advertised cadence   t 120.550 dG 0.05
+PASS  a clock for another path is refused without pausing the section   clock refused: pathChecksum does not match the active cut
 
 E. the raw strip says what the pack says
 PASS  the raw cut switch is the one that is lit, and it is the strip that comes back   aria-pressed=true
@@ -104,6 +119,6 @@ PASS  the empty Cut-from option drops the cut, its world and its overlay   cut c
 PASS  and an id the bundle does not have is a message from the same control   no bundled pack 'no-such-pack' (the bake lands in M4) — paste a cut
 PASS  and the next draw is the idle strip again
 
-  total 4.7 s
+  total 10.9 s
 
-ALL PASS (60 checks)
+ALL PASS (71 checks)

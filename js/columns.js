@@ -48,27 +48,37 @@ COL.push = function (c, thick, lith, age, flags) {
 // one it lands against is thickened instead of added, and at layerCap the stack is
 // consolidated first (thinnest adjacent pair of identical beds) so growth has somewhere
 // to go.
-COL.insertVol = function (st, c, lith, vol, age, flags) {
+COL.insertVol = function (st, c, lith, vol, age, flags, place) {
 	if (!(vol > 0)) return 0;
 	var LC = P.layerCap, b = c * LC, RANK = P.LITH_RANK, r = RANK[lith], n = st.colNL[c], p = 0, k;
-	// p is the first bed that ranks above this one, counting from the deepest
-	while (p < n && RANK[st.layLi[b + p]] <= r) p++;
+	// The default lands after its rank and coalesces with the bed there. A reconcile event
+	// can ask for the bottom of its lithology or the top of the stack so its timestamp remains
+	// a bed rather than being absorbed into the imported seed bed.
+	if (place === 'top') p = n;
+	else {
+		while (p < n && RANK[st.layLi[b + p]] < r) p++;
+		if (place !== 'bottom') while (p < n && RANK[st.layLi[b + p]] === r) p++;
+	}
 	if (n >= LC) {
 		this.consolidate(st, c);
 		n = st.colNL[c]; p = 0;
-		while (p < n && RANK[st.layLi[b + p]] <= r) p++;
+		if (place === 'top') p = n;
+		else {
+			while (p < n && RANK[st.layLi[b + p]] < r) p++;
+			if (place !== 'bottom') while (p < n && RANK[st.layLi[b + p]] === r) p++;
+		}
 	}
-	// A bed is thickened rather than added, and the flags of the older bed win: the wet
+	// By default a bed is thickened rather than added, and the flags of the older bed win: the wet
 	// bit says where the bed formed, and a later grain landing on it does not move the
 	// bed somewhere else. Matching on it instead filled stacks with one bed per frame
 	// (measured: 95 beds under 0.35 km on a column that had been at layerCap for 1605
 	// frames), because the surface's wetness flips from frame to frame.
-	if (p > 0 && st.layLi[b + p - 1] === lith) {
+	if (!place && p > 0 && st.layLi[b + p - 1] === lith) {
 		st.layFl[b + p - 1] |= flags & ~P.FLAG.wet;
 		st.layTh[b + p - 1] += vol;
 		return vol;
 	}
-	if (p < n && st.layLi[b + p] === lith) {
+	if (!place && p < n && st.layLi[b + p] === lith) {
 		st.layTh[b + p] += vol;
 		if (age < st.layAg[b + p]) st.layAg[b + p] = age;
 		return vol;
@@ -190,6 +200,44 @@ COL.removeTop = function (c, amount) {
 			if (S.depCol[d] === c && S.depLay[d] >= k) S.depLay[d] = -1;
 		}
 		S.colNL[c] = k;
+	}
+	return amount - left;
+};
+
+// Remove one aggregate density class, shallowest matching bed first. Reconciliation uses
+// this instead of removeTop: shrinking felsic crust must not consume a sediment drape merely
+// because that drape is above it. A completely removed host invalidates its deposit; hosts
+// above a removed bed move down with their bed index.
+COL.removeClass = function (st, c, cls, amount) {
+	if (!(amount > 0)) return 0;
+	var LC = P.layerCap, b = c * LC, left = amount;
+	var n = st.colNL[c], k, j, d, t, take;
+	for (k = n - 1; k >= 0 && left > 0; k--) {
+		if (this.CLASS[st.layLi[b + k]] !== cls) continue;
+		t = st.layTh[b + k];
+		take = t > left ? left : t;
+		left -= take;
+		if (take < t) {
+			st.layTh[b + k] = t - take;
+			if (k + 1 < n) st.layFl[b + k + 1] |= P.FLAG.unconf;
+			else st.colBevel[c] = 1;
+			break;
+		}
+		for (d = 0; d < st.nDep; d++) {
+			if (st.depCol[d] !== c) continue;
+			if (st.depLay[d] === k) st.depLay[d] = -1;
+			else if (st.depLay[d] > k) st.depLay[d]--;
+		}
+		for (j = k; j + 1 < n; j++) {
+			st.layTh[b + j] = st.layTh[b + j + 1];
+			st.layLi[b + j] = st.layLi[b + j + 1];
+			st.layAg[b + j] = st.layAg[b + j + 1];
+			st.layFl[b + j] = st.layFl[b + j + 1];
+		}
+		n--;
+		st.colNL[c] = n;
+		if (k < n) st.layFl[b + k] |= P.FLAG.unconf;
+		else st.colBevel[c] = 1;
 	}
 	return amount - left;
 };
@@ -514,7 +562,7 @@ COL.lidFan = function () {
 // --- K3/K4: gather-based Lagrangian topology ---------------------------------------
 // Only these fields travel with a column. Plate records, fan cells and entity tables
 // have their own lifetimes. All scratch is allocated once, including the sort comparator.
-COL.fields = 'colX colW colPlate colU ext edgeRelN edgePol edgeRPlate trenchDist oldW colAge hFel hMaf hSed hTot z slope wet noise damage zDyn fert oVms oMaf oArc oOro oBas oPla volc edge edgeAge edgeSlow colLoad colLoadFel colPla colBevel colChamber colMeltArc colMeltPlume colRecycle colGhost colNL'.split(' ');
+COL.fields = 'colX colW colPlate colU ext edgeRelN edgePol edgeRPlate trenchDist oldW colAge hFel hMaf hSed hTot syncFel syncMaf syncSed syncValid z slope wet noise damage zDyn fert oVms oMaf oArc oOro oBas oPla volc edge edgeAge edgeSlow colLoad colLoadFel colPla colBevel colChamber colMeltArc colMeltPlume colRecycle colGhost colNL'.split(' ');
 COL.oreFields = 'oVms oMaf oArc oOro oBas oPla'.split(' ');
 COL.scratch = COL.fields.map(function (key) { return new S[key].constructor(P.colCap); });
 COL.layerFields = ['layTh', 'layLi', 'layAg', 'layFl'];

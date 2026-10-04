@@ -1,7 +1,8 @@
 
 A. the envelope derived from a verified cut
 PASS  a message derived from a cut validates   
-PASS  it names the cut it came from and matches no other
+PASS  it names the geographic path it came from and matches no other
+PASS  the path identity is independent of sampled fields and source resolution
 PASS  its clock, epoch and sea are the pack's   t 120.5 Myr, epoch 0
 PASS  its crust table is the pack's own numbers, interval for interval   worst 0.00e+0
 PASS  its plate intervals split where plate, boundary or polarity changes   24 intervals over 198 samples
@@ -28,6 +29,8 @@ PASS  refuses a negative age   crust 2 has a negative age
 PASS  refuses damage above one   crust 2 fertility or damage out of range
 PASS  refuses a boundary code that is not one   plate 0 bnd out of range: 9
 PASS  refuses a polarity out of range   plate 0 pol out of range: 4
+PASS  refuses a fractional polarity code   plate 0 pol out of range: 0.5
+PASS  refuses no trench table   trenches must be an array
 PASS  refuses a trench past the end of the cut   trench 0 is off the cut
 PASS  refuses unsorted trenches   trenches are not sorted at 1
 PASS  refuses a negative ledger   ledger must carry three finite volumes
@@ -39,7 +42,7 @@ C. the pack sequence: 20 messages at the plan cadence
 PASS  every message of the sequence validates   20 derived messages
 PASS  the sequence advances the globe's clock one cadence a step   from 120.5 to 220.5 Myr
 PASS  every message is its own cut
-PASS  re-deriving a message from the same pack is the same message   message 7
+PASS  re-deriving a message from the same pack and path is the same message   message 7
 INFO  message size over the sequence   65455 chars mean, 64276..66450
 
 D. the section's half: the join, the deltas and the import budget
@@ -50,6 +53,70 @@ PASS  the reconcile the sequence would book stays smaller than the crust it corr
 INFO  deltas per message (m, globe minus section)   max 59207, age max 309.840 Myr, 416 of 512 columns moved
 PASS  a message with spans wider than the join radius leaves those columns unjoined   132 of 512 columns joined, 380 left at a 78.2 km join spacing
 PASS  a hard reset import keeps the ledger the message carried   seed 1038447404667 of cut 1038447404667 m3/m
-PASS  the import cost is finite and inside a frame budget at this resolution   mean 1.7 ms, worst 3.8 ms over 21 layout imports
+PASS  the import cost is finite and inside a frame budget at this resolution   mean 2.3 ms, worst 4.6 ms over 21 layout imports
 
-ALL PASS (42 checks)
+E. apply refusals are atomic and a matched reconcile edits beds
+PASS  an unsigned in-memory message is refused before state mutation   message refused: checksum mismatch
+PASS  a message for another path is refused before state mutation   message refused: pathChecksum does not match the active cut
+PASS  a page with no reconstructed section cannot report an applied message   message refused: no reconstructed section is ready for coupling
+PASS  a checksummed message for the active path applies   ok
+PASS  an unrelated bed and its depth-resolved deposit survive matched growth   layer 2 -> 4, 0/170.77854376141062/1 -> 0/170.77854376141062/1, format adjustment -0.185 m
+PASS  matched growth is a dated reconcile bed, not cache or seed-bed inflation   fel growth dated at globe t 120.5 Myr
+PASS  the imported aggregate is derived from beds and survives COL.sums   crust 998699744231 m3/m, tagged 8567.000 m
+PASS  the apply ledger closes old + in - out = new to 1e-9   error 7.324e-4 over 9.987e+11
+PASS  a coarse valid table exercises the fresh/retired branch without refusal   128 matched, 384 fresh
+PASS  fresh and retired are volumes and close the same mass identity   fresh 690434179401, retired 753680368182, error 3.662e-4
+
+F. the real 20-import cycle: evolve, reconcile, retain
+PASS  message 1 applies cleanly   refused
+PASS  apply 1 leaves matched bed aggregates on their targets   max residual 2.27e-13 m
+PASS  message 2 applies cleanly   refused
+PASS  apply 2 leaves matched bed aggregates on their targets   max residual 6.82e-13 m
+PASS  message 3 applies cleanly   refused
+PASS  apply 3 leaves matched bed aggregates on their targets   max residual 3.64e-12 m
+PASS  message 4 applies cleanly   refused
+PASS  apply 4 leaves matched bed aggregates on their targets   max residual 3.64e-12 m
+PASS  message 5 applies cleanly   refused
+PASS  apply 5 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 6 applies cleanly   refused
+PASS  apply 6 leaves matched bed aggregates on their targets   max residual 3.64e-12 m
+PASS  message 7 applies cleanly   refused
+PASS  apply 7 leaves matched bed aggregates on their targets   max residual 3.64e-12 m
+PASS  message 8 applies cleanly   refused
+PASS  apply 8 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 9 applies cleanly   refused
+PASS  apply 9 leaves matched bed aggregates on their targets   max residual 3.64e-12 m
+PASS  message 10 applies cleanly   refused
+PASS  apply 10 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 11 applies cleanly   refused
+PASS  apply 11 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 12 applies cleanly   refused
+PASS  apply 12 leaves matched bed aggregates on their targets   max residual 3.64e-12 m
+PASS  message 13 applies cleanly   refused
+PASS  apply 13 leaves matched bed aggregates on their targets   max residual 3.64e-12 m
+PASS  message 14 applies cleanly   refused
+PASS  apply 14 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 15 applies cleanly   refused
+PASS  apply 15 leaves matched bed aggregates on their targets   max residual 1.46e-11 m
+PASS  message 16 applies cleanly   refused
+PASS  apply 16 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 17 applies cleanly   refused
+PASS  apply 17 leaves matched bed aggregates on their targets   max residual 1.46e-11 m
+PASS  message 18 applies cleanly   refused
+PASS  apply 18 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 19 applies cleanly   refused
+PASS  apply 19 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 20 applies cleanly   refused
+PASS  apply 20 leaves matched bed aggregates on their targets   max residual 1.46e-11 m
+PASS  all 20 mass identities close to 1e-9 relative   worst relative error 1.675e-15
+PASS  recomputing every aggregate from beds cannot undo an import   worst relative cache change 0.000e+0
+PASS  matched columns retain their bed identities through the sequence   worst import retained 98.9% of non-empty columns
+PASS  the cumulative reconcile ledger never resets between imports   reconciled 3239697279881, diverged 497943613140 m3/m
+PASS  fresh and retired are measured volumes and unmatched columns stay bounded   total matched 10689, fresh cols 0, retired cols 0, fresh volume 0
+
+G. C3 owns K2 while the live message is active
+PASS  the active coupling prescribes rigid plate and column velocities in K2   12 plates at 12345 m/Myr
+PASS  a zero clock leaves prescribed kinematics still
+PASS  deactivation returns K2 ownership to the standalone solver
+
+ALL PASS (103 checks)

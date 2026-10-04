@@ -52,7 +52,7 @@ var Checkpoint = (function () {
 
 	return {
 		MAGIC: 0x31435450,
-		VERSION: 1,
+		VERSION: 2,
 		SESSION_FORMAT: 'pgt-slice-session',
 		SESSION_VERSION: 1,
 		b64enc: b64enc,
@@ -119,6 +119,7 @@ var Checkpoint = (function () {
 			scalars.forEach(function (k) { S[k] = v[i++]; });
 			recon.forEach(function (k) { S.recon[k] = v[i++]; });
 			clocks.forEach(function (k) { runtime[k] = v[i++]; });
+			runtime.kinematic = null;
 			P.seed = v[i++]; P.sl.geo = v[i++]; P.sl.erupt = v[i++];
 			RNG.setState(v.subarray(i, i + 4)); i += 4;
 			RNG.gs = v[i++]; RNG.gh = !!v[i++];
@@ -156,6 +157,8 @@ var Checkpoint = (function () {
 					overlay: sec ? !!sec.overlay : true,
 					running: !!(sec && sec.running),
 					t0: (sec && sec.t0) || 0,
+					syncTMyr: sec && isFinite(sec.syncTMyr) ? sec.syncTMyr : -1,
+					syncImports: (sec && sec.syncImports) || 0,
 					spin: (sec && sec.spin) || null
 				},
 				mapper: {
@@ -229,6 +232,11 @@ var Checkpoint = (function () {
 				sec.overlay = obj.session.overlay !== false;
 				sec.running = !!obj.session.running;
 				sec.t0 = obj.session.t0 || 0;
+				sec.syncTMyr = isFinite(obj.session.syncTMyr) ? obj.session.syncTMyr : -1;
+				sec.syncImports = obj.session.syncImports || 0;
+				sec.syncLive = false;
+				sec.syncPaused = false;
+				sec.couplingMsg = null;
 				sec.spin = obj.session.spin || null;
 				sec.pack = obj.pack || null;
 				sec.cache = null;

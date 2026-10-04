@@ -13,7 +13,7 @@
 'use strict';
 var lib = require('./lib.js'), M = lib.mods, check = lib.check;
 var COUP = M.coupling, SP = require('../port/slice-format.js');
-var S = M.state, P = M.params, SIM = M.sim, SEED = M['section-seed'];
+var S = M.state, P = M.params, SIM = M.sim, SEED = M['section-seed'], COL = M.columns;
 var FIX = require('./pack-fixture.js');
 var KM = 1000;
 var GLOBE_YR = 50e3;       // the globe's clock: 50 kyr per frame, 100 frames per cadence
@@ -50,8 +50,15 @@ var pack0 = FIX.pinned();
 var q0 = SP.decode(SP.encode(pack0));
 var msg0 = COUP.fromPack(q0);
 check.ok('a message derived from a cut validates', COUP.validate(msg0) === '', COUP.validate(msg0));
-check.ok('it names the cut it came from and matches no other',
-	msg0.pathChecksum === q0.checksum && COUP.matches(msg0, q0));
+check.ok('it names the geographic path it came from and matches no other',
+	msg0.pathChecksum === COUP.pathChecksum(q0) && COUP.matches(msg0, q0));
+check.ok('the path identity is independent of sampled fields and source resolution',
+	function () {
+		var other = JSON.parse(JSON.stringify(q0));
+		other.path.cellKm *= 0.5;
+		other.hFelM[0] += 1000;
+		return COUP.pathChecksum(other) === msg0.pathChecksum;
+	}());
 check.ok('its clock, epoch and sea are the pack\'s',
 	msg0.tMyr === q0.source.tMyr && msg0.epochMa === q0.source.epochMa &&
 	msg0.sea.mode === q0.sea.mode && msg0.sea.levelM === q0.sea.levelM,
@@ -111,6 +118,8 @@ refuses('a negative age', function (m) { m.crust[2].ageMyr = -1; });
 refuses('damage above one', function (m) { m.crust[2].damage = 1.5; });
 refuses('a boundary code that is not one', function (m) { m.plates[0].bnd = 9; });
 refuses('a polarity out of range', function (m) { m.plates[0].pol = 4; });
+refuses('a fractional polarity code', function (m) { m.plates[0].pol = 0.5; });
+refuses('no trench table', function (m) { delete m.trenches; });
 refuses('a trench past the end of the cut', function (m) { m.trenches = [m.crust[m.crust.length - 1].s1Km + 1]; });
 refuses('unsorted trenches', function (m) { m.trenches = [100, 50]; });
 refuses('a negative ledger', function (m) { m.ledger.sed = -1; });
@@ -130,12 +139,12 @@ if (laid) throw new Error(laid);
 SIM.t = pack0.source.tMyr; SIM.cool();
 SIM.setGeo(GLOBE_YR);
 var globeFrames = Math.round(COUP.CADENCE_MYR / (GLOBE_YR / 1e6));
-var packs = [pack0], msgs = [msg0], sizes = [];
+var packs = [pack0], msgs = [msg0], sizes = [], pathId = msg0.pathChecksum;
 for (i = 1; i <= MESSAGES; i++) {
 	SIM.run(globeFrames);
 	var pack = SEED.exportSection({ pack: 'coupling-seq' });
 	packs.push(pack);
-	msgs.push(COUP.fromPack(pack));
+	msgs.push(COUP.fromPack(pack, { pathChecksum: pathId }));
 	sizes.push(COUP.json(msgs[i]).length);
 }
 var allValid = true, allNew = true, monotone = true;
@@ -148,8 +157,8 @@ check.ok('every message of the sequence validates', allValid, MESSAGES + ' deriv
 check.ok('the sequence advances the globe\'s clock one cadence a step', monotone,
 	'from ' + msgs[0].tMyr + ' to ' + msgs[MESSAGES].tMyr + ' Myr');
 check.ok('every message is its own cut', allNew);
-check.ok('re-deriving a message from the same pack is the same message',
-	COUP.checksum(COUP.fromPack(packs[7])) === msgs[7].checksum, 'message 7');
+check.ok('re-deriving a message from the same pack and path is the same message',
+	COUP.checksum(COUP.fromPack(packs[7], { pathChecksum: pathId })) === msgs[7].checksum, 'message 7');
 check.info('message size over the sequence',
 	Math.round(sizes.reduce(function (a, b) { return a + b; }, 0) / sizes.length) + ' chars mean, ' +
 	sizes[0] + '..' + Math.max.apply(null, sizes));
@@ -240,62 +249,195 @@ check.ok('the import cost is finite and inside a frame budget at this resolution
 	isFinite(meanCost) && meanCost < 250,
 	'mean ' + meanCost.toFixed(1) + ' ms, worst ' + maxCost.toFixed(1) + ' ms over ' + costMs.length + ' layout imports');
 
-// ---------------------------------------------------------------- M5 step 2: the apply/reconcile
-check.section('E. apply: the C4 reconcile on the 20-message sequence');
-// A self-message applies with no reconciliation (the section matches its own cut exactly at
-// import time, before any divergence has accumulated).
-var applySelf = COUP.apply(S, self, { nCut: SEED.nCut, cellKm: pack0.path.cellKm });
-check.ok('a self-message applies without refusal', applySelf === '', applySelf || 'refused');
-check.ok('a self-message leaves only the format\'s own metre of unreconciled divergence',
-	S.recon && S.recon.reconciled <= 0.05 * (msg0.ledger.fel + msg0.ledger.maf + msg0.ledger.sed) + 1,
-	'reconciled ' + (S.recon ? S.recon.reconciled.toFixed(3) : 'n/a') + ' vs cut ' + Math.round(msg0.ledger.fel + msg0.ledger.maf + msg0.ledger.sed));
-check.ok('a self-message books no unmatched columns (fresh = 0)',
-	S.recon && S.recon.fresh === 0,
-	'fresh ' + (S.recon ? S.recon.fresh : 'n/a') + ' retired ' + (S.recon ? S.recon.retired : 'n/a'));
+// ---------------------------------------------------------------- M5 C4: guarded, bed-preserving apply
+check.section('E. apply refusals are atomic and a matched reconcile edits beds');
+laid = SEED.layout(pack0, { seed: P.seed, t: pack0.source.tMyr, Tm: P.Tm0 });
+if (laid) throw new Error(laid);
+SIM.t = pack0.source.tMyr; SIM.cool();
+SIM.setGeo(SECTION_YR);
 
-// The 20-import sequence: each import pulls the section back toward the message. At each
-// step the mass identity (seeded + tail = cut) should hold, and beds stay on matched columns.
-var applySequence = [];
+var ownPack = SEED.exportSection({ pack: 'coupling-apply-self' });
+var ownMsg = COUP.fromPack(ownPack, { pathChecksum: pathId });
+var growMsg = copy(ownMsg), growM = 250, growVol = 0;
+for (i = 0; i < growMsg.crust.length; i++) {
+	growMsg.crust[i].hFelM += growM;
+	growVol += growM * (growMsg.crust[i].s1Km - growMsg.crust[i].s0Km) * KM;
+}
+growMsg.ledger.fel = SP.round(growMsg.ledger.fel + growVol);
+growMsg.checksum = COUP.checksum(growMsg);
+
+function applyOpts(n) {
+	return { nCut: n, cellKm: P.w0 / KM, pathChecksum: pathId };
+}
+function crustMass(n) {
+	var m = 0;
+	for (var j = 0; j < n; j++) m += S.hTot[j] * S.colW[j];
+	return m;
+}
+function bedIdentities(n) {
+	var out = new Array(n), LC = P.layerCap, j, k, b;
+	for (j = 0; j < n; j++) {
+		out[j] = [];
+		b = j * LC;
+		for (k = 0; k < S.colNL[j]; k++) {
+			out[j].push(S.layLi[b + k] + '/' + S.layAg[b + k] + '/' + S.layFl[b + k]);
+		}
+	}
+	return out;
+}
+function retainedColumns(before, n) {
+	var kept = 0, eligible = 0, LC = P.layerCap, j, k, b, key;
+	for (j = 0; j < n && j < before.length; j++) {
+		if (!before[j].length) continue;
+		eligible++;
+		b = j * LC;
+		for (k = 0; k < S.colNL[j]; k++) {
+			key = S.layLi[b + k] + '/' + S.layAg[b + k] + '/' + S.layFl[b + k];
+			if (before[j].indexOf(key) >= 0) { kept++; break; }
+		}
+	}
+	return { kept: kept, eligible: eligible };
+}
+
+var stateHash = S.hash(), reconJSON = JSON.stringify(S.recon);
+var unsigned = copy(growMsg);
+delete unsigned.checksum;
+var refused = COUP.apply(S, unsigned, applyOpts(S.nCol));
+check.ok('an unsigned in-memory message is refused before state mutation',
+	/checksum/.test(refused) && S.hash() === stateHash && JSON.stringify(S.recon) === reconJSON, refused);
+var foreign = copy(growMsg);
+foreign.pathChecksum = '0123456789abcdef';
+foreign.checksum = COUP.checksum(foreign);
+refused = COUP.apply(S, foreign, applyOpts(S.nCol));
+check.ok('a message for another path is refused before state mutation',
+	/pathChecksum/.test(refused) && S.hash() === stateHash && JSON.stringify(S.recon) === reconJSON, refused);
+refused = COUP.apply(S, growMsg, applyOpts(0));
+check.ok('a page with no reconstructed section cannot report an applied message',
+	/no reconstructed section/.test(refused) && S.hash() === stateHash && JSON.stringify(S.recon) === reconJSON, refused);
+
+// Tag a sediment host. Felsic growth inserts below it, so both the bed identity and the
+// deposit's shifted layer index must survive if apply is editing the stack rather than caches.
+var tagged = -1;
+for (i = 0; i < S.nCol; i++) if (S.colNL[i] >= 3) { tagged = i; break; }
+if (tagged < 0) throw new Error('fixture has no three-bed column');
+var dep = S.nDep++, taggedLayer = S.colNL[tagged] - 1, tb = tagged * P.layerCap + taggedLayer;
+S.depCol[dep] = tagged; S.depLay[dep] = taggedLayer;
+var taggedKey = S.layLi[tb] + '/' + S.layAg[tb] + '/' + S.layFl[tb];
+var taggedThickness = S.layTh[tb];
+var applied = COUP.apply(S, growMsg, applyOpts(S.nCol));
+check.ok('a checksummed message for the active path applies', applied === '', applied || 'ok');
+var movedLayer = S.depLay[dep], mb = tagged * P.layerCap + movedLayer;
+var movedKey = S.layLi[mb] + '/' + S.layAg[mb] + '/' + S.layFl[mb];
+check.ok('an unrelated bed and its depth-resolved deposit survive matched growth',
+	S.depCol[dep] === tagged && movedLayer >= 0 && movedKey === taggedKey &&
+		Math.abs(S.layTh[mb] - taggedThickness) <= 0.5 + 1e-9,
+	'layer ' + taggedLayer + ' -> ' + movedLayer + ', ' + taggedKey + ' -> ' + movedKey +
+	', format adjustment ' + (S.layTh[mb] - taggedThickness).toFixed(3) + ' m');
+var eventBed = false;
+for (i = 0; i < S.colNL[tagged]; i++) {
+	var eventAt = tagged * P.layerCap + i;
+	if (S.layLi[eventAt] === P.LITH.fel && S.layAg[eventAt] === growMsg.tMyr &&
+		S.layTh[eventAt] > growM - 1 && S.layTh[eventAt] < growM + 1) eventBed = true;
+}
+check.ok('matched growth is a dated reconcile bed, not cache or seed-bed inflation', eventBed,
+	'fel growth dated at globe t ' + growMsg.tMyr + ' Myr');
+var massAfterApply = crustMass(S.nCol), hAfterApply = S.hTot[tagged];
+COL.sumsAll();
+check.ok('the imported aggregate is derived from beds and survives COL.sums',
+	Math.abs(crustMass(S.nCol) - massAfterApply) <= 1e-12 * massAfterApply && S.hTot[tagged] === hAfterApply,
+	'crust ' + Math.round(massAfterApply) + ' m3/m, tagged ' + hAfterApply.toFixed(3) + ' m');
+check.ok('the apply ledger closes old + in - out = new to 1e-9',
+	Math.abs(COUP.last.identityError) <= 1e-9 * Math.max(1, COUP.last.after),
+	'error ' + COUP.last.identityError.toExponential(3) + ' over ' + COUP.last.after.toExponential(3));
+
+// A valid but coarse table still tiles the arc. Its broad interval midpoints deliberately
+// exceed the join radius for most columns: those stacks must be retired and rebuilt, with both
+// volumes named and the same identity closed.
+var coarse = copy(ownMsg), coarseRows = [];
+for (i = 0; i < coarse.crust.length; i += 16) {
+	var coarseRow = JSON.parse(JSON.stringify(coarse.crust[i]));
+	coarseRow.s1Km = coarse.crust[Math.min(i + 15, coarse.crust.length - 1)].s1Km;
+	coarseRows.push(coarseRow);
+}
+coarse.crust = coarseRows;
+coarse.checksum = COUP.checksum(coarse);
+applied = COUP.apply(S, coarse, applyOpts(S.nCol));
+check.ok('a coarse valid table exercises the fresh/retired branch without refusal',
+	applied === '' && COUP.last.matched > 0 && COUP.last.freshColumns > 0, applied ||
+	(COUP.last.matched + ' matched, ' + COUP.last.freshColumns + ' fresh'));
+check.ok('fresh and retired are volumes and close the same mass identity',
+	COUP.last.fresh > 0 && COUP.last.retired > 0 &&
+	Math.abs(COUP.last.identityError) <= 1e-9 * Math.max(1, COUP.last.after),
+	'fresh ' + Math.round(COUP.last.fresh) + ', retired ' + Math.round(COUP.last.retired) +
+	', error ' + COUP.last.identityError.toExponential(3));
+
+check.section('F. the real 20-import cycle: evolve, reconcile, retain');
+laid = SEED.layout(pack0, { seed: P.seed, t: pack0.source.tMyr, Tm: P.Tm0 });
+if (laid) throw new Error(laid);
+SIM.t = pack0.source.tMyr; SIM.cool();
+SIM.setGeo(SECTION_YR);
+var worstIdentity = 0, worstCache = 0, minRetention = 1;
+var totalMatched = 0, totalFreshColumns = 0, totalRetiredColumns = 0;
+var cumulativeOk = true, previousReconciled = S.recon.reconciled;
 for (i = 1; i <= MESSAGES; i++) {
-	// Re-apply on the state that the previous layout produced (simulating the import cycle)
-	var applyRes = COUP.apply(S, msgs[i], { nCut: SEED.nCut, cellKm: pack0.path.cellKm });
-	applySequence.push({ res: applyRes, msg: msgs[i] });
-	// The apply should never refuse on a validated sequence message
+	SIM.run(sectionFrames);
+	var nLive = S.nCol;
+	var bedsBefore = bedIdentities(nLive);
+	var applyRes = COUP.apply(S, msgs[i], applyOpts(nLive));
 	check.ok('message ' + i + ' applies cleanly', applyRes === '', applyRes || 'refused');
-	// After apply, the aggregate thickness for matched columns follows the message; unmatched
-	// columns stay fresh. Beds are not deleted by apply (the aggregate correction is separate
-	// from bed structure, which is the section's own).
-	if (S.recon) {
-		check.ok('apply ' + i + ' books a non-negative reconciled volume', S.recon.reconciled >= 0,
-			'reconciled ' + S.recon.reconciled.toFixed(0) + ' m3');
-	}
+	if (applyRes) continue;
+	var relIdentity = Math.abs(COUP.last.identityError) / Math.max(1, COUP.last.after);
+	if (relIdentity > worstIdentity) worstIdentity = relIdentity;
+	var cachedMass = crustMass(nLive);
+	COL.sumsAll();
+	var relCache = Math.abs(crustMass(nLive) - cachedMass) / Math.max(1, cachedMass);
+	if (relCache > worstCache) worstCache = relCache;
+	var retained = retainedColumns(bedsBefore, nLive);
+	var retention = retained.eligible ? retained.kept / retained.eligible : 1;
+	if (retention < minRetention) minRetention = retention;
+	var post = COUP.deltas(S, msgs[i], { nCut: nLive, cellKm: P.w0 / KM });
+	check.ok('apply ' + i + ' leaves matched bed aggregates on their targets',
+		post.dMax < 1e-7, 'max residual ' + post.dMax.toExponential(2) + ' m');
+	if (S.recon.reconciled < previousReconciled) cumulativeOk = false;
+	previousReconciled = S.recon.reconciled;
+	totalMatched += COUP.last.matched;
+	totalFreshColumns += COUP.last.freshColumns;
+	totalRetiredColumns += COUP.last.retiredColumns;
 }
-// The full sequence identity: after 20 imports the cumulative reconciled volume should be
-// bounded by the crust it corrects (the message's own crust volume scaled by the number of
-// steps), and no column should be permanently unmatched (fresh count stays inside the
-// message's unmatched columns).
-var totalReconciled = 0, maxFresh = 0, maxRetired = 0;
-for (i = 1; i <= MESSAGES; i++) {
-	totalReconciled += applySequence[i - 1].res === '' ? (S.recon ? S.recon.reconciled : 0) : 0;
-	if (S.recon) {
-		maxFresh = Math.max(maxFresh, S.recon.fresh);
-		maxRetired = Math.max(maxRetired, S.recon.retired);
-	}
-}
-check.ok('the 20-import sequence keeps aggregate mass within 1 % of the last applied message',
-	function () {
-		var lastMsg = applySequence[MESSAGES - 1] ? applySequence[MESSAGES - 1].msg : msg0;
-		var cutTotal = lastMsg.ledger ? (lastMsg.ledger.fel + lastMsg.ledger.maf + lastMsg.ledger.sed) : 0;
-		SEED.ledger(packs[MESSAGES]);
-		var seedTotal = SEED.seedMass;
-		return cutTotal > 0 ? Math.abs(seedTotal - cutTotal) < 0.01 * Math.abs(cutTotal) : true;
-	}(),
-	('last message ledger ' + Math.round((applySequence[MESSAGES - 1] && applySequence[MESSAGES - 1].msg ? (applySequence[MESSAGES - 1].msg.ledger.fel + applySequence[MESSAGES - 1].msg.ledger.maf + applySequence[MESSAGES - 1].msg.ledger.sed) : (msg0.ledger.fel + msg0.ledger.maf + msg0.ledger.sed)))));
-check.ok('beds stay on matched columns: unmatched columns stay bounded',
-	maxFresh <= SEED.nCut,
-	'max fresh ' + maxFresh + ' over ' + MESSAGES + ' imports');
-check.ok('retired intervals stay bounded by the message table',
-	maxRetired <= msg0.crust.length,
-	'max retired ' + maxRetired);
+check.ok('all 20 mass identities close to 1e-9 relative', worstIdentity < 1e-9,
+	'worst relative error ' + worstIdentity.toExponential(3));
+check.ok('recomputing every aggregate from beds cannot undo an import', worstCache < 1e-12,
+	'worst relative cache change ' + worstCache.toExponential(3));
+check.ok('matched columns retain their bed identities through the sequence', minRetention > 0.95,
+	'worst import retained ' + (100 * minRetention).toFixed(1) + '% of non-empty columns');
+check.ok('the cumulative reconcile ledger never resets between imports',
+	cumulativeOk && S.recon.reconciled > 0 && S.recon.diverged > 0,
+	'reconciled ' + Math.round(S.recon.reconciled) + ', diverged ' + Math.round(S.recon.diverged) + ' m3/m');
+check.ok('fresh and retired are measured volumes and unmatched columns stay bounded',
+	S.recon.fresh >= 0 && S.recon.retired >= 0 && totalFreshColumns < totalMatched,
+	'total matched ' + totalMatched + ', fresh cols ' + totalFreshColumns +
+	', retired cols ' + totalRetiredColumns + ', fresh volume ' + Math.round(S.recon.fresh));
+
+check.section('G. C3 owns K2 while the live message is active');
+laid = SEED.layout(pack0, { seed: P.seed, t: pack0.source.tMyr, Tm: P.Tm0 });
+if (laid) throw new Error(laid);
+var kinematic = copy(msgs[1]), prescribed = 12345;
+for (i = 0; i < kinematic.plates.length; i++) kinematic.plates[i].vt = prescribed;
+kinematic.checksum = COUP.checksum(kinematic);
+for (i = 0; i < S.nPl; i++) { S.plU[i] = 0; S.plUP[i] = 0; }
+COUP.activate(kinematic, 0);
+SIM.kinematic = COUP.k2;
+SIM.k[2](S, 0.025, SIM.t, SIM.Tm);
+var slaveExact = true;
+for (i = 0; i < S.nPl; i++) if (Math.abs(S.plU[i] - prescribed) > 1e-9) slaveExact = false;
+for (i = 0; i < S.nCol; i++) if (Math.abs(S.colU[i] - prescribed) > 1e-9) slaveExact = false;
+check.ok('the active coupling prescribes rigid plate and column velocities in K2', slaveExact,
+	S.nPl + ' plates at ' + prescribed + ' m/Myr');
+var beforePaused = S.plU[0];
+SIM.k[2](S, 0, SIM.t, SIM.Tm);
+check.ok('a zero clock leaves prescribed kinematics still', S.plU[0] === beforePaused);
+COUP.deactivate();
+check.ok('deactivation returns K2 ownership to the standalone solver', COUP.k2(S, 0.025) === false);
+SIM.kinematic = null;
 
 check.done();
