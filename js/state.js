@@ -167,7 +167,13 @@ var S = {
 		gapColumns: 0,              // columns whose crust the cut thinned by crossing a gap
 		outsideCut: 0,              // columns of the ring an open window leaves with no data
 		tailArcKm: 0,               // the arc of a window no whole column could take
-		tailVol: 0                  // m3 of crust that arc carried
+		tailVol: 0,                  // m3 of crust that arc carried
+		// M5 step 2: the reconcile ledger booked by COUP.apply (§4.3.5)
+		reconciled: 0,               // volume pulled toward the message's interval
+		diverged: 0,                 // volume the section's own kernels changed since the import
+		divergedAtImport: 0,         // the residual diverged at the moment of import
+		fresh: 0,                    // unmatched columns: no ancestor interval
+		retired: 0                    // matched intervals that have no descendant column
 	},
 	// mass ledger (design §6): produced / consumed volume per LITH, m3
 	ledProd: new Float64Array(P.LITH.n),

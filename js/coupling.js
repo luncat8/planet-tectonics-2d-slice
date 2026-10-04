@@ -279,13 +279,77 @@ var COUP = (function () {
 		return '';
 	}
 
+	// M5 step 2: the C4 reconcile (§8.3, §4.3.5). Matched columns take the message's interval
+	// values; unmatched columns are fresh; the ledger books reconciled / diverged / fresh /
+	// retired. Nothing deletes beds: the aggregate is corrected, the beds stay the section's.
+	function apply(st, msg, opts) {
+		opts = opts || {};
+		var n = opts.nCut === undefined ? (st.nCol || 0) : opts.nCut;
+		var cellKm = opts.cellKm || ((st.colW && st.colW[0]) ? st.colW[0] : 78000) / KM;
+		if (!msg || typeof msg !== 'object') return 'apply needs a message object';
+		var why = validate(msg);
+		if (why) return 'message refused: ' + why;
+		var j, i, r, w, mid, walk = 0;
+		var matchedInt = {}, unmatchedCol = 0, freshVol = 0, retiredVol = 0;
+		var reconciledVol = 0, divergedAtImport = 0;
+		for (i = 0; i < msg.crust.length; i++) matchedInt[i] = false;
+		if (st.recon) {
+			st.recon.reconciled = 0;
+			st.recon.diverged = 0;
+			st.recon.divergedAtImport = 0;
+			st.recon.fresh = 0;
+			st.recon.retired = 0;
+		}
+		for (j = 0; j < n; j++) {
+			w = (st.colW && st.colW[j]) ? st.colW[j] : 78000;
+			mid = (walk + w * 0.5) / KM;
+			i = joinTo(msg, mid, cellKm);
+			if (i >= 0) {
+				matchedInt[i] = true;
+				r = msg.crust[i];
+				var dF = r.hFelM - (st.hFel ? st.hFel[j] : 0);
+				var dM = r.hMafM - (st.hMaf ? st.hMaf[j] : 0);
+				var dS = r.hSedM - (st.hSed ? st.hSed[j] : 0);
+				var deltaVol = (dF + dM + dS) * w;
+				reconciledVol += Math.abs(deltaVol);
+				divergedAtImport += Math.abs(deltaVol);
+				if (st.hFel) st.hFel[j] = r.hFelM;
+				if (st.hMaf) st.hMaf[j] = r.hMafM;
+				if (st.hSed) st.hSed[j] = r.hSedM;
+				if (st.colAge) st.colAge[j] = r.ageMyr;
+				if (st.fert) st.fert[j] = r.fert;
+				if (st.damage) st.damage[j] = r.damage;
+			} else {
+				unmatchedCol++;
+				freshVol += (st.hTot ? (st.hTot[j] || 0) : 0) * w;
+			}
+			walk += w;
+		}
+		for (i = 0; i < msg.crust.length; i++) {
+			if (!matchedInt[i]) {
+				r = msg.crust[i];
+				retiredVol += (r.hFelM + r.hMafM + r.hSedM) * (r.s1Km - r.s0Km) * KM;
+			}
+		}
+		if (st.recon) {
+			st.recon.reconciled = reconciledVol;
+			st.recon.diverged = 0;
+			st.recon.divergedAtImport = divergedAtImport;
+			st.recon.fresh = unmatchedCol;
+			var matchedCount = 0;
+			for (i = 0; i < msg.crust.length; i++) if (matchedInt[i]) matchedCount++;
+			st.recon.retired = msg.crust.length - matchedCount;
+		}
+		return '';
+	}
+
 	return {
 		FORMAT: FORMAT, VERSION: VERSION,
 		CADENCE_MYR: CADENCE_MYR, JOIN_SPACING: JOIN_SPACING,
 		body: body, checksum: checksum, quantize: quantize, validate: validate,
 		json: json, parse: parse, matches: matches,
 		fromPack: fromPack, plateRuns: plateRuns, crustRuns: crustRuns,
-		joinTo: joinTo, deltas: deltas, clockOk: clockOk
+		joinTo: joinTo, deltas: deltas, clockOk: clockOk, apply: apply
 	};
 })();
 

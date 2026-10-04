@@ -248,13 +248,41 @@ var SectionPack = (function () {
 			// has nobody to catch it, so it says the reason and carries on
 			this.textEl.addEventListener('paste', function (e) {
 				var t = e.clipboardData ? e.clipboardData.getData('text') : this.value;
-				if (t) self.caught(function () { self.load(t, 'paste'); });
+				if (t) self.caught(function () {
+					try {
+						var msgObj = JSON.parse(t.trim());
+						if (msgObj && msgObj.format === 'pgt-coupling') {
+							if (typeof COUP !== 'undefined' && COUP.apply) {
+								var res = COUP.apply(window.S || {}, msgObj, { nCut: SEED ? SEED.nCut : 0, cellKm: (self.pack ? self.pack.path.cellKm : 78) });
+								self.msg = 'coupling message applied: ' + (res || 'ok');
+								if (res) self.refuse(res); else { self.bad = false; self.paintMsg(); self.hud(); }
+							} else { self.refuse('COUP.apply not available'); }
+						} else { self.load(t, 'paste'); }
+					} catch (e2) { self.load(t, 'paste'); }
+				});
 			});
 			this.textEl.addEventListener('keydown', function (e) {
 				if (e.key === 'Enter' && this.value) self.caught(function () { self.load(self.textEl.value, 'paste'); });
 			});
 			document.getElementById('sPaste').addEventListener('click', function () {
-				if (self.textEl.value) self.caught(function () { self.load(self.textEl.value, 'paste'); });
+				if (self.textEl.value) self.caught(function () {
+					// Try the message format first (M5 coupling envelope), then fall back to pack
+					try {
+						var msgText = self.textEl.value.trim();
+						var msgObj = JSON.parse(msgText);
+						if (msgObj && msgObj.format === 'pgt-coupling') {
+							if (typeof COUP !== 'undefined' && COUP.apply) {
+								var res = COUP.apply(window.S || {}, msgObj, { nCut: SEED ? SEED.nCut : 0, cellKm: (self.pack ? self.pack.path.cellKm : 78) });
+								self.msg = 'coupling message applied: ' + (res || 'ok');
+								if (res) self.refuse(res); else { self.bad = false; self.paintMsg(); self.hud(); }
+							} else {
+								self.refuse('COUP.apply not available');
+							}
+						} else {
+							self.load(msgText, 'paste');
+						}
+					} catch (e) { self.load(msgText, 'paste'); }
+				});
 			});
 			// a loaded file goes through the same bytes: read the text, run load()
 			this.fileEl.addEventListener('change', function () {

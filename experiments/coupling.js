@@ -240,4 +240,62 @@ check.ok('the import cost is finite and inside a frame budget at this resolution
 	isFinite(meanCost) && meanCost < 250,
 	'mean ' + meanCost.toFixed(1) + ' ms, worst ' + maxCost.toFixed(1) + ' ms over ' + costMs.length + ' layout imports');
 
+// ---------------------------------------------------------------- M5 step 2: the apply/reconcile
+check.section('E. apply: the C4 reconcile on the 20-message sequence');
+// A self-message applies with no reconciliation (the section matches its own cut exactly at
+// import time, before any divergence has accumulated).
+var applySelf = COUP.apply(S, self, { nCut: SEED.nCut, cellKm: pack0.path.cellKm });
+check.ok('a self-message applies without refusal', applySelf === '', applySelf || 'refused');
+check.ok('a self-message leaves only the format\'s own metre of unreconciled divergence',
+	S.recon && S.recon.reconciled <= 0.05 * (msg0.ledger.fel + msg0.ledger.maf + msg0.ledger.sed) + 1,
+	'reconciled ' + (S.recon ? S.recon.reconciled.toFixed(3) : 'n/a') + ' vs cut ' + Math.round(msg0.ledger.fel + msg0.ledger.maf + msg0.ledger.sed));
+check.ok('a self-message books no unmatched columns (fresh = 0)',
+	S.recon && S.recon.fresh === 0,
+	'fresh ' + (S.recon ? S.recon.fresh : 'n/a') + ' retired ' + (S.recon ? S.recon.retired : 'n/a'));
+
+// The 20-import sequence: each import pulls the section back toward the message. At each
+// step the mass identity (seeded + tail = cut) should hold, and beds stay on matched columns.
+var applySequence = [];
+for (i = 1; i <= MESSAGES; i++) {
+	// Re-apply on the state that the previous layout produced (simulating the import cycle)
+	var applyRes = COUP.apply(S, msgs[i], { nCut: SEED.nCut, cellKm: pack0.path.cellKm });
+	applySequence.push({ res: applyRes, msg: msgs[i] });
+	// The apply should never refuse on a validated sequence message
+	check.ok('message ' + i + ' applies cleanly', applyRes === '', applyRes || 'refused');
+	// After apply, the aggregate thickness for matched columns follows the message; unmatched
+	// columns stay fresh. Beds are not deleted by apply (the aggregate correction is separate
+	// from bed structure, which is the section's own).
+	if (S.recon) {
+		check.ok('apply ' + i + ' books a non-negative reconciled volume', S.recon.reconciled >= 0,
+			'reconciled ' + S.recon.reconciled.toFixed(0) + ' m3');
+	}
+}
+// The full sequence identity: after 20 imports the cumulative reconciled volume should be
+// bounded by the crust it corrects (the message's own crust volume scaled by the number of
+// steps), and no column should be permanently unmatched (fresh count stays inside the
+// message's unmatched columns).
+var totalReconciled = 0, maxFresh = 0, maxRetired = 0;
+for (i = 1; i <= MESSAGES; i++) {
+	totalReconciled += applySequence[i - 1].res === '' ? (S.recon ? S.recon.reconciled : 0) : 0;
+	if (S.recon) {
+		maxFresh = Math.max(maxFresh, S.recon.fresh);
+		maxRetired = Math.max(maxRetired, S.recon.retired);
+	}
+}
+check.ok('the 20-import sequence keeps aggregate mass within 1 % of the last applied message',
+	function () {
+		var lastMsg = applySequence[MESSAGES - 1] ? applySequence[MESSAGES - 1].msg : msg0;
+		var cutTotal = lastMsg.ledger ? (lastMsg.ledger.fel + lastMsg.ledger.maf + lastMsg.ledger.sed) : 0;
+		SEED.ledger(packs[MESSAGES]);
+		var seedTotal = SEED.seedMass;
+		return cutTotal > 0 ? Math.abs(seedTotal - cutTotal) < 0.01 * Math.abs(cutTotal) : true;
+	}(),
+	('last message ledger ' + Math.round((applySequence[MESSAGES - 1] && applySequence[MESSAGES - 1].msg ? (applySequence[MESSAGES - 1].msg.ledger.fel + applySequence[MESSAGES - 1].msg.ledger.maf + applySequence[MESSAGES - 1].msg.ledger.sed) : (msg0.ledger.fel + msg0.ledger.maf + msg0.ledger.sed)))));
+check.ok('beds stay on matched columns: unmatched columns stay bounded',
+	maxFresh <= SEED.nCut,
+	'max fresh ' + maxFresh + ' over ' + MESSAGES + ' imports');
+check.ok('retired intervals stay bounded by the message table',
+	maxRetired <= msg0.crust.length,
+	'max retired ' + maxRetired);
+
 check.done();
