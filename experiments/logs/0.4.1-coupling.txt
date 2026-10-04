@@ -1,0 +1,55 @@
+
+A. the envelope derived from a verified cut
+PASS  a message derived from a cut validates   
+PASS  it names the cut it came from and matches no other
+PASS  its clock, epoch and sea are the pack's   t 120.5 Myr, epoch 0
+PASS  its crust table is the pack's own numbers, interval for interval   worst 0.00e+0
+PASS  its plate intervals split where plate, boundary or polarity changes   24 intervals over 198 samples
+PASS  every plate interval carries a mean motion and a boundary code
+PASS  its trenches are the cut's own subduct samples   4 trenches
+PASS  its ledger is the cut's own crust volume per unit width   rel 1.05e+5  got 523726000000  want 523726104999.9996
+PASS  the mafic ledger is the cut's too   rel 1.79e+5  got 408763000000  want 408762820566.9999
+PASS  the sediment ledger is the cut's too   rel 1.61e+4  got 56204600000  want 56204616077.99996
+PASS  a message round-trips through JSON exactly
+PASS  quantising an already quantised message changes nothing
+INFO  message size   25845 chars: 198 crust and 24 plate intervals
+
+B. what a message may not be
+PASS  refuses a foreign format   not a pgt-coupling (pgt-pack)
+PASS  refuses a future version   message version 2, this build reads 1
+PASS  refuses a path checksum that is not 16 hex digits   pathChecksum must be 16 hex digits
+PASS  refuses a negative clock   tMyr out of range: -1
+PASS  refuses no sea   sea must carry a mode and a finite level
+PASS  refuses a plate interval that does not advance   plates 0 does not advance
+PASS  refuses a plate table with a gap   plates 1 leaves a gap at 3235.76
+PASS  refuses two tables that end at different arcs   the two tables end at different arcs: 40030.2 vs 40029.2
+PASS  refuses a crust interval with a negative thickness   crust 2 has a negative thickness
+PASS  refuses a negative age   crust 2 has a negative age
+PASS  refuses damage above one   crust 2 fertility or damage out of range
+PASS  refuses a boundary code that is not one   plate 0 bnd out of range: 9
+PASS  refuses a polarity out of range   plate 0 pol out of range: 4
+PASS  refuses a trench past the end of the cut   trench 0 is off the cut
+PASS  refuses unsorted trenches   trenches are not sorted at 1
+PASS  refuses a negative ledger   ledger must carry three finite volumes
+PASS  refuses an edited body that keeps the old checksum   checksum mismatch
+PASS  a message for another cut is refused by the guard, not blended
+PASS  a wire message with no checksum at all is refused by parse
+
+C. the pack sequence: 20 messages at the plan cadence
+PASS  every message of the sequence validates   20 derived messages
+PASS  the sequence advances the globe's clock one cadence a step   from 120.5 to 220.5 Myr
+PASS  every message is its own cut
+PASS  re-deriving a message from the same pack is the same message   message 7
+INFO  message size over the sequence   65455 chars mean, 64276..66450
+
+D. the section's half: the join, the deltas and the import budget
+PASS  a message derived from the section itself books nothing but the format's own metre   max thickness delta 0.500 m over 512 columns
+PASS  every column joins the message interval that covers it   512 columns, 14844 thickness moves over 20 messages
+PASS  the section never runs ahead of the last message by more than the cadence   cadence 5 Myr, section clock 220.50 Myr
+PASS  the reconcile the sequence would book stays smaller than the crust it corrects   first message +3685.0 / -11589.2 Mm3/m, last +103756.0 / -120127.5 Mm3/m, 7177 age moves
+INFO  deltas per message (m, globe minus section)   max 59207, age max 309.840 Myr, 416 of 512 columns moved
+PASS  a message with spans wider than the join radius leaves those columns unjoined   132 of 512 columns joined, 380 left at a 78.2 km join spacing
+PASS  a hard reset import keeps the ledger the message carried   seed 1038447404667 of cut 1038447404667 m3/m
+PASS  the import cost is finite and inside a frame budget at this resolution   mean 1.7 ms, worst 3.8 ms over 21 layout imports
+
+ALL PASS (42 checks)
