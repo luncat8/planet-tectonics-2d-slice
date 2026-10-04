@@ -522,7 +522,7 @@ RNDR.updateProbe = function (mx, my) {
 	var b = c * P.layerCap, d = 0, i;
 	for (i = S.colNL[c] - 1; i > k; i--) d += S.layTh[b + i];
 	s += '\nlayer ' + k + '/' + S.colNL[c] + '  ' + this.LITH_NAME[S.layLi[b + k]];
-	s += '\n' + S.layTh[b + k].toFixed(0) + ' m  ' + S.layAg[b + k].toFixed(0) + ' Myr  ' +
+	s += '\n' + S.layTh[b + k].toFixed(0) + ' m  formed ' + S.layAg[b + k].toFixed(0) + ' Myr  ' +
 		this.flagText(S.layFl[b + k]);
 	s += '\n' + (d / 1e3).toFixed(2) + ' km below surface';
 	this.setProbe(s);
@@ -549,6 +549,7 @@ RNDR.flagText = function (f) {
 	if (f & F.wet) t += '[wet]';
 	if (f & F.ore) t += '[ore]';
 	if (f & F.unconf) t += '[unconf]';
+	if (f & F.intr) t += '[intr]';
 	return t.length ? t : '-';
 };
 

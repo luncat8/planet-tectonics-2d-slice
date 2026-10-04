@@ -414,7 +414,7 @@ var Deposits = (function () {
 				beds.push({
 					layer: i, lith: st.layLi[b + i], thicknessM: Core.round(th),
 					topYM: Math.round(curY), botYM: Math.round(curY + th),
-					ageMyr: Core.round(st.layAg[b + i]), flags: st.layFl[b + i]
+					formedMyr: Core.round(st.layAg[b + i]), flags: st.layFl[b + i]
 				});
 				curY += th;
 				if (maxDepthM && curY >= maxDepthM) break;

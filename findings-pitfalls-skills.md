@@ -644,3 +644,34 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   deposit family ensures identical catalogue generation across sessions and transports.
 
 
+## 0.4.1 M5 (ages and the observation log)
+
+- **A harness is a module too, and `require('./sibling.js')` runs the harness.** A check inside
+  `experiments/coupling.js` needed the core-log codec and wrote `require('./core-log.js')` — from
+  `experiments/` that is the *gate*, which shares `check.js` (its 33 checks printed inline and
+  inflated the running count) and ends in `process.exit(0)` (the outer suite silently never
+  finished). The suite briefly shipped an honest-looking "ALL PASS (134 checks)" whose number was
+  101 outer + 33 inner, with six outer checks never run. Load codecs the way every other harness
+  does — through `lib.mods` or the real `../js/` path — and trust a green run only when its total
+  equals the suite's own check count.
+- **Holes in a layer stack are an engine representation, not rock; the reader skips them and the
+  validator rejects them.** `CRU.delaminate` consumes a bed by writing `layTh = 0` and keeps the
+  slot for same-lithology refuel — a live column therefore *contains* zero-thickness entries, and
+  so do its aggregate caches by design. Anything that records "what the column holds" must filter
+  `th > 0` (and drop columns that hold only holes); anything that accepts a *foreign* record must
+  refuse a zero bed inside one — the same asymmetry lets both be strict about their own domain.
+  Diagnosing this through `toFixed`-style quantizers first wasted a cycle: `toPrecision(6)`
+  preserves 2.5e-13 exactly, so "the number became 0" needed the actual live array, not a theory.
+- **An import never dates a bed into the past, and a zero-delta test proves nothing about dates.**
+  A message older than a pinned section clock (`tNow` ahead of `msg.tMyr`, which the lead rule
+  creates by design) would stamp growth beds below the age of the beds above them; one rule —
+  `tBed = max(msg.tMyr, tNow)` — reaching fresh stacks and all three growth paths fixes it, and
+  the flag says the contact is an injection. The check that verifies it must carry a real
+  thickness delta: a zero-delta message writes no beds, so the dating path never runs and the
+  assertion passes vacuously.
+- **Write cross-structure oracles from the engine's public join, not from index identity.** A
+  rebuilt column's row is not `rows[col]`: the table spans arcs, `joinTo` decides matches, and
+  wrap maps out-of-table columns onto the interval they actually read. The check that indexes
+  `rows2[jj]` fails for correct behavior; the check that asks the engine (`joinTo(mid) >= 0` to
+  skip matched columns, wrap + scan for the rest) fails only for wrong dates — and as a side
+  effect counts exactly, since its tally must equal the ledger's `freshColumns`.

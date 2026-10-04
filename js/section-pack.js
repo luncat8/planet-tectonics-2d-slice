@@ -21,9 +21,19 @@ var SectionPack = (function () {
 	// at call time through this and never captured at load — which is also what lets the module
 	// require cleanly under node, where they do not exist.
 	function page() { return typeof document === 'undefined' || typeof window === 'undefined' ? null : window; }
+	// the ladder and the observation share one page rule: the page is where a snapshot becomes
+	// a state, a rung becomes a HUD line and a silent link becomes unsynced (plan §8.1). The
+	// observation side never mutates the state (plan §8.5).
 	function coupling() {
 		return (typeof module !== 'undefined' && module.exports) ? require('./coupling.js') : window.COUP;
 	}
+	function coreLog() {
+		return (typeof module !== 'undefined' && module.exports) ? require('./core-log.js') : window.CLOG;
+	}
+	// a pinned clock is a waiting one; a waiting one that keeps waiting has been left behind.
+	// 240 frames is seconds of a still label at rAF rate — long enough for a hiccup, short
+	// enough that nobody watches a dead link freeze the section across a coffee break.
+	var LINK_STALL_FRAMES = 240;
 
 	// raw-strip layout (the canvas is fixed size, so these are constants, not state)
 	var ML = 48, MR = 10, LEG = 16, POT0 = LEG + 4, POT_H = 6, POT_G = 1, POTN = 6;
@@ -84,13 +94,16 @@ var SectionPack = (function () {
 		syncLive: false,
 		syncPaused: false,
 		syncCadence: 5,
+		syncStale: false,       // a live rung went quiet past the cadence: unsynced until the next snapshot
+		linkStall: 0,           // frames the pinned clock has waited on a message that did not come
+		obsRecords: 0,          // the last log built, for the HUD tail
 		couplingMsg: null,
 		link: null,
 		linkRung: 'clipboard/file',
 		linkStage: 'idle',
 		cvs: null, ctx: null, hudEl: null, sliceEl: null, msgEl: null,
 		textEl: null, fileEl: null, pickEl: null, rawBtn: null, ovlBtn: null, runBtn: null,
-		saveBtn: null, loadEl: null,
+		saveBtn: null, loadEl: null, obsBtn: null, obsCopyBtn: null, obsOutEl: null,
 		view: false, cache: null,
 
 		// ---------------------------------------------------------------- the URL
@@ -170,7 +183,11 @@ var SectionPack = (function () {
 			this.syncImports = 0;
 			this.syncLive = false;
 			this.syncPaused = false;
+			this.syncStale = false;
+			this.linkStall = 0;
+			this.obsRecords = 0;
 			this.couplingMsg = null;
+			coreLog().reset();   // the sent side table speaks of the old world's columns
 			this.msg = 'loaded ' + this.describe(pack);
 			this.bad = false;
 			this.paintMsg();
@@ -202,9 +219,11 @@ var SectionPack = (function () {
 				throw e;
 			}
 			var n = SEED.window ? SEED.nCut : S.nCol;
+			var g2 = page();
 			var bad = c.apply(S, msg, {
 				pack: this.pack, nCut: n,
-				cellKm: this.pack.path.cellKm
+				cellKm: this.pack.path.cellKm,
+				tNow: g2 ? g2.SIM.t : undefined
 			});
 			if (bad) { this.refuse(bad); throw new Error(bad); }
 			this.syncTMyr = msg.tMyr;
@@ -212,6 +231,8 @@ var SectionPack = (function () {
 			this.syncLive = /^link:/.test(origin || '');
 			if (this.syncLive) this.linkRung = origin.slice(5);
 			else this.syncPaused = false;
+			this.linkStall = 0;
+			this.syncStale = false;
 			this.couplingMsg = msg;
 			this.setLiveKinematics(this.syncLive);
 			this.msg = 'coupling snapshot t ' + msg.tMyr + ' Myr applied from ' + (origin || 'text') +
@@ -219,6 +240,9 @@ var SectionPack = (function () {
 			this.bad = false;
 			this.paintMsg();
 			this.hud();
+			// the import is the cadence event: answer it on a live rung, stay silent on a
+			// manual snapshot (which has no globe to answer and must not spam the out field)
+			if (this.syncLive) this.observe(false);
 			return msg;
 		},
 		// the page shows the reason in one line; the load itself threw
@@ -282,8 +306,11 @@ var SectionPack = (function () {
 			this.rawBtn = document.getElementById('bRaw');
 			this.ovlBtn = document.getElementById('bOvl');
 			this.runBtn = document.getElementById('bRun');
-			this.saveBtn = document.getElementById('sSave');
-			this.loadEl = document.getElementById('sLoad');
+		this.saveBtn = document.getElementById('sSave');
+		this.loadEl = document.getElementById('sLoad');
+		this.obsBtn = document.getElementById('sObs');
+		this.obsCopyBtn = document.getElementById('sObsCopy');
+		this.obsOutEl = document.getElementById('sObsOut');
 			var self = this;
 			// the section's own knobs: ?seed= is the plume/flow/noise seed, ?geo= and ?erupt= the
 			// two clocks the section may run after it detaches (plan §4.2)
@@ -362,6 +389,14 @@ var SectionPack = (function () {
 					r.readAsText(f);
 				});
 			}
+			// the return path's two manual controls: build now (also sends when a rung can),
+			// and copy — the clipboard is the rung that always holds (plan §8.2)
+			if (this.obsBtn) this.obsBtn.addEventListener('click', function () {
+				self.caught(function () { self.observe(true); });
+			});
+			if (this.obsCopyBtn) this.obsCopyBtn.addEventListener('click', function () {
+				if (self.obsOutEl && self.obsOutEl.select) self.obsOutEl.select();
+			});
 			// r and o are the section's two view keys, on the same binding ui.js uses (window),
 			// and the same rule: a field being typed into keeps its keys
 			window.addEventListener('keydown', function (e) { self.key(e); });
@@ -400,9 +435,81 @@ var SectionPack = (function () {
 				},
 				onMessage: function (type, payload, rung) {
 					self.linkMessage(type, payload, rung);
+				},
+				// the manual rung has no channel: an outbound payload is placed, and the
+				// clipboard/file transport — the contract rung — carries it from there
+				onManual: function (type, payload) {
+					if (type === 'observation') self.placeObservation(payload);
 				}
 			});
 			this.link.start();
+		},
+
+		// the return path (plan §8.5): build at the cadence, place on every rung, and let
+		// the channel carry it when there is one. `all` re-logs every column (the button's
+		// manual build); a cadence build logs only columns the globe has not yet seen at
+		// their current diverged fraction — nothing to say is nothing sent.
+		observe: function (all) {
+			if (!this.pack || !this.world) {
+				var why = 'observation refused: no reconstructed section is active';
+				this.refuse(why);
+				if (all) throw new Error(why);
+				return null;
+			}
+			var CL = coreLog(), g = page(), n = SEED.window ? SEED.nCut : S.nCol;
+			var msg;
+			try {
+				msg = CL.build(S, {
+					all: !!all, n: n,
+					arcKm: this.pack.path.arcKm,
+					pathChecksum: coupling().pathChecksum(this.pack),
+					packChecksum: this.pack.checksum,
+					tMyr: g ? g.SIM.t : this.pack.source.tMyr,
+					epochMa: this.pack.source.epochMa
+				});
+			} catch (e) {
+				this.refuse('observation refused: ' + e.message);
+				if (all) throw e;
+				return null;
+			}
+			if (!msg) { this.obsRecords = 0; this.hud(); return null; }
+			this.placeObservation(msg);
+			var sent = this.link ? this.link.send('observation', msg) : false;
+			CL.note();   // emitted: what the globe may be missing now starts at this fraction
+			this.obsRecords = msg.records.length;
+			if (this.bad) { this.bad = false; this.paintMsg(); }
+			this.msg = 'core log: ' + msg.records.length + ' of ' + n + ' columns · ' +
+				(sent ? 'sent via ' + this.link.rung : 'ready to copy') + ' · ' + msg.checksum;
+			this.paintMsg();
+			this.hud();
+			return msg;
+		},
+
+		// the manual contract first: the field always holds the last log, sent or not
+		placeObservation: function (msg) {
+			if (!this.obsOutEl || !msg) return;
+			this.obsOutEl.value = coreLog().json(msg);
+		},
+
+		// §8.1's last clause: staleness is not a frozen section, it is a demotion. The
+		// pinned cadence clock says the globe stopped answering; after LINK_STALL_FRAMES
+		// the section stops waiting, K2 returns to its own solve and the label says
+		// `unsynced`. A later snapshot re-arms — a clock alone cannot, it proves silence
+		// is over, not that the kinematics are fresh.
+		unsync: function () {
+			var g = page();
+			this.syncLive = false;
+			this.syncStale = true;
+			this.linkStall = 0;
+			this.couplingMsg = null;
+			this.syncPaused = false;
+			this.setLiveKinematics(false);
+			// the frame guard zeroed dG every waiting frame; a demoted clock reads its rate
+			// back from the slider that owns it, the way applyClock's resume does
+			if (g && this.running && !SEED.window) g.SIM.setGeo(P.sl.geo);
+			this.msg = 'link went quiet mid-cadence · unsynced, the section runs its own solve';
+			this.paintMsg();
+			this.hud();
 		},
 
 		linkMessage: function (type, payload, rung) {
@@ -432,6 +539,7 @@ var SectionPack = (function () {
 			this.syncLive = true;
 			this.syncPaused = !!clock.paused;
 			this.syncTMyr = clock.tMyr;
+			this.linkStall = 0;   // the link answered: the clock may still be waiting, but not abandoned
 			if (isFinite(clock.cadenceMyr) && clock.cadenceMyr > 0) this.syncCadence = clock.cadenceMyr;
 			this.linkRung = rung || this.linkRung;
 			this.running = !this.syncPaused && !SEED.window;
@@ -518,7 +626,12 @@ var SectionPack = (function () {
 			this.syncImports = 0;
 			this.syncLive = false;
 			this.syncPaused = false;
+			this.syncStale = false;
+			this.linkStall = 0;
+			this.obsRecords = 0;
 			this.couplingMsg = null;
+			if (this.obsOutEl) this.obsOutEl.value = '';
+			coreLog().reset();
 			this.raw = false;
 			this.overlay = true;
 			SEED.pack = null;
@@ -562,7 +675,8 @@ var SectionPack = (function () {
 			if (this.syncLive && this.couplingMsg &&
 				coupling().clockOk(g.SIM.t + g.SIM.dG, this.couplingMsg, this.syncCadence)) {
 				g.SIM.dG = 0;
-			}
+				if (++this.linkStall >= LINK_STALL_FRAMES && !this.syncPaused) this.unsync();
+			} else this.linkStall = 0;
 			g.SIM.step();
 		},
 
@@ -587,6 +701,7 @@ var SectionPack = (function () {
 			for (i = 0; i < p.n; i++) if (p.vp[i] > vpMax) vpMax = p.vp[i];
 			var clock = this.syncLive
 				? (this.syncPaused ? 'live · globe paused' : 'live · globe t ' + this.syncTMyr + ' Myr')
+				: this.syncStale ? 'unsynced · own solve (detached G)'
 				: this.running ? 'running +' + (g ? (g.SIM.t - this.t0) : 0).toFixed(1) + ' Myr'
 					: 'plate clock off · the cut as it stands';
 			L.push((this.world ? 'cut at t ' + s.tMyr + ' Myr · ' : 'cut · ') + clock + '   ' + this.origin);
@@ -596,8 +711,8 @@ var SectionPack = (function () {
 				? '   window · plate clock off (no end conditions)'
 				: '   ring · ' + st.nCut + ' of ' + P.nCols + ' columns') +
 				'   out-of-plane ' + (vpMax / 1e4).toFixed(2) + ' cm/yr   seed ' + s.simSeed);
-			L.push('start: 3 layers from the cut, their beds aged from the cut; the section dates its' +
-			' own beds from t ' + s.tMyr + ' Myr   gap-thinned ' + r.gapColumns +
+			L.push('start: 3 layers from the cut, dated at t − rock age (formation time, §4.3.2); the' +
+				' section stamps its own beds at its clock   gap-thinned ' + r.gapColumns +
 				(st.window ? ' · outside ' + r.outsideCut : '') +
 				'   plate runs ' + st.runs + ' -> ' + S.nPl + ' (merged ' + r.shortPlateMerge + ')');
 			L.push('assumed: sediment age ' + r.sedimentAge + ' · sub-Moho T ' + r.subMohoThermal +
@@ -614,12 +729,14 @@ var SectionPack = (function () {
 			if (this.syncTMyr >= 0) {
 				var syncMass = 0;
 				for (i = 0; i < S.nCol; i++) syncMass += S.hTot[i] * S.colW[i];
-				L.push('coupling: ' + (this.syncLive ? 'live ' + this.linkRung : 'manual snapshot') + ' ' +
+				L.push('coupling: ' + (this.syncLive ? 'live ' + this.linkRung
+						: this.syncStale ? 'unsynced' : 'manual snapshot') + ' ' +
 					this.syncImports + ' · globe t ' + this.syncTMyr +
 					' Myr · reconciled ' + (syncMass > 0 ? r.reconciled / syncMass : 0).toFixed(6) +
 					' · diverged ' + (syncMass > 0 ? r.diverged / syncMass : 0).toFixed(6) +
 					' · residual ' + Math.round(r.divergedAtImport) + ' · fresh/retired ' +
-					Math.round(r.fresh) + '/' + Math.round(r.retired) + ' m3/m');
+					Math.round(r.fresh) + '/' + Math.round(r.retired) +
+					' m3/m · logged ' + this.obsRecords + ' cols');
 			}
 			if (this.spin) {
 				// §4.3.4: the imported state is not a fixed point, so what the model makes of it

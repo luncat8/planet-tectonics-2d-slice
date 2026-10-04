@@ -59,7 +59,8 @@ and the cut in three: experiments/slice-cut.js (the walk, the pack, the resample
 section-pack.js (the section page: transports, refusals, switches, HUD), section-seed.js (the
 mapping: the z identity, the ledger, the quiet start, the two run modes), checkpoint.js (the
 column-state checkpoint codec and deterministic restore), coupling.js (the envelope, C3/C4 and
-20-import identity), and coupling-link.js (the postMessage → localStorage → manual ladder).
+20-import identity), coupling-link.js (the postMessage → localStorage → manual ladder), and
+core-log.js (the §8.5 return path: the one age convention, the acceptance rules, the cadence).
 Each prints PASS/FAIL and exits non-zero on failure.
 
 port/ - files shared byte-identical with planet-geotectonics (0.4.0-sync-plan.md §1.2);

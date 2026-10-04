@@ -15,6 +15,7 @@ var lib = require('./lib.js'), M = lib.mods, check = lib.check;
 var COUP = M.coupling, SP = require('../port/slice-format.js');
 var S = M.state, P = M.params, SIM = M.sim, SEED = M['section-seed'], COL = M.columns;
 var FIX = require('./pack-fixture.js');
+var CLOG = require('../js/core-log.js');
 var KM = 1000;
 var GLOBE_YR = 50e3;       // the globe's clock: 50 kyr per frame, 100 frames per cadence
 var SECTION_YR = 25e3;     // the section's own clock, half the rate, twice the frames
@@ -341,6 +342,71 @@ for (i = 0; i < S.colNL[tagged]; i++) {
 }
 check.ok('matched growth is a dated reconcile bed, not cache or seed-bed inflation', eventBed,
 	'fel growth dated at globe t ' + growMsg.tMyr + ' Myr');
+// an import cannot stamp a bed before the moment it is applied: the section's clock floors it
+var aheadMsg = copy(ownMsg), aM = 200, aVol = 0;
+for (i = 0; i < aheadMsg.crust.length; i++) {
+	aheadMsg.crust[i].hFelM += growM + aM;   // still ahead of the section by one more bed
+	aVol += (growM + aM) * (aheadMsg.crust[i].s1Km - aheadMsg.crust[i].s0Km) * KM;
+}
+aheadMsg.ledger.fel = SP.round(aheadMsg.ledger.fel + aVol);
+aheadMsg.checksum = COUP.checksum(aheadMsg);
+var tFloor = aheadMsg.tMyr + 7.25;
+applied = COUP.apply(S, aheadMsg, { nCut: S.nCol, cellKm: P.w0 / KM, pathChecksum: pathId, tNow: tFloor });
+var newestBed = -1;
+for (i = 0; i < S.colNL[tagged]; i++) newestBed = Math.max(newestBed, S.layAg[tagged * P.layerCap + i]);
+check.ok('a message older than the section clock floors its bed dates at the clock',
+	applied === '' && Math.abs(newestBed - tFloor) < 1e-9,
+	applied || 'every new bed of that import is dated at t ' + tFloor + ', not ' + aheadMsg.tMyr);
+// fresh stacks date the same way as every other bed: the import's floor clock minus the
+// rock age of the row that rebuilt it. The coarse table (every 16th interval, widened to
+// tile) makes most columns demonstrable rebuilds — joinTo refuses them, so their beds can
+// only carry the t − age dating, per the row their arc falls in.
+check.ok('a rebuilt column carries the import clock minus the cut\'s rock age',
+	(function () {
+		var laidX = SEED.layout(pack0, { seed: P.seed, t: pack0.source.tMyr, Tm: P.Tm0 });
+		if (laidX) return false;
+		SIM.t = pack0.source.tMyr; SIM.cool();
+		var coarse2 = copy(ownMsg), rows2 = [], jj, q;
+		for (jj = 0; jj < coarse2.crust.length; jj += 16) {
+			var rw = JSON.parse(JSON.stringify(coarse2.crust[jj]));
+			rw.s1Km = coarse2.crust[Math.min(jj + 15, coarse2.crust.length - 1)].s1Km;
+			rows2.push(rw);
+		}
+		coarse2.crust = rows2;
+		coarse2.checksum = COUP.checksum(coarse2);
+		if (COUP.apply(S, coarse2, applyOpts(S.nCol)) !== '') return false;
+		if (!(COUP.last.freshColumns > 0)) return false;
+		var seen = 0, walk = 0, cellKm = P.w0 / KM;
+		var wrap = rows2[rows2.length - 1].s1Km;
+		for (jj = 0; jj < S.nCol; jj++) {
+			var w = S.colW[jj], mid = (walk + w * 0.5) / KM;
+			walk += w;
+			if (COUP.joinTo(coarse2, mid, cellKm) >= 0) continue;   // a matched column keeps its stack
+			var x = mid - Math.floor(mid / wrap) * wrap, ri = rows2.length - 1;
+			for (q = 0; q < rows2.length; q++) if (x >= rows2[q].s0Km && x < rows2[q].s1Km) { ri = q; break; }
+			var tf = coarse2.tMyr - rows2[ri].ageMyr, bb = jj * P.layerCap, nn = S.colNL[jj];
+			var want = 0;
+			if (rows2[ri].hMafM > 0) want++;
+			if (rows2[ri].hFelM > 0) want++;
+			if (rows2[ri].hSedM > 0) want++;
+			if (nn !== want) return false;
+			for (q = 0; q < nn; q++) if (S.layAg[bb + q] !== tf) return false;
+			seen++;
+		}
+		return seen === COUP.last.freshColumns && seen > 100;
+	})(), 'equal beds dated t − age at every rebuilt column, none missed');
+// The reader's mirror of the same fact: with seeded, matched and rebuilt columns sharing one
+// array, the log this state would send must build valid and survive its own acceptance rules.
+check.ok('a coarse table rebuilding unmatched stacks still logs clean',
+	(function () {
+		var log = CLOG.build(S, {
+			n: S.nCol, all: true, arcKm: pack0.path.arcKm,
+			pathChecksum: COUP.pathChecksum(pack0), packChecksum: pack0.checksum,
+			tMyr: SIM.t, epochMa: pack0.source.epochMa
+		});
+		if (!log || log.records.length < 300) return false;
+		try { return CLOG.parse(CLOG.json(log)).checksum === log.checksum; } catch (e) { return false; }
+	})(), 'one law for seeded, grown and rebuilt columns');
 var massAfterApply = crustMass(S.nCol), hAfterApply = S.hTot[tagged];
 COL.sumsAll();
 check.ok('the imported aggregate is derived from beds and survives COL.sums',
@@ -413,6 +479,17 @@ check.ok('matched columns retain their bed identities through the sequence', min
 check.ok('the cumulative reconcile ledger never resets between imports',
 	cumulativeOk && S.recon.reconciled > 0 && S.recon.diverged > 0,
 	'reconciled ' + Math.round(S.recon.reconciled) + ', diverged ' + Math.round(S.recon.diverged) + ' m3/m');
+(function () {
+	var why = '';
+	for (var jj = 0; jj < S.nCol && !why; jj++) {
+		var nll = S.colNL[jj];
+		if (nll <= 0) continue;
+		why = CLOG.strataOK(nll, S.layTh, S.layLi, S.layAg, S.layFl, jj * P.layerCap) || '';
+		if (why) why = 'column ' + jj + ': ' + why;
+	}
+	check.ok('twenty imports of evolution leave the strata of every column legal under the §8.5 rule',
+		why === '', why || 'all columns');
+})();
 check.ok('fresh and retired are measured volumes and unmatched columns stay bounded',
 	S.recon.fresh >= 0 && S.recon.retired >= 0 && totalFreshColumns < totalMatched,
 	'total matched ' + totalMatched + ', fresh cols ' + totalFreshColumns +

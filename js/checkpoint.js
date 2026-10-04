@@ -24,6 +24,7 @@ var Checkpoint = (function () {
 	function secPack() { return node ? require('./section-pack.js') : window.SectionPack; }
 	function secSeed() { return node ? require('./section-seed.js') : window.SEED; }
 	function sliceFormat() { return node ? require('../port/slice-format.js') : window.SlicePack; }
+	function coreLog() { return node ? require('./core-log.js') : window.CLOG; }
 
 	function code(a) {
 		var i = dtypes.indexOf(a.constructor.name);
@@ -240,6 +241,12 @@ var Checkpoint = (function () {
 				sec.spin = obj.session.spin || null;
 				sec.pack = obj.pack || null;
 				sec.cache = null;
+				// a restored world is a fresh observer: the sent-divergence table lives in
+				// CLOG, not in the checkpoint, so the first log after a restore says everything
+				if (coreLog().reset) coreLog().reset();
+				sec.obsRecords = 0;
+				sec.syncStale = false;
+				sec.linkStall = 0;
 				sec.msg = 'restored session ' + (obj.pack ? sec.describe(obj.pack) : 'planet');
 				sec.bad = false;
 				if (sec.paintMsg) sec.paintMsg();

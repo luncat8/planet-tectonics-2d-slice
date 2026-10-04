@@ -36,6 +36,8 @@ var COUP = (function () {
 	var slaveU = new Float64Array(P.plateCap);
 	var liveMsg = null, liveN = 0;
 
+	var CRUST_NUMS = ['s0Km', 's1Km', 'hFelM', 'hMafM', 'hSedM', 'ageMyr', 'fert', 'damage'];
+
 	function round(v) { return SP.round(v); }
 
 	// The path identity excludes resolution (`cellKm`) and every sampled field: a re-cut of
@@ -139,7 +141,7 @@ var COUP = (function () {
 		msg.tMyr = round(msg.tMyr);
 		msg.epochMa = round(msg.epochMa);
 		msg.sea.levelM = round(msg.sea.levelM);
-		var i, k, t, f;
+		var i, k, t;
 		for (i = 0; i < msg.plates.length; i++) {
 			t = msg.plates[i];
 			t.s0Km = round(t.s0Km); t.s1Km = round(t.s1Km);
@@ -147,11 +149,7 @@ var COUP = (function () {
 		}
 		for (i = 0; i < msg.crust.length; i++) {
 			t = msg.crust[i];
-			for (k = 0; k < 7; k++) {
-				f = ['s0Km', 's1Km', 'hFelM', 'hMafM', 'hSedM', 'ageMyr', 'fert'][k];
-				t[f] = round(t[f]);
-			}
-			t.damage = round(t.damage);
+			for (k = 0; k < 8; k++) t[CRUST_NUMS[k]] = round(t[CRUST_NUMS[k]]);
 		}
 		for (i = 0; i < msg.trenches.length; i++) msg.trenches[i] = round(msg.trenches[i]);
 		msg.ledger.fel = round(msg.ledger.fel);
@@ -388,10 +386,12 @@ var COUP = (function () {
 	}
 
 	// A fresh column has no stack identity to preserve. It receives the three aggregate beds
-	// the same way an initial cut does; depth-resolved deposits on the retired stack lose their
-	// horizon rather than pointing into unrelated new geology.
-	function freshStack(st, c, row) {
+	// the same way an initial cut does — dated at the message's clock minus the cut's rock age,
+	// the one formation-time conversion (plan §4.3.2) — and depth-resolved deposits on the
+	// retired stack lose their horizon rather than pointing into unrelated new geology.
+	function freshStack(st, c, row, tMyr) {
 		var LC = P.layerCap, b = c * LC, k, n = 0;
+		var tf = tMyr - row.ageMyr;
 		for (k = 0; k < LC; k++) {
 			st.layTh[b + k] = 0; st.layLi[b + k] = 0;
 			st.layAg[b + k] = 0; st.layFl[b + k] = 0;
@@ -402,15 +402,15 @@ var COUP = (function () {
 		var flags = st.wet[c] ? P.FLAG.wet : 0;
 		if (row.hMafM > 0) {
 			st.layTh[b + n] = row.hMafM; st.layLi[b + n] = P.LITH.maf;
-			st.layAg[b + n] = row.ageMyr; st.layFl[b + n++] = flags;
+			st.layAg[b + n] = tf; st.layFl[b + n++] = flags;
 		}
 		if (row.hFelM > 0) {
 			st.layTh[b + n] = row.hFelM; st.layLi[b + n] = P.LITH.fel;
-			st.layAg[b + n] = row.ageMyr; st.layFl[b + n++] = flags;
+			st.layAg[b + n] = tf; st.layFl[b + n++] = flags;
 		}
 		if (row.hSedM > 0) {
 			st.layTh[b + n] = row.hSedM; st.layLi[b + n] = P.LITH.sed;
-			st.layAg[b + n] = row.ageMyr; st.layFl[b + n++] = flags;
+			st.layAg[b + n] = tf; st.layFl[b + n++] = flags;
 		}
 		st.colNL[c] = n;
 		st.colBevel[c] = 0;
@@ -435,6 +435,11 @@ var COUP = (function () {
 		var n = opts.nCut === undefined ? st.nCol : opts.nCut;
 		why = stateError(st, n);
 		if (why) return 'message refused: ' + why;
+		// One law for every bed date: an import never stamps a bed into the past. The globe's
+		// time is the intended date; the section's own clock is the floor, because that clock
+		// is what the beds already in the stack are dated against (plan §8.1).
+		var tBed = msg.tMyr;
+		if (isFinite(opts.tNow) && opts.tNow > tBed) tBed = opts.tNow;
 		var cellKm = opts.cellKm || ((st.colW && st.colW[0]) ? st.colW[0] : 78000) / KM;
 		if (!(isFinite(cellKm) && cellKm > 0)) return 'message refused: local spacing is not positive';
 
@@ -460,7 +465,7 @@ var COUP = (function () {
 				last.freshColumns++;
 				last.retiredColumns++;
 				last.retired += old;
-				freshStack(st, j, row);
+				freshStack(st, j, row, tBed);
 				now = st.hTot[j] * w;
 				last.fresh += now;
 			} else {
@@ -485,9 +490,9 @@ var COUP = (function () {
 				if (dF < 0) COL.removeClass(st, j, 1, -dF);
 				if (dM < 0) COL.removeClass(st, j, 2, -dM);
 				if (dS < 0) COL.removeClass(st, j, 0, -dS);
-				if (dF > 0) COL.insertVol(st, j, P.LITH.fel, dF, msg.tMyr, flags, 'bottom');
-				if (dM > 0) COL.insertVol(st, j, P.LITH.maf, dM, msg.tMyr, flags, 'bottom');
-				if (dS > 0) COL.insertVol(st, j, P.LITH.sed, dS, msg.tMyr, flags, 'top');
+				if (dF > 0) COL.insertVol(st, j, P.LITH.fel, dF, tBed, flags, 'bottom');
+				if (dM > 0) COL.insertVol(st, j, P.LITH.maf, dM, tBed, flags, 'bottom');
+				if (dS > 0) COL.insertVol(st, j, P.LITH.sed, dS, tBed, flags, 'top');
 				COL.sums(j);
 			}
 			st.colAge[j] = row.ageMyr;

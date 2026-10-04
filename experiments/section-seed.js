@@ -126,7 +126,24 @@ check.info('why 512 columns and a box filter (§4.3.1): the cut’s cells are ' 
 	})());
 
 check.section('C. §4.3.3 the assumptions are counted, and counted outside the hash');
-check.ok('the mapping version travels with the capture', SEED.MAP === 1, 'v' + SEED.MAP);
+	// v2: seed beds are dated at formation time (cut t − rock age), the one convention every
+	// bed writer shares (plan §4.3.2); the version must travel with any capture
+	check.ok('the mapping version travels with the capture', SEED.MAP === 2, 'v' + SEED.MAP);
+check.ok('seed beds carry the cut\'s age as formation time, not a second unit',
+	(function () {
+		lay(pin, { seed: 7, t: pin.source.tMyr, Tm: 1.5 });
+		var j, k, b, n = 0, LC = P.layerCap;
+		for (j = 0; j < SEED.nCut; j++) {
+			if (S.colNL[j] <= 0) continue;
+			b = j * LC;
+			for (k = 0; k < S.colNL[j]; k++) {
+				if (S.layAg[b + k] !== SEED.t0 - S.colAge[j]) return false;
+				if (S.layFl[b + k] & P.FLAG.intr) return false;   // a pushed stack is no injection
+			}
+			n++;
+		}
+		return n > 100;
+	})(), 'every bed = t0 − colAge at lay() with t = ' + pin.source.tMyr + ' Myr');
 check.ok('every named line is a finite non-negative number',
 	(function () {
 		var k, bad = '';

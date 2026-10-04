@@ -96,7 +96,10 @@ COL.insertVol = function (st, c, lith, vol, age, flags, place) {
 	st.layTh[b + p] = vol;
 	st.layLi[b + p] = lith;
 	st.layAg[b + p] = age;
-	st.layFl[b + p] = flags;
+	// A bed that lands under something that was already there cut it: the rock it now
+	// carries formed earlier than this one, and only the flag says so. Without it a
+	// reader cannot tell underplating from deposition and no age law can be stated.
+	st.layFl[b + p] = p < n ? flags | P.FLAG.intr : flags;
 	st.colNL[c] = n + 1;
 	for (k = 0; k < S.nDep; k++) {
 		if (S.depCol[k] !== c) continue;
@@ -149,7 +152,9 @@ COL.compact = function (c) {
 		S.ledMixIn[S.layLi[b + k0]] += volume;
 	}
 	S.layTh[b + k0] += S.layTh[b + k0 + 1];
-	S.layAg[b + k0] = Math.max(S.layAg[b + k0], S.layAg[b + k0 + 1]);
+	// the merged bed starts as old as its oldest member: ages are formation times, and
+	// the smaller one is the earlier rock (the same rule insertVol's coalescing uses)
+	S.layAg[b + k0] = Math.min(S.layAg[b + k0], S.layAg[b + k0 + 1]);
 	S.layFl[b + k0] |= S.layFl[b + k0 + 1];
 	for (j = k0 + 1; j < n - 1; j++) {
 		S.layTh[b + j] = S.layTh[b + j + 1];

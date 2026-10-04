@@ -73,7 +73,10 @@ var S = {
 	colNL: new Int32Array(P.colCap),
 	layTh: new Float64Array(P.colCap * P.layerCap),
 	layLi: new Int8Array(P.colCap * P.layerCap),
-	layAg: new Float64Array(P.colCap * P.layerCap),   // Myr
+	// Myr on the section's clock, the time the bed's rock formed. One convention for every
+	// writer: the engines stamp t at deposition, and an import converts the globe's rock
+	// age into formation time (t − age) instead of carrying a second unit into the stack.
+	layAg: new Float64Array(P.colCap * P.layerCap),
 	layFl: new Uint8Array(P.colCap * P.layerCap),     // P.FLAG bits
 
 	// plates (design §2.1); u in m/Myr (the HUD shows cm/yr)

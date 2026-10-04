@@ -70,6 +70,10 @@
 		<button id="bRun" aria-pressed="false" title="start the plate clock: the section becomes its own planet from here">detach and run</button>
 		<button id="sSave" title="save current section and runtime state as a session checkpoint">save session</button>
 		<label>Load session <input id="sLoad" type="file" accept=".json,application/json"></label>
+		<!-- the return path (0.4.1 §8.5): the observation log the globe may display. The
+		     field always carries the last log, on every rung; live rungs also get it sent -->
+		<label>Core log → globe <button id="sObs" title="build the observation log now and place it here (live rungs send it too)">build</button> <button id="sObsCopy" title="copy the last log for the manual rung">copy</button>
+			<textarea id="sObsOut" spellcheck="false" readonly placeholder="pgt-core-log JSON — the section's beds as dated observations; the globe never ingests these into a kernel"></textarea></label>
 		<span id="sMsg" role="status"></span>
 	</div>
 </div>
@@ -109,6 +113,7 @@
 <script src="js/section-pack.js"></script>
 <script src="js/coupling.js"></script>
 <script src="js/coupling-link.js"></script>
+<script src="js/core-log.js"></script>
 <script src="js/render.js"></script>
 <script src="js/sim.js"></script>
 </body>

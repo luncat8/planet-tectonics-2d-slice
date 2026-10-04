@@ -61,9 +61,12 @@ var SEED = (function () {
 
 	var SEED = {
 		// the mapping version: bumped when a rule below changes, because two reconstructions of
-		// one pack are only comparable at the same one (§4.3.3)
-		MAP: 1,
+		// one pack are only comparable at the same one (§4.3.3). v2 dates the three seed beds
+		// at their formation time (clock t − the cut's rock age) instead of the raw rock age,
+		// the one convention every bed writer in the engine shares (0.4.1-plan.md §4.3.2).
+		MAP: 2,
 		pack: null,         // the pack the current state came from
+		t0: 0,              // the section's clock at the layout: imported beds date back from it
 		scale: 1,           // the arc scale in force: wrap / arcKm for a closed cut, 1 for a window
 		window: false,      // an open cut: no plate clock, because the engine has no end conditions
 		nCut: 0,            // columns the cut covers; the rest of the ring is outside the cut
@@ -162,8 +165,10 @@ var SEED = (function () {
 
 	// Three beds, bottom-up mafic then felsic then sediment: the globe's columns carry aggregate
 	// thicknesses and no stratigraphy, so every bed above these three is made by the section and
-	// the page says so (§4.3.2). The beds age with the lithosphere they were cut from; the globe
-	// gives no seed for one, so a sediment bed inherits the crust's age and books it.
+	// the page says so (§4.3.2). The cut gives a rock *age* at its own clock reading, the section
+	// stores *formation time*, so each bed is dated at SEED.t0 − age — the one conversion between
+	// the two vocabularies (plan §4.3.2). The globe gives no seed for a sediment age, so a
+	// sediment bed inherits the crust's and books it.
 	//
 	// A gap sample (alive = 0) is *not* seeded as a trench sliver, which is what §4.3's row for
 	// `alive` first asked for. It was tried: a hole spans several full-width columns, and the
@@ -173,17 +178,18 @@ var SEED = (function () {
 	// resolution: the gap thins the columns it covers, their mass is conserved, and the surface
 	// passes through them at the elevation the cut named.
 	SEED.stack = function (pack, j) {
-		var base = j * NC, L = P.LITH, F = P.FLAG, i = bestI[j], age = acc[base + O.age];
+		var base = j * NC, L = P.LITH, F = P.FLAG, i = bestI[j];
+		var tf = SEED.t0 - acc[base + O.age];   // the clock read at which this rock formed
 		var wet = i >= 0 && pack.wet[i], th;
 		S.colNL[j] = 0;
 		if (i >= 0 && !pack.alive[i]) S.recon.gapColumns++;   // crust the cut left thin, not a hole
 		th = acc[base + O.maf];
-		if (th > 0) COL.push(j, th, L.maf, age, wet ? F.wet : 0);
+		if (th > 0) COL.push(j, th, L.maf, tf, wet ? F.wet : 0);
 		th = acc[base + O.fel];
-		if (th > 0) COL.push(j, th, L.fel, age, wet ? F.wet : 0);
+		if (th > 0) COL.push(j, th, L.fel, tf, wet ? F.wet : 0);
 		th = acc[base + O.sed];
 		if (th > 0) {
-			COL.push(j, th, L.sed, age, wet ? F.wet : 0);
+			COL.push(j, th, L.sed, tf, wet ? F.wet : 0);
 			S.recon.sedimentAge++;
 		}
 		COL.sums(j);
@@ -343,6 +349,7 @@ var SEED = (function () {
 		var o = opts || {}, j, k, base;
 		o.seed = o.seed === undefined ? P.seed : o.seed | 0;
 		o.t = o.t === undefined ? 0 : +o.t;
+		SEED.t0 = o.t;
 		o.Tm = o.Tm === undefined ? P.Tm0 : +o.Tm;
 		// one seed for the world the section lays. S.reset() seeds the drawing stream from
 		// P.seed (the noise the cut inherits) and the plumes come from the same number, so the

@@ -47,7 +47,11 @@ var P = {
 	// (basement), tephra and lava are surface products, sediment is the youngest.
 	LITH_RANK: [4, 2, 1, 3, 3, 0],
 	OCLS: { vms: 0, maf: 1, arc: 2, oro: 3, bas: 4, pla: 5, n: 6 },
-	FLAG: { wet: 1, ore: 2, unconf: 4 },
+	// intr: the bed was placed inside a stack, not on its surface — an injection cuts both
+	// its faces. It is what lets a reader keep one stratigraphic law: bed ages are formation
+	// times on the section's clock, non-decreasing upward across every contact whose two
+	// beds are not intr (0.4.1-plan.md §4.3.2).
+	FLAG: { wet: 1, ore: 2, unconf: 4, intr: 8 },
 	// boundary state of a column with its right neighbour (design §4.2); none = same plate
 	EDGE: { none: 0, neutral: 1, open: 2, subduct: 3, collide: 4 },
 	// toy eruptive (design §1.5, §5)

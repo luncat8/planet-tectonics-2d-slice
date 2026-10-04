@@ -53,19 +53,22 @@ PASS  the reconcile the sequence would book stays smaller than the crust it corr
 INFO  deltas per message (m, globe minus section)   max 59207, age max 309.840 Myr, 416 of 512 columns moved
 PASS  a message with spans wider than the join radius leaves those columns unjoined   132 of 512 columns joined, 380 left at a 78.2 km join spacing
 PASS  a hard reset import keeps the ledger the message carried   seed 1038447404667 of cut 1038447404667 m3/m
-PASS  the import cost is finite and inside a frame budget at this resolution   mean 2.3 ms, worst 4.6 ms over 21 layout imports
+PASS  the import cost is finite and inside a frame budget at this resolution   mean 1.6 ms, worst 3.0 ms over 21 layout imports
 
 E. apply refusals are atomic and a matched reconcile edits beds
 PASS  an unsigned in-memory message is refused before state mutation   message refused: checksum mismatch
 PASS  a message for another path is refused before state mutation   message refused: pathChecksum does not match the active cut
 PASS  a page with no reconstructed section cannot report an applied message   message refused: no reconstructed section is ready for coupling
 PASS  a checksummed message for the active path applies   ok
-PASS  an unrelated bed and its depth-resolved deposit survive matched growth   layer 2 -> 4, 0/170.77854376141062/1 -> 0/170.77854376141062/1, format adjustment -0.185 m
+PASS  an unrelated bed and its depth-resolved deposit survive matched growth   layer 2 -> 4, 0/-50.27854376141062/1 -> 0/-50.27854376141062/1, format adjustment -0.185 m
 PASS  matched growth is a dated reconcile bed, not cache or seed-bed inflation   fel growth dated at globe t 120.5 Myr
-PASS  the imported aggregate is derived from beds and survives COL.sums   crust 998699744231 m3/m, tagged 8567.000 m
-PASS  the apply ledger closes old + in - out = new to 1e-9   error 7.324e-4 over 9.987e+11
+PASS  a message older than the section clock floors its bed dates at the clock   every new bed of that import is dated at t 127.75, not 120.5
+PASS  a rebuilt column carries the import clock minus the cut's rock age   equal beds dated t − age at every rebuilt column, none missed
+PASS  a coarse table rebuilding unmatched stacks still logs clean   one law for seeded, grown and rebuilt columns
+PASS  the imported aggregate is derived from beds and survives COL.sums   crust 920578905868 m3/m, tagged 8434.000 m
+PASS  the apply ledger closes old + in - out = new to 1e-9   error 1.221e-4 over 9.206e+11
 PASS  a coarse valid table exercises the fresh/retired branch without refusal   128 matched, 384 fresh
-PASS  fresh and retired are volumes and close the same mass identity   fresh 690434179401, retired 753680368182, error 3.662e-4
+PASS  fresh and retired are volumes and close the same mass identity   fresh 690434179401, retired 690434179401, error 0.000e+0
 
 F. the real 20-import cycle: evolve, reconcile, retain
 PASS  message 1 applies cleanly   refused
@@ -112,6 +115,7 @@ PASS  all 20 mass identities close to 1e-9 relative   worst relative error 1.675
 PASS  recomputing every aggregate from beds cannot undo an import   worst relative cache change 0.000e+0
 PASS  matched columns retain their bed identities through the sequence   worst import retained 98.9% of non-empty columns
 PASS  the cumulative reconcile ledger never resets between imports   reconciled 3239697279881, diverged 497943613140 m3/m
+PASS  twenty imports of evolution leave the strata of every column legal under the §8.5 rule   all columns
 PASS  fresh and retired are measured volumes and unmatched columns stay bounded   total matched 10689, fresh cols 0, retired cols 0, fresh volume 0
 
 G. C3 owns K2 while the live message is active
@@ -119,4 +123,4 @@ PASS  the active coupling prescribes rigid plate and column velocities in K2   1
 PASS  a zero clock leaves prescribed kinematics still
 PASS  deactivation returns K2 ownership to the standalone solver
 
-ALL PASS (103 checks)
+ALL PASS (107 checks)

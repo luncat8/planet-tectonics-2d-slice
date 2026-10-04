@@ -23,6 +23,7 @@ var COUP = lib.mods.coupling;
 var root = lib.root;
 var html = fs.readFileSync(path.join(root, 'columns.html'), 'utf8');
 var order = lib.scriptOrder();
+var CLOG = lib.mods['core-log'];
 var t0 = Date.now();
 
 function idsIn(src) {
@@ -159,7 +160,7 @@ viaPaste(L, text);
 check.ok('a paste of the pinned cut loads', L.sb.SectionPack.pack !== null
 	&& L.sb.SectionPack.pack.checksum === pin.checksum, L.sb.SectionPack.msg);
 check.ok('the readout says what the cut is (level, both resolutions, arc, mode, checksum)',
-	new RegExp('L5 · \\d+ km cells → 512 columns · 78 km · \\d[\\d ]+ km circle · t 120\\.5 Myr · seed 7 · mapping 1 · checksum '
+	new RegExp('L5 · \\d+ km cells → 512 columns · 78 km · \\d[\\d ]+ km circle · t 120\\.5 Myr · seed 7 · mapping 2 · checksum '
 		+ pin.checksum).test(L.sb.SectionPack.describe(L.sb.SectionPack.pack)),
 	L.sb.SectionPack.describe(L.sb.SectionPack.pack));
 check.ok('the cut has been laid as a section (the stacks carry the cut mass, the clock stays off)',
@@ -324,6 +325,58 @@ C.sb.SectionPack.linkMessage('clock', {
 check.ok('a clock for another path is refused without pausing the section',
 	/pathChecksum/.test(C.els.sMsg.textContent) && C.sb.SIM.t === clockT && !C.sb.SectionPack.syncPaused,
 	C.els.sMsg.textContent);
+
+// The return path (§8.5) and the last clause of §8.1 run on this page now: the live import
+// answered with a log, the manual rung places what it cannot send, and a link that stops
+// answering demotes the section instead of holding its clock hostage.
+check.section('D4. the observation return and the abandoned cadence');
+var obsText = C.els.sObsOut.value;
+check.ok('the live import auto-logged and the manual paste did not spam the out field',
+	C.sb.SectionPack.obsRecords > 0 && obsText.length > 0,
+	C.sb.SectionPack.obsRecords + ' columns logged at the live rung');
+var parsedObs = null, obsWhy = '';
+try { parsedObs = CLOG.parse(obsText); } catch (e) { obsWhy = e.message; }
+check.ok('the out field holds a checksummed pgt-core-log for this exact cut',
+	!!parsedObs && parsedObs.packChecksum === C.sb.SectionPack.pack.checksum &&
+	parsedObs.pathChecksum === COUP.pathChecksum(C.sb.SectionPack.pack),
+	obsWhy || (parsedObs ? parsedObs.records.length + ' records, log ' + parsedObs.checksum : 'none'));
+C.els.sObsOut.value = '';
+C.els.sObs.listeners.click.call(C.els.sObs);
+check.ok('the button re-logs the whole section (a threshold build would say nothing here)',
+	C.els.sObsOut.value.length > 0 && /ready to copy/.test(C.els.sMsg.textContent),
+	C.els.sMsg.textContent);
+check.ok('a manual rung records "placed", never a live send it did not make',
+	!/sent via/.test(C.els.sMsg.textContent) &&
+	C.sb.SectionPack.link.rung === 'clipboard/file',
+	C.sb.SectionPack.msg);
+var ahead = C.sb.SIM.t;
+C.sb.SIM.t = couplingMsg.tMyr + 40;   // eight cadences past the last accepted snapshot
+C.sb.SectionPack.frame();
+check.ok('the cadence guard pins the clock and counts the wait',
+	C.sb.SIM.t === couplingMsg.tMyr + 40 && C.sb.SectionPack.linkStall === 1,
+	'stall ' + C.sb.SectionPack.linkStall + ', dG ' + C.sb.SIM.dG);
+C.sb.SectionPack.linkStall = 239;
+C.sb.SectionPack.frame();
+check.ok('an abandoned wait demotes the section: its own solve, K2 released, said unsynced',
+	!C.sb.SectionPack.syncLive && C.sb.SectionPack.syncStale && C.sb.SectionPack.couplingMsg === null &&
+	C.sb.SIM.kinematic === null && /unsynced · own solve \(detached G\)/.test(C.els.hud.textContent),
+	C.els.hud.textContent.split('\n')[0]);
+var demotedT = C.sb.SIM.t;
+C.sb.SectionPack.frame();
+check.ok('the demoted clock runs free of the message that never came', C.sb.SIM.t > demotedT,
+	demotedT.toFixed(3) + ' → ' + C.sb.SIM.t.toFixed(3) + ' Myr');
+C.sb.SectionPack.linkMessage('coupling', JSON.parse(couplingText), 'postMessage');
+check.ok('a later snapshot re-arms the live state, staleness and all',
+	C.sb.SectionPack.syncLive && !C.sb.SectionPack.syncStale && C.sb.SIM.kinematic === C.sb.COUP.k2 &&
+	/coupling: live postMessage/.test(C.els.hud.textContent), 'imports ' + C.sb.SectionPack.syncImports);
+check.ok('and answering it goes back to logging, not to waiting',
+	/core log: .*ready to copy/.test(C.els.sMsg.textContent), C.els.sMsg.textContent);
+var W2 = load('?start=section');
+viaPaste(W2, text);
+W2.sb.SectionPack.observe(false);
+check.ok('a quiet (never imported) section owes the globe its baseline and nothing else',
+	W2.sb.SectionPack.obsRecords > 0,
+	W2.sb.SectionPack.obsRecords + ' columns at first registration');
 
 check.section('E. the raw strip says what the pack says');
 // the view the page switches to after a load is the reconstruction; `raw cut` (the button,
