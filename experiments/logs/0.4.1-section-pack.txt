@@ -109,7 +109,7 @@ PASS  a gap sample owns no crust (the strip shows the hole)   gaps 2, mafic colu
 
 F. the ?pack= id path
 PASS  a bundled id loads through the same verify path   loaded source L5 · 202 km cells → 512 columns · 78 km · 40 030 km circle · t 120.5 Myr · seed 1 · mapping 2 · checksum 5e6a558adccfde21
-PASS  an id with no bundle is a visible refusal, not a guess   no bundled pack 'no-such-pack' (the bake lands in M4) — paste a cut
+PASS  an id with no bundle is a visible refusal, not a guess   no bundled pack 'no-such-pack' — paste a cut, or open ?start=section&pack=<id>
 
 G2. the three switches
 PASS  the overlay is on, the run switch is off, and both are lit from the state (plan §4.2)   aria-pressed bRun=false disabled=false
@@ -128,9 +128,9 @@ PASS  typing into the paste box does not reach the engine keys
 G. the idle strip and the clear
 PASS  before a cut the strip names the section mode and the panel
 PASS  the empty Cut-from option drops the cut, its world and its overlay   cut cleared
-PASS  and an id the bundle does not have is a message from the same control   no bundled pack 'no-such-pack' (the bake lands in M4) — paste a cut
+PASS  and an id the bundle does not have is a message from the same control   no bundled pack 'no-such-pack' — paste a cut, or open ?start=section&pack=<id>
 PASS  and the next draw is the idle strip again
 
-  total 10.7 s
+  total 10.0 s
 
 ALL PASS (81 checks)

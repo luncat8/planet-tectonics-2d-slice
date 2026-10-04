@@ -418,10 +418,12 @@ check.ok('a gap sample owns no crust (the strip shows the hole)',
 	'gaps ' + gaps + ', mafic columns drawn ' + countOf(R, 'fillStyle=#464b52') + ' of ' + mafAlive);
 
 check.section('F. the ?pack= id path');
-var D = load('?start=section&pack=earth-100Ma-gc0', { SECTION_PACKS: { 'earth-100Ma-gc0': FIX.pinned() } });
+// 'fixture-pack' is the id the synthetic fixture wears in this harness: the generated
+// bundles in js/data/ (their own gate, experiments/section-bundle.js) keep their real ids
+var D = load('?start=section&pack=fixture-pack', { SECTION_PACKS: { 'fixture-pack': FIX.pinned() } });
 check.ok('a bundled id loads through the same verify path',
 	D.sb.SectionPack.pack !== null && D.sb.SectionPack.pack.checksum === pin.checksum
-		&& D.sb.SectionPack.origin === 'earth-100Ma-gc0', D.sb.SectionPack.msg);
+		&& D.sb.SectionPack.origin === 'fixture-pack', D.sb.SectionPack.msg);
 var E = load('?start=section&pack=no-such-pack');
 check.ok('an id with no bundle is a visible refusal, not a guess',
 	E.sb.SectionPack.pack === null && E.sb.SectionPack.bad === true

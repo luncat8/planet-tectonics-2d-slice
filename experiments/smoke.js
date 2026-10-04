@@ -130,9 +130,15 @@ check.section('A. page load (columns.html order, ' + order.length + ' scripts)')
 // the page modules are js/*.js, each exactly once; port/*.js is shared with the
 // counterpart (port/PORT.json) and is loaded by name, not by directory scan
 var onDisk = fs.readdirSync(path.join(root, 'js')).filter(function (f) { return /\.js$/.test(f); });
-var pageScripts = order.filter(function (f) { return f.indexOf('js/') === 0; });
+// js/data/ is generated data (the M4 bundled section packs), not page modules:
+// its own check, the same discipline
+var pageScripts = order.filter(function (f) { return f.indexOf('js/') === 0 && f.indexOf('js/data/') !== 0; });
 check.ok('columns.html loads every js/*.js file exactly once', onDisk.length === pageScripts.length &&
 	onDisk.every(function (f) { return pageScripts.indexOf('js/' + f) >= 0; }), pageScripts.join(' '));
+var dataOnDisk = fs.readdirSync(path.join(root, 'js', 'data')).filter(function (f) { return /\.js$/.test(f); });
+var dataScripts = order.filter(function (f) { return f.indexOf('js/data/') === 0; });
+check.ok('every bundled section pack loads exactly once', dataOnDisk.length === dataScripts.length &&
+	dataOnDisk.every(function (f) { return dataScripts.indexOf('js/data/' + f) >= 0; }), dataScripts.join(' '));
 var portScripts = order.filter(function (f) { return f.indexOf('port/') === 0; });
 var portOnDisk = fs.readdirSync(path.join(root, 'port')).filter(function (f) { return /\.js$/.test(f); });
 var manifest = JSON.parse(fs.readFileSync(path.join(root, 'port', 'PORT.json'), 'utf8'));

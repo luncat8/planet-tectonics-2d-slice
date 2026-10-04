@@ -353,7 +353,7 @@ var SectionPack = (function () {
 				// the empty option is the panel's way of dropping a cut: the page is a view
 				// again, and an id that is not in the bundle is a message rather than a no-op
 				else if (!v) self.clear();
-				else self.refuse("no bundled pack '" + v + "' (the bake lands in M4) — paste a cut");
+				else self.refuse("no bundled pack '" + v + "' — paste a cut, or open ?start=section&pack=<id>");
 			});
 			if (this.rawBtn) this.rawBtn.addEventListener('click', function () { self.caught(function () { self.toggleRaw(); }); });
 			if (this.ovlBtn) this.ovlBtn.addEventListener('click', function () { self.toggleOverlay(); });
@@ -404,7 +404,7 @@ var SectionPack = (function () {
 			if (this.start.pack) {
 				var bp = this.bundled(this.start.pack);
 				if (bp) this.caught(function () { self.loadPack(bp, self.start.pack); });
-				else this.refuse("no bundled pack '" + this.start.pack + "' (the bake lands in M4) — paste a cut");
+				else this.refuse("no bundled pack '" + this.start.pack + "' — paste a cut, or open ?start=section&pack=<id>");
 			}
 			this.startLink();
 			this.msg = this.msg || 'paste a cut, load a .json, or open ?start=section&pack=<id>';
