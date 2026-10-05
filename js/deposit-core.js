@@ -1,3 +1,4 @@
+(function (root) {
 // deposit-core.js — the deposit catalogue's deterministic core, extracted verbatim from
 // planet-geotectonics @ d909476 (0.6.1) js/deposits.js: the hashing, the keyed draw, the
 // truncated normal and the body geometry. The counterpart keeps these inline today, so this
@@ -100,3 +101,5 @@ var DepositCore = (function () {
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = DepositCore;
+else root.COLDEPOSITCORE = DepositCore;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

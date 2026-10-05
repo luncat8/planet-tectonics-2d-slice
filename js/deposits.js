@@ -1,3 +1,4 @@
+(function (root) {
 // deposits.js — 0.4.1 M3: the section's deposit catalogue, the snapshot it is conditioned on
 // and the instruments that read it (0.4.0-sync-plan.md §2.5, 0.4.1-plan.md §M3).
 //
@@ -17,12 +18,12 @@
 'use strict';
 var Deposits = (function () {
 	var node = typeof module !== 'undefined' && module.exports;
-	var P = node ? require('./params.js') : window.P;
-	var S = node ? require('./state.js') : window.S;
+	var P = node ? require('./params.js') : window.COLP;
+	var S = node ? require('./state.js') : window.COLS;
 	var SP = node ? require('../port/slice-format.js') : window.SlicePack;
 	var DM = node ? require('../port/deposit-models.js') : window.DepositModels;
 	var DE = node ? require('../port/deposit-economics.js') : window.DepositEconomics;
-	var Core = node ? require('./deposit-core.js') : window.DepositCore;
+	var Core = node ? require('./deposit-core.js') : window.COLDEPOSITCORE;
 
 	var KM = 1000;
 	// Sub-tiles per column: a tile is a fixed span of the cut, not a column, so a click's tile
@@ -485,3 +486,5 @@ var Deposits = (function () {
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Deposits;
+else root.COLDEPOSITS = Deposits;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

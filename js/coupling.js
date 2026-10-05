@@ -1,3 +1,4 @@
+(function (root) {
 // coupling.js — 0.4.1 M5: the `pgt-coupling` v1 envelope and C4 reconcile (plan §8.1–§8.3).
 //
 // The globe owns kinematics and aggregate crust; the section owns beds. A message is matched
@@ -12,11 +13,13 @@
 var COUP = (function () {
 	var node = typeof module !== 'undefined' && module.exports;
 	var SP = node ? require('../port/slice-format.js') : window.SlicePack;
-	var Core = node ? require('./deposit-core.js') : window.DepositCore;
-	var P = node ? require('./params.js') : window.P;
-	var State = node ? require('./state.js') : window.S;
-	var COL = node ? require('./columns.js') : window.COL;
-	var PLT = node ? require('./plates.js') : window.PLT;
+	var Core = node ? require('./deposit-core.js') : window.COLDEPOSITCORE;
+	var P = node ? require('./params.js') : window.COLP;
+	var State = node ? require('./state.js') : window.COLS;
+	var COL = node ? require('./columns.js') : window.COLCOLUMNS;
+	var PLT = node ? require('./plates.js') : window.COLPLATES;
+	var SURF = node ? require('./surface.js') : window.COLSURF;
+	var SLAB = node ? require('./slab.js') : window.COLSLAB;
 
 	var KM = 1000;
 	var FORMAT = 'pgt-coupling';
@@ -34,6 +37,11 @@ var COUP = (function () {
 	};
 	var slaveW = new Float64Array(P.plateCap);
 	var slaveU = new Float64Array(P.plateCap);
+	var boundaryAt = new Int8Array(P.colCap), boundaryPol = new Int8Array(P.colCap);
+	var boundaryScore = new Float64Array(P.colCap);
+	var priorEdge = new Int8Array(P.colCap), priorPol = new Int8Array(P.colCap);
+	var priorRight = new Int32Array(P.colCap), priorAge = new Float64Array(P.colCap);
+	var priorSlow = new Float64Array(P.colCap);
 	var liveMsg = null, liveN = 0;
 
 	var CRUST_NUMS = ['s0Km', 's1Km', 'hFelM', 'hMafM', 'hSedM', 'ageMyr', 'fert', 'damage'];
@@ -108,7 +116,9 @@ var COUP = (function () {
 		};
 		var i, w, a;
 		for (i = 0; i < pack.n; i++) {
-			if (pack.bnd[i] === SP.EDGE.subduct) msg.trenches.push(pack.sKm[i]);
+			if (pack.bnd[i] === SP.EDGE.subduct && (pack.path.closes || i + 1 < pack.n)) {
+				msg.trenches.push(i + 1 < pack.n ? pack.sKm[i + 1] : pack.path.arcKm);
+			}
 			a = msg.crust[i];
 			w = (a.s1Km - a.s0Km) * KM;
 			msg.ledger.fel += pack.hFelM[i] * w;
@@ -187,15 +197,16 @@ var COUP = (function () {
 		if (p.end !== c.end) return 'the two tables end at different arcs: ' + p.end + ' vs ' + c.end;
 		for (i = 0; i < msg.plates.length; i++) {
 			pl = msg.plates[i];
-			if (!(pl.id >= 0 && pl.id === Math.floor(pl.id))) return 'plate id ' + i + ' is not a whole number';
+			if (!(isFinite(pl.id) && pl.id >= 0 && pl.id === Math.floor(pl.id))) return 'plate id ' + i + ' is not a whole number';
 			if (!(isFinite(pl.vt) && isFinite(pl.vp) && pl.vp >= 0)) return 'plate ' + i + ' motion is not finite';
 			if (!(pl.bnd >= 0 && pl.bnd <= SP.EDGE.collide && pl.bnd === Math.floor(pl.bnd))) return 'plate ' + i + ' bnd out of range: ' + pl.bnd;
 			if (!(Math.abs(pl.pol) <= 1 && pl.pol === Math.floor(pl.pol))) return 'plate ' + i + ' pol out of range: ' + pl.pol;
 		}
 		for (i = 0; i < msg.crust.length; i++) {
 			cr = msg.crust[i];
-			if (!(cr.hFelM >= 0 && cr.hMafM >= 0 && cr.hSedM >= 0)) return 'crust ' + i + ' has a negative thickness';
-			if (!(cr.ageMyr >= 0)) return 'crust ' + i + ' has a negative age';
+			if (!(isFinite(cr.hFelM) && isFinite(cr.hMafM) && isFinite(cr.hSedM) &&
+				cr.hFelM >= 0 && cr.hMafM >= 0 && cr.hSedM >= 0)) return 'crust ' + i + ' thickness is not finite and non-negative';
+			if (!(isFinite(cr.ageMyr) && cr.ageMyr >= 0)) return 'crust ' + i + ' age is not finite and non-negative';
 			if (!(isFinite(cr.fert) && isFinite(cr.damage) && cr.damage >= 0 && cr.damage <= 1)) return 'crust ' + i + ' fertility or damage out of range';
 		}
 		if (!Array.isArray(msg.trenches)) return 'trenches must be an array';
@@ -235,22 +246,30 @@ var COUP = (function () {
 	}
 
 	// The section's guard: a message for another line is refused, not blended.
+	function tablesEndAt(msg, arcKm) {
+		if (!msg || !msg.plates || !msg.plates.length || !msg.crust || !msg.crust.length) return false;
+		return msg.plates[msg.plates.length - 1].s1Km === arcKm &&
+			msg.crust[msg.crust.length - 1].s1Km === arcKm;
+	}
+
+	function arcMatches(msg, pack) {
+		return !!pack && !!pack.path && tablesEndAt(msg, round(pack.path.arcKm));
+	}
+
 	function matches(msg, pack) {
-		return !!msg && !!pack && msg.pathChecksum === pathChecksum(pack);
+		return !!msg && !!pack && msg.pathChecksum === pathChecksum(pack) && arcMatches(msg, pack);
 	}
 
 	// ------------------------------------------------------------------ the section's half
 	// The join key of plan §8.1: a column takes an interval when their arc midpoints are
 	// within JOIN_SPACING local spacings. Plate id is a fast path, not the identity.
-	function joinTo(msg, midKm, cellKm) {
+	function joinTo(msg, midKm, cellKm, closed) {
 		var span = JOIN_SPACING * cellKm, i, r, best = -1, bestD = span, d;
 		var wrap = msg.crust[msg.crust.length - 1].s1Km;
 		for (i = 0; i < msg.crust.length; i++) {
 			r = msg.crust[i];
 			d = Math.abs(midKm - (r.s0Km + r.s1Km) * 0.5);
-			// the ring is periodic: the last column of a cut is as close to the first interval
-			// as it is to its own, and the shorter way round is the distance
-			if (d > wrap * 0.5) d = wrap - d;
+			if (closed !== false && d > wrap * 0.5) d = wrap - d;
 			if (d <= bestD) { bestD = d; best = i; }
 		}
 		return best;
@@ -267,6 +286,8 @@ var COUP = (function () {
 		opts = opts || {};
 		var n = opts.nCut === undefined ? st.nCol : opts.nCut;
 		var cellKm = opts.cellKm || (st.colW[0] || 78000) / KM;
+		var closed = opts.closed === undefined ?
+			!(opts.pack && opts.pack.path && opts.pack.path.closes === false) : !!opts.closed;
 		var walk = 0;
 		var out = {
 			matched: 0, unmatched: 0, grew: 0, shrank: 0, ageMoves: 0, fertMoves: 0,
@@ -276,7 +297,7 @@ var COUP = (function () {
 		var j, i, r, w, dF, dM, dS, dA, mid;
 		for (j = 0; j < n; j++) {
 			mid = (walk + (st.colW[j] || 78000) * 0.5) / KM;
-			i = joinTo(msg, mid, cellKm);
+			i = joinTo(msg, mid, cellKm, closed);
 			if (i < 0) { out.unmatched++; walk += st.colW[j] || 78000; continue; }
 			r = msg.crust[i];
 			w = st.colW[j] || 78000;
@@ -354,9 +375,9 @@ var COUP = (function () {
 
 	// The interval that owns an arc point, independent of whether it is close enough to
 	// inherit a stack. A valid table tiles the complete arc, so this always finds one.
-	function intervalAt(msg, midKm) {
+	function intervalAt(msg, midKm, closed) {
 		var rows = msg.crust, wrap = rows[rows.length - 1].s1Km;
-		var x = midKm - Math.floor(midKm / wrap) * wrap, i;
+		var x = closed === false ? midKm : midKm - Math.floor(midKm / wrap) * wrap, i;
 		for (i = 0; i < rows.length; i++) {
 			if (x >= rows[i].s0Km && x < rows[i].s1Km) return i;
 		}
@@ -375,13 +396,22 @@ var COUP = (function () {
 		if (!(Number.isInteger(n) && n > 0 && n <= st.nCol && n <= P.colCap)) {
 			return 'no reconstructed section is ready for coupling';
 		}
-		var fields = ['colW', 'colNL', 'layTh', 'layLi', 'layAg', 'layFl',
-			'hFel', 'hMaf', 'hSed', 'hTot', 'colAge', 'fert', 'damage',
-			'syncFel', 'syncMaf', 'syncSed', 'syncValid'];
+		var fields = ['colW', 'colX', 'colNL', 'layTh', 'layLi', 'layAg', 'layFl',
+			'hFel', 'hMaf', 'hSed', 'hTot', 'colAge', 'fert', 'damage', 'Tf', 'colPlate', 'colU',
+			'edge', 'edgePol', 'edgeRPlate', 'edgeAge', 'edgeSlow', 'edgeRelN', 'trenchDist',
+			'z', 'zDyn', 'wet', 'hDraw', 'syncFel', 'syncMaf', 'syncSed', 'syncValid'];
 		for (var i = 0; i < fields.length; i++) {
 			if (!st[fields[i]] || st[fields[i]].length < n) return 'section state is missing ' + fields[i];
 		}
+		if (!(Number.isInteger(st.nRib) && st.nRib >= 0 && st.nRib <= P.ribCap)) return 'section state has an invalid ribbon count';
+		var ribbonFields = ['ribN', 'ribX0', 'ribDir', 'ribPlate', 'ribAge', 'ribNL',
+			'ribW', 'ribRelW', 'ribDip', 'ribX', 'ribY', 'ribT'];
+		for (i = 0; i < ribbonFields.length; i++) {
+			if (!st[ribbonFields[i]]) return 'section state is missing ' + ribbonFields[i];
+		}
 		if (!st.recon) return 'section state has no reconstruction ledger';
+		if (!(isFinite(st.recon.bndLost) && isFinite(st.recon.bndCollapsed))) return 'section state has no boundary ledger';
+		if (!isFinite(st.seaLevel)) return 'section state has no finite sea datum';
 		return '';
 	}
 
@@ -389,7 +419,7 @@ var COUP = (function () {
 	// the same way an initial cut does — dated at the message's clock minus the cut's rock age,
 	// the one formation-time conversion (plan §4.3.2) — and depth-resolved deposits on the
 	// retired stack lose their horizon rather than pointing into unrelated new geology.
-	function freshStack(st, c, row, tMyr) {
+	function freshStack(st, c, row, tMyr, seaLevel) {
 		var LC = P.layerCap, b = c * LC, k, n = 0;
 		var tf = tMyr - row.ageMyr;
 		for (k = 0; k < LC; k++) {
@@ -399,7 +429,7 @@ var COUP = (function () {
 		for (k = 0; k < st.nDep; k++) {
 			if (st.depCol[k] === c) st.depLay[k] = -1;
 		}
-		var flags = st.wet[c] ? P.FLAG.wet : 0;
+		var flags = st.z[c] < seaLevel ? P.FLAG.wet : 0;
 		if (row.hMafM > 0) {
 			st.layTh[b + n] = row.hMafM; st.layLi[b + n] = P.LITH.maf;
 			st.layAg[b + n] = tf; st.layFl[b + n++] = flags;
@@ -417,6 +447,86 @@ var COUP = (function () {
 		COL.sums(c);
 	}
 
+	// The message owns the crossing that lands at each interval end. Project those events
+	// onto the nearest section edge; boundaries lost inside one section plate stay explicit.
+	function syncEdges(st, msg, n, closed) {
+		var rows = msg.plates, arcKm = rows[rows.length - 1].s1Km;
+		var total = 0, edgeN = closed ? n : n - 1, scale, i, j, next, walk, x, edgeX;
+		var d, best, bestD, score, nextRow, changed, dir, loser, winner, gap, ribbonX;
+		if (edgeN < 1) return;
+		for (j = 0; j < n; j++) total += st.colW[j];
+		scale = closed ? total / (arcKm * KM) : 1;
+		boundaryAt.fill(0, 0, n);
+		boundaryPol.fill(0, 0, n);
+		boundaryScore.fill(-1, 0, n);
+		for (i = 0; i < rows.length; i++) {
+			if (!rows[i].bnd) continue;
+			x = rows[i].s1Km * KM * scale;
+			if (!closed && x >= total) { st.recon.bndCollapsed++; continue; }
+			walk = 0; best = -1; bestD = Infinity;
+			for (j = 0; j < edgeN; j++) {
+				edgeX = walk + st.colW[j];
+				d = Math.abs(x - edgeX);
+				if (closed && d > total * 0.5) d = total - d;
+				if (d < bestD) { bestD = d; best = j; }
+				walk += st.colW[j];
+			}
+			nextRow = i + 1 < rows.length ? i + 1 : 0;
+			score = Math.abs(rows[nextRow].vt - rows[i].vt);
+			if (boundaryAt[best]) {
+				st.recon.bndCollapsed++;
+				if (score <= boundaryScore[best]) continue;
+			}
+			boundaryAt[best] = rows[i].bnd;
+			boundaryPol[best] = rows[i].pol;
+			boundaryScore[best] = score;
+		}
+		for (j = 0; j < edgeN; j++) {
+			priorEdge[j] = st.edge[j]; priorPol[j] = st.edgePol[j];
+			priorRight[j] = st.edgeRPlate[j]; priorAge[j] = st.edgeAge[j];
+			priorSlow[j] = st.edgeSlow[j];
+			next = j + 1 < n ? j + 1 : 0;
+			st.edgeRPlate[j] = st.colPlate[next];
+			if (st.colPlate[j] === st.colPlate[next]) {
+				st.edge[j] = P.EDGE.none; st.edgePol[j] = 0;
+				st.edgeAge[j] = 0; st.edgeSlow[j] = 0;
+			} else {
+				st.edge[j] = P.EDGE.neutral; st.edgePol[j] = 0;
+				st.edgeAge[j] = priorEdge[j] === P.EDGE.neutral && priorRight[j] === st.colPlate[next] ? priorAge[j] : 0;
+				st.edgeSlow[j] = 0;
+			}
+		}
+		for (j = edgeN; j < n; j++) {
+			st.edge[j] = P.EDGE.none; st.edgePol[j] = 0;
+			st.edgeRPlate[j] = -1; st.edgeAge[j] = 0; st.edgeSlow[j] = 0;
+		}
+		for (j = 0; j < edgeN; j++) {
+			if (boundaryAt[j]) {
+				next = j + 1 < n ? j + 1 : 0;
+				if (st.colPlate[j] === st.colPlate[next]) { st.recon.bndLost++; }
+				else {
+					changed = priorEdge[j] !== boundaryAt[j] || priorPol[j] !== boundaryPol[j] ||
+						priorRight[j] !== st.colPlate[next];
+					st.edge[j] = boundaryAt[j];
+					st.edgePol[j] = boundaryPol[j];
+					st.edgeAge[j] = changed ? 0 : priorAge[j];
+					st.edgeSlow[j] = changed ? 0 : priorSlow[j];
+					if (changed && boundaryAt[j] === P.EDGE.subduct) {
+						dir = boundaryPol[j] < 0 ? 1 : -1;
+						loser = boundaryPol[j] < 0 ? j : next;
+						winner = loser === j ? next : j;
+						gap = st.colX[next] - st.colX[j];
+						if (gap < 0) gap += P.wrap;
+						ribbonX = st.colX[j] + gap * 0.5;
+						ribbonX -= Math.floor(ribbonX / P.wrap) * P.wrap;
+						SLAB.findRibbon(st, ribbonX, dir, st.colPlate[winner], msg.tMyr);
+					}
+				}
+			}
+		}
+		PLT.trench(st);
+	}
+
 	// C4 is one guarded transaction. All format, checksum, cut-identity and state checks, plus
 	// the complete geographic map, are resolved before a bed is touched. Once that preflight
 	// passes, stack primitives cannot refuse: growth consolidates at the cap and class removal
@@ -429,9 +539,18 @@ var COUP = (function () {
 		if (!msg.checksum || !HEX.test(msg.checksum) || msg.checksum !== checksum(msg)) {
 			return 'message refused: checksum mismatch';
 		}
-		var expected = opts.pathChecksum || (opts.pack && pathChecksum(opts.pack)) || '';
+		var packPath = opts.pack ? pathChecksum(opts.pack) : '';
+		if (packPath && opts.pathChecksum && opts.pathChecksum !== packPath) {
+			return 'message refused: active cut identity options disagree';
+		}
+		var expected = packPath || opts.pathChecksum || '';
 		if (!HEX.test(expected)) return 'message refused: no verified active cut identity';
 		if (msg.pathChecksum !== expected) return 'message refused: pathChecksum does not match the active cut';
+		var arcKm = opts.pack && opts.pack.path ? round(opts.pack.path.arcKm) :
+			(opts.arcKm === undefined ? null : round(opts.arcKm));
+		if (arcKm !== null && !tablesEndAt(msg, arcKm)) {
+			return 'message refused: interval tables do not span the active cut';
+		}
 		var n = opts.nCut === undefined ? st.nCol : opts.nCut;
 		why = stateError(st, n);
 		if (why) return 'message refused: ' + why;
@@ -442,22 +561,25 @@ var COUP = (function () {
 		if (isFinite(opts.tNow) && opts.tNow > tBed) tBed = opts.tNow;
 		var cellKm = opts.cellKm || ((st.colW && st.colW[0]) ? st.colW[0] : 78000) / KM;
 		if (!(isFinite(cellKm) && cellKm > 0)) return 'message refused: local spacing is not positive';
+		var closed = opts.closed === undefined ?
+			!(opts.pack && opts.pack.path && opts.pack.path.closes === false) : !!opts.closed;
 
 		var j, i, w, mid, walk = 0;
 		for (j = 0; j < n; j++) {
 			w = st.colW[j];
 			if (!(isFinite(w) && w > 0)) return 'message refused: column ' + j + ' has no positive width';
 			mid = (walk + w * 0.5) / KM;
-			joined[j] = joinTo(msg, mid, cellKm);
-			target[j] = joined[j] >= 0 ? joined[j] : intervalAt(msg, mid);
+			joined[j] = joinTo(msg, mid, cellKm, closed);
+			target[j] = joined[j] >= 0 ? joined[j] : intervalAt(msg, mid, closed);
 			walk += w;
 		}
 
 		resetLast();
-		var row, dF, dM, dS, dv, old, now, flags;
+		var row, dF, dM, dS, dv, old, now, flags, zKeep, ageChanged = false;
 		for (j = 0; j < n; j++) {
 			w = st.colW[j];
 			COL.sums(j);
+			zKeep = st.z[j];
 			old = st.hTot[j] * w;
 			last.before += old;
 			row = msg.crust[target[j]];
@@ -465,7 +587,7 @@ var COUP = (function () {
 				last.freshColumns++;
 				last.retiredColumns++;
 				last.retired += old;
-				freshStack(st, j, row, tBed);
+				freshStack(st, j, row, tBed, msg.sea.levelM);
 				now = st.hTot[j] * w;
 				last.fresh += now;
 			} else {
@@ -484,7 +606,7 @@ var COUP = (function () {
 				if (dv >= 0) last.added += dv; else last.removed -= dv;
 				dv = dS * w;
 				if (dv >= 0) last.added += dv; else last.removed -= dv;
-				flags = st.wet[j] ? P.FLAG.wet : 0;
+				flags = zKeep < msg.sea.levelM ? P.FLAG.wet : 0;
 				// Shrink first: a message that trades one class for another makes room before
 				// inserting its dated beds, so a transient full stack cannot force a mix.
 				if (dF < 0) COL.removeClass(st, j, 1, -dF);
@@ -495,6 +617,7 @@ var COUP = (function () {
 				if (dS > 0) COL.insertVol(st, j, P.LITH.sed, dS, tBed, flags, 'top');
 				COL.sums(j);
 			}
+			if (Math.abs(row.ageMyr - st.colAge[j]) > 0.01) ageChanged = true;
 			st.colAge[j] = row.ageMyr;
 			st.fert[j] = row.fert;
 			st.damage[j] = row.damage;
@@ -502,8 +625,16 @@ var COUP = (function () {
 			st.syncMaf[j] = row.hMafM;
 			st.syncSed[j] = row.hSedM;
 			st.syncValid[j] = 1;
+			st.zDyn[j] = zKeep - (SURF.elev(j) - st.zDyn[j]);
+			st.z[j] = zKeep;
+			st.hDraw[j] = st.hTot[j];
 			last.after += st.hTot[j] * w;
 		}
+		st.seaLevel = msg.sea.levelM;
+		for (j = 0; j < n; j++) st.wet[j] = st.z[j] < st.seaLevel ? 1 : 0;
+		// Reapply the lid boundary now, without resetting fan anomalies between K1 frames.
+		if (ageChanged) COL.lidFan();
+		syncEdges(st, msg, n, closed);
 		last.reconciled = last.added + last.removed;
 		last.identityError = last.before + last.added + last.fresh -
 			last.removed - last.retired - last.after;
@@ -529,3 +660,5 @@ var COUP = (function () {
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = COUP;
+else root.COLCOUPLING = COUP;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

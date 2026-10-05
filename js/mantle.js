@@ -1,12 +1,13 @@
+(function (root) {
 // mantle.js — K1 (design §4.1, §2.4): the seeded periodic streamfunction flow, its
 // surface speed at the columns, and the fan T step (semi-Lagrangian advection, relaxation
 // toward the adiabat, the lithospheric lid re-imposed from the columns). Plumes are M4.
 // Headless and allocation-free: the flow sampler writes into MNT.vx / MNT.vy.
 'use strict';
-var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
-var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.GEO;
-var RNG = (typeof module !== 'undefined' && module.exports) ? require('./rng.js') : window.RNG;
-var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COL;
+var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.COLP;
+var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.COLGEO;
+var RNG = (typeof module !== 'undefined' && module.exports) ? require('./rng.js') : window.COLRNG;
+var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COLCOLUMNS;
 
 var MNT = {
 	nMode: 4,                        // k = 2..5
@@ -215,3 +216,5 @@ MNT.k1 = function (S, dt, t, Tm) {
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = MNT;
+else root.COLMANTLE = MNT;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

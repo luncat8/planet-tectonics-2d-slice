@@ -1,3 +1,4 @@
+(function (root) {
 // rng.js — the one seeded RNG of the run (design §6): 128-bit xorshift, Marsaglia
 // tuple (11,19,8) in 32-bit halves (period 2^128-1, no 64-bit ops in JS). Every draw
 // happens in kernel order, so a run is bit-reproducible from (seed, sliders, params).
@@ -84,3 +85,5 @@ RNG.fbm2 = function (x, y, oct, s) {
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = RNG;
+else root.COLRNG = RNG;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

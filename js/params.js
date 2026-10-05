@@ -1,3 +1,4 @@
+(function (root) {
 // params.js — every tunable constant (design §9), the enums, the seed and the live
 // slider state. Single source of truth: other files read P, never re-derive numbers.
 //
@@ -269,3 +270,5 @@ P.view = {
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = P;
+else root.COLP = P;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

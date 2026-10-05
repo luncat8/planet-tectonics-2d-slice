@@ -1,3 +1,4 @@
+(function (root) {
 // plates.js — K2 plate solve and K3 transport/classifier (design §4.2).
 // A plate is rigid in 1D, so the reference's 3x3 force balance degenerates to a
 // width-weighted mean of the drive over its columns plus the boundary forces acting on
@@ -24,10 +25,10 @@
 // 2.5 mm/yr: the plates moved at the speed of the drive alone (mean 2.7 mm/yr, a tenth of
 // the real thing) and a collision braked nothing it was not already stopping.
 'use strict';
-var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
-var MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.MNT;
-var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COL;
-var SLAB = (typeof module !== 'undefined' && module.exports) ? require('./slab.js') : window.SLAB;
+var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.COLP;
+var MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.COLMANTLE;
+var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COLCOLUMNS;
+var SLAB = (typeof module !== 'undefined' && module.exports) ? require('./slab.js') : window.COLSLAB;
 
 var PLT = {
 	wB: new Float64Array(P.colCap),     // distributed equivalent basal velocity, m/Myr
@@ -173,7 +174,7 @@ PLT.polarity = function (S, i, j, keepPol) {
 	S.edgePol[i] = keepPol !== 0 ? keepPol : (S.colAge[i] >= S.colAge[j] ? -1 : 1);
 };
 
-PLT.classify = function (S, dt) {
+PLT.classify = function (S, dt, kinematic) {
 	var E = P.EDGE, n = S.nCol, i, j, rp, same, prev, prevPol, type, d;
 	for (i = 0; i < n; i++) {
 		j = i + 1 < n ? i + 1 : 0;
@@ -185,6 +186,19 @@ PLT.classify = function (S, dt) {
 		S.edgeRPlate[i] = rp;
 		if (S.colPlate[i] === rp) {
 			S.edge[i] = E.none; S.edgePol[i] = 0; S.edgeAge[i] = 0; S.edgeSlow[i] = 0;
+			continue;
+		}
+		if (kinematic) {
+			// Out-of-plane motion can carry a boundary whose tangential velocity is quiet.
+			// Keep the snapshot's code for an unchanged pair; a new local pair starts neutral.
+			if (!same) {
+				S.edge[i] = E.neutral; S.edgePol[i] = 0;
+				S.edgeAge[i] = 0; S.edgeSlow[i] = 0;
+			} else {
+				S.edgeAge[i] += dt;
+				S.edgeSlow[i] = S.edge[i] === E.collide && Math.abs(S.edgeRelN[i]) < P.vSuture
+					? S.edgeSlow[i] + dt : 0;
+			}
 			continue;
 		}
 		type = this.edgeType(prev, S.edgeRelN[i]);
@@ -224,11 +238,13 @@ PLT.trench = function (S) {
 	}
 };
 
-PLT.k3 = function (S, dt) {
+PLT.k3 = function (S, dt, kinematic) {
 	if (!(dt > 0)) return;
 	COL.transport(S, dt);
-	PLT.classify(S, dt);
+	PLT.classify(S, dt, kinematic);
 	PLT.trench(S);
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = PLT;
+else root.COLPLATES = PLT;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

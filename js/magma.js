@@ -1,12 +1,13 @@
+(function (root) {
 // magma.js — M4 melt supply and chambers (design §4.5, §5.2). Ribbon water is
 // released by slab.js, converted to a bounded wedge melt source, and held in a
 // per-column chamber until it spills as an intrusive sill. Chambers are volumes per
 // unit depth, so changing column widths cannot create or destroy melt.
 'use strict';
-var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
-var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.S;
-var MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.MNT;
-var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COL;
+var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.COLP;
+var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.COLS;
+var MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.COLMANTLE;
+var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COLCOLUMNS;
 
 var MAG = {
 	dx: function (a, b) {
@@ -149,3 +150,5 @@ var MAG = {
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = MAG;
+else root.COLMAGMA = MAG;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

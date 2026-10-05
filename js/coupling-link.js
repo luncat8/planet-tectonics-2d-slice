@@ -1,3 +1,4 @@
+(function (root) {
 // coupling-link.js — 0.4.1 M5 transport ladder (plan §8.2).
 //
 // The protocol is transport-neutral. A channel probes postMessage, falls through to a
@@ -194,3 +195,5 @@ var LINK = (function () {
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = LINK;
+else root.COLLINK = LINK;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

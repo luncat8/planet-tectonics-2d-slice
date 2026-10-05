@@ -1,10 +1,11 @@
+(function (root) {
 // geom.js — the scales of design §1 as pure math + the display LUTs.
 // Rows: h_i = h0*q^i, edge depth y_i = h0*(q^i - 1)/(q - 1) (closed form).
 // Display: u(y) = asinh(y/yLin); screen rows are uniform in u (§1.4).
 // LUTs: lutX/lutY/lutRow* rebuild on view change only; lutCol/lutFrac rebuild every
 // frame by one pointer walk (the columns move, the view LUTs do not).
 'use strict';
-var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
+var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.COLP;
 
 var GEO = {
 	N: 0, q: 0,
@@ -531,3 +532,5 @@ GEO.buildHGrid = function () {
 GEO.init();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = GEO;
+else root.COLGEO = GEO;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

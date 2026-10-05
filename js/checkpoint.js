@@ -1,13 +1,14 @@
+(function (root) {
 // Column checkpoint: upstream's 64-byte header and padded records, slice-local magic.
 // Stores runtime state and full section session envelopes. Bump VERSION for schema changes.
 'use strict';
 var Checkpoint = (function () {
 	var node = typeof module !== 'undefined' && module.exports;
-	var S = node ? require('./state.js') : window.S;
-	var P = node ? require('./params.js') : window.P;
-	var RNG = node ? require('./rng.js') : window.RNG;
-	var MNT = node ? require('./mantle.js') : window.MNT;
-	var SLAB = node ? require('./slab.js') : window.SLAB;
+	var S = node ? require('./state.js') : window.COLS;
+	var P = node ? require('./params.js') : window.COLP;
+	var RNG = node ? require('./rng.js') : window.COLRNG;
+	var MNT = node ? require('./mantle.js') : window.COLMANTLE;
+	var SLAB = node ? require('./slab.js') : window.COLSLAB;
 	var arrays = [], scalars = [], recon = Object.keys(S.recon);
 	var clocks = 'dG t tErupt Tm frame evT event'.split(' ');
 	var dtypes = 'Float64Array Float32Array Int32Array Uint32Array Uint16Array Uint8Array Int8Array'.split(' ');
@@ -20,11 +21,11 @@ var Checkpoint = (function () {
 	var total = data;
 	arrays.forEach(function (k) { total += pad(S[k].byteLength); });
 	function pad(n) { return Math.ceil(n / 8) * 8; }
-	function sim() { return node ? require('./sim.js') : window.SIM; }
-	function secPack() { return node ? require('./section-pack.js') : window.SectionPack; }
-	function secSeed() { return node ? require('./section-seed.js') : window.SEED; }
+	function sim() { return node ? require('./sim.js') : window.COLSIM; }
+	function secPack() { return node ? require('./section-pack.js') : window.COLSECTION; }
+	function secSeed() { return node ? require('./section-seed.js') : window.COLSEED; }
 	function sliceFormat() { return node ? require('../port/slice-format.js') : window.SlicePack; }
-	function coreLog() { return node ? require('./core-log.js') : window.CLOG; }
+	function coreLog() { return node ? require('./core-log.js') : window.COLCORELOG; }
 
 	function code(a) {
 		var i = dtypes.indexOf(a.constructor.name);
@@ -53,7 +54,7 @@ var Checkpoint = (function () {
 
 	return {
 		MAGIC: 0x31435450,
-		VERSION: 2,
+		VERSION: 3,
 		SESSION_FORMAT: 'pgt-slice-session',
 		SESSION_VERSION: 1,
 		b64enc: b64enc,
@@ -258,3 +259,5 @@ var Checkpoint = (function () {
 	};
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = Checkpoint;
+else root.COLCHECKPOINT = Checkpoint;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

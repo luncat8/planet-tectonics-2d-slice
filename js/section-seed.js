@@ -1,3 +1,4 @@
+(function (root) {
 // section-seed.js — 0.4.1 M2: the reconstruction. One verified pack becomes engine state:
 // the cut laid on the section's own columns with an arc-length box filter, then the seeding
 // table of 0.4.1-plan.md §4.3 (stacks, ages, potentials, plate runs, boundaries), the
@@ -16,15 +17,15 @@
 // page, which keeps this file free of SIM and of the DOM.
 'use strict';
 var SEED = (function () {
-	var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
-	var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.S;
-	var RNG = (typeof module !== 'undefined' && module.exports) ? require('./rng.js') : window.RNG;
-	var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COL;
-	var SURF = (typeof module !== 'undefined' && module.exports) ? require('./surface.js') : window.SURF;
-	var PLT = (typeof module !== 'undefined' && module.exports) ? require('./plates.js') : window.PLT;
-	var MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.MNT;
+	var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.COLP;
+	var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.COLS;
+	var RNG = (typeof module !== 'undefined' && module.exports) ? require('./rng.js') : window.COLRNG;
+	var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COLCOLUMNS;
+	var SURF = (typeof module !== 'undefined' && module.exports) ? require('./surface.js') : window.COLSURF;
+	var PLT = (typeof module !== 'undefined' && module.exports) ? require('./plates.js') : window.COLPLATES;
+	var MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.COLMANTLE;
 	var SP = (typeof module !== 'undefined' && module.exports) ? require('../port/slice-format.js') : window.SlicePack;
-	var DEP = (typeof module !== 'undefined' && module.exports) ? require('./deposits.js') : window.Deposits;
+	var DEP = (typeof module !== 'undefined' && module.exports) ? require('./deposits.js') : window.COLDEPOSITS;
 
 	var KM = 1000;
 
@@ -32,7 +33,7 @@ var SEED = (function () {
 	// page (it is the bootstrap's last script), so the sim is asked for when a cut is written
 	// rather than captured at load time — js/checkpoint.js's own rule.
 	function simClock() {
-		var s = (typeof module !== 'undefined' && module.exports) ? require('./sim.js') : window.SIM;
+		var s = (typeof module !== 'undefined' && module.exports) ? require('./sim.js') : window.COLSIM;
 		return s ? s.t : 0;
 	}
 
@@ -476,3 +477,5 @@ var SEED = (function () {
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = SEED;
+else root.COLSEED = SEED;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

@@ -71,6 +71,8 @@ function makeEl(id, dataV) {
 		clientLeft: id === 'c' ? 1 : 0, clientTop: id === 'c' ? 1 : 0,
 		clientWidth: id === 'c' ? 1280 : 0, clientHeight: id === 'c' ? 560 : 0,
 		addEventListener: function (t, f) { this.listeners[t] = f; },
+		removeEventListener: function (t, f) { if (this.listeners[t] === f) delete this.listeners[t]; },
+		appendChild: function () {},
 		getBoundingClientRect: function () {
 			return id === 'c'
 				? { left: 0, top: 0, width: 1282, height: 562 }
@@ -88,29 +90,74 @@ function makeEl(id, dataV) {
 var IDS = idsIn(html);
 var BUTTONS = presetButtons(html);
 
+var moduleGlobals = {
+	'js/params.js': 'COLP', 'js/rng.js': 'COLRNG', 'js/geom.js': 'COLGEO',
+	'js/state.js': 'COLS', 'js/surface.js': 'COLSURF', 'js/columns.js': 'COLCOLUMNS',
+	'js/mantle.js': 'COLMANTLE', 'js/slab.js': 'COLSLAB', 'js/plates.js': 'COLPLATES',
+	'js/magma.js': 'COLMAGMA', 'js/crust.js': 'COLCRUST', 'js/perf.js': 'COLPERF',
+	'js/ui.js': 'COLUI', 'js/deposit-core.js': 'COLDEPOSITCORE', 'js/deposits.js': 'COLDEPOSITS',
+	'js/section-seed.js': 'COLSEED', 'js/checkpoint.js': 'COLCHECKPOINT',
+	'js/section-pack.js': 'COLSECTION', 'js/coupling.js': 'COLCOUPLING',
+	'js/coupling-link.js': 'COLLINK', 'js/core-log.js': 'COLCORELOG',
+	'js/render.js': 'COLRENDER', 'js/sim.js': 'COLSIM'
+};
+
 function load(t0) {
 	var els = {}, i;
 	for (i = 0; i < IDS.length; i++) els[IDS[i]] = makeEl(IDS[i]);
 	var btns = BUTTONS.map(function (v) { return makeEl('preset-' + v, v); });
-	var t = t0 || 0;
+	var t = t0 || 0, rafId = 0, windowListeners = {};
+	var legacy = { P: {}, S: {}, SIM: {}, Params: {}, State: {}, Renderer: {} };
 	var sb = {
 		console: console,
 		performance: { now: function () { return t; } },
-		requestAnimationFrame: function (f) { sb.__next = f; return 1; },
-		addEventListener: function (ty, f) { (sb.__win = sb.__win || {})[ty] = f; },
+		requestAnimationFrame: function (f) { sb.__next = f; return ++rafId; },
+		cancelAnimationFrame: function (id) { if (id === rafId) sb.__next = null; },
+		__win: windowListeners,
+		addEventListener: function (ty, f) { windowListeners[ty] = f; },
+		removeEventListener: function (ty, f) { if (windowListeners[ty] === f) delete windowListeners[ty]; },
 		_t: function () { return t; }, _setT: function (x) { t = x; }
 	};
+	Object.keys(legacy).forEach(function (k) { sb[k] = legacy[k]; });
 	sb.window = sb;
-	sb.document = {
+	var doc = {
+		nodeType: 9,
 		getElementById: function (id) { return els[id] || null; },
-		querySelectorAll: function (sel) { return sel === '#presets button' ? btns : []; }
+		querySelectorAll: function (sel) { return sel === '#presets button' ? btns : []; },
+		createElement: function (tag) { return { tag: tag, value: '', textContent: '', appendChild: function () {} }; },
+		body: { classList: { add: function () {}, remove: function () {} } }
 	};
+	doc.defaultView = sb;
+	sb.document = doc;
+	function makeContainer() {
+		var scopedEls = {}, scopedBtns = BUTTONS.map(function (v) { return makeEl('scoped-' + v, v); });
+		var classes = {}, host = {
+			nodeType: 1, ownerDocument: doc,
+			classList: {
+				add: function (name) { classes[name] = true; },
+				remove: function (name) { delete classes[name]; },
+				contains: function (name) { return !!classes[name]; }
+			},
+			querySelector: function (sel) { return scopedEls[sel.charAt(0) === '#' ? sel.slice(1) : sel] || null; },
+			querySelectorAll: function (sel) { return sel === '#presets button' ? scopedBtns : []; }
+		};
+		IDS.forEach(function (id) { scopedEls[id] = makeEl('scoped-' + id); });
+		return { host: host, els: scopedEls, buttons: scopedBtns };
+	}
 	vm.createContext(sb);
+	var globalAdds = [];
 	for (i = 0; i < order.length; i++) {
+		var before = Object.keys(sb);
 		vm.runInContext(fs.readFileSync(path.join(root, order[i]), 'utf8'), sb,
 			{ filename: order[i] });
+		var after = Object.keys(sb), added = after.filter(function (k) { return before.indexOf(k) < 0; });
+		globalAdds.push([order[i], added]);
 	}
-	return { sb: sb, els: els, btns: btns };
+	var autoStarted = typeof sb.__next === 'function';
+	sb.COLSIM.start(doc);
+	var legacyIntact = Object.keys(legacy).every(function (k) { return sb[k] === legacy[k]; });
+	return { sb: sb, els: els, btns: btns, globalAdds: globalAdds, autoStarted: autoStarted,
+		legacyIntact: legacyIntact, windowListeners: windowListeners, makeContainer: makeContainer };
 }
 
 function frames(L, n) {
@@ -152,125 +199,161 @@ check.ok('the shared format loads before any page module reads it',
 check.ok('the DOM stub found every id in columns.html', IDS.length >= 8, IDS.join(','));
 check.ok('the preset buttons come from columns.html', BUTTONS.length === 4, BUTTONS.join(','));
 var L = load();
-check.ok('page loaded and started the frame loop', typeof L.sb.__next === 'function');
-check.ok('SIM ran a planet reset', L.sb.SIM.t === 0 && L.sb.S.nCol === 512,
-	't=' + L.sb.SIM.t + ' nCol=' + L.sb.S.nCol);
-check.ok('render built its palettes', L.sb.RNDR.palLith.length === 96,
-	'palLith ' + L.sb.RNDR.palLith.length);
-var canvasTopLeft = L.sb.UI.pos(ev('mousemove', { clientX: 1, clientY: 1 }));
-var canvasMid = L.sb.UI.pos(ev('mousemove', { clientX: 641, clientY: 281 }));
+var isolated = L.globalAdds.filter(function (entry) { return moduleGlobals[entry[0]] !== undefined; });
+check.ok('each column module exports exactly its one namespaced global',
+	isolated.length === Object.keys(moduleGlobals).length && isolated.every(function (entry) {
+		return entry[1].length === 1 && entry[1][0] === moduleGlobals[entry[0]];
+	}), isolated.map(function (entry) { return entry[0] + '=' + entry[1].join(','); }).join(' '));
+check.ok('legacy globe and browser names are untouched', L.legacyIntact);
+check.ok('modules do not self-start; columns.html explicitly calls COLSIM.start(document)',
+	!L.autoStarted && /<script>COLSIM\.start\(document\);<\/script>/.test(html));
+check.ok('page host started one frame loop', typeof L.sb.__next === 'function' && L.sb.COLSIM.started);
+var uiBindings = L.sb.COLUI._listeners.length;
+L.sb.COLSIM.stop();
+check.ok('stop cancels the frame and removes page listeners',
+	!L.sb.COLSIM.started && L.sb.__next === null && !Object.keys(L.windowListeners).length &&
+	!L.els.sGeo.listeners.input && !L.els.c.listeners.mousemove);
+L.sb.COLSIM.start(L.sb.document);
+check.ok('restart rebinds each control once',
+	L.sb.COLSIM.started && L.sb.COLUI._listeners.length === uiBindings &&
+	typeof L.sb.__next === 'function');
+var scoped = L.makeContainer();
+L.sb.location = { search: '' };
+L.sb.COLSIM.start(scoped.host);
+check.ok('an element host scopes the engine canvas and controls to its own subtree',
+	L.sb.COLUI.host === scoped.host && L.sb.COLUI.cvs === scoped.els.c &&
+	typeof scoped.els.sGeo.listeners.input === 'function' && !L.els.sGeo.listeners.input &&
+	typeof scoped.els.c.listeners.mousemove === 'function' && !L.els.c.listeners.mousemove);
+L.sb.COLSIM.stop();
+L.sb.location.search = '?start=section';
+L.sb.COLSIM.start(scoped.host);
+check.ok('an element host also scopes section mode and its mode class',
+	L.sb.COLSECTION.host === scoped.host && scoped.host.classList.contains('section-mode') &&
+	typeof scoped.els.sText.listeners.paste === 'function' && !L.els.sText.listeners.paste);
+L.sb.COLSIM.stop();
+L.sb.location.search = '';
+L.sb.COLSIM.start(L.sb.document);
+check.ok('returning to the document host releases container listeners and mode state',
+	!scoped.host.classList.contains('section-mode') && !scoped.els.sText.listeners.paste &&
+	L.sb.COLUI.host === L.sb.document);
+check.ok('SIM ran a planet reset', L.sb.COLSIM.t === 0 && L.sb.COLS.nCol === 512,
+	't=' + L.sb.COLSIM.t + ' nCol=' + L.sb.COLS.nCol);
+check.ok('render built its palettes', L.sb.COLRENDER.palLith.length === 96,
+	'palLith ' + L.sb.COLRENDER.palLith.length);
+var canvasTopLeft = L.sb.COLUI.pos(ev('mousemove', { clientX: 1, clientY: 1 }));
+var canvasMid = L.sb.COLUI.pos(ev('mousemove', { clientX: 641, clientY: 281 }));
 check.ok('canvas pointer mapping excludes its CSS border',
 	canvasTopLeft.x === 0 && canvasTopLeft.y === 0 && canvasMid.x === 640 && canvasMid.y === 280,
 	canvasTopLeft.x + ',' + canvasTopLeft.y + ' / ' + canvasMid.x + ',' + canvasMid.y);
 
 check.section('B. clocks and sliders');
 frames(L, 300);
-check.near('300 frames at 50 kyr/f = 15 Myr', L.sb.SIM.t, 15, 1e-9, 'Myr');
-check.near('Tm(15 Myr)', L.sb.SIM.Tm, 1.592522, 1e-5);
-check.near('eruptive clock = 300 x 1800 s', L.sb.SIM.tErupt, 300 * 1800, 1e-6, 's');
+check.near('300 frames at 50 kyr/f = 15 Myr', L.sb.COLSIM.t, 15, 1e-9, 'Myr');
+check.near('Tm(15 Myr)', L.sb.COLSIM.Tm, 1.592522, 1e-5);
+check.near('eruptive clock = 300 x 1800 s', L.sb.COLSIM.tErupt, 300 * 1800, 1e-6, 's');
 var geo = L.els.sGeo.listeners.input;
 L.els.sGeo.value = '0'; geo.call(L.els.sGeo);
-check.ok('geo slider 0 = pause', L.sb.P.sl.geo === 0 && L.sb.SIM.dG === 0,
-	'sl.geo=' + L.sb.P.sl.geo);
+check.ok('geo slider 0 = pause', L.sb.COLP.sl.geo === 0 && L.sb.COLSIM.dG === 0,
+	'sl.geo=' + L.sb.COLP.sl.geo);
 L.els.sGeo.value = '1000'; geo.call(L.els.sGeo);
-check.near('geo slider max = 200 kyr/f', L.sb.P.sl.geo, 200e3, 1e-6, 'yr');
+check.near('geo slider max = 200 kyr/f', L.sb.COLP.sl.geo, 200e3, 1e-6, 'yr');
 L.els.sGeo.value = '738'; geo.call(L.els.sGeo);
-check.near('geo slider 738 ~ 50 kyr/f', L.sb.P.sl.geo, 50e3, 200, 'yr');
+check.near('geo slider 738 ~ 50 kyr/f', L.sb.COLP.sl.geo, 50e3, 200, 'yr');
 var er = L.els.sErupt.listeners.input;
 L.els.sErupt.value = '1000'; er.call(L.els.sErupt);
-check.near('erupt slider max = 240 min/f', L.sb.P.sl.erupt, 14400, 1e-6, 's');
+check.near('erupt slider max = 240 min/f', L.sb.COLP.sl.erupt, 14400, 1e-6, 's');
 L.els.sErupt.value = '0'; er.call(L.els.sErupt);
-check.ok('erupt slider 0 = pause', L.sb.P.sl.erupt === 0);
+check.ok('erupt slider 0 = pause', L.sb.COLP.sl.erupt === 0);
 
 check.section('C. view: presets, wheel, drag, keys');
-L.sb.UI.preset('ovw');
-check.near('overview keeps the default horizontal scale', L.sb.GEO.kx, L.sb.P.winW / L.sb.P.cw, 1e-12);
-check.near('overview fits the full depth', L.sb.GEO.y(L.sb.GEO.uB), -L.sb.P.R, 1, 'm');
-L.sb.UI.preset('bas');
-check.near('basin preset x40', L.sb.GEO.kx, L.sb.P.winW / L.sb.P.cw / 40, 1e-12);
-L.sb.UI.preset('cru');
-check.near('crust preset x10', L.sb.GEO.kx, L.sb.P.winW / L.sb.P.cw / 10, 1e-12);
-L.sb.UI.preset('def');
-check.near('default preset round trip', L.sb.GEO.kx, L.sb.P.winW / L.sb.P.cw, 1e-12);
+L.sb.COLUI.preset('ovw');
+check.near('overview keeps the default horizontal scale', L.sb.COLGEO.kx, L.sb.COLP.winW / L.sb.COLP.cw, 1e-12);
+check.near('overview fits the full depth', L.sb.COLGEO.y(L.sb.COLGEO.uB), -L.sb.COLP.R, 1, 'm');
+L.sb.COLUI.preset('bas');
+check.near('basin preset x40', L.sb.COLGEO.kx, L.sb.COLP.winW / L.sb.COLP.cw / 40, 1e-12);
+L.sb.COLUI.preset('cru');
+check.near('crust preset x10', L.sb.COLGEO.kx, L.sb.COLP.winW / L.sb.COLP.cw / 10, 1e-12);
+L.sb.COLUI.preset('def');
+check.near('default preset round trip', L.sb.COLGEO.kx, L.sb.COLP.winW / L.sb.COLP.cw, 1e-12);
 
 // the world point under the cursor must survive a wheel zoom and a drag pan
-L.sb.UI.move(ev('mousemove', { clientX: 412, clientY: 234 }));
-var wx = L.sb.GEO.xAt(411), wy = L.sb.GEO.yAt(233);
-L.sb.UI.wheel(ev('wheel', { deltaY: -400, clientX: 412, clientY: 234 }));
+L.sb.COLUI.move(ev('mousemove', { clientX: 412, clientY: 234 }));
+var wx = L.sb.COLGEO.xAt(411), wy = L.sb.COLGEO.yAt(233);
+L.sb.COLUI.wheel(ev('wheel', { deltaY: -400, clientX: 412, clientY: 234 }));
 check.near('wheel keeps the cursor world x fixed',
-	L.sb.GEO.wrapX(L.sb.GEO.xAt(411) - wx + L.sb.P.wrap / 2) - L.sb.P.wrap / 2, 0, 1e-6, 'm');
-check.near('wheel keeps the cursor world y fixed', L.sb.GEO.yAt(233) - wy, 0, 1e-9, 'm');
-check.ok('wheel zoomed in', L.sb.GEO.kx < L.sb.P.winW / L.sb.P.cw, 'kx=' + L.sb.GEO.kx);
-wx = L.sb.GEO.xAt(411); wy = L.sb.GEO.yAt(233);
-L.sb.UI.down(ev('mousedown', { clientX: 412, clientY: 234 }));
-L.sb.UI.move(ev('mousemove', { clientX: 462, clientY: 184 }));
+	L.sb.COLGEO.wrapX(L.sb.COLGEO.xAt(411) - wx + L.sb.COLP.wrap / 2) - L.sb.COLP.wrap / 2, 0, 1e-6, 'm');
+check.near('wheel keeps the cursor world y fixed', L.sb.COLGEO.yAt(233) - wy, 0, 1e-9, 'm');
+check.ok('wheel zoomed in', L.sb.COLGEO.kx < L.sb.COLP.winW / L.sb.COLP.cw, 'kx=' + L.sb.COLGEO.kx);
+wx = L.sb.COLGEO.xAt(411); wy = L.sb.COLGEO.yAt(233);
+L.sb.COLUI.down(ev('mousedown', { clientX: 412, clientY: 234 }));
+L.sb.COLUI.move(ev('mousemove', { clientX: 462, clientY: 184 }));
 L.sb.__win.mouseup(ev('mouseup', {}));
 check.near('drag keeps the grabbed world x fixed',
-	L.sb.GEO.wrapX(L.sb.GEO.xAt(461) - wx + L.sb.P.wrap / 2) - L.sb.P.wrap / 2, 0, 1e-6, 'm');
-check.near('drag keeps the grabbed world y fixed', L.sb.GEO.yAt(183) - wy, 0, 1e-9, 'm');
+	L.sb.COLGEO.wrapX(L.sb.COLGEO.xAt(461) - wx + L.sb.COLP.wrap / 2) - L.sb.COLP.wrap / 2, 0, 1e-6, 'm');
+check.near('drag keeps the grabbed world y fixed', L.sb.COLGEO.yAt(183) - wy, 0, 1e-9, 'm');
 // wheel clamps
-var kx0 = L.sb.GEO.kx;
-for (var i = 0; i < 400; i++) L.sb.UI.wheel(ev('wheel', { deltaY: -120, clientX: 10, clientY: 10 }));
-check.ok('wheel clamps at zoomMax', L.sb.GEO.kx >= L.sb.GEO.kxMin * (1 - 1e-12),
-	'kx=' + L.sb.GEO.kx + ' min=' + L.sb.GEO.kxMin);
-for (i = 0; i < 900; i++) L.sb.UI.wheel(ev('wheel', { deltaY: 120, clientX: 10, clientY: 10 }));
-check.ok('wheel clamps at zoomMin', L.sb.GEO.kx <= L.sb.GEO.kxMax * (1 + 1e-12),
-	'kx=' + L.sb.GEO.kx + ' max=' + L.sb.GEO.kxMax);
-check.ok('zoom clamped and came back', L.sb.GEO.kx > kx0 * 0.1, 'kx=' + L.sb.GEO.kx);
+var kx0 = L.sb.COLGEO.kx;
+for (var i = 0; i < 400; i++) L.sb.COLUI.wheel(ev('wheel', { deltaY: -120, clientX: 10, clientY: 10 }));
+check.ok('wheel clamps at zoomMax', L.sb.COLGEO.kx >= L.sb.COLGEO.kxMin * (1 - 1e-12),
+	'kx=' + L.sb.COLGEO.kx + ' min=' + L.sb.COLGEO.kxMin);
+for (i = 0; i < 900; i++) L.sb.COLUI.wheel(ev('wheel', { deltaY: 120, clientX: 10, clientY: 10 }));
+check.ok('wheel clamps at zoomMin', L.sb.COLGEO.kx <= L.sb.COLGEO.kxMax * (1 + 1e-12),
+	'kx=' + L.sb.COLGEO.kx + ' max=' + L.sb.COLGEO.kxMax);
+check.ok('zoom clamped and came back', L.sb.COLGEO.kx > kx0 * 0.1, 'kx=' + L.sb.COLGEO.kx);
 
 check.section('D. probe, mesh, keys');
-L.sb.UI.preset('def');
-L.sb.UI.move(ev('mousemove', { clientX: 640, clientY: 400 }));
-check.ok('cursor readout built', L.sb.UI.cursor.length > 10, JSON.stringify(L.sb.UI.cursor));
-check.ok('geology probe built', L.sb.RNDR.probe.indexOf('col ') === 0,
-	JSON.stringify(L.sb.RNDR.probe.split('\n')[0]));
+L.sb.COLUI.preset('def');
+L.sb.COLUI.move(ev('mousemove', { clientX: 640, clientY: 400 }));
+check.ok('cursor readout built', L.sb.COLUI.cursor.length > 10, JSON.stringify(L.sb.COLUI.cursor));
+check.ok('geology probe built', L.sb.COLRENDER.probe.indexOf('col ') === 0,
+	JSON.stringify(L.sb.COLRENDER.probe.split('\n')[0]));
 check.ok('probe names a layer or the mantle',
-	/layer \d+\/\d+/.test(L.sb.RNDR.probe) || /mantle/.test(L.sb.RNDR.probe),
-	L.sb.RNDR.probe.split('\n')[3]);
-L.sb.UI.move(ev('mousemove', { clientX: 640, clientY: 2 }));
-check.ok('probe in the sky reads air/water', /air|water/.test(L.sb.RNDR.probe),
-	L.sb.RNDR.probe.split('\n')[3]);
+	/layer \d+\/\d+/.test(L.sb.COLRENDER.probe) || /mantle/.test(L.sb.COLRENDER.probe),
+	L.sb.COLRENDER.probe.split('\n')[3]);
+L.sb.COLUI.move(ev('mousemove', { clientX: 640, clientY: 2 }));
+check.ok('probe in the sky reads air/water', /air|water/.test(L.sb.COLRENDER.probe),
+	L.sb.COLRENDER.probe.split('\n')[3]);
 var key = L.sb.__win.keydown;
 key(ev('keydown', { key: 'm' }));
-check.ok('m toggles the mesh overlay', L.sb.RNDR.mesh === true);
+check.ok('m toggles the mesh overlay', L.sb.COLRENDER.mesh === true);
 key(ev('keydown', { key: 'm' }));
-check.ok('m toggles it back', L.sb.RNDR.mesh === false);
+check.ok('m toggles it back', L.sb.COLRENDER.mesh === false);
 L.btns[2].listeners.click(ev('click', {}));
-check.near('preset button 3 = crust x10', L.sb.GEO.kx, L.sb.P.winW / L.sb.P.cw / 10, 1e-12);
-var g1 = L.sb.P.sl.geo;
+check.near('preset button 3 = crust x10', L.sb.COLGEO.kx, L.sb.COLP.winW / L.sb.COLP.cw / 10, 1e-12);
+var g1 = L.sb.COLP.sl.geo;
 key(ev('keydown', { key: ' ' }));
-check.ok('space pauses the geologic clock', L.sb.P.sl.geo === 0 && L.sb.SIM.dG === 0);
+check.ok('space pauses the geologic clock', L.sb.COLP.sl.geo === 0 && L.sb.COLSIM.dG === 0);
 key(ev('keydown', { key: ' ' }));
-check.near('space resumes it', L.sb.P.sl.geo, g1, 1e-12, 'yr/f');
+check.near('space resumes it', L.sb.COLP.sl.geo, g1, 1e-12, 'yr/f');
 var meshBtn = L.els.bMesh;
 check.ok('the mesh button is wired in columns.html', typeof meshBtn.listeners.click === 'function');
 
 check.section('D2. axis scale sliders and the scale-lines toggle');
-L.sb.UI.preset('def');
+L.sb.COLUI.preset('def');
 check.near('the sliders read zoom 1 back as the middle of their log range',
-	Number(L.els.sHZoom.value), 1000 * L.sb.UI.zToS(1, L.sb.P.zoomMin), 1, 'slider');
+	Number(L.els.sHZoom.value), 1000 * L.sb.COLUI.zToS(1, L.sb.COLP.zoomMin), 1, 'slider');
 var vz = L.els.sVZoom.listeners.input, hz = L.els.sHZoom.listeners.input;
 L.els.sHZoom.value = '1000'; hz.call(L.els.sHZoom);
-check.near('horizontal slider max = zoomMax', L.sb.GEO.zoomX(), L.sb.P.zoomMax, 1e-9);
-check.near('the vertical scale did not move with it', L.sb.GEO.zoomY(), 1, 1e-9);
+check.near('horizontal slider max = zoomMax', L.sb.COLGEO.zoomX(), L.sb.COLP.zoomMax, 1e-9);
+check.near('the vertical scale did not move with it', L.sb.COLGEO.zoomY(), 1, 1e-9);
 L.els.sHZoom.value = '0'; hz.call(L.els.sHZoom);
-check.near('horizontal slider min = zoomMin', L.sb.GEO.zoomX(), L.sb.P.zoomMin, 1e-9);
+check.near('horizontal slider min = zoomMin', L.sb.COLGEO.zoomX(), L.sb.COLP.zoomMin, 1e-9);
 L.els.sVZoom.value = '1000'; vz.call(L.els.sVZoom);
-check.near('vertical slider max = zoomMax', L.sb.GEO.zoomY(), L.sb.P.zoomMax, 1e-9);
+check.near('vertical slider max = zoomMax', L.sb.COLGEO.zoomY(), L.sb.COLP.zoomMax, 1e-9);
 L.els.sVZoom.value = '0'; vz.call(L.els.sVZoom);
-check.near('vertical slider min = the whole planet', L.sb.GEO.zoomY(), L.sb.GEO.zoomYMin, 1e-9);
-L.sb.UI.preset('cru');
+check.near('vertical slider min = the whole planet', L.sb.COLGEO.zoomY(), L.sb.COLGEO.zoomYMin, 1e-9);
+L.sb.COLUI.preset('cru');
 check.near('a preset drives both sliders back', Number(L.els.sVZoom.value),
-	1000 * L.sb.UI.zToS(10, L.sb.GEO.zoomYMin), 1, 'slider');
+	1000 * L.sb.COLUI.zToS(10, L.sb.COLGEO.zoomYMin), 1, 'slider');
 check.ok('the scale readout is built', /km\/px/.test(L.els.vZoom.textContent),
 	JSON.stringify(L.els.vZoom.textContent));
-check.ok('scale lines are on by default, as columns.html says', L.sb.RNDR.showScale === true);
+check.ok('scale lines are on by default, as columns.html says', L.sb.COLRENDER.showScale === true);
 L.els.cScale.checked = false;
 L.els.cScale.listeners.change.call(L.els.cScale);
-check.ok('the checkbox turns the scale lines off', L.sb.RNDR.showScale === false);
+check.ok('the checkbox turns the scale lines off', L.sb.COLRENDER.showScale === false);
 key(ev('keydown', { key: 'g' }));
 check.ok('g turns them back on and re-ticks the checkbox',
-	L.sb.RNDR.showScale === true && L.els.cScale.checked === true);
+	L.sb.COLRENDER.showScale === true && L.els.cScale.checked === true);
 
 check.section('D3. the toggle highlight: one attribute per switch');
 check.ok('columns.html carries the lit rule', /button\[aria-pressed="true"\]/.test(html));
@@ -279,41 +362,41 @@ check.ok('the bar ships its state in the markup (a browser shows it before ui.js
 	(html.match(/<button data-v="[a-z]+" aria-pressed="(true|false)">/g) || []).length === 4,
 	'mesh ' + attrsIn('bMesh')['aria-pressed'] + ', 4 preset buttons');
 function lit(el) { return el.attrs['aria-pressed'] === 'true'; }
-L.sb.UI.preset('def');
+L.sb.COLUI.preset('def');
 check.ok('the startup preset is the lit one, and only it',
 	lit(L.btns[0]) && !lit(L.btns[1]) && !lit(L.btns[2]) && !lit(L.btns[3]),
 	L.btns.map(function (b) { return b.attrs['aria-pressed']; }).join(','));
 L.btns[2].listeners.click(ev('click', {}));
 check.ok('a preset click lights it and puts the previous one out', lit(L.btns[2]) && !lit(L.btns[0]));
-L.sb.UI.wheel(ev('wheel', { deltaY: -120, clientX: 400, clientY: 300 }));
+L.sb.COLUI.wheel(ev('wheel', { deltaY: -120, clientX: 400, clientY: 300 }));
 check.ok('a wheel zoom puts the whole preset group out',
 	!lit(L.btns[0]) && !lit(L.btns[1]) && !lit(L.btns[2]) && !lit(L.btns[3]));
 key(ev('keydown', { key: '2' }));
 check.ok('a preset key lights its button', lit(L.btns[1]));
 L.els.sHZoom.value = '300'; L.els.sHZoom.listeners.input.call(L.els.sHZoom);
 check.ok('one axis slider leaves the preset too', !lit(L.btns[1]));
-L.sb.UI.preset('bas');
-L.sb.UI.down(ev('mousedown', { clientX: 100, clientY: 100 }));
-L.sb.UI.move(ev('mousemove', { clientX: 140, clientY: 100 }));
+L.sb.COLUI.preset('bas');
+L.sb.COLUI.down(ev('mousedown', { clientX: 100, clientY: 100 }));
+L.sb.COLUI.move(ev('mousemove', { clientX: 140, clientY: 100 }));
 L.sb.__win.mouseup(ev('mouseup', {}));
 check.ok('a drag leaves the preset too', !lit(L.btns[3]));
 L.els.bMesh.listeners.click(ev('click', {}));
-check.ok('the mesh button lights while the overlay is on', lit(L.els.bMesh) && L.sb.RNDR.mesh === true);
+check.ok('the mesh button lights while the overlay is on', lit(L.els.bMesh) && L.sb.COLRENDER.mesh === true);
 key(ev('keydown', { key: 'm' }));
-check.ok('the m key puts it out and the button with it', !lit(L.els.bMesh) && L.sb.RNDR.mesh === false);
+check.ok('the m key puts it out and the button with it', !lit(L.els.bMesh) && L.sb.COLRENDER.mesh === false);
 key(ev('keydown', { key: 'g' }));
 check.ok('g puts the scale lines out and unticks the box',
-	L.sb.RNDR.showScale === false && L.els.cScale.checked === false);
+	L.sb.COLRENDER.showScale === false && L.els.cScale.checked === false);
 key(ev('keydown', { key: 'g' }));
 check.ok('g turns them back on and re-ticks the box',
-	L.sb.RNDR.showScale === true && L.els.cScale.checked === true);
+	L.sb.COLRENDER.showScale === true && L.els.cScale.checked === true);
 
 check.section('E. determinism');
 function runFresh(seed, n) {
 	var A = load();
-	A.sb.P.seed = seed;
-	A.sb.SIM.reset();
-	return A.sb.SIM.run(n) + '|' + A.sb.RNG.state().join(',');
+	A.sb.COLP.seed = seed;
+	A.sb.COLSIM.reset();
+	return A.sb.COLSIM.run(n) + '|' + A.sb.COLRNG.state().join(',');
 }
 var h1 = runFresh(7, 1000), h2 = runFresh(7, 1000), h3 = runFresh(8, 1000);
 check.ok('two fresh 1000-frame runs are bit-identical', h1 === h2, h1 + ' vs ' + h2);

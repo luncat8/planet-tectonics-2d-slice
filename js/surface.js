@@ -1,9 +1,10 @@
+(function (root) {
 // surface.js — isostatic elevation and the column profile (design §4.6, reference §7.1
 // ported to the 1D line: neighbours are the two adjacent columns). M3 adds erosion,
 // one-hop routing and deposition (design §4.6, reference §7.3). Headless, allocation-free.
 'use strict';
-var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
-var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.S;
+var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.COLP;
+var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.COLS;
 
 var SURF = {};
 
@@ -33,7 +34,7 @@ SURF.profile = function (dt) {
 		// 28850 km on seed 5, with no event there)
 		if (S.colGhost[i]) continue;
 		S.z[i] = this.elev(i);
-		S.wet[i] = S.z[i] < 0 ? 1 : 0;
+		S.wet[i] = S.z[i] < S.seaLevel ? 1 : 0;
 		S.hDraw[i] = S.hTot[i];
 	}
 	if (n < 3) return;
@@ -121,7 +122,7 @@ SURF.k6 = function (st, dt, t) {
 	var LC = P.layerCap;
 	var FLAG_WET = P.FLAG.wet, FLAG_UNCONF = P.FLAG.unconf;
 	var LITH_SED = P.LITH.sed;
-	var Cmod = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COL;
+	var Cmod = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COLCOLUMNS;
 	var CLASS = Cmod.CLASS;
 	// local aliases
 	var colNL = st.colNL, layTh = st.layTh, layLi = st.layLi, layFl = st.layFl, layAg = st.layAg;
@@ -345,7 +346,7 @@ SURF.k6 = function (st, dt, t) {
 	for (i = 0; i < n; i++) if (changed[i]) {
 		if (st.colGhost[i]) { slopeDirty[i] = 1; continue; }   // morph() owns a sliver
 		z[i] = SURF.elev(i);
-		wet[i] = z[i] < 0 ? 1 : 0;
+		wet[i] = z[i] < st.seaLevel ? 1 : 0;
 		st.hDraw[i] = st.hTot[i];
 		slopeDirty[i] = 1;
 		var im2 = i > 0 ? i - 1 : n - 1;
@@ -365,3 +366,5 @@ SURF.k6 = function (st, dt, t) {
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = SURF;
+else root.COLSURF = SURF;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

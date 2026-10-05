@@ -162,6 +162,7 @@ function makeEl(id) {
 		width: id === 'c' ? 1280 : 0, height: id === 'c' ? 560 : 0,
 		clientWidth: id === 'c' ? 1280 : 0, clientHeight: id === 'c' ? 560 : 0,
 		addEventListener: function (t, f) { this.listeners[t] = f; },
+		removeEventListener: function (t, f) { if (this.listeners[t] === f) delete this.listeners[t]; },
 		getBoundingClientRect: function () { return { left: 0, top: 0, width: 1280, height: 560 }; },
 		getContext: function () { return this.__ctx; },
 		getAttribute: function (nn) { return nn in this.attrs ? this.attrs[nn] : null; },
@@ -175,31 +176,37 @@ function load(search) {
 		createImageData: function (w, h) { return { width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }; },
 		measureText: function (s) { return { width: String(s).length * 6 }; }
 	};
+	var rafId = 0;
 	var sb = {
 		console: console,
 		performance: { now: function () { return 0; } },
-		requestAnimationFrame: function (f) { sb.__next = f; return 1; },
+		requestAnimationFrame: function (f) { sb.__next = f; return ++rafId; },
+		cancelAnimationFrame: function (id) { if (id === rafId) sb.__next = null; },
 		addEventListener: function () {},
+		removeEventListener: function () {},
 		location: { search: search || '' },
 		FileReader: function () {}
 	};
 	sb.window = sb;
 	sb.document = {
+		nodeType: 9,
 		getElementById: function (id) { return els[id] || null; },
 		querySelectorAll: function () { return []; },
 		createElement: function (tag) { return { tag: tag, value: '', textContent: '', children: [], appendChild: function (c) { this.children.push(c); } }; },
-		body: { classList: { add: function () {} } }
+		body: { classList: { add: function () {}, remove: function () {} } }
 	};
+	sb.document.defaultView = sb;
 	vm.createContext(sb);
 	for (i = 0; i < order.length; i++) {
 		vm.runInContext(fs.readFileSync(path.join(root, order[i]), 'utf8'), sb, { filename: order[i] });
 	}
+	sb.COLSIM.start(sb.document);
 	return { sb: sb, els: els };
 }
 
 check.section('C. ?pack= opens a real transect');
 var L = load('?start=section&pack=earth-100Ma-gc0&seed=7');
-var SPK = L.sb.SectionPack, hud = L.els.hud.textContent;
+var SPK = L.sb.COLSECTION, hud = L.els.hud.textContent;
 check.ok('the bundled id loads and reconstructs a world',
 	SPK.pack !== null && SPK.world !== null && SPK.origin === 'earth-100Ma-gc0', SPK.msg);
 check.ok('the HUD says where the cut came from: both resolutions, the arc, the epoch',
@@ -209,8 +216,8 @@ check.ok('the HUD says where the cut came from: both resolutions, the arc, the e
 check.ok('the HUD carries the cut\'s own checksum', hud.indexOf(BUNDLES['earth-100Ma-gc0']) >= 0,
 	'checksum ' + BUNDLES['earth-100Ma-gc0']);
 check.ok('the section holds the cut\'s crust: seeded mass is the cut\'s mass to the ledger',
-	L.sb.SEED.seedMass > 0 && Math.abs(L.sb.SEED.seedMass - L.sb.SEED.cutMass) / L.sb.SEED.cutMass < 0.01,
-	Math.round(L.sb.SEED.seedMass) + ' of ' + Math.round(L.sb.SEED.cutMass) + ' m3/m');
+	L.sb.COLSEED.seedMass > 0 && Math.abs(L.sb.COLSEED.seedMass - L.sb.COLSEED.cutMass) / L.sb.COLSEED.cutMass < 0.01,
+	Math.round(L.sb.COLSEED.seedMass) + ' of ' + Math.round(L.sb.COLSEED.cutMass) + ' m3/m');
 check.ok('the Cut-from select lists every bundled pack',
 	L.els.sPick.children.length === 3 &&
 		L.els.sPick.children.map(function (o) { return o.value; }).join(',') ===
@@ -218,18 +225,18 @@ check.ok('the Cut-from select lists every bundled pack',
 	L.els.sPick.children.map(function (o) { return o.value; }).join(','));
 var L2 = load('?start=section&pack=earth-100Ma-gc0&seed=7');
 check.ok('the same cut and seed lay the same section twice (one state, one hash)',
-	L2.sb.S.hash() === L.sb.S.hash(), L.sb.S.hash());
+	L2.sb.COLS.hash() === L.sb.COLS.hash(), L.sb.COLS.hash());
 var L3 = load('?start=section&pack=earth-100Ma-gc1&seed=7');
 check.ok('the second transect (Tethys, 437 samples) lays a different section',
-	L3.sb.SectionPack.pack !== null && L3.sb.S.hash() !== L.sb.S.hash(),
-	'L ' + L.sb.S.hash() + ' vs ' + L3.sb.S.hash());
+	L3.sb.COLSECTION.pack !== null && L3.sb.COLS.hash() !== L.sb.COLS.hash(),
+	'L ' + L.sb.COLS.hash() + ' vs ' + L3.sb.COLS.hash());
 var L4 = load('?start=section&pack=earth-gc0&seed=7');
 check.ok('the present-day transect opens the same way, at t 0',
-	L4.sb.SectionPack.pack !== null && /t 0 Myr · earth/.test(L4.els.hud.textContent),
+	L4.sb.COLSECTION.pack !== null && /t 0 Myr · earth/.test(L4.els.hud.textContent),
 	L4.els.hud.textContent.split('\n').slice(0, 2).join(' | '));
 var L5 = load('?start=section&pack=not-a-bundle');
 check.ok('an unknown id is a visible refusal on the real page too',
-	L5.sb.SectionPack.pack === null && /no bundled pack 'not-a-bundle'/.test(L5.els.sMsg.textContent),
+	L5.sb.COLSECTION.pack === null && /no bundled pack 'not-a-bundle'/.test(L5.els.sMsg.textContent),
 	L5.els.sMsg.textContent);
 
 check.done();

@@ -1,3 +1,4 @@
+(function (root) {
 // render.js — the section view (design §7). Hybrid: a per-pixel body raster written
 // into an ImageData word buffer, plus a canvas 2D overlay.
 // Headless core: body(S, px, w, h) writes into a caller-supplied buffer and touches no
@@ -5,10 +6,13 @@
 // Only init(), present() and the overlay touch the canvas. No per-frame allocation or
 // string building: labels come from view-change or mousemove time.
 'use strict';
-var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
-var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.GEO;
-var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.S;
-var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COL;
+var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.COLP;
+var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.COLGEO;
+var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.COLS;
+var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COLCOLUMNS;
+var node = typeof module !== 'undefined' && module.exports;
+
+function ui() { return node ? require('./ui.js') : root.COLUI; }
 
 var RNDR = {
 	ctx: null, img: null, px: null, w: 0, h: 0,
@@ -463,20 +467,20 @@ RNDR.overlayGrid = function () {
 };
 
 RNDR.overlayCursor = function () {
-	if (UI.mx < 0 || UI.my < 0 || UI.mx >= P.cw || UI.my >= P.ch) return;
+	if (ui().mx < 0 || ui().my < 0 || ui().mx >= P.cw || ui().my >= P.ch) return;
 	var c = this.ctx;
 	c.beginPath();
-	c.moveTo(UI.mx, 0); c.lineTo(UI.mx, P.ch);
-	c.moveTo(0, UI.my); c.lineTo(P.cw, UI.my);
+	c.moveTo(ui().mx, 0); c.lineTo(ui().mx, P.ch);
+	c.moveTo(0, ui().my); c.lineTo(P.cw, ui().my);
 	c.lineWidth = 1;
 	c.strokeStyle = 'rgba(255,255,255,0.22)';
 	c.stroke();
 	c.font = '10px monospace';
-	if (UI.cursor) {
+	if (ui().cursor) {
 		c.fillStyle = 'rgba(255,255,255,0.85)';
-		var tx = UI.mx + 8;
-		if (tx > P.cw - 230) tx = UI.mx - 230;
-		c.fillText(UI.cursor, tx, Math.max(10, UI.my - 8));
+		var tx = ui().mx + 8;
+		if (tx > P.cw - 230) tx = ui().mx - 230;
+		c.fillText(ui().cursor, tx, Math.max(10, ui().my - 8));
 	}
 	var lines = this.probeLines, nl = lines.length, i;
 	if (!nl) return;
@@ -565,3 +569,5 @@ RNDR.redraw = function () {
 RNDR.buildPalette();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = RNDR;
+else root.COLRENDER = RNDR;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

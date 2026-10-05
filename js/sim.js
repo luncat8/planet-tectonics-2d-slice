@@ -1,3 +1,4 @@
+(function (root) {
 // sim.js — the frame pipeline (design §3). K0 runs inline (clocks, Tm, the 1 Myr event
 // cadence); K1..K9 sit in slots and fill in across M2..M6:
 //   K1 mantle/plumes/fan T   K2 plate solve   K3 move columns + boundaries
@@ -6,18 +7,56 @@
 // Geologic time is Myr here: the slider is yr/frame and is converted on entry, so no
 // kernel ever multiplies a Myr rate by a yr step (design §9 one unit system).
 'use strict';
-var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
-var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.S;
-var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.GEO;
-var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COL;
-var MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.MNT;
-var SLAB = (typeof module !== 'undefined' && module.exports) ? require('./slab.js') : window.SLAB;
-var PLT = (typeof module !== 'undefined' && module.exports) ? require('./plates.js') : window.PLT;
-var MAG = (typeof module !== 'undefined' && module.exports) ? require('./magma.js') : window.MAG;
-var CRU = (typeof module !== 'undefined' && module.exports) ? require('./crust.js') : window.CRU;
-var SURF = (typeof module !== 'undefined' && module.exports) ? require('./surface.js') : window.SURF;
-var SEC = (typeof module !== 'undefined' && module.exports) ? require('./section-pack.js') : window.SectionPack;
+var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.COLP;
+var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.COLS;
+var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.COLGEO;
+var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COLCOLUMNS;
+var MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.COLMANTLE;
+var SLAB = (typeof module !== 'undefined' && module.exports) ? require('./slab.js') : window.COLSLAB;
+var PLT = (typeof module !== 'undefined' && module.exports) ? require('./plates.js') : window.COLPLATES;
+var MAG = (typeof module !== 'undefined' && module.exports) ? require('./magma.js') : window.COLMAGMA;
+var CRU = (typeof module !== 'undefined' && module.exports) ? require('./crust.js') : window.COLCRUST;
+var SURF = (typeof module !== 'undefined' && module.exports) ? require('./surface.js') : window.COLSURF;
+var SEC = (typeof module !== 'undefined' && module.exports) ? require('./section-pack.js') : window.COLSECTION;
+var UI = (typeof module !== 'undefined' && module.exports) ? require('./ui.js') : root.COLUI;
+var RNDR = (typeof module !== 'undefined' && module.exports) ? require('./render.js') : root.COLRENDER;
+var PERF = (typeof module !== 'undefined' && module.exports) ? require('./perf.js') : root.COLPERF;
+var node = typeof module !== 'undefined' && module.exports;
 COL.slab = SLAB;
+
+var active = false, activeHost = null, activeWindow = null, frameId = 0;
+
+function hostDocument(host) {
+	if (!host) return root.document || null;
+	if (host.nodeType === 9) return host;
+	return host.ownerDocument || null;
+}
+
+function hostWindow(host, doc) {
+	if (host && host.window === host) return host;
+	return doc && doc.defaultView ? doc.defaultView : root;
+}
+
+function hostElement(host, doc, id) {
+	var scope = host || doc;
+	if (!scope) return null;
+	if (scope.getElementById) return scope.getElementById(id);
+	return scope.querySelector ? scope.querySelector('#' + id) : null;
+}
+
+function frame(now) {
+	if (!active) return;
+	var win = activeWindow;
+	var a = win.performance && win.performance.now ? win.performance.now() : Date.now();
+	if (SEC.mode) SEC.frame(); else SIM.step();
+	var b = win.performance && win.performance.now ? win.performance.now() : Date.now();
+	if (SEC.mode) SEC.draw(); else RNDR.redraw();
+	var c = win.performance && win.performance.now ? win.performance.now() : Date.now();
+	PERF.msSim = PERF.f(PERF.msSim, b - a);
+	PERF.msDraw = PERF.f(PERF.msDraw, c - b);
+	if (PERF.tick(now)) { if (SEC.mode) SEC.hud(); else UI.updateHud(); }
+	frameId = win.requestAnimationFrame(frame);
+}
 
 function simK1(st, dt, t, Tm) {
 	if (!(dt > 0)) return;
@@ -31,10 +70,14 @@ function simK2(st, dt, t, Tm) {
 	PLT.k2(st, dt, t, Tm);
 }
 
+function simK3(st, dt) {
+	PLT.k3(st, dt, !!SIM.kinematic);
+}
+
 var SIM = {
 	// kernel slots; each is (state, dtGeo Myr, t Myr, Tm) and must no-op at dtGeo = 0
-	k: [null, simK1, simK2, PLT.k3, function (st, dt, t, Tm) {
-		if (COL.k4(st, dt, t, Tm)) { PLT.classify(st, 0); PLT.trench(st); }
+	k: [null, simK1, simK2, simK3, function (st, dt, t, Tm) {
+		if (COL.k4(st, dt, t, Tm)) { PLT.classify(st, 0, !!SIM.kinematic); PLT.trench(st); }
 	}, CRU.k5, SURF.k6, null, null, null],
 	dG: 0,          // Myr per frame, from the plates slider
 	kinematic: null, // optional C3 K2 owner; returns true when it supplied plate velocities
@@ -42,8 +85,49 @@ var SIM = {
 	tErupt: 0,      // s, the eruptive clock (the only seconds quantity)
 	Tm: 0, frame: 0, evT: 0, event: 0,
 	onEvent: COL.events,  // post-K4 cadence hook: split/suture
+	started: false,
 
 	add: function (slot, fn) { this.k[slot] = fn; },
+
+	start: function (host) {
+		if (active && (!host || host === activeHost)) return this;
+		if (active) this.stop();
+		var target = host || root.document;
+		var doc = hostDocument(target);
+		var win = hostWindow(target, doc);
+		if (!doc || !win || !win.requestAnimationFrame) throw new Error('COLSIM.start needs a DOM host and requestAnimationFrame');
+		if (!hostElement(target, doc, 'c')) throw new Error('COLSIM host is missing the canvas #c');
+		activeHost = target;
+		activeWindow = win;
+		if (SEC.sectionStart(target)) {
+			SEC.init(target);
+		} else {
+			SEC.stop();
+			this.reset();
+			UI.init(target);
+			RNDR.init(hostElement(target, doc, 'c'));
+			GEO.setPreset('def');
+			UI.afterView();
+		}
+		active = true;
+		this.started = true;
+		frameId = win.requestAnimationFrame(frame);
+		return this;
+	},
+
+	stop: function () {
+		if (!active) return this;
+		active = false;
+		this.started = false;
+		if (frameId && activeWindow && activeWindow.cancelAnimationFrame) activeWindow.cancelAnimationFrame(frameId);
+		frameId = 0;
+		if (SEC.stop) SEC.stop();
+		if (UI.stop) UI.stop();
+		this.dG = 0;
+		activeHost = null;
+		activeWindow = null;
+		return this;
+	},
 
 	// both clocks from the sliders: yr/frame in, Myr/frame out
 	setGeo: function (yrPerFrame) { this.dG = yrPerFrame / 1e6; },
@@ -85,7 +169,7 @@ var SIM = {
 			if (f) f(S, this.dG, this.t, this.Tm);
 			if (i === 4 && this.dG > 0 && this.onEvent) {
 				for (var e = 0; e < this.event; e++) {
-					if (this.onEvent(S, this.dG)) { PLT.classify(S, 0); PLT.trench(S); }
+					if (this.onEvent(S, this.dG)) { PLT.classify(S, 0, !!this.kinematic); PLT.trench(S); }
 				}
 			}
 		}
@@ -98,31 +182,6 @@ var SIM = {
 	}
 };
 
-if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-	// section mode (?start=section): the page is a view of a cut, not the engine's world —
-	// no planet reset, no engine clock; the canvas is the raw strip until M2 seeds the
-	// engine from the pack (plan §4.4: both run modes start stopped and say so)
-	if (SEC.sectionStart()) {
-		SEC.init();
-	} else {
-		SIM.reset();
-		UI.init();
-		RNDR.init(document.getElementById('c'));
-		GEO.setPreset('def');
-		UI.afterView();
-	}
-	function tick(now) {
-		var a = performance.now();
-		if (SEC.mode) SEC.frame(); else SIM.step();
-		var b = performance.now();
-		if (SEC.mode) SEC.draw(); else RNDR.redraw();
-		var c = performance.now();
-		PERF.msSim = PERF.f(PERF.msSim, b - a);
-		PERF.msDraw = PERF.f(PERF.msDraw, c - b);
-		if (PERF.tick(now)) { if (SEC.mode) SEC.hud(); else UI.updateHud(); }
-		window.requestAnimationFrame(tick);
-	}
-	window.requestAnimationFrame(tick);
-}
-
 if (typeof module !== 'undefined' && module.exports) module.exports = SIM;
+else root.COLSIM = SIM;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

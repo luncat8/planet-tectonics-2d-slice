@@ -32,8 +32,8 @@
 	/* section mode (?start=section): the engine bar is the cut's bar. #slice is hidden by
 	   the CSS, so the shipped markup is honest before any script runs */
 	#slice { display: none; }
-	body.section-mode #bar > label, body.section-mode #presets, body.section-mode #bMesh { display: none; }
-	body.section-mode #slice { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; width: 100%; box-sizing: border-box; }
+	.section-mode #bar > label, .section-mode #presets, .section-mode #bMesh { display: none; }
+	.section-mode #slice { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; width: 100%; box-sizing: border-box; }
 	#slice label { white-space: nowrap; }
 	#slice textarea { width: 660px; height: 42px; background: #0a0f18; color: #9aa7bd; border: 1px solid #2a3550; font: 10px/1.4 monospace; padding: 3px 4px; resize: vertical; }
 	#slice input[type=file] { font: 11px monospace; color: #9aa7bd; }
@@ -121,5 +121,6 @@
 <script src="js/core-log.js"></script>
 <script src="js/render.js"></script>
 <script src="js/sim.js"></script>
+<script>COLSIM.start(document);</script>
 </body>
 </html>

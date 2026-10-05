@@ -1,3 +1,4 @@
+(function (root) {
 // section-pack.js — 0.4.1: the cut, this side. One entry point for every transport: a pasted
 // blob, a loaded .json file and a bundled ?pack= id all run through the same normalize →
 // quantise → validate → verify path on the shared port/slice-format.js (0.4.1-plan.md §4.1),
@@ -12,23 +13,43 @@
 'use strict';
 var SectionPack = (function () {
 	var SP = (typeof module !== 'undefined' && module.exports) ? require('../port/slice-format.js') : window.SlicePack;
-	var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
-	var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.S;
-	var SEED = (typeof module !== 'undefined' && module.exports) ? require('./section-seed.js') : window.SEED;
-	var CP = (typeof module !== 'undefined' && module.exports) ? require('./checkpoint.js') : window.Checkpoint;
+	var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.COLP;
+	var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.COLS;
+	var SEED = (typeof module !== 'undefined' && module.exports) ? require('./section-seed.js') : window.COLSEED;
+	var CP = (typeof module !== 'undefined' && module.exports) ? require('./checkpoint.js') : window.COLCHECKPOINT;
+	var node = typeof module !== 'undefined' && module.exports;
 
-	// sim.js is the last script on the page, so the page globals (UI, RNDR, GEO, SIM) are reached
-	// at call time through this and never captured at load — which is also what lets the module
-	// require cleanly under node, where they do not exist.
-	function page() { return typeof document === 'undefined' || typeof window === 'undefined' ? null : window; }
+	function page() { return node || !root.document ? null : root; }
+	function hostDocument(host) {
+		if (!host) return root.document || null;
+		if (host.nodeType === 9) return host;
+		return host.ownerDocument || null;
+	}
+	function hostWindow(host, doc) {
+		if (host && host.window === host) return host;
+		return doc && doc.defaultView ? doc.defaultView : root;
+	}
+	function hostElement(host, id) {
+		if (!host) return null;
+		if (host.getElementById) return host.getElementById(id);
+		return host.querySelector ? host.querySelector('#' + id) : null;
+	}
+	function removeListeners(list) {
+		var i, e;
+		for (i = 0; i < list.length; i++) {
+			e = list[i];
+			if (e[0].removeEventListener) e[0].removeEventListener(e[1], e[2], e[3]);
+		}
+		list.length = 0;
+	}
 	// the ladder and the observation share one page rule: the page is where a snapshot becomes
 	// a state, a rung becomes a HUD line and a silent link becomes unsynced (plan §8.1). The
 	// observation side never mutates the state (plan §8.5).
 	function coupling() {
-		return (typeof module !== 'undefined' && module.exports) ? require('./coupling.js') : window.COUP;
+		return (typeof module !== 'undefined' && module.exports) ? require('./coupling.js') : window.COLCOUPLING;
 	}
 	function coreLog() {
-		return (typeof module !== 'undefined' && module.exports) ? require('./core-log.js') : window.CLOG;
+		return (typeof module !== 'undefined' && module.exports) ? require('./core-log.js') : window.COLCORELOG;
 	}
 	// a pinned clock is a waiting one; a waiting one that keeps waiting has been left behind.
 	// 240 frames is seconds of a still label at rAF rate — long enough for a hiccup, short
@@ -101,19 +122,30 @@ var SectionPack = (function () {
 		link: null,
 		linkRung: 'clipboard/file',
 		linkStage: 'idle',
+		host: null, doc: null, win: null, modeRoot: null,
+		listeners: [],
 		cvs: null, ctx: null, hudEl: null, sliceEl: null, msgEl: null,
 		textEl: null, fileEl: null, pickEl: null, rawBtn: null, ovlBtn: null, runBtn: null,
 		saveBtn: null, loadEl: null, obsBtn: null, obsCopyBtn: null, obsOutEl: null,
 		view: false, cache: null,
 
-		// ---------------------------------------------------------------- the URL
-		sectionStart: function () {
-			if (typeof location === 'undefined' || !location || !location.search) return false;
-			return /[?&]start=section\b/.test(location.search);
+		listen: function (target, type, fn, opts) {
+			if (!target || !target.addEventListener) return;
+			target.addEventListener(type, fn, opts);
+			this.listeners.push([target, type, fn, opts]);
 		},
-		urlParams: function () {
-			var q = {}, s = (typeof location !== 'undefined' && location && location.search)
-				? location.search.replace(/^\?/, '') : '';
+		unlisten: function () { removeListeners(this.listeners); },
+
+		// ---------------------------------------------------------------- the URL
+		sectionStart: function (host) {
+			var doc = hostDocument(host || this.host), win = hostWindow(host || this.host, doc);
+			var search = win && win.location ? win.location.search : '';
+			return !!search && /[?&]start=section\b/.test(search);
+		},
+		urlParams: function (host) {
+			var doc = hostDocument(host || this.host), win = hostWindow(host || this.host, doc);
+			var search = win && win.location ? win.location.search : '';
+			var q = {}, s = search ? search.replace(/^\?/, '') : '';
 			if (!s) return q;
 			var pairs = s.split('&'), i, kv, k, v;
 			for (i = 0; i < pairs.length; i++) {
@@ -134,10 +166,10 @@ var SectionPack = (function () {
 			return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : dflt;
 		},
 
-		// bundled packs: M4's generated js/data/section-*.js set window.SECTION_PACKS; until
-		// then the resolver is there and finds nothing, which is the honest answer.
+		// Bundled data is the sole shared table; page modules do not create implicit globals.
 		bundled: function (id) {
-			return (typeof SECTION_PACKS !== 'undefined' && SECTION_PACKS && SECTION_PACKS[id]) || null;
+			var packs = root.SECTION_PACKS;
+			return packs && packs[id] || null;
 		},
 
 		// ---------------------------------------------------------------- loading
@@ -223,7 +255,7 @@ var SectionPack = (function () {
 			var bad = c.apply(S, msg, {
 				pack: this.pack, nCut: n,
 				cellKm: this.pack.path.cellKm,
-				tNow: g2 ? g2.SIM.t : undefined
+				tNow: g2 ? g2.COLSIM.t : undefined
 			});
 			if (bad) { this.refuse(bad); throw new Error(bad); }
 			this.syncTMyr = msg.tMyr;
@@ -263,10 +295,10 @@ var SectionPack = (function () {
 			var bad = SEED.layout(p, { seed: P.seed, t: t0, Tm: Tm });
 			if (bad) { this.refuse(bad); return bad; }
 			if (g) {
-				g.SIM.t = t0;
-				g.SIM.cool();
-				g.SIM.tErupt = 0; g.SIM.frame = 0; g.SIM.evT = 0; g.SIM.event = 0;
-				g.SIM.setGeo(0);                       // both modes start stopped (§4.4)
+				g.COLSIM.t = t0;
+				g.COLSIM.cool();
+				g.COLSIM.tErupt = 0; g.COLSIM.frame = 0; g.COLSIM.evT = 0; g.COLSIM.event = 0;
+				g.COLSIM.setGeo(0);                       // both modes start stopped (§4.4)
 			}
 			this.t0 = t0;
 			this.running = false;
@@ -291,119 +323,118 @@ var SectionPack = (function () {
 		},
 
 		// ---------------------------------------------------------------- section mode
-		init: function () {
+		init: function (host) {
+			this.unlisten();
+			if (this.link) this.link.stop();
+			this.link = null;
+			this.host = host || root.document;
+			this.doc = hostDocument(this.host);
+			if (!this.doc) throw new Error('COLSIM section host needs an owner document');
+			this.win = hostWindow(this.host, this.doc);
+			this.modeRoot = this.host && this.host.nodeType === 9 ? this.doc.body : this.host;
 			this.mode = true;
-			var body = document.body;
-			if (body && body.classList) body.classList.add('section-mode');
-			this.cvs = document.getElementById('c');
+			if (this.modeRoot && this.modeRoot.classList) this.modeRoot.classList.add('section-mode');
+			this.cvs = hostElement(this.host, 'c');
+			if (!this.cvs) throw new Error('COLSIM section host is missing the canvas #c');
 			this.ctx = this.cvs.getContext('2d');
-			this.hudEl = document.getElementById('hud');
-			this.sliceEl = document.getElementById('slice');
-			this.msgEl = document.getElementById('sMsg');
-			this.textEl = document.getElementById('sText');
-			this.fileEl = document.getElementById('sFile');
-			this.pickEl = document.getElementById('sPick');
-			this.rawBtn = document.getElementById('bRaw');
-			this.ovlBtn = document.getElementById('bOvl');
-			this.runBtn = document.getElementById('bRun');
-		this.saveBtn = document.getElementById('sSave');
-		this.loadEl = document.getElementById('sLoad');
-		this.obsBtn = document.getElementById('sObs');
-		this.obsCopyBtn = document.getElementById('sObsCopy');
-		this.obsOutEl = document.getElementById('sObsOut');
+			this.hudEl = hostElement(this.host, 'hud');
+			this.sliceEl = hostElement(this.host, 'slice');
+			this.msgEl = hostElement(this.host, 'sMsg');
+			this.textEl = hostElement(this.host, 'sText');
+			this.fileEl = hostElement(this.host, 'sFile');
+			this.pickEl = hostElement(this.host, 'sPick');
+			this.rawBtn = hostElement(this.host, 'bRaw');
+			this.ovlBtn = hostElement(this.host, 'bOvl');
+			this.runBtn = hostElement(this.host, 'bRun');
+			this.saveBtn = hostElement(this.host, 'sSave');
+			this.loadEl = hostElement(this.host, 'sLoad');
+			this.obsBtn = hostElement(this.host, 'sObs');
+			this.obsCopyBtn = hostElement(this.host, 'sObsCopy');
+			this.obsOutEl = hostElement(this.host, 'sObsOut');
+			this.view = false;
+			this.pack = null; this.origin = ''; this.world = false; this.raw = false;
+			this.running = false; this.spin = null; this.cache = null;
+			this.syncTMyr = -1; this.syncImports = 0; this.syncLive = false;
+			this.syncPaused = false; this.syncStale = false; this.linkStall = 0;
+			this.obsRecords = 0; this.couplingMsg = null;
+			this.linkRung = 'clipboard/file'; this.linkStage = 'idle';
+			this.msg = ''; this.bad = false;
 			var self = this;
-			// the section's own knobs: ?seed= is the plume/flow/noise seed, ?geo= and ?erupt= the
-			// two clocks the section may run after it detaches (plan §4.2)
-			this.start = this.urlParams();
+			this.start = this.urlParams(this.host);
 			var seed = this.start.seed === undefined ? undefined : this.urlNum('seed', 0, 1e9, P.seed);
 			if (seed !== undefined) P.seed = seed | 0;
 			P.sl.geo = this.urlNum('geo', 0, P.geoMax, P.sl.geo);
 			P.sl.erupt = this.urlNum('erupt', 0, P.eruptMax, P.sl.erupt);
-			// the bundled ids: whatever exists when the page boots (M4 generates them)
-			if (typeof SECTION_PACKS !== 'undefined' && SECTION_PACKS) {
-				for (var id in SECTION_PACKS) {
-					var o = document.createElement('option');
-					o.value = id; o.textContent = id;
-					this.pickEl.appendChild(o);
+			var bundles = root.SECTION_PACKS, id;
+			if (bundles && this.pickEl && this.doc.createElement) {
+				for (id in bundles) {
+					if (!Object.prototype.hasOwnProperty.call(bundles, id)) continue;
+					var option = this.doc.createElement('option');
+					option.value = id; option.textContent = id;
+					this.pickEl.appendChild(option);
 				}
 			}
-			// a load that refuses throws to its caller (an experiment wants that); a DOM handler
-			// has nobody to catch it, so it says the reason and carries on
-			this.textEl.addEventListener('paste', function (e) {
-				var t = e.clipboardData ? e.clipboardData.getData('text') : this.value;
-				if (t) self.caught(function () { self.load(t, 'paste'); });
+			this.listen(this.textEl, 'paste', function (e) {
+				var text = e.clipboardData ? e.clipboardData.getData('text') : this.value;
+				if (text) self.caught(function () { self.load(text, 'paste'); });
 			});
-			this.textEl.addEventListener('keydown', function (e) {
+			this.listen(this.textEl, 'keydown', function (e) {
 				if (e.key === 'Enter' && this.value) self.caught(function () { self.load(self.textEl.value, 'paste'); });
 			});
-			document.getElementById('sPaste').addEventListener('click', function () {
+			this.listen(hostElement(this.host, 'sPaste'), 'click', function () {
 				if (self.textEl.value) self.caught(function () { self.load(self.textEl.value, 'paste'); });
 			});
-			// a loaded file goes through the same bytes: read the text, run load()
-			this.fileEl.addEventListener('change', function () {
-				var f = this.files && this.files[0];
-				if (!f) return;
-				var r = new FileReader();
-				r.onload = function () { self.caught(function () { self.load(r.result, 'file'); }); };
-				r.readAsText(f);
+			this.listen(this.fileEl, 'change', function () {
+				var file = this.files && this.files[0], Reader = self.win.FileReader;
+				if (!file) return;
+				if (!Reader) { self.refuse('file loading is unavailable in this host'); return; }
+				var reader = new Reader();
+				reader.onload = function () { self.caught(function () { self.load(reader.result, 'file'); }); };
+				reader.readAsText(file);
 			});
-			this.pickEl.addEventListener('change', function () {
-				var v = this.value, p = v ? self.bundled(v) : null;
-				if (p) self.caught(function () { self.loadPack(p, v); });
-				// the empty option is the panel's way of dropping a cut: the page is a view
-				// again, and an id that is not in the bundle is a message rather than a no-op
-				else if (!v) self.clear();
-				else self.refuse("no bundled pack '" + v + "' — paste a cut, or open ?start=section&pack=<id>");
+			this.listen(this.pickEl, 'change', function () {
+				var value = this.value, pack = value ? self.bundled(value) : null;
+				if (pack) self.caught(function () { self.loadPack(pack, value); });
+				else if (!value) self.clear();
+				else self.refuse("no bundled pack '" + value + "' — paste a cut, or open ?start=section&pack=<id>");
 			});
-			if (this.rawBtn) this.rawBtn.addEventListener('click', function () { self.caught(function () { self.toggleRaw(); }); });
-			if (this.ovlBtn) this.ovlBtn.addEventListener('click', function () { self.toggleOverlay(); });
-			if (this.runBtn) this.runBtn.addEventListener('click', function () { self.caught(function () { self.detach(); }); });
-			if (this.saveBtn) {
-				this.saveBtn.addEventListener('click', function () {
-					self.caught(function () {
-						var s = CP.saveSession();
-						var json = JSON.stringify(s, null, 1);
-						if (typeof document !== 'undefined' && document.createElement) {
-							var blob = new Blob([json], { type: 'application/json' });
-							var a = document.createElement('a');
-							a.href = URL.createObjectURL(blob);
-							a.download = 'session-' + (self.pack ? self.pack.checksum : 'planet') + '-t' + Math.round(self.t0) + '.json';
-							a.click();
-						}
-						self.msg = 'saved session (' + (json.length / 1024).toFixed(1) + ' KB)';
-						self.bad = false;
-						self.paintMsg();
-					});
+			if (this.rawBtn) this.listen(this.rawBtn, 'click', function () { self.caught(function () { self.toggleRaw(); }); });
+			if (this.ovlBtn) this.listen(this.ovlBtn, 'click', function () { self.toggleOverlay(); });
+			if (this.runBtn) this.listen(this.runBtn, 'click', function () { self.caught(function () { self.detach(); }); });
+			if (this.saveBtn) this.listen(this.saveBtn, 'click', function () {
+				self.caught(function () {
+					var session = CP.saveSession(), json = JSON.stringify(session, null, 1);
+					var BlobType = self.win.Blob, URLApi = self.win.URL;
+					if (self.doc.createElement && BlobType && URLApi && URLApi.createObjectURL) {
+						var blob = new BlobType([json], { type: 'application/json' });
+						var link = self.doc.createElement('a');
+						link.href = URLApi.createObjectURL(blob);
+						link.download = 'session-' + (self.pack ? self.pack.checksum : 'planet') + '-t' + Math.round(self.t0) + '.json';
+						link.click();
+					}
+					self.msg = 'saved session (' + (json.length / 1024).toFixed(1) + ' KB)';
+					self.bad = false;
+					self.paintMsg();
 				});
-			}
-			if (this.loadEl) {
-				this.loadEl.addEventListener('change', function () {
-					var f = this.files && this.files[0];
-					if (!f) return;
-					var r = new FileReader();
-					r.onload = function () {
-						self.caught(function () {
-							CP.loadSession(r.result);
-						});
-					};
-					r.readAsText(f);
-				});
-			}
-			// the return path's two manual controls: build now (also sends when a rung can),
-			// and copy — the clipboard is the rung that always holds (plan §8.2)
-			if (this.obsBtn) this.obsBtn.addEventListener('click', function () {
+			});
+			if (this.loadEl) this.listen(this.loadEl, 'change', function () {
+				var file = this.files && this.files[0], Reader = self.win.FileReader;
+				if (!file) return;
+				if (!Reader) { self.refuse('session loading is unavailable in this host'); return; }
+				var reader = new Reader();
+				reader.onload = function () { self.caught(function () { CP.loadSession(reader.result); }); };
+				reader.readAsText(file);
+			});
+			if (this.obsBtn) this.listen(this.obsBtn, 'click', function () {
 				self.caught(function () { self.observe(true); });
 			});
-			if (this.obsCopyBtn) this.obsCopyBtn.addEventListener('click', function () {
+			if (this.obsCopyBtn) this.listen(this.obsCopyBtn, 'click', function () {
 				if (self.obsOutEl && self.obsOutEl.select) self.obsOutEl.select();
 			});
-			// r and o are the section's two view keys, on the same binding ui.js uses (window),
-			// and the same rule: a field being typed into keeps its keys
-			window.addEventListener('keydown', function (e) { self.key(e); });
-			// ?pack=<id>: a bundled cut from the URL; an id with no bundle is a message, not a guess
+			this.listen(this.win, 'keydown', function (e) { self.key(e); });
 			if (this.start.pack) {
-				var bp = this.bundled(this.start.pack);
-				if (bp) this.caught(function () { self.loadPack(bp, self.start.pack); });
+				var bundledPack = this.bundled(this.start.pack);
+				if (bundledPack) this.caught(function () { self.loadPack(bundledPack, self.start.pack); });
 				else this.refuse("no bundled pack '" + this.start.pack + "' — paste a cut, or open ?start=section&pack=<id>");
 			}
 			this.startLink();
@@ -413,21 +444,31 @@ var SectionPack = (function () {
 			this.hud();
 		},
 
+		stop: function () {
+			this.unlisten();
+			if (this.link) this.link.stop();
+			this.link = null;
+			this.setLiveKinematics(false);
+			if (this.modeRoot && this.modeRoot.classList) this.modeRoot.classList.remove('section-mode');
+			this.mode = false; this.view = false;
+			this.host = null; this.doc = null; this.win = null; this.modeRoot = null;
+		},
+
 		setLiveKinematics: function (on) {
 			var g = page(), c = coupling();
 			if (on && this.couplingMsg) {
 				c.activate(this.couplingMsg, SEED.window ? SEED.nCut : 0);
-				if (g) g.SIM.kinematic = c.k2;
+				if (g && g.COLSIM) g.COLSIM.kinematic = c.k2;
 				return;
 			}
 			c.deactivate();
-			if (g) g.SIM.kinematic = null;
+			if (g && g.COLSIM) g.COLSIM.kinematic = null;
 		},
 
 		startLink: function () {
-			var g = page(), self = this;
-			if (!g || !g.LINK || !g.LINK.create || this.link) return;
-			this.link = g.LINK.create(g, {
+			var g = this.win || page(), self = this;
+			if (!g || !g.COLLINK || !g.COLLINK.create || this.link) return;
+			this.link = g.COLLINK.create(g, {
 				onRung: function (rung, stage) {
 					self.linkRung = rung;
 					self.linkStage = stage;
@@ -464,7 +505,7 @@ var SectionPack = (function () {
 					arcKm: this.pack.path.arcKm,
 					pathChecksum: coupling().pathChecksum(this.pack),
 					packChecksum: this.pack.checksum,
-					tMyr: g ? g.SIM.t : this.pack.source.tMyr,
+					tMyr: g ? g.COLSIM.t : this.pack.source.tMyr,
 					epochMa: this.pack.source.epochMa
 				});
 			} catch (e) {
@@ -473,13 +514,16 @@ var SectionPack = (function () {
 				return null;
 			}
 			if (!msg) { this.obsRecords = 0; this.hud(); return null; }
-			this.placeObservation(msg);
+			var placed = this.placeObservation(msg);
+			var manual = !this.link || this.link.rung === 'clipboard/file';
 			var sent = this.link ? this.link.send('observation', msg) : false;
-			CL.note();   // emitted: what the globe may be missing now starts at this fraction
+			if (sent || (manual && placed)) CL.note();   // failed sends and failed placements stay due
 			this.obsRecords = msg.records.length;
 			if (this.bad) { this.bad = false; this.paintMsg(); }
-			this.msg = 'core log: ' + msg.records.length + ' of ' + n + ' columns · ' +
-				(sent ? 'sent via ' + this.link.rung : 'ready to copy') + ' · ' + msg.checksum;
+			var delivery = sent ? 'sent via ' + this.link.rung
+				: manual ? (placed ? 'placed · out field ready to copy' : 'manual output unavailable · retry pending')
+				: 'send failed · retry pending · out field ready to copy';
+			this.msg = 'core log: ' + msg.records.length + ' of ' + n + ' columns · ' + delivery + ' · ' + msg.checksum;
 			this.paintMsg();
 			this.hud();
 			return msg;
@@ -487,8 +531,10 @@ var SectionPack = (function () {
 
 		// the manual contract first: the field always holds the last log, sent or not
 		placeObservation: function (msg) {
-			if (!this.obsOutEl || !msg) return;
-			this.obsOutEl.value = coreLog().json(msg);
+			if (!this.obsOutEl || !msg) return false;
+			try { this.obsOutEl.value = coreLog().json(msg); }
+			catch (e) { return false; }
+			return true;
 		},
 
 		// §8.1's last clause: staleness is not a frozen section, it is a demotion. The
@@ -506,7 +552,7 @@ var SectionPack = (function () {
 			this.setLiveKinematics(false);
 			// the frame guard zeroed dG every waiting frame; a demoted clock reads its rate
 			// back from the slider that owns it, the way applyClock's resume does
-			if (g && this.running && !SEED.window) g.SIM.setGeo(P.sl.geo);
+			if (g && this.running && !SEED.window) g.COLSIM.setGeo(P.sl.geo);
 			this.msg = 'link went quiet mid-cadence · unsynced, the section runs its own solve';
 			this.paintMsg();
 			this.hud();
@@ -545,7 +591,7 @@ var SectionPack = (function () {
 			this.running = !this.syncPaused && !SEED.window;
 			this.setLiveKinematics(!!this.couplingMsg);
 			var g = page();
-			if (g) g.SIM.setGeo(this.running ? P.sl.geo : 0);
+			if (g) g.COLSIM.setGeo(this.running ? P.sl.geo : 0);
 			this.bad = false;
 			this.msg = this.syncPaused ? 'live clock paused by globe' : 'live clock resumed at t ' + clock.tMyr + ' Myr';
 			this.paintMsg();
@@ -570,9 +616,9 @@ var SectionPack = (function () {
 		syncButtons: function () {
 			var g = page();
 			if (!g) return;
-			g.UI.setPressed('bRaw', this.raw && this.world);
-			g.UI.setPressed('bOvl', this.overlay);
-			g.UI.setPressed('bRun', this.running);
+			g.COLUI.setPressed('bRaw', this.raw && this.world);
+			g.COLUI.setPressed('bOvl', this.overlay);
+			g.COLUI.setPressed('bRun', this.running);
 			if (this.runBtn) this.runBtn.disabled = !this.world || SEED.window;
 			if (this.rawBtn) this.rawBtn.disabled = !this.world;
 		},
@@ -599,7 +645,7 @@ var SectionPack = (function () {
 				this.running = false;
 			}
 			this.running = !this.running;
-			if (g) g.SIM.setGeo(this.running ? P.sl.geo : 0);
+			if (g) g.COLSIM.setGeo(this.running ? P.sl.geo : 0);
 			this.syncButtons();
 			this.hud();
 		},
@@ -636,7 +682,7 @@ var SectionPack = (function () {
 			this.overlay = true;
 			SEED.pack = null;
 			var g = page();
-			if (g) g.SIM.setGeo(0);
+			if (g) g.COLSIM.setGeo(0);
 			this.msg = 'cut cleared';
 			this.bad = false;
 			this.paintMsg();
@@ -659,10 +705,10 @@ var SectionPack = (function () {
 		enterView: function () {
 			var g = page();
 			if (!g) return;
-			if (!this.view) { g.UI.init(); g.RNDR.init(this.cvs); this.view = true; }
-			g.GEO.setPreset('def');
-			g.GEO.lookAt(SEED.window ? SEED.nCut * P.w0 * 0.5 : 0);
-			g.UI.afterView();
+			if (!this.view) { g.COLUI.init(this.host); g.COLRENDER.init(this.cvs); this.view = true; }
+			g.COLGEO.setPreset('def');
+			g.COLGEO.lookAt(SEED.window ? SEED.nCut * P.w0 * 0.5 : 0);
+			g.COLUI.afterView();
 		},
 
 		// the frame the page asks for: nothing runs while the strip is up, and a window's clock
@@ -671,19 +717,19 @@ var SectionPack = (function () {
 		frame: function () {
 			var g = page();
 			if (!g || !this.world || this.raw) return;
-			if (SEED.window || this.syncPaused) g.SIM.dG = 0;
+			if (SEED.window || this.syncPaused) g.COLSIM.dG = 0;
 			if (this.syncLive && this.couplingMsg &&
-				coupling().clockOk(g.SIM.t + g.SIM.dG, this.couplingMsg, this.syncCadence)) {
-				g.SIM.dG = 0;
+				coupling().clockOk(g.COLSIM.t + g.COLSIM.dG, this.couplingMsg, this.syncCadence)) {
+				g.COLSIM.dG = 0;
 				if (++this.linkStall >= LINK_STALL_FRAMES && !this.syncPaused) this.unsync();
 			} else this.linkStall = 0;
-			g.SIM.step();
+			g.COLSIM.step();
 		},
 
 		draw: function () {
 			var g = page();
 			if (!g || !this.world || this.raw) { this.strip(); return; }
-			g.RNDR.redraw();
+			g.COLRENDER.redraw();
 			if (this.overlay) this.paint();
 		},
 
@@ -702,7 +748,7 @@ var SectionPack = (function () {
 			var clock = this.syncLive
 				? (this.syncPaused ? 'live · globe paused' : 'live · globe t ' + this.syncTMyr + ' Myr')
 				: this.syncStale ? 'unsynced · own solve (detached G)'
-				: this.running ? 'running +' + (g ? (g.SIM.t - this.t0) : 0).toFixed(1) + ' Myr'
+				: this.running ? 'running +' + (g ? (g.COLSIM.t - this.t0) : 0).toFixed(1) + ' Myr'
 					: 'plate clock off · the cut as it stands';
 			L.push((this.world ? 'cut at t ' + s.tMyr + ' Myr · ' : 'cut · ') + clock + '   ' + this.origin);
 			L.push(linkLine);
@@ -745,7 +791,7 @@ var SectionPack = (function () {
 				for (i = 0; i < nc; i++) { mc += S.hTot[i] * S.colW[i]; zc += S.z[i]; }
 				L.push('spin-up since the cut: crust ' + (mc - this.spin.m >= 0 ? '+' : '') +
 					Math.round(mc - this.spin.m) + ' m3/m · mean z ' +
-					(nc > 0 ? zc / nc - this.spin.z : 0).toFixed(1) + ' m · ' + (g ? g.SIM.frame : 0) +
+					(nc > 0 ? zc / nc - this.spin.z : 0).toFixed(1) + ' m · ' + (g ? g.COLSIM.frame : 0) +
 					' frames · ' + nc + ' records of ' + this.spin.n);
 			}
 			return L;
@@ -755,7 +801,7 @@ var SectionPack = (function () {
 			if (!this.hudEl) return;
 			var L = this.lines(), g = page(), i, s = '';
 			for (i = 0; i < L.length; i++) s += (i ? '\n' : '') + L[i];
-			if (this.world && g) s += '\n' + g.UI.hudText();
+			if (this.world && g) s += '\n' + g.COLUI.hudText();
 			this.hudEl.textContent = s;
 		},
 
@@ -769,7 +815,7 @@ var SectionPack = (function () {
 		// one segment per sample and one tick every 24 px, which is what the engine's own overlay
 		// already spends per screen column, and both go away when the switch is off.
 		paint: function () {
-			var g = page(), p = this.pack, c = this.ctx, GEO = g.GEO;
+			var g = page(), p = this.pack, c = this.ctx, GEO = g.COLGEO;
 			var w = this.cvs.width, h = this.cvs.height, n = p.n, i, x, x0, x1, y, px, col, hy;
 			var sc = SEED.scale * KM, prev = -1e9, first = true;
 			c.strokeStyle = 'rgba(150,215,235,0.5)';
@@ -978,3 +1024,5 @@ var SectionPack = (function () {
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = SectionPack;
+else root.COLSECTION = SectionPack;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

@@ -1,3 +1,4 @@
+(function (root) {
 // core-log.js — 0.4.1 M5 return path (plan §8.5): the section's one answer to the globe.
 //
 // An observation, never a physical field: the globe may display a core log and store it in a
@@ -14,9 +15,9 @@
 var CLOG = (function () {
 	var node = typeof module !== 'undefined' && module.exports;
 	var SP = node ? require('../port/slice-format.js') : window.SlicePack;
-	var Core = node ? require('./deposit-core.js') : window.DepositCore;
-	var P = node ? require('./params.js') : window.P;
-	var State = node ? require('./state.js') : window.S;
+	var Core = node ? require('./deposit-core.js') : window.COLDEPOSITCORE;
+	var P = node ? require('./params.js') : window.COLP;
+	var State = node ? require('./state.js') : window.COLS;
 
 	var KM = 1000;
 	var FORMAT = 'pgt-core-log';
@@ -263,3 +264,5 @@ var CLOG = (function () {
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = CLOG;
+else root.COLCORELOG = CLOG;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

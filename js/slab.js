@@ -1,12 +1,13 @@
+(function (root) {
 // slab.js — M4 slab ribbons (design §2.3, §4.5). A ribbon owns one stratified
 // stack and a resampled polyline; node water is a separate, auditable flux. The
 // column contact kernel calls appendStack only after it has converted layers to
 // volume, so subduction is a transfer rather than an implicit sink.
 'use strict';
-var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
-var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.GEO;
-var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.S;
-var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COL;
+var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.COLP;
+var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.COLGEO;
+var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.COLS;
+var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COLCOLUMNS;
 
 var SLAB = {
 	ready: false,
@@ -273,7 +274,7 @@ SLAB.remove = function (st, r) {
 };
 
 SLAB.advance = function (st, dt, Tm) {
-	var r, k, n, base, d, dip, sink, dir, last, MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.MNT;
+	var r, k, n, base, d, dip, sink, dir, last, MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.COLMANTLE;
 	for (r = 0; r < st.nRib; r++) {
 		st.ribAge[r] += dt;
 		st.ribX0[r] = (st.ribX0[r] + MNT.uSurf(st.ribX0[r]) * dt * 0.15 + P.wrap) % P.wrap;
@@ -326,3 +327,5 @@ SLAB.k1 = function (st, dt, t, Tm) {
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = SLAB;
+else root.COLSLAB = SLAB;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

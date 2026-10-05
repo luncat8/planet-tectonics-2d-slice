@@ -1,14 +1,32 @@
+(function (root) {
 // ui.js — the only DOM file besides render.present(): the two log time sliders, the two
 // axis scale sliders flanking the canvas, the scale-lines toggle, cursor-anchored pan/zoom,
 // presets, the geology probe and the 2 Hz HUD. The camera is moved only through GEO
 // (lookAt/panBy/zoomAt/setZoomX/setZoomY/setPreset) so the LUTs cannot go stale, and every
 // move funnels through afterView() so the sliders cannot drift from the camera.
 'use strict';
-var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
-var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.GEO;
-var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.S;
+var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.COLP;
+var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.COLGEO;
+var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.COLS;
+var node = typeof module !== 'undefined' && module.exports;
+
+function sim() { return node ? require('./sim.js') : root.COLSIM; }
+function renderer() { return node ? require('./render.js') : root.COLRENDER; }
+function perf() { return node ? require('./perf.js') : root.COLPERF; }
+function element(host, id) {
+	if (!host) return null;
+	if (host.getElementById) return host.getElementById(id);
+	return host.querySelector ? host.querySelector('#' + id) : null;
+}
+function listen(target, type, fn, opts) {
+	if (!target || !target.addEventListener) return;
+	target.addEventListener(type, fn, opts);
+	UI._listeners.push([target, type, fn, opts]);
+}
 
 var UI = {
+	_listeners: [],
+	host: null, doc: null, win: null,
 	mx: -1, my: -1,        // last cursor position, canvas px
 	cursor: '',            // cursor world readout; rebuilt on mousemove only
 	dragX: 0, dragY: 0, dragging: false,
@@ -37,55 +55,70 @@ var UI = {
 		return d < 3600 ? (d / 60).toFixed(1) + ' min/f' : (d / 3600).toFixed(2) + ' h/f';
 	},
 
-	init: function () {
+	init: function (host) {
+		this.stop();
+		this.host = host || root.document;
+		this.doc = this.host && this.host.nodeType === 9 ? this.host : this.host && this.host.ownerDocument;
+		this.win = this.doc && this.doc.defaultView ? this.doc.defaultView : root;
 		var self = this;
-		this.cvs = document.getElementById('c');
-		this.hud = document.getElementById('hud');
-		this.sGeo = document.getElementById('sGeo');
-		this.sErupt = document.getElementById('sErupt');
-		this.vGeo = document.getElementById('vGeo');
-		this.vErupt = document.getElementById('vErupt');
+		this.cvs = element(this.host, 'c');
+		this.hud = element(this.host, 'hud');
+		this.sGeo = element(this.host, 'sGeo');
+		this.sErupt = element(this.host, 'sErupt');
+		this.vGeo = element(this.host, 'vGeo');
+		this.vErupt = element(this.host, 'vErupt');
 		this.sGeo.value = Math.round(1000 * this.gToS(P.sl.geo));
 		this.sErupt.value = Math.round(1000 * this.eToS(P.sl.erupt));
 		this.vGeo.textContent = this.fmtGeo(P.sl.geo);
 		this.vErupt.textContent = this.fmtErupt(P.sl.erupt);
-		this.sGeo.addEventListener('input', function () {
+		listen(this.sGeo, 'input', function () {
 			P.sl.geo = self.sToGeo(this.value / 1000);
-			SIM.setGeo(P.sl.geo);
+			sim().setGeo(P.sl.geo);
 			self.vGeo.textContent = self.fmtGeo(P.sl.geo);
 		});
-		this.sErupt.addEventListener('input', function () {
+		listen(this.sErupt, 'input', function () {
 			P.sl.erupt = self.sToErupt(this.value / 1000);
 			self.vErupt.textContent = self.fmtErupt(P.sl.erupt);
 		});
-		this.sVZoom = document.getElementById('sVZoom');
-		this.sHZoom = document.getElementById('sHZoom');
-		this.vZoom = document.getElementById('vZoom');
-		this.cScale = document.getElementById('cScale');
-		this.sVZoom.addEventListener('input', function () {
+		this.sVZoom = element(this.host, 'sVZoom');
+		this.sHZoom = element(this.host, 'sHZoom');
+		this.vZoom = element(this.host, 'vZoom');
+		this.cScale = element(this.host, 'cScale');
+		listen(this.sVZoom, 'input', function () {
 			GEO.setZoomY(self.sToZ(this.value / 1000, GEO.zoomYMin));
 			self.unsetPreset();
 			self.afterView();
 		});
-		this.sHZoom.addEventListener('input', function () {
+		listen(this.sHZoom, 'input', function () {
 			GEO.setZoomX(self.sToZ(this.value / 1000, P.zoomMin));
 			self.unsetPreset();
 			self.afterView();
 		});
-		RNDR.showScale = this.cScale.checked;
-		this.cScale.addEventListener('change', function () { RNDR.showScale = this.checked; self.syncToggles(); });
-		var pres = document.querySelectorAll('#presets button');
+		renderer().showScale = this.cScale.checked;
+		listen(this.cScale, 'change', function () { renderer().showScale = this.checked; self.syncToggles(); });
+		var pres = this.host.querySelectorAll('#presets button');
 		for (var i = 0; i < pres.length; i++) (function (b) {
-			b.addEventListener('click', function () { self.preset(b.getAttribute('data-v')); });
+			listen(b, 'click', function () { self.preset(b.getAttribute('data-v')); });
 		})(pres[i]);
 		this.presets = pres;
-		this.bMesh = document.getElementById('bMesh');
-		if (this.bMesh) this.bMesh.addEventListener('click', function () { RNDR.mesh = !RNDR.mesh; self.syncToggles(); });
-		this.cvs.addEventListener('mousedown', function (e) { self.down(e); });
-		this.cvs.addEventListener('mousemove', function (e) { self.move(e); });
-		window.addEventListener('mouseup', function () { self.dragging = false; });
-		this.cvs.addEventListener('wheel', function (e) { self.wheel(e); }, { passive: false });
-		window.addEventListener('keydown', function (e) { self.key(e); });
+		this.bMesh = element(this.host, 'bMesh');
+		if (this.bMesh) listen(this.bMesh, 'click', function () { renderer().mesh = !renderer().mesh; self.syncToggles(); });
+		listen(this.cvs, 'mousedown', function (e) { self.down(e); });
+		listen(this.cvs, 'mousemove', function (e) { self.move(e); });
+		listen(this.win, 'mouseup', function () { self.dragging = false; });
+		listen(this.cvs, 'wheel', function (e) { self.wheel(e); }, { passive: false });
+		listen(this.win, 'keydown', function (e) { self.key(e); });
+	},
+
+	stop: function () {
+		var i, e;
+		for (i = 0; i < this._listeners.length; i++) {
+			e = this._listeners[i];
+			if (e[0].removeEventListener) e[0].removeEventListener(e[1], e[2], e[3]);
+		}
+		this._listeners.length = 0;
+		this.dragging = false;
+		this.host = null; this.doc = null; this.win = null;
 	},
 
 	preset: function (name) {
@@ -106,8 +139,8 @@ var UI = {
 	// tracked beside them: one writer, so a button cannot disagree with what is drawn
 	syncToggles: function () {
 		var i;
-		this.setPressed('bMesh', RNDR.mesh);
-		this.cScale.checked = RNDR.showScale;
+		this.setPressed('bMesh', renderer().mesh);
+		this.cScale.checked = renderer().showScale;
 		if (!this.presets) return;
 		for (i = 0; i < this.presets.length; i++) {
 			this.setPressed(this.presets[i], this.presetName === this.presets[i].getAttribute('data-v'));
@@ -116,7 +149,7 @@ var UI = {
 
 	setPressed: function (el, on) {
 		var s = on ? 'true' : 'false';
-		if (typeof el === 'string') el = document.getElementById(el);
+		if (typeof el === 'string') el = element(this.host, el);
 		if (el && el.getAttribute('aria-pressed') !== s) el.setAttribute('aria-pressed', s);
 	},
 
@@ -188,15 +221,15 @@ var UI = {
 		var t = e.target, tag = t && t.tagName;
 		if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') return;
 		if (k === ' ') { this.togglePause(); e.preventDefault(); return; }
-		if (k === 'm') { RNDR.mesh = !RNDR.mesh; this.syncToggles(); return; }
-		if (k === 'g') { RNDR.showScale = !RNDR.showScale; this.syncToggles(); return; }
+		if (k === 'm') { renderer().mesh = !renderer().mesh; this.syncToggles(); return; }
+		if (k === 'g') { renderer().showScale = !renderer().showScale; this.syncToggles(); return; }
 		if (names[k]) this.preset(names[k]);
 	},
 
 	togglePause: function () {
 		this.paused = !this.paused;
-		if (this.paused) { this.geoSave = P.sl.geo; P.sl.geo = 0; SIM.setGeo(0); }
-		else { P.sl.geo = this.geoSave || P.sl.geo; SIM.setGeo(P.sl.geo); }
+		if (this.paused) { this.geoSave = P.sl.geo; P.sl.geo = 0; sim().setGeo(0); }
+		else { P.sl.geo = this.geoSave || P.sl.geo; sim().setGeo(P.sl.geo); }
 		this.sGeo.value = Math.round(1000 * this.gToS(P.sl.geo));
 		this.vGeo.textContent = this.fmtGeo(P.sl.geo);
 	},
@@ -205,7 +238,7 @@ var UI = {
 	updateCursor: function () {
 		if (this.mx < 0 || this.my < 0 || this.mx >= P.cw || this.my >= P.ch) {
 			this.cursor = '';
-			RNDR.probe = '';
+			renderer().probe = '';
 			return;
 		}
 		GEO.buildColLUT(S);
@@ -217,7 +250,7 @@ var UI = {
 		s += (GEO.kx / 1e3).toFixed(2) + ' km/px  ';
 		s += mpx < 1000 ? Math.round(mpx) + ' m/px' : (mpx / 1e3).toFixed(2) + ' km/px';
 		this.cursor = s;
-		RNDR.updateProbe(this.mx, this.my);
+		renderer().updateProbe(this.mx, this.my);
 	},
 
 	// boundary census and the fastest plate (2 Hz, from the HUD only)
@@ -237,10 +270,10 @@ var UI = {
 	// section page (js/section-pack.js) can put its lines above the engine's without owning a
 	// second HUD.
 	hudText: function () {
-		var s = 't ' + SIM.t.toFixed(3) + ' Myr   Tm ' + SIM.Tm.toFixed(3) + '   frame ' + SIM.frame;
+		var s = 't ' + sim().t.toFixed(3) + ' Myr   Tm ' + sim().Tm.toFixed(3) + '   frame ' + sim().frame;
 		s += '\nplates ' + this.fmtGeo(P.sl.geo) + '   lava ' + this.fmtErupt(P.sl.erupt);
-		s += '\nfps ' + PERF.fps.toFixed(1) + '   ms ' + (PERF.msSim + PERF.msDraw).toFixed(2) +
-			' (sim ' + PERF.msSim.toFixed(2) + ' + draw ' + PERF.msDraw.toFixed(2) + ')';
+		s += '\nfps ' + perf().fps.toFixed(1) + '   ms ' + (perf().msSim + perf().msDraw).toFixed(2) +
+			' (sim ' + perf().msSim.toFixed(2) + ' + draw ' + perf().msDraw.toFixed(2) + ')';
 		s += '\ncols ' + S.nCol + '/' + P.colCap + '   plates ' + S.nPl + '   vents ' + S.nVen +
 			'   ribbons ' + S.nRib + '   plumes ' + S.nPlm + '   deposits ' + S.nDep + '   seed ' + P.seed;
 		s += '\n' + this.tectonics();
@@ -252,3 +285,5 @@ var UI = {
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = UI;
+else root.COLUI = UI;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

@@ -1,11 +1,12 @@
+(function (root) {
 // state.js — all fixed-capacity typed-array state (design §2). Allocated once here;
 // reset() starts a run. No per-frame allocation anywhere: kernels mutate in place.
 // Layer stacks live in the fixed slot range col*layerCap + k, bottom-up with a count,
 // so a 20 m bed is exactly 20 m for as long as the run lasts (nothing is resampled).
 'use strict';
-var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
-var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.GEO;
-var RNG = (typeof module !== 'undefined' && module.exports) ? require('./rng.js') : window.RNG;
+var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.COLP;
+var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.COLGEO;
+var RNG = (typeof module !== 'undefined' && module.exports) ? require('./rng.js') : window.COLRNG;
 
 var S = {
 	// columns (design §2.2), capacity colCap
@@ -186,6 +187,8 @@ var S = {
 		fresh: 0,                    // target volume built where no ancestor is close enough
 		retired: 0                   // old stack volume retired where no descendant is close
 	},
+	// The active sea datum is zero for a standalone section and follows accepted globe snapshots.
+	seaLevel: 0,
 	// mass ledger (design §6): produced / consumed volume per LITH, m3
 	ledProd: new Float64Array(P.LITH.n),
 	ledCons: new Float64Array(P.LITH.n),
@@ -203,7 +206,7 @@ var S = {
 
 S.reset = function () {
 	this.nCol = 0; this.nPl = 0; this.nRib = 0; this.nPlm = 0; this.nVen = 0; this.nDep = 0;
-	this.ledMix = 0; this.spawnSkipped = 0;
+	this.ledMix = 0; this.spawnSkipped = 0; this.seaLevel = 0;
 	this.waterIn = 0; this.waterReleased = 0; this.waterUsed = 0;
 	this.meltArc = 0; this.meltPlume = 0; this.meltSill = 0;
 	for (var k in this.recon) this.recon[k] = 0;
@@ -334,3 +337,5 @@ S.hash = function () {
 S.reset();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = S;
+else root.COLS = S;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

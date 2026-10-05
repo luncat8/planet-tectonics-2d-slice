@@ -1,12 +1,13 @@
+(function (root) {
 // columns.js — the Lagrangian crust (design §2.2): layer stacks, initial planet
 // and K3/K4 topology. Stacks are bottom-up in the fixed slot range col*layerCap + k, so a 20 m bed
 // stays exactly 20 m for as long as the run lasts — nothing is ever resampled.
 'use strict';
-var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
-var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.GEO;
-var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.S;
-var RNG = (typeof module !== 'undefined' && module.exports) ? require('./rng.js') : window.RNG;
-var SURF = (typeof module !== 'undefined' && module.exports) ? require('./surface.js') : window.SURF;
+var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.COLP;
+var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.COLGEO;
+var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.COLS;
+var RNG = (typeof module !== 'undefined' && module.exports) ? require('./rng.js') : window.COLRNG;
+var SURF = (typeof module !== 'undefined' && module.exports) ? require('./surface.js') : window.COLSURF;
 
 var COL = {
 	slab: null,
@@ -821,7 +822,7 @@ COL.consume = function (i, j, crushLoser) {
 	var left = i, right = j, loser, winner, b, k, lith, t;
 	var SLAB = this.slab;
 	if (!SLAB) {
-		SLAB = (typeof module !== 'undefined' && module.exports) ? require('./slab.js') : window.SLAB;
+		SLAB = (typeof module !== 'undefined' && module.exports) ? require('./slab.js') : window.COLSLAB;
 		this.slab = SLAB;
 	}
 	loser = crushLoser >= 0 ? crushLoser : (S.edgePol[i] < 0 ? left : right);
@@ -1215,3 +1216,5 @@ COL.splitScan = function (st, p, start, n) {
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = COL;
+else root.COLCOLUMNS = COL;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

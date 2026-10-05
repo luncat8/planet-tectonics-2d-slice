@@ -1,3 +1,4 @@
+(function (root) {
 // crust.js — K5, the column update (design §4.4): thermal age, damage and healing,
 // dynamic topography (relaxation, the trench source, flexure) and the gravitational
 // collapse that caps orogen height. Arc growth and ore accumulation join in M4/M6,
@@ -5,11 +6,11 @@
 // gather: the fluxes come from the previous frame's fields, the moves are applied after,
 // so a column never reads a value this same pass has written.
 'use strict';
-var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.P;
-var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.S;
-var SURF = (typeof module !== 'undefined' && module.exports) ? require('./surface.js') : window.SURF;
-var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COL;
-var MAG = (typeof module !== 'undefined' && module.exports) ? require('./magma.js') : window.MAG;
+var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.COLP;
+var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.COLS;
+var SURF = (typeof module !== 'undefined' && module.exports) ? require('./surface.js') : window.COLSURF;
+var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COLCOLUMNS;
+var MAG = (typeof module !== 'undefined' && module.exports) ? require('./magma.js') : window.COLMAGMA;
 
 var CRU = {
 	face: new Float64Array(P.colCap)     // right-face flux of each column, per stencil
@@ -287,3 +288,5 @@ CRU.belt = function (st, dt) {
 function wmodc(k, n) { k %= n; return k < 0 ? k + n : k; }
 
 if (typeof module !== 'undefined' && module.exports) module.exports = CRU;
+else root.COLCRUST = CRU;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

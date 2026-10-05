@@ -13,7 +13,7 @@
 'use strict';
 var lib = require('./lib.js'), M = lib.mods, check = lib.check;
 var COUP = M.coupling, SP = require('../port/slice-format.js');
-var S = M.state, P = M.params, SIM = M.sim, SEED = M['section-seed'], COL = M.columns;
+var S = M.state, P = M.params, SIM = M.sim, SEED = M['section-seed'], COL = M.columns, SURF = M.surface, GEO = M.geom;
 var FIX = require('./pack-fixture.js');
 var CLOG = require('../js/core-log.js');
 var KM = 1000;
@@ -85,10 +85,16 @@ check.ok('every plate interval carries a mean motion and a boundary code',
 	}));
 var trenchCount = 0;
 for (i = 0; i < q0.n; i++) if (q0.bnd[i] === SP.EDGE.subduct) trenchCount++;
-check.ok('its trenches are the cut\'s own subduct samples',
-	msg0.trenches.length === trenchCount && msg0.trenches.every(function (s, k) {
-		return k === 0 || msg0.trenches[k - 1] <= s;
-	}), trenchCount + ' trenches');
+var expectedTrenches = [];
+for (i = 0; i < q0.n; i++) {
+	if (q0.bnd[i] === SP.EDGE.subduct) {
+		expectedTrenches.push(i + 1 < q0.n ? SP.round(q0.sKm[i + 1]) : SP.round(q0.path.arcKm));
+	}
+}
+check.ok('trench coordinates name the crossing at each sample-span end',
+	msg0.trenches.length === trenchCount && msg0.trenches.length === expectedTrenches.length &&
+	msg0.trenches.every(function (s, k) { return s === expectedTrenches[k]; }),
+	msg0.trenches.length + ' crossings');
 var fel = 0, maf = 0, sed = 0;
 for (i = 0; i < q0.n; i++) {
 	var w = (msg0.crust[i].s1Km - msg0.crust[i].s0Km) * KM;
@@ -116,6 +122,9 @@ refuses('a plate table with a gap', function (m) { m.plates[1].s0Km += 1; });
 refuses('two tables that end at different arcs', function (m) { m.crust[m.crust.length - 1].s1Km -= 1; });
 refuses('a crust interval with a negative thickness', function (m) { m.crust[2].hFelM = -1; });
 refuses('a negative age', function (m) { m.crust[2].ageMyr = -1; });
+refuses('an infinite plate id', function (m) { m.plates[0].id = Infinity; });
+refuses('an infinite crust thickness', function (m) { m.crust[2].hFelM = Infinity; });
+refuses('an infinite crust age', function (m) { m.crust[2].ageMyr = Infinity; });
 refuses('damage above one', function (m) { m.crust[2].damage = 1.5; });
 refuses('a boundary code that is not one', function (m) { m.plates[0].bnd = 9; });
 refuses('a polarity out of range', function (m) { m.plates[0].pol = 4; });
@@ -231,6 +240,21 @@ check.ok('a message with spans wider than the join radius leaves those columns u
 	gap.matched > 0 && gap.unmatched > SEED.nCut * 0.5,
 	gap.matched + ' of ' + SEED.nCut + ' columns joined, ' + gap.unmatched +
 	' left at a ' + spacing.toFixed(1) + ' km join spacing');
+var openPack = SP.decode(SP.encode(FIX.windowCut(64, 8, 12400)));
+var openMsg = COUP.fromPack(openPack), openArc = openPack.path.arcKm, openTrenches = [];
+for (i = 0; i + 1 < openPack.n; i++) {
+	if (openPack.bnd[i] === SP.EDGE.subduct) openTrenches.push(SP.round(openPack.sKm[i + 1]));
+}
+check.ok('an open cut omits a false trench at its un-crossed terminal endpoint',
+	openMsg.trenches.length === openTrenches.length && openMsg.trenches.every(function (s, k) {
+		return s === openTrenches[k] && s < openArc;
+	}), openMsg.trenches.length + ' interior crossings');
+var beyondOpen = openArc + 4 * openPack.path.cellKm;
+check.ok('the geographic join does not wrap an open window across its endpoints',
+	COUP.joinTo(openMsg, beyondOpen, openPack.path.cellKm, false) < 0 &&
+	COUP.joinTo(openMsg, beyondOpen, openPack.path.cellKm, true) >= 0,
+	'open ' + COUP.joinTo(openMsg, beyondOpen, openPack.path.cellKm, false) +
+	', periodic ' + COUP.joinTo(openMsg, beyondOpen, openPack.path.cellKm, true));
 
 // The import budget of §9.5: what the cheap path costs, and the identity it must not break.
 var costMs = [], lastLedger = null, t0, i0;
@@ -268,7 +292,7 @@ growMsg.ledger.fel = SP.round(growMsg.ledger.fel + growVol);
 growMsg.checksum = COUP.checksum(growMsg);
 
 function applyOpts(n) {
-	return { nCut: n, cellKm: P.w0 / KM, pathChecksum: pathId };
+	return { nCut: n, cellKm: P.w0 / KM, pathChecksum: pathId, pack: pack0 };
 }
 function crustMass(n) {
 	var m = 0;
@@ -312,6 +336,17 @@ foreign.checksum = COUP.checksum(foreign);
 refused = COUP.apply(S, foreign, applyOpts(S.nCol));
 check.ok('a message for another path is refused before state mutation',
 	/pathChecksum/.test(refused) && S.hash() === stateHash && JSON.stringify(S.recon) === reconJSON, refused);
+var wrongArc = copy(growMsg), lastInterval = wrongArc.crust.length - 1;
+wrongArc.crust[lastInterval].s1Km -= 1;
+wrongArc.plates[wrongArc.plates.length - 1].s1Km -= 1;
+var wrongEnd = wrongArc.crust[lastInterval].s1Km;
+wrongArc.trenches = wrongArc.trenches.filter(function (s) { return s <= wrongEnd; });
+wrongArc.checksum = COUP.checksum(wrongArc);
+refused = COUP.apply(S, wrongArc, applyOpts(S.nCol));
+check.ok('a checksummed message whose intervals stop short of the identified cut is refused atomically',
+	COUP.validate(wrongArc) === '' && /interval tables/.test(refused) &&
+	S.hash() === stateHash && JSON.stringify(S.recon) === reconJSON, refused);
+check.ok('a table ending short of the cut is not treated as a path match', !COUP.matches(wrongArc, pack0));
 refused = COUP.apply(S, growMsg, applyOpts(0));
 check.ok('a page with no reconstructed section cannot report an applied message',
 	/no reconstructed section/.test(refused) && S.hash() === stateHash && JSON.stringify(S.recon) === reconJSON, refused);
@@ -516,5 +551,154 @@ check.ok('a zero clock leaves prescribed kinematics still', S.plU[0] === beforeP
 COUP.deactivate();
 check.ok('deactivation returns K2 ownership to the standalone solver', COUP.k2(S, 0.025) === false);
 SIM.kinematic = null;
+
+check.section('H. the accepted sea datum follows the globe snapshot');
+laid = SEED.layout(pack0, { seed: P.seed, t: pack0.source.tMyr, Tm: P.Tm0 });
+if (laid) throw new Error(laid);
+var land = 0;
+while (land < S.nCol && !(S.hTot[land] > 0 && S.z[land] >= 0)) land++;
+if (land >= S.nCol) throw new Error('fixture has no dry crust column');
+var landZ = S.z[land], seaMsg = copy(msg0);
+seaMsg.sea.levelM = SP.round(landZ + Math.max(100, Math.abs(landZ) * 0.01));
+seaMsg.checksum = COUP.checksum(seaMsg);
+var seaApplied = COUP.apply(S, seaMsg, applyOpts(S.nCol));
+SURF.profile(0);
+var wetMatches = true;
+for (i = 0; i < S.nCol; i++) if (S.wet[i] !== (S.z[i] < S.seaLevel ? 1 : 0)) wetMatches = false;
+check.ok('a valid import applies its sea level without jumping the section surface',
+	seaApplied === '' && S.seaLevel === seaMsg.sea.levelM && S.z[land] === landZ &&
+	S.hDraw[land] === S.hTot[land], seaApplied || 'sea ' + S.seaLevel + ' m, surface ' + S.z[land] + ' m');
+check.ok('wet flags follow the imported datum now and in later surface passes',
+	wetMatches && S.wet[land] === 1, 'column ' + land + ' at ' + landZ.toFixed(1) + ' m, sea ' + S.seaLevel + ' m');
+
+check.section('I. boundary and polarity updates follow the globe snapshot');
+laid = SEED.layout(pack0, { seed: P.seed, t: pack0.source.tMyr, Tm: P.Tm0 });
+if (laid) throw new Error(laid);
+var boundaryMsg = copy(msg0), boundaryRow = -1, seam = -1, totalWidth = 0, bestDistance = Infinity;
+for (i = 0; i < boundaryMsg.plates.length; i++) {
+	if (boundaryMsg.plates[i].bnd === SP.EDGE.collide) { boundaryRow = i; break; }
+}
+if (boundaryRow < 0) throw new Error('fixture has no collision boundary to change');
+for (i = 0; i < S.nCol; i++) totalWidth += S.colW[i];
+var eventX = boundaryMsg.plates[boundaryRow].s1Km * KM *
+	totalWidth / (boundaryMsg.plates[boundaryMsg.plates.length - 1].s1Km * KM);
+var edgeWalk = 0, expectedRibbonX, ribbonGap;
+for (i = 0; i < S.nCol; i++) {
+	var edgeDistance = Math.abs(eventX - (edgeWalk + S.colW[i]));
+	if (edgeDistance > totalWidth * 0.5) edgeDistance = totalWidth - edgeDistance;
+	if (edgeDistance < bestDistance) { bestDistance = edgeDistance; seam = i; }
+	edgeWalk += S.colW[i];
+}
+var rightAtSeam = (seam + 1) % S.nCol;
+ribbonGap = S.colX[rightAtSeam] - S.colX[seam];
+if (ribbonGap < 0) ribbonGap += P.wrap;
+expectedRibbonX = S.colX[seam] + ribbonGap * 0.5;
+expectedRibbonX -= Math.floor(expectedRibbonX / P.wrap) * P.wrap;
+boundaryMsg.plates[boundaryRow].bnd = SP.EDGE.subduct;
+boundaryMsg.plates[boundaryRow].pol = -1;
+boundaryMsg.checksum = COUP.checksum(boundaryMsg);
+var boundaryApplied = COUP.apply(S, boundaryMsg, applyOpts(S.nCol));
+check.ok('a newly reported subduction edge and its polarity land on the matching section seam',
+	boundaryApplied === '' && S.edge[seam] === P.EDGE.subduct && S.edgePol[seam] === -1 &&
+	S.edgeRPlate[seam] === S.colPlate[rightAtSeam] && S.nRib === 1 &&
+	S.ribDir[0] === 1 && S.ribPlate[0] === S.colPlate[rightAtSeam] &&
+	Math.abs(S.ribX0[0] - expectedRibbonX) < 1e-6,
+	boundaryApplied || 'edge ' + seam + ', left plate ' + S.colPlate[seam] +
+	', overriding plate ' + S.colPlate[rightAtSeam] + ', ribbon x ' + S.ribX0[0] + ', ribbons ' + S.nRib);
+S.edgeAge[seam] = 2.5;
+boundaryApplied = COUP.apply(S, boundaryMsg, applyOpts(S.nCol));
+check.ok('a stable reported crossing preserves its age and does not duplicate its ribbon',
+	boundaryApplied === '' && S.edgeAge[seam] === 2.5 && S.nRib === 1,
+	boundaryApplied || 'edge age ' + S.edgeAge[seam] + ' Myr, ribbons ' + S.nRib);
+boundaryMsg.plates[boundaryRow].bnd = SP.EDGE.open;
+boundaryMsg.plates[boundaryRow].pol = 0;
+boundaryMsg.checksum = COUP.checksum(boundaryMsg);
+boundaryApplied = COUP.apply(S, boundaryMsg, applyOpts(S.nCol));
+check.ok('a later boundary-type change is applied without deleting the historical ribbon',
+	boundaryApplied === '' && S.edge[seam] === P.EDGE.open && S.edgePol[seam] === 0 &&
+	S.edgeAge[seam] === 0 && S.nRib === 1,
+	boundaryApplied || 'edge ' + S.edge[seam] + ', polarity ' + S.edgePol[seam] + ', ribbons ' + S.nRib);
+
+laid = SEED.layout(pack0, { seed: P.seed, t: pack0.source.tMyr, Tm: P.Tm0 });
+if (laid) throw new Error(laid);
+var pinnedMsg = copy(msg0), pinnedRow = boundaryRow, pinnedSeam = -1;
+pinnedMsg.plates[pinnedRow].bnd = SP.EDGE.subduct;
+pinnedMsg.plates[pinnedRow].pol = -1;
+for (i = 0; i < pinnedMsg.plates.length; i++) pinnedMsg.plates[i].vt = 0;
+pinnedMsg.checksum = COUP.checksum(pinnedMsg);
+var pinApplied = COUP.apply(S, pinnedMsg, applyOpts(S.nCol));
+for (i = 0; i < S.nCol; i++) if (S.edge[i] === P.EDGE.subduct && S.edgePol[i] === -1) { pinnedSeam = i; break; }
+COUP.activate(pinnedMsg, 0);
+SIM.kinematic = COUP.k2;
+S.edgeRelN[pinnedSeam] = 123;
+SIM.k[2](S, 0, SIM.t, SIM.Tm);
+SIM.k[3](S, 0, SIM.t, SIM.Tm);
+SIM.k[4](S, 0, SIM.t, SIM.Tm);
+var pausedRelStayed = S.edgeRelN[pinnedSeam] === 123 &&
+	S.edge[pinnedSeam] === P.EDGE.subduct && S.edgePol[pinnedSeam] === -1;
+var savedTopology = COL.k4;
+try {
+	SIM.k[2](S, 0.025, SIM.t, SIM.Tm);
+	SIM.k[3](S, 0.025, SIM.t, SIM.Tm);
+	// A topology event reclassifies with dt=0 after K4; exercise that branch without
+	// asking the fixture to create an unrelated ridge or suture.
+	COL.k4 = function () { return true; };
+	SIM.k[4](S, 0.025, SIM.t, SIM.Tm);
+} finally {
+	COL.k4 = savedTopology;
+}
+check.ok('a paused live frame defers edgeRelN refresh; active K3 refreshes it without reclassifying the globe boundary',
+	pinApplied === '' && pausedRelStayed && pinnedSeam >= 0 &&
+	S.edge[pinnedSeam] === P.EDGE.subduct && S.edgePol[pinnedSeam] === -1 &&
+	Math.abs(S.edgeRelN[pinnedSeam]) < 1e-9,
+	pinApplied || 'paused refresh ' + pausedRelStayed + ', seam ' + pinnedSeam +
+	', type ' + S.edge[pinnedSeam] + ', polarity ' + S.edgePol[pinnedSeam] +
+	', active relN ' + S.edgeRelN[pinnedSeam]);
+COUP.deactivate();
+SIM.kinematic = null;
+
+check.section('J. age changes rebuild the thermal lid at import');
+laid = SEED.layout(pack0, { seed: P.seed, t: pack0.source.tMyr, Tm: P.Tm0 });
+if (laid) throw new Error(laid);
+var deepRow = 0;
+while (deepRow < GEO.N && GEO.rowCy[deepRow] < COL.lithDepth(COL.lidAgeCap)) deepRow++;
+if (deepRow >= GEO.N) throw new Error('fixture has no fan row below the lithosphere lid');
+var deepCell = GEO.fanOff[deepRow], deepAnomaly = -321.25;
+S.Tf[deepCell] = deepAnomaly;
+var ageMsg = copy(msg0), ageBefore = S.colAge.slice(0, S.nCol), fanBefore = S.Tf.slice();
+var ageChangedColumns = 0, fanChangedCells = 0, lidCalls = 0, plumesBefore = S.nPlm;
+for (i = 0; i < ageMsg.crust.length; i++) ageMsg.crust[i].ageMyr += 50;
+ageMsg.checksum = COUP.checksum(ageMsg);
+var lidFan = COL.lidFan, ageApplied;
+COL.lidFan = function () { lidCalls++; return lidFan.apply(COL, arguments); };
+try { ageApplied = COUP.apply(S, ageMsg, applyOpts(S.nCol)); }
+finally { COL.lidFan = lidFan; }
+var fanAtImport = S.Tf.slice();
+for (i = 0; i < S.nCol; i++) {
+	if (Math.abs(S.colAge[i] - ageBefore[i]) > 0.01) ageChangedColumns++;
+}
+for (i = 0; i < S.Tf.length; i++) if (Math.abs(fanAtImport[i] - fanBefore[i]) > 1e-9) fanChangedCells++;
+check.ok('changed crust ages reapply the lid once at import without erasing deeper thermal anomalies',
+	ageApplied === '' && ageChangedColumns > 0 && fanChangedCells > 0 && lidCalls === 1 &&
+	S.Tf[deepCell] === deepAnomaly,
+	ageApplied || ageChangedColumns + ' columns aged; ' + fanChangedCells + ' fan cells changed; lid calls ' + lidCalls);
+check.ok('the age-lid rebuild leaves section plume objects intact', S.nPlm === plumesBefore,
+	S.nPlm + ' plumes retained');
+
+check.section('K. open-window imports respect both endpoints');
+laid = SEED.layout(openPack, { seed: P.seed, t: openPack.source.tMyr, Tm: P.Tm0 });
+if (laid) throw new Error(laid);
+var openN = SEED.nCut;
+var windowApplied = COUP.apply(S, openMsg, {
+	nCut: openN, cellKm: openPack.path.cellKm, pathChecksum: openMsg.pathChecksum, pack: openPack
+});
+var windowDeltas = COUP.deltas(S, openMsg, {
+	nCut: openN, cellKm: openPack.path.cellKm, closed: false
+});
+check.ok('a snapshot reconciles the open path without joining across its start/end',
+	windowApplied === '' && windowDeltas.matched === openN && windowDeltas.dMax < 1e-6 &&
+	S.edge[openN - 1] === P.EDGE.none && S.edgeRPlate[openN - 1] === -1,
+	windowApplied || openN + ' columns, ' + windowDeltas.matched + ' joined, max ' +
+	windowDeltas.dMax.toExponential(2) + ' m, terminal edge ' + S.edge[openN - 1]);
 
 check.done();

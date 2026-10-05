@@ -1,3 +1,4 @@
+(function (root) {
 // perf.js — smoothed fps/step laps and the 2 Hz HUD pulse (design §6 budget).
 'use strict';
 
@@ -23,3 +24,5 @@ var PERF = {
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = PERF;
+else root.COLPERF = PERF;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));
