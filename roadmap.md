@@ -11,6 +11,7 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 
 | release | deliverable | plan | depends on |
 | --- | --- | --- | --- |
+| 0.1.7 | crust flow units: the two relaxations in metres and Myr, the ceiling made honest; R4 left open with its measurements (§3) | `0.1.7-plan.md` | — |
 | 0.2.x | column engine: eruptives, deposits, extraction; page chrome (pause/step/reset) uses E1/E3 | `0.2.0-plan.md` | — |
 | 0.3.x | particle engine P3+ (melt, eruptions, contact) | `0.3.0-plan.md`, `0.3.0-p3-plan.md` | — |
 | 0.4.0 | sync/exchange: provenance, deposits core, water, checkpoint, section pack | `0.4.0-sync-plan.md` | — |
@@ -51,14 +52,15 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   conditions.
 - **C1 on the column engine** (one global per file, `start(host)`): prerequisite of 0.9, not of
   the cut. New files do not add a second global.
-- **The crust kernel's ×1000 (found in 0.4.1 M2):** `CRU.belt` and `CRU.delaminate` scale their flow
-  by `1000` on an excess that is already in metres, where their constants are documented as rates
-  *per km* (`0.1.5-plan.md` §M2(b), §M2(d)) — measured: a 5 406 m belt excess moves 13.0 km of
-  felsic crust in one frame at 10 kyr/f, where the documented law gives 6.5 m. Deferred because it
-  changes the model, not the cut: every 0.1.x number that quotes a plateau, a ceiling or a belt
-  width is measured with it in place, and `0.1.6-plan.md`'s "the belt never widens" finding may be
-  partly this. It needs its own milestone, its own re-measurement, and the constants' comments and
-  units settled together (`js/crust.js:170`, `js/crust.js:274`).
+- **The crust kernel's ×1000 (found in 0.4.1 M2): settled by `0.1.7-plan.md`.** Both
+  flow laws now read `1/Myr` on metre excesses, in a backward-Euler form that is stable
+  at every slider leg, with the belt's receiver capped to the ceiling headroom and the
+  peel last in K5; `m2-check` gates the arithmetic of each law. The re-measurement it
+  owed (`0.1.6-plan.md` §5, "the belt never widens") came back: with honest rates the
+  belt *does* build (root 19.6–29.7 km) and is then consumed, and the collision brake
+  fails because it tracks the instantaneous belt width. Closing R4 needs an orogen
+  memory — new persistent state, so it is the next engine plan's decision, not a
+  constant. R2/R3/event-memory numbers in the old plans predate the fix.
 
 ## 4. Not planned
 

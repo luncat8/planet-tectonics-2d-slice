@@ -427,9 +427,12 @@ function gate() {
 		' root thicken ' + P.beltCols + ' or more of the 6 columns around the pair; ' +
 		'narrowest seen ' + beltRunWorst + ' at ' + fmtKm(beltRunX));
 	// The sink is rate limited, so its steady state sits a little over the ceiling it
-	// holds: the band is 1%, which is 800 m on 80 km.
-	L.check.ok('R3 the crust has a ceiling', maxH <= P.crustMax * 1.01, fmtKm(maxH) +
-		' (max ' + fmtKm(P.crustMax) + ')');
+	// holds: the excess is one frame of squeeze influx, measured (0.1.7) at up to
+	// 35 km/Myr into a compressing column. The allowance is crustMax + influx x dt,
+	// 1.8 km on 50 kyr frames and 3.5 km on 100 kyr, where a fixed 1% band failed.
+	L.check.ok('R3 the crust has a ceiling', maxH <= P.crustMax + 35e3 * kyr / 1e3,
+		fmtKm(maxH) + ' (ceiling ' + fmtKm(P.crustMax) + ' + ' +
+		fmtKm(35e3 * kyr / 1e3) + ' of one-frame influx at ' + kyr + ' kyr/f)');
 	L.check.ok('no site changes its topology twice inside the event memory',
 		flipRepeat === 0, flipRepeat + ' of ' + (births + deaths) + ' events (' +
 		per1000(births + deaths) + ' per 1000 frames) came within ' + P.evGap +

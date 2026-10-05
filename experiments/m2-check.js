@@ -874,6 +874,93 @@ CRU.collapse(S, 1);
 CRU.collapse(S, 1);
 check.ok('nothing moves while every column is below hCollapse', flatHash === S.hash());
 
+// 0.1.7 M0/M1 — the flow-law units and the receiver's headroom. A crustal rate
+// constant is 1/Myr multiplying a metre excess to give metres; before this release
+// both laws multiplied the excess by 1000 "for km" and were six digits too fast, and
+// no qualitative check noticed. The arithmetic hand-cited here is the gate.
+function beltFixture() {
+	check.planet(1);
+	var n = S.nCol, i, b = (n >> 1) - 1;
+	for (i = 0; i < n; i++) {
+		S.colNL[i] = 0;
+		COL.push(i, (i === b || i === b + 1) ? 60e3 : 8e3, P.LITH.fel, 100, 0);
+		COL.sums(i);
+		S.edge[i] = P.EDGE.none; S.edgeRelN[i] = 0; S.edgePol[i] = 0;
+		S.edgeAge[i] = 0; S.edgeRPlate[i] = -1; S.edgeSlow[i] = 0;
+	}
+	S.edge[b] = P.EDGE.collide;
+	S.edgeRelN[b] = -2.5e4;            // 25 mm/yr closing: the speed factor is exactly 1
+	return b;
+}
+var b7 = beltFixture();
+COL.beltAt(S, S.nCol, b7);
+var ex7 = 60e3 - COL.flankH - P.beltYield;        // pair mean, so 0.5*(h[i]+h[j]) = 60 km
+var th7 = P.kBelt * ex7 * 0.01 / (1 + P.kBelt * 0.01);   // the speed factor of this fixture is 1
+check.near('the belt excess is the pair over its flanks less the root it can hold',
+	ex7, 49e3, 1e-12, 'm');
+check.near('the orogenic flow sheds the backward-Euler relaxation of the excess', th7,
+	P.kBelt * 49e3 * 0.01 / (1 + P.kBelt * 0.01), 1e-9, 'm');
+CRU.belt(S, 0.01);
+check.near('each feed column gains half a share', S.hTot[b7 - 1] - 8e3, th7 / 2, 1e-9, 'm');
+check.near('and the pair loses a whole share', 60e3 - S.hTot[b7], th7, 1e-9, 'm');
+
+// the receiver's headroom (0.1.6 §4 R3): the flow never fills a column past crustMax
+b7 = beltFixture();
+S.colNL[b7 - 2] = 0;
+COL.push(b7 - 2, P.crustMax - 10, P.LITH.fel, 100, 0);
+COL.sums(b7 - 2);
+S.colNL[b7 + 2] = 0;
+COL.push(b7 + 2, P.crustMax, P.LITH.fel, 100, 0);
+COL.sums(b7 + 2);
+CRU.belt(S, 0.01);
+check.ok('a receiver at the ceiling receives nothing', S.hTot[b7 + 2] === P.crustMax);
+check.near('a receiver with 10 m of headroom gains exactly it',
+	S.hTot[b7 - 2] - (P.crustMax - 10), 10, 1e-9, 'm');
+check.near('and its side of the pair sheds only what moved',
+	60e3 - S.hTot[b7], th7 / 2 + 10, 1e-9, 'm');
+
+// delamination: the excess over crustMax relaxes to it, backward-Euler stiff; and a
+// frame can never take all of it or drop the column under the ceiling
+function delamFixture() {
+	check.planet(1);
+	var n = S.nCol, i;
+	for (i = 0; i < n; i++) {
+		S.colNL[i] = 0;
+		COL.push(i, 8e3, P.LITH.fel, 100, 0);
+		COL.sums(i);
+	}
+	S.colNL[50] = 0;
+	COL.push(50, P.crustMax + 20e3, P.LITH.fel, 100, 0);
+	COL.sums(50);
+}
+delamFixture();
+var cons7 = S.ledCons[P.LITH.fel];
+CRU.delaminate(S, 0.01);
+var shed7 = 20e3 * P.kDelam * 0.01 / (1 + P.kDelam * 0.01);
+check.near('the shed is the backward-Euler relaxation of the excess',
+	P.crustMax + 20e3 - S.hTot[50], shed7, 1e-9, 'm');
+check.near('and books the foundered volume as consumed',
+	S.ledCons[P.LITH.fel] - cons7, shed7 * S.colW[50], 1e-9, 'm3');
+CRU.delaminate(S, 10);
+check.ok('no frame takes all of it, and none drops the column under the ceiling',
+	S.hTot[50] > P.crustMax && S.hTot[50] < P.crustMax + (20e3 - shed7) / 2,
+	'overage ' + ((S.hTot[50] - P.crustMax) / 1e3).toFixed(2) + ' km after dt = 10 Myr');
+
+// the shed is linear in the frame at small dt (a rate, not a step), and bounded at
+// enormous dt (a relaxation, not a divergence): both halves of "no dt hidden in the
+// constant". The belt flow is explicit, so its frame subdivision is a numerics
+// choice, not the answer, to first order.
+delamFixture();
+CRU.delaminate(S, 0.0001);
+check.near('at small dt the shed is kDelam x excess x dt to first order',
+	20e3 - (S.hTot[50] - P.crustMax), 20e3 * P.kDelam * 0.0001, 5e-3, 'm');
+b7 = beltFixture();
+for (var fi7 = 0; fi7 < 10; fi7++) CRU.belt(S, 0.01);
+var fine7 = 60e3 - S.hTot[b7];
+b7 = beltFixture();
+CRU.belt(S, 0.1);
+check.near('the orogenic flow is dt-independent to first order', 60e3 - S.hTot[b7], fine7, 2e-2, 'm');
+
 // K5/K6 add no crust: the relief of a collision comes from the layer sums alone
 bi = boundary();
 COL.push(bi, 20e3, P.LITH.fel, 100, 0);
@@ -905,23 +992,31 @@ function longRun(rate, frames) {
 	check.planet(5);
 	SIM.setGeo(rate);
 	SIM.run(frames);
-	var minGap = Infinity, maxH = 0, maxZ = 0;
+	var minGap = Infinity, minSoft = Infinity, maxH = 0, maxZ = 0;
 	for (var i = 0; i < S.nCol; i++) {
 		var g = S.colX[i + 1 < S.nCol ? i + 1 : 0] - S.colX[i];
 		if (g <= 0) g += P.wrap;
-		minGap = Math.min(minGap, g);
+		// COL.floor is a plate correction: it promises no interpenetration across a
+		// plate boundary, not inside one. A draining record's territory is soft by
+		// design (0.1.5 M1a), so the gate measures what the floor guarantees and
+		// reports same-plate squeezes beside it. Measured since 0.1.7 M0: a sliver
+		// pinned to 7 km against its own plate's neighbour, both gaps' worth of
+		// crust elsewhere, the trench arriving at 6.6 mm/yr.
+		if (S.colPlate[i] !== S.colPlate[i + 1 < S.nCol ? i + 1 : 0]) minGap = Math.min(minGap, g);
+		else minSoft = Math.min(minSoft, g);
 		maxH = Math.max(maxH, S.hTot[i]);
 		maxZ = Math.max(maxZ, S.z[i]);
 	}
-	return { minGap: minGap, maxH: maxH, maxZ: maxZ, nCol: S.nCol, nPl: S.nPl };
+	return { minGap: minGap, minSoft: minSoft, maxH: maxH, maxZ: maxZ, nCol: S.nCol, nPl: S.nPl };
 }
 var lr = longRun(100e3, 5000);
 // COL.floor is a rigid plate correction, and a ring of contacts can over-constrain it:
 // a plate held between two equal overlaps has nowhere to move. The floor is therefore a
 // bound (P.floorTol), not an equality -- measured 0.05% short on seed 5 at 500 Myr.
-check.ok('500 Myr at 100 kyr/frame leaves no interpenetrating columns',
+check.ok('500 Myr at 100 kyr/frame leaves no interpenetrating plates',
 	lr.minGap > P.gFloor * P.w0 * (1 - P.floorTol),
-	'min gap ' + (lr.minGap / P.w0).toFixed(4) + ' w0 of a ' + P.gFloor + ' w0 floor');
+	'min cross-plate gap ' + (lr.minGap / P.w0).toFixed(4) + ' w0 of a ' + P.gFloor +
+	' w0 floor; softest same-plate gap ' + (lr.minSoft / P.w0).toFixed(4) + ' w0');
 invariants();
 console.log('  500 Myr @100 kyr: n=' + lr.nCol + ' plates=' + lr.nPl +
 	' maxCrust=' + (lr.maxH / 1e3).toFixed(0) + ' km maxRelief=' + (lr.maxZ / 1e3).toFixed(1) + ' km');

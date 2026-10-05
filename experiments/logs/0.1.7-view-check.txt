@@ -1,0 +1,133 @@
+
+A. row schedule (design §1.2)
+PASS  q closed form   rel 2.67e-6  got 1.1874826734239257  want 1.18748
+PASS  hTop[N] = R   abs 0.00e+0  got 6371000 m  want 6371000
+PASS  row 0 = h0 = 20 m   rel 0.00e+0  got 20 m  want 20
+PASS  bottom row 1006 km   abs 1.14e+2  got 1005885.9292150354 m  want 1006000
+PASS  sky rows = 34   got 34
+PASS  hTop strictly increasing
+PASS  rowH is geometric with ratio q
+PASS  rowOf brackets its altitude over 4000 samples   4000/4000
+PASS  rowOf(0) = 0 (the 0 m band)   got 0
+PASS  rowOf(+1 km) = -1 (sky has no row)   got -1
+PASS  rowCy lies inside its row
+
+B. fan budget (design §1.3)
+PASS  fan cells = 7155   got 7155
+PASS  design table fanCells N=48   got 5247
+PASS  design table fanCells N=64   got 7155
+PASS  design table fanCells N=80   got 9063
+PASS  design table fanCells N=96   got 10903
+PASS  design table fanCells N=128   got 14341
+PASS  bottom band is exactly 1 cell   got 1
+PASS  band 0 has nCols cells   got 512
+PASS  exactly 9 halvings, each exactly /2   9 halvings
+PASS  bandOf covers every row   last band ends at 64
+PASS  cellOf(centre) = cell for all 7155 cells   7155/7155
+
+C. fan neighbour stencil (design §1.3)
+PASS  neighbour links are symmetric (present both ways)   0 missing
+PASS  symmetric pairs carry the same face width   0 mismatches
+PASS  symmetric pairs carry the same centre distance   0 mismatches
+PASS  no cell is its own neighbour   0 self links
+PASS  every cell has left and right except the 1-cell bottom row   14308/14308
+PASS  coarse-fine faces conserve the own pitch   0 rows wrong
+PASS  symmetric link count   28616 directed links
+PASS  every interior cell has a down neighbour   7154/7154
+PASS  every interior cell has an up neighbour   6643/6643
+
+D. display map and LUTs (design §1.4)
+PASS  |y(u(y)) - y| < 1e-12 rel   max rel 6.27e-16
+PASS  window top maps to canvas row 0   rel 1.79e-14  got -1.7945399021896087e-14 px  want 0
+PASS  window bottom maps to canvas row ch   rel 0.00e+0  got 560 px  want 560
+PASS  screen/world altitude maps are inverse   rel 4.37e-11  got -123000.00000000004 m  want -123000
+PASS  higher altitude maps toward canvas top
+PASS  lutY strictly decreasing top -> down
+PASS  lutY[0] = window top +33 km   abs 1.60e-1  got 32.83975092408298 km  want 33
+PASS  lutY[ch-1] = window bottom -300 km   abs 9.35e-1  got -299.06522042028314 km  want -300
+PASS  lutX filled across the full canvas width
+PASS  lutX wrapped into [0, wrap)   38531345.46704114 .. 1498828.125
+PASS  lutRow agrees with rowOf(lutY)
+PASS  per-row fan LUTs match the band tables
+PASS  default: altitude lines ordered, in window, round values   12 lines
+PASS  default: altitude lines never crowd   min gap 26.9 px (limit 26)
+PASS  default: altitude lines never leave a blank band   largest blank 80 px
+PASS  default: distance lines ordered and in window   7 lines
+PASS  default: distance step is a 1-2-5 decade, never crowding   step 500000 m = 213.3 px
+PASS  default: every on-screen line is labelled once, in m or km   17/17  -200 km -150 km -100 km -80 km
+PASS  overview: altitude lines ordered, in window, round values   7 lines
+PASS  overview: altitude lines never crowd   min gap 51.5 px (limit 26)
+PASS  overview: altitude lines never leave a blank band   largest blank 155 px
+PASS  overview: distance lines ordered and in window   7 lines
+PASS  overview: distance step is a 1-2-5 decade, never crowding   step 500000 m = 213.3 px
+PASS  overview: every on-screen line is labelled once, in m or km   13/13  -5000 km -2000 km -1000 km -500 km
+PASS  crust x10: altitude lines ordered, in window, round values   15 lines
+PASS  crust x10: altitude lines never crowd   min gap 37.4 px (limit 26)
+PASS  crust x10: altitude lines never leave a blank band   largest blank 40 px
+PASS  crust x10: distance lines ordered and in window   7 lines
+PASS  crust x10: distance step is a 1-2-5 decade, never crowding   step 50000 m = 213.3 px
+PASS  crust x10: every on-screen line is labelled once, in m or km   20/20  -17 km -16 km -15 km -14 km
+PASS  basin x40: altitude lines ordered, in window, round values   17 lines
+PASS  basin x40: altitude lines never crowd   min gap 32.1 px (limit 26)
+PASS  basin x40: altitude lines never leave a blank band   largest blank 32 px
+PASS  basin x40: distance lines ordered and in window   8 lines
+PASS  basin x40: distance step is a 1-2-5 decade, never crowding   step 10000 m = 170.7 px
+PASS  basin x40: every on-screen line is labelled once, in m or km   25/25  -4.6 km -4.4 km -4.2 km -4 km
+PASS  deep window: altitude lines ordered, in window, round values   12 lines
+PASS  deep window: altitude lines never crowd   min gap 33.1 px (limit 26)
+PASS  deep window: altitude lines never leave a blank band   largest blank 70 px
+PASS  deep window: distance lines ordered and in window   7 lines
+PASS  deep window: distance step is a 1-2-5 decade, never crowding   step 500000 m = 213.3 px
+PASS  deep window: every on-screen line is labelled once, in m or km   16/16  -1000 km -900 km -800 km -700 km
+PASS  max zoom: altitude lines ordered, in window, round values   13 lines
+PASS  max zoom: altitude lines never crowd   min gap 40.3 px (limit 26)
+PASS  max zoom: altitude lines never leave a blank band   largest blank 40 px
+PASS  max zoom: distance lines ordered and in window   8 lines
+PASS  max zoom: distance step is a 1-2-5 decade, never crowding   step 2000 m = 170.7 px
+PASS  max zoom: every on-screen line is labelled once, in m or km   21/21  -3.3 km -3.25 km -3.2 km -3.15 km
+PASS  altitude labels carry an explicit sign and the line value   -300 km -200 km -150 km -100 km -80 km -50 km -40 km -30 km -20 km -10 km +10 km +20 km
+PASS  no label is drawn off the canvas
+PASS  sea-level label sits on its horizontal line   rel 0.00e+0  got 121.56311700510165 px  want 121.56311700510165
+PASS  the scale-lines toggle removes every ruler line but keeps sea level
+PASS  a vertical pan keeps the same ladder rungs   -300 km -200 km -150 km -100 km -80 km -50 km -40 km -30 km -20 km -10 km +10 km +20 km  ->  -300 km -200 km -150 km -100 km -80 km -50 km -40 km -30 km -20 km -10 km +10 km +20 km
+
+E. presets and camera
+PASS  default kx = winW/cw   rel 0.00e+0  got 2343.75  want 2343.75
+PASS  overview keeps the default horizontal scale   rel 0.00e+0  got 2343.75  want 2343.75
+PASS  overview fits the full depth   abs 9.31e-10  got -6371000.000000001 m  want -6371000
+PASS  overview top is the sky band   abs 7.28e-12  got 32999.99999999999 m  want 33000
+PASS  crust preset is x10   rel 0.00e+0  got 234.375  want 234.375
+PASS  basin preset is x40   rel 0.00e+0  got 58.59375  want 58.59375
+PASS  def reads back as zoom 1 on both axes   rel 0.00e+0  got 1  want 1
+PASS  cru reads back as zoom 10 on both axes   rel 0.00e+0  got 20  want 20
+PASS  ovw reads back as the anisotropic preset   rel 0.00e+0  got 0  want 0
+PASS  setZoomX / setZoomY read back over the whole slider sweep
+PASS  vertical scale keeps the centred altitude while the window fits
+PASS  both axes clamp at zoomMax   rel 1.82e-12  got 400.0000000000018  want 400
+PASS  vertical scale clamps at the whole planet   rel 0.00e+0  got 0.531708204466091  want 0.531708204466091
+PASS  the whole planet is exactly sky top to center   abs 9.31e-10  got -6371000.000000001 m  want -6371000
+PASS  zoom keeps the cursor world x fixed   rel 0.00e+0  got 0 m  want 0
+PASS  zoom keeps the cursor world y fixed   rel 3.64e-12  got -3.637978807091713e-12 m  want 0
+PASS  pan moves x by -37 px   rel 1.16e-10  got -1.1641532182693481e-10 m  want 0
+PASS  sync clears the dirty flag
+PASS  lookAt marks the view dirty
+PASS  lookAt moved the window centre   rel 0.00e+0  got 1234  want 1234
+
+F. column LUT vs brute-force owner
+PASS  default window   0/1280 wrong owners
+PASS  overview   0/1280 wrong owners
+PASS  crust x10   0/1280 wrong owners
+PASS  basin x40   0/1280 wrong owners
+PASS  seam window #0 (cx = 0.000e+0)   0/1280 wrong owners
+PASS  seam window #1 (cx = 1.000e+0)   0/1280 wrong owners
+PASS  seam window #2 (cx = 4.003e+7)   0/1280 wrong owners
+PASS  seam window #3 (cx = 2.002e+7)   0/1280 wrong owners
+PASS  seam window #4 (cx = -1.334e+7)   0/1280 wrong owners
+PASS  seam window #5 (cx = 1.201e+8)   0/1280 wrong owners
+PASS  window exactly one wrap wide   0/1280 wrong owners
+PASS  non-uniform perturbed columns   0/1280 wrong owners
+PASS  non-uniform perturbed columns x40   0/1280 wrong owners
+PASS  a single column   0/1280 wrong owners
+PASS  zero columns -> every pixel unowned
+
+ALL PASS (119 checks)

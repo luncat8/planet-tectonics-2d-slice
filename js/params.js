@@ -148,7 +148,9 @@ var P = {
 	kCollapse: 0.02,             // /Myr
 	tauSliver: 4,                 // Myr, a drained sliver's drawn ground follows the line between
 	                               // its margins over this time rather than in one frame
-	kBelt: 0.12,                 // /Myr, orogenic flow out of a collision pair, per km of excess
+	kBelt: 0.12,                 // 1/Myr of the excess (m), orogenic flow out of a collision
+	                             // pair: a 5.4 km excess moves ~650 m/Myr, scaled by the
+	                             // closing rate; stiff re-calibration is gated by 0.1.7 M0
 	beltYield: 3000,              // m, the root a collision can hold up without flowing sideways
 	faceGapMin: 0.5,             // x w0: floor on the face gap of both column stencils
 	kEro: 0.05,                  // /Myr
@@ -242,7 +244,8 @@ var P = {
 	crustMax: 80e3,               // m, the ceiling on one column's crust
 	evDzK: 1.25,                  // an event frame may move the surface this much more
 	evRate: 2,                    // topology events per 1000 frames
-	kDelam: 0.45,                 // 1/Myr, foundering rate per km of excess over crustMax
+	kDelam: 45,                   // 1/Myr, foundering: the column over crustMax relaxes
+	                             // to it with tau = 1/kDelam (22 kyr), backward Euler
 	sliverMax: 0.02,              // fraction of the crust a draining record may hold
 	evGap: 40,                    // frames a site must stay quiet before its topology may change again
 	// live state (not part of §9: sliders, seed, view)

@@ -1,0 +1,20 @@
+contact audit — seed 1, 50 kyr/frame, 3000 frames (150 Myr), 2.44 ms/frame   [STRICT]
+  crust          max 80.3 km   thickest at a contact 78.0 km   collisions 1209 seen, sharpest peak 5.06x flanks, 55.1% of the 1202 with a root widen to a belt   draining records 4 live holding 0.1% of the crust, widest run 0.0 columns (oldest 72.4 Myr)
+  surface        worst single-frame move 5475 m at frame 1474 x 14307.7 km   mean 2.6 m, 13541 raster samples above 100 m
+  event site     0 m at a birth/death site, 2074 m elsewhere on the same frame, quiet-frame worst 5475 m   (quiet-frame drawn thickness 54.1 km and width 10.0%, 0 quiet records with no counterpart, 7448 re-partitioned)
+  columns        worst single-frame drawn-thickness change 54.1 km at frame 1028 x 30069.7 km   worst width change 10.0% at frame 542   worst local slope 96.1%
+  topology       88 births / 62 deaths (50.00 per 1000 frames) at 0 repeated birth and 0 repeated death sites (541 columns, 9 plates)
+  stacks         0 column-frames with an inverted bed, 0 column-frames at layerCap
+
+contact contract (0.1.5-plan.md §1)
+PASS  R1 an event moves the surface no more than the rest of its own frame   at the site 0 m, elsewhere on that frame 2074 m, ratio 0.00 (max 1.25)
+FAIL  R2 no collision is a needle   1211 collisions measured, the sharpest peak 5.06x its flanks at 35427.7 km (max 1.5)
+FAIL  R2 a collision that builds a belt thickens a run of columns   664 of 1204 collision-frames with a 4.0 km root thicken 4 or more of the 6 columns around the pair; narrowest seen 3 at 5016.5 km
+PASS  R3 the crust has a ceiling   80.3 km (ceiling 80.0 km + 1.8 km of one-frame influx at 50 kyr/f)
+PASS  no site changes its topology twice inside the event memory   0 of 150 events (50.00 per 1000 frames) came within 40 frames of an earlier one at the same site
+PASS  R5 stacks stay in stratigraphic order   0 inverted column-frames
+PASS  R5 no column runs out of beds   0 column-frames touched layerCap, the longest stay 0 frames (max 3)
+PASS  a draining record holds no ground   0.1% of the crust in 4 draining records, widest run 0.0 columns (max 2.0%)
+PASS  every buffer is finite
+
+2 / 9 FAILURES

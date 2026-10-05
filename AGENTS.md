@@ -67,9 +67,11 @@ port/ - files shared byte-identical with planet-geotectonics (0.4.0-sync-plan.md
 port/PORT.json is the manifest. They are not in js/ on purpose: experiments/smoke.js asserts
 that columns.html loads every js/*.js exactly once, and a shared format is not a page module.
 
-plans: 0.4.0-sync-plan.md (what is exchanged with the reference project, in which direction),
-0.4.1-plan.md (the cut: a line on the globe's map -> a section here), 0.9.0-draft-sync.md
-(the integrated globe, later). drafts are 0.3.0-draft.md and 0.4.1-draft.md.
+plans: 0.1.7-plan.md (the crust flow laws: units, the ceiling, and what the 0.1.5/0.1.6
+collision contract was actually measuring), 0.4.0-sync-plan.md (what is exchanged with the
+reference project, in which direction), 0.4.1-plan.md (the cut: a line on the globe's map -> a
+section here), 0.9.0-draft-sync.md (the integrated globe, later). drafts are 0.3.0-draft.md and
+0.4.1-draft.md.
 roadmap.md — which release owns what, the runtime-authority table, what is deferred; each
 release's own plan is still the authority for its milestones.
 

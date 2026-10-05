@@ -101,10 +101,13 @@ CRU.k5 = function (st, dt, t, Tm) {
 		st.damage[i] = dmg < 0 ? 0 : (dmg > 1 ? 1 : dmg);
 	}
 	CRU.zDyn(st, dt);
-	CRU.delaminate(st, dt);
 	CRU.collapse(st, dt);
 	CRU.arcGrowth(st, dt, t, Tm);
 	CRU.lipGrowth(st, dt, t);
+	// the foundering last: K5 is the only pass that may exceed crustMax, and ending
+	// the frame at the ceiling makes R3 a measured end-of-frame fact, not a race
+	// between inflows and a peel that ran before them
+	CRU.delaminate(st, dt);
 };
 
 // Face gap of the periodic face i -> i+1, floored. Both column stencils below are
@@ -164,12 +167,11 @@ CRU.delaminate = function (st, dt) {
 		if (st.colGhost[i]) continue;
 		over = st.hTot[i] - P.crustMax;
 		if (!(over > 0)) continue;
-		// metres of crust this frame: a fraction of the excess, never all of it, so the
-		// surface subsides smoothly instead of stepping down onto the ceiling
-		// proportional to the excess, and never more than half of it in one frame, so
-		// the ceiling is reached within a frame or two instead of stepping onto it
-		take = P.kDelam * over * 1000 * dt;
-		if (take > over * 500) take = over * 500;
+		// backward Euler on the linear shed (over' = -k*over): one expression per frame,
+		// unconditionally stable at any slider rate, dt-independent to first order, and
+		// the ceiling is reached within a frame or two instead of stepping onto it —
+		// the surface subsides smoothly, the sink is still recorded per frame
+		take = over * P.kDelam * dt / (1 + P.kDelam * dt);
 		if (!(take > 0)) continue;
 		b = i * P.layerCap;
 		w = st.colW[i];
@@ -272,13 +274,17 @@ CRU.belt = function (st, dt) {
 		// flattens the boundary until no belt is left at all
 		excess = 0.5 * (st.hTot[i] + st.hTot[j]) - COL.flankH - P.beltYield;
 		if (!(excess > 0)) continue;
-		th = P.kBelt * excess * 1000 * dt * (0.5 + Math.abs(st.edgeRelN[i]) / P.vRef);
+		// the same backward-Euler shed as delaminate: the flow must keep up with the
+		// squeeze (0.1.5 §M3.1's acceptance, a belt that widens, needs a stiff rate)
+		// and an explicit rate at a stiff constant oscillates at 100..200 kyr/frame
+		var kd = P.kBelt * dt * (0.5 + Math.abs(st.edgeRelN[i]) / P.vRef);
+		th = excess * kd / (1 + kd);
 		if (!(th > 0)) continue;
 		// spread over the P.beltFeed columns each side, so the belt widens instead of
-		// raising a wall two columns wide
+		// raising a wall two columns wide, and never past the ceiling on a receiver
 		for (k = 1; k <= P.beltFeed; k++) {
-			COL.collapseMove(i, wmodc(i - k, n), th * st.colW[i] / P.beltFeed);
-			COL.collapseMove(j, wmodc(j + k, n), th * st.colW[j] / P.beltFeed);
+			beltFeedTo(st, i, wmodc(i - k, n), th);
+			beltFeedTo(st, j, wmodc(j + k, n), th);
 		}
 	}
 };
@@ -286,6 +292,17 @@ CRU.belt = function (st, dt) {
 // wrapped column index. The hand-rolled `i > 2 ? i - 2 : n - 2` this replaces sent
 // column 1 to n - 2 and column n - 1's belt to column 2, i.e. across the whole planet.
 function wmodc(k, n) { k %= n; return k < 0 ? k + n : k; }
+
+// One receiver of the orogenic flow: an even share of the column's shed, never more
+// than brings the receiver up to the crust ceiling (0.1.6 §4: without the headroom the
+// flow filled the columns behind a contact past crustMax faster than delamination
+// could peel them). A receiver at the ceiling only silences its own side of the wedge.
+function beltFeedTo(st, from, to, th) {
+	var room = (P.crustMax - st.hTot[to]) * st.colW[to];
+	if (!(room > 0)) return;
+	var vol = th * st.colW[from] / P.beltFeed;
+	COL.collapseMove(from, to, vol > room ? room : vol);
+}
 
 if (typeof module !== 'undefined' && module.exports) module.exports = CRU;
 else root.COLCRUST = CRU;

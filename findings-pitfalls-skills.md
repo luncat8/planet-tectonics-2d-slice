@@ -611,6 +611,8 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   X by 1000 is a porting residue from a reference that kept X in km, and its `never more than half
   in one frame` cap hides it: the model then runs at the cap on every frame size, which *looks* like
   a working ceiling. Measure one frame's flux against the documented rate before believing either.
+  Fixed in 0.1.7 (`0.1.7-plan.md`), where each law's one-frame arithmetic is now a gate in
+  `m2-check`.
 - **Feed a corruption through the transport that can carry it.** A `NaN` in a pack cannot survive
   JSON (`stringify` writes `null`, the decoder reads 0), so a harness that mutates a `NaN` and
   encodes is testing the *checksum*, not the field check — and it passes for the wrong reason until
@@ -675,3 +677,31 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   `rows2[jj]` fails for correct behavior; the check that asks the engine (`joinTo(mid) >= 0` to
   skip matched columns, wrap + scan for the rest) fails only for wrong dates — and as a side
   effect counts exactly, since its tally must equal the ledger's `freshColumns`.
+
+## 0.1.7 (crust flow units, and what a fix re-measures)
+
+- **A gate must measure its mechanism's promise, not a nearby quantity.** `COL.floor` is a
+  *cross-plate* bound; a draining record's same-plate territory is soft by design and bounded
+  by its retirement rule instead. The m2 long-run gate measured every adjacent gap and passed
+  only while a ×1000 flow bug kept every overage column empty within a frame of forming one.
+  After the fix it failed on a 7 km sliver gap no promise was ever broken about. Re-reading
+  the mechanism, not "fixing" the number, is what closed it.
+- **A rate-implemented ceiling is an equilibrium, so say it in the gate.** `crustMax` held by
+  a sink of rate k settles at `crustMax + influx·dt`: frame-dependent by construction, and
+  no stiffness escapes it (even peel-everything leaves one frame of influx). The audit's R3
+  now prints its allowance (`35 km/Myr × dt`) instead of a fixed percent that silently tests
+  the frame rate. Making the peel the *last* pass of K5 is what makes the statement about
+  end-of-frame values instead of mid-frame ones.
+- **Calibration constants measured on top of a bug are measurements *of* the bug.** 0.1.5's
+  "peak over flanks 1.3–1.44x" was only reachable with the orogenic flow running ~1000x too
+  fast, and a kBelt sweep {0.12..40}/Myr cannot reproduce it honestly: the needle ratio falls
+  5.06x to 2.97x monotonically and event memory breaks before the ratio gate passes. When a
+  fix invalidates acceptance numbers, re-measure and hand the calibration decision to its own
+  plan with the sweep data — do not chase the old number with new constants.
+- **A page global must be resolved as the page resolves it.** `js/perf.js` keeps `PERF`
+  private to its IIFE and publishes `COLPERF`; the particle engine's `sim.js` and `ui.js`
+  then referenced a bare `PERF` — fine for no one, since the module-global name is the only
+  name the browser has. It died in `experiments/pt-ui.js` only because that harness runs the
+  *bootstrap* (the preset HUD call), not just the kernels. Keep page harnesses on bootstrap
+  paths: a VM that loads the real script order and calls into the real globals is a browser
+  stand-in, and a shared file's consumers must look up its published name, per file.
