@@ -69,6 +69,47 @@ check.planet = function (seed, preset) {
 	return mods.state;
 };
 
+// The prescribed two-continent fixture (0.1.6-plan.md §5, corrected 0.1.8 M0): two
+// plates, half the planet each, both uniform continental crust at the undeformed
+// reference. One builder so r4-check and the orogen-measure comparison cannot drift.
+//
+// The crust is built as *stacks*. The fixture this replaces assigned only `hFel`, and
+// every kernel derives its caches from the stacks (COL.sums), so the continents were the
+// `def` planet's mixed 13.6-67 km crust and the collision pair started thinner than its
+// own flanks; the numbers it produced described a fixture nobody had declared.
+check.twoContinents = function (seed) {
+	var P = mods.params, S = mods.state, COL = mods.columns;
+	check.planet(seed === undefined ? P.seed : seed, 'def');
+	var n = S.nCol, half = n >> 1, i;
+	for (i = 0; i < n; i++) {
+		S.colPlate[i] = i < half ? 0 : 1;
+		S.colAge[i] = 100;
+		S.edge[i] = P.EDGE.none; S.edgePol[i] = 0; S.edgeAge[i] = 0;
+		S.edgeRPlate[i] = -1; S.edgeSlow[i] = 0;
+		S.colNL[i] = 0;
+		COL.push(i, P.hFelLand0, P.LITH.fel, 100, 0);
+		COL.sums(i);
+	}
+	S.nPl = 2; S.plN[0] = half; S.plN[1] = n - half;
+	S.plU[0] = 0; S.plU[1] = 0;
+	for (i = 0; i < n; i++) S.colU[i] = S.plU[S.colPlate[i]];
+	return S;
+};
+
+// The collision site of that fixture: the closing collide edge between the two
+// prescribed plates, or -1 once the boundary welded and there is nothing to measure.
+check.collisionSite = function () {
+	var P = mods.params, S = mods.state, i, j;
+	for (i = 0; i < S.nCol; i++) {
+		if (S.edge[i] !== P.EDGE.collide || !(S.edgeRelN[i] < 0)) continue;
+		j = i + 1 < S.nCol ? i + 1 : 0;
+		if (S.colGhost[i] || S.colGhost[j]) continue;
+		if (S.colPlate[i] > 1 || S.colPlate[j] > 1) continue;
+		return i;
+	}
+	return -1;
+};
+
 // brute-force owner of a world x: the reference the column LUT is checked against.
 // The column whose position is the nearest *predecessor* of x going backwards around
 // the circle. O(n) on purpose: it must not share any assumption with the LUT walk, so

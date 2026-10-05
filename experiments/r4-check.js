@@ -13,7 +13,10 @@
 // brake off and must show the closing speed staying at the drive: a fixture that cannot
 // fail without the mechanism is not measuring it.
 //
-// run:  node experiments/r4-check.js [frames] [drive_mm_yr]
+// The fixture builder and the collision-site walk live in lib.js, shared with
+// experiments/orogen-measure.js (0.1.8 M0), so the two cannot measure different fixtures.
+//
+// run:  node experiments/r4-check.js [frames] [drive_mm_yr] [seed]
 'use strict';
 
 var L = require('./lib.js');
@@ -24,6 +27,7 @@ var check = L.check;
 var FRAMES = Number(process.argv[2]) || 4000;      // 200 Myr at 50 kyr/frame
 var DRIVE = (Number(process.argv[3]) || 15) * 1e3; // m/Myr per continent, 15 -> 30 mm/yr closing
 var KYR = 50e3;
+var SEED = Number(process.argv[4]) || 1;
 
 // The drive is a force, not a velocity: a far-field push on each continent, added to the
 // per-column boundary term the plate solve already integrates. Prescribing plU instead
@@ -43,38 +47,6 @@ function driveOn() {
 	};
 }
 
-// Two continents, one closing boundary and one opening one: half the planet on each
-// plate, both halves continental, so the only collision in the model is the prescribed
-// one and the seam behind it is the rift the drive opens.
-function twoContinents() {
-	check.planet(1, 'def');
-	var n = S.nCol, half = n >> 1, i;
-	for (i = 0; i < n; i++) {
-		S.colPlate[i] = i < half ? 0 : 1;
-		S.hFel[i] = P.hFelLand0;
-		S.colAge[i] = 100;
-		S.edge[i] = P.EDGE.none; S.edgePol[i] = 0; S.edgeAge[i] = 0;
-		S.edgeRPlate[i] = -1; S.edgeSlow[i] = 0;
-	}
-	S.nPl = 2; S.plN[0] = half; S.plN[1] = n - half;
-	S.plU[0] = 0; S.plU[1] = 0;
-	for (i = 0; i < n; i++) S.colU[i] = S.plU[S.colPlate[i]];
-}
-
-// The prescribed collision: the closing collide edge between the two continents, or -1
-// once they have welded and there is no boundary left to measure.
-function site() {
-	var n = S.nCol, i, j;
-	for (i = 0; i < n; i++) {
-		if (S.edge[i] !== P.EDGE.collide || !(S.edgeRelN[i] < 0)) continue;
-		j = i + 1 < n ? i + 1 : 0;
-		if (S.colGhost[i] || S.colGhost[j]) continue;
-		if (S.colPlate[i] > 1 || S.colPlate[j] > 1) continue;
-		return i;
-	}
-	return -1;
-}
-
 // closing speed, belt width and belt root, sampled every frame
 function run(vColl) {
 	var out = {
@@ -84,12 +56,12 @@ function run(vColl) {
 	var keepV = P.vColl, keepD = P.kDam, i, k, peak, flank;
 	P.vColl = vColl;
 	P.kDam = 0;          // the drive diverges the far field; damage would split the fixture
-	twoContinents();
+	check.twoContinents(SEED);
 	SIM.setGeo(KYR);
 	driveOn();
 	for (i = 0; i < FRAMES; i++) {
 		SIM.step();
-		k = site();
+		k = check.collisionSite();
 		if (k < 0) { if (out.lost < 0) out.lost = i; continue; }
 		COL.beltAt(S, S.nCol, k);
 		peak = Math.max(S.hTot[k], S.hTot[k + 1 < S.nCol ? k + 1 : 0]);
@@ -149,9 +121,12 @@ check.ok('the brake, not the drive, is what slows the boundary', fLate > 0.9 * f
 check.ok('the belt root stays under the crust ceiling', maxRoot <= P.crustMax,
 	(maxRoot / 1e3).toFixed(1) + ' km of root (ceiling ' + (P.crustMax / 1e3).toFixed(0) + ' km)');
 
-// The three numbers below are the verdict on M3's geometric route, and the model does not
-// currently pass them. They are reported, not gated: a red suite that nobody expects hides
-// the finding, and 0.1.6-plan.md §5 carries it as the open item with the fix attached.
+// The numbers below are the verdict, and the model does not currently pass them. They are
+// reported, not gated: a red suite that nobody expects hides the finding, and
+// 0.1.8-plan.md §3 carries it as the open item. Measured on the honest fixture (0.1.8 M0),
+// the belt does *not* decay: it is 378-400 km from the first quarter on, because the crust
+// is uniform continental. What fails is that nothing grows after the contact reaches the
+// separation floor (COL.floor), so the brake cannot grow with it.
 console.log('\nR4 verdict — is the geometric route enough?');
 console.log('  belt width      ' + (earlyW / 1e3).toFixed(0) + ' km over the first quarter -> ' +
 	(lateW / 1e3).toFixed(0) + ' km over the last   (needed: widening)');
@@ -161,6 +136,9 @@ console.log('  against a ' + (2 * DRIVE / 1e3).toFixed(0) + ' mm/yr drive, the b
 	(100 * (1 - late / fLate)).toFixed(0) + '%');
 var met = lateW > earlyW && late < 0.75 * early;
 console.log('  ' + (met ? 'MET: the belt widens and the convergence is absorbed.'
-	: 'NOT MET: the belt never widens, so the brake never grows and the continents keep closing.'));
+	: 'NOT MET: the width is set by the crust and the contact, not by the brake, and once the ' +
+	'contact pair sits at the separation floor the crust stops evolving, so no measure of it can grow.'));
+console.log('  experiments/orogen-measure.js (0.1.8 M0) measures that limit and the candidate ' +
+	'measures built on it.');
 
 check.done();

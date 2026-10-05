@@ -51,6 +51,10 @@ var MATCH = new Int32Array(P.colCap), PRE = new Int32Array(P.colCap);
 var NEAR = new Int32Array(P.colCap), NEAR2 = new Int32Array(P.colCap);
 
 var sample = new Float64Array(NS), prevZ = new Float64Array(NS);
+// pre-frame records, reused every frame: this loop runs 3000-5000 times and the audit is
+// the measurement the tuning reads, so it may not spend its time in the collector
+var preX = new Float64Array(P.colCap), preTh = new Float64Array(P.colCap);
+var preW = new Float64Array(P.colCap), preG = new Uint8Array(P.colCap), preNew = new Uint8Array(P.colCap);
 
 function sampleField(field, out) {
 	var n = S.nCol, m, lo, hi, mid, k, km, f, d, dl;
@@ -75,8 +79,11 @@ var inversions = 0, atCap = 0, atCapStay = 0, maxSlope = 0, t0 = Date.now();
 // A stack that is full is fine for the frame it consolidates in and a defect for every
 // frame after that: a column that never frees a bed is dropping the arrivals. Records
 // are gathered and their indices move, so the stay is counted per column width of
-// position rather than per index.
-var capStayOf = new Map(), capTouch = new Set();
+// position rather than per index: a slot per w0 of world, stamped with the last frame it
+// was touched. A key far from another cannot collide -- 4096 slots is eight worlds wide.
+var CAP_K = 4096;
+var capLast = new Int32Array(CAP_K).fill(-1), capStay = new Int32Array(CAP_K);
+var capStayMax = 0;
 var contactMax = 0, contactCol = -1, evDz = 0, flipRepeat = 0;
 var quietDz = 0, quietDh = 0, quietDw = 0, ghostMax = 0, ghostWide = 0, ghostAge = 0, ghostShare = 0;
 var siteDz = 0, awayDz = 0, f, i, k, j, m, d;
@@ -87,8 +94,6 @@ sampleField(S.z, prevZ);
 
 for (f = 0; f < frames; f++) {
 	var preN = S.nCol;
-	var preX = new Float64Array(preN), preTh = new Float64Array(preN), preW = new Float64Array(preN);
-	var preG = new Uint8Array(preN), preNew = new Uint8Array(preN);
 	for (i = 0; i < preN; i++) { preX[i] = S.colX[i]; preTh[i] = S.hTot[i]; preW[i] = S.colW[i]; preG[i] = S.colGhost[i]; preNew[i] = COL.isNew[i]; }
 	SIM.step();
 	// Whether this is an event frame is read off the crust itself, and off the code's
@@ -100,7 +105,6 @@ for (f = 0; f < frames; f++) {
 	// of one column then report their parent's whole section as a one-frame change
 	// (measured: 53.5 km of drawn thickness and 135% of width on a frame the audit had
 	// called quiet).
-	consumed.length = 0;
 	consumed.length = 0;
 	match(preX, preG, preNew, preW, preN);
 	SITE_X.length = 0;
@@ -186,8 +190,12 @@ for (f = 0; f < frames; f++) {
 		}
 		if (S.colNL[i] >= P.layerCap) {
 			atCap++;
-			var capKey = Math.round(S.colX[i] / P.w0);
-			capTouch.add(capKey);
+			// +16 and mod: a position at the wrap has a negative rounding when a column
+			// sits a hair before x = 0
+			var capKey = (Math.round(S.colX[i] / P.w0) + 16) % CAP_K;
+			capStay[capKey] = capLast[capKey] === f - 1 ? capStay[capKey] + 1 : 1;
+			capLast[capKey] = f;
+			if (capStay[capKey] > capStayMax) capStayMax = capStay[capKey];
 		}
 		if (S.colGhost[i]) {
 			nGhost++;
@@ -204,15 +212,7 @@ for (f = 0; f < frames; f++) {
 		}
 	}
 	beltScan(false);
-	{
-	}
-	capStayOf.forEach(function (v, k) { if (!capTouch.has(k)) capStayOf.delete(k); });
-	capTouch.forEach(function (k) {
-		var v = (capStayOf.get(k) || 0) + 1;
-		capStayOf.set(k, v);
-		if (v > atCapStay) atCapStay = v;
-	});
-	capTouch.clear();
+	if (capStayMax > atCapStay) atCapStay = capStayMax;
 	if (nGhost > ghostMax) ghostMax = nGhost;
 	if (gOldest > ghostAge) ghostAge = gOldest;
 	{

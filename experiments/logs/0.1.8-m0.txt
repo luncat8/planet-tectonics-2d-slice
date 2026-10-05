@@ -1,0 +1,101 @@
+
+0.1.8 M0 — which representation carries a built orogen?
+fixture: 4000 frames, 50 kyr/frame (0 Myr), fit seed 1, check seed 5, drive 30 mm/yr closing
+brake: m = k * W * fb * (-edgeRelN) / vRef, W = the candidate measure, the same hook for all three
+
+brake off (negative control)
+    t      closing    belt     root     W(A)     W(B)
+   Myr     mm/yr      km       km       km       km
+      0       3.6      156      0.0        3        0
+     20      33.8      400      4.4     1161      400
+     40      30.1      400      3.1     1155      400
+     60      27.1      400      3.1     1148      400
+     80      26.1      400      3.0     1142      400
+    100      27.7      400      3.0     1136      400
+    120      31.3      400      3.0     1130      400
+    140      35.6      400      3.0     1123      400
+    160      38.9      400      3.0     1111      400
+    180      39.7      400      3.0     1101      400
+  control closing 32.4 -> 39.0 mm/yr
+  contact geometry: 9.38 km is the separation floor
+    the pair gap reached the floor at frame 47 (t 2.35 Myr) and ends at 9.38 km
+    reported closing 32.66 mm/yr; the ground then moves 0.000 mm/yr on average (0.00 at most): the velocity is not realized
+    columns 512 -> 513, plate widths 20015/20015 -> 19981/20049 km: nothing is consumed, so nothing keeps shortening
+    belt 380 -> 400 km, root 5.9 -> 3.0 km: the crustal machine is over by the first quarter
+
+candidate instant (incumbent: this frame's COL.beltW)
+  k   2e+5   live 4000  close  21.2 ->  25.9  ( 122%)  belt  400 km  peakH  69.4 km  R2 no  R1 ok  R5 ok   1.67 ms/f   worst peak/flank 1.68 at frame 52 col 255
+  k   5e+5   live 4000  close  14.2 ->  17.2  ( 121%)  belt  400 km  peakH  69.4 km  R2 no  R1 ok  R5 ok   1.57 ms/f   worst peak/flank 1.67 at frame 61 col 255
+  k   1e+6   live 4000  close   9.4 ->  11.0  ( 118%)  belt  400 km  peakH  69.4 km  R2 no  R1 ok  R5 ok   1.46 ms/f   worst peak/flank 1.66 at frame 78 col 255
+  k   2e+6   live 4000  close   5.8 ->   6.4  ( 111%)  belt  400 km  peakH  69.4 km  R2 no  R1 ok  R5 ok   1.55 ms/f   worst peak/flank 1.63 at frame 112 col 255
+  k   4e+6   live  619  close   7.5 ->   2.6  (  35%)  belt  400 km  peakH  54.0 km  R2 no  R1 ok  R5 ok   1.49 ms/f   worst peak/flank 1.54 at frame 194 col 255
+  k   1e+7   live 2831  close   2.8 ->   2.7  (  94%)  belt  371 km  peakH  69.4 km  R2 no  R1 ok  R5 ok   1.50 ms/f   worst peak/flank 1.41 at frame 354 col 255
+  k   3e+7   live 4000  close 397.4 -> 400.0  ( 101%)  belt  146 km  peakH  67.0 km  R2 ok  R1 ok  R5 ok   1.59 ms/f   worst peak/flank 1.07 at frame 8 col 255
+INFO  no coefficient in the sweep meets the arrest contract on seed 1   smallest late/early 35%
+
+candidate A (plateau excess volume / beltRise: derived, no new state)
+  k   2e+5   live 4000  close  12.7 ->  16.2  ( 127%)  belt  400 km  peakH  69.4 km  R2 no  R1 ok  R5 ok   1.61 ms/f   worst peak/flank 1.64 at frame 76 col 255
+  k   5e+5   live 4000  close   6.9 ->   8.6  ( 125%)  belt  400 km  peakH  69.4 km  R2 no  R1 ok  R5 ok   1.50 ms/f   worst peak/flank 1.58 at frame 123 col 255
+  k   1e+6   live 4000  close   4.1 ->   4.8  ( 117%)  belt  400 km  peakH  69.4 km  R2 no  R1 ok  R5 ok   1.64 ms/f   worst peak/flank 1.50 at frame 199 col 255
+  k   2e+6   live  659  close   5.6 ->   1.8  (  33%)  belt  400 km  peakH  50.0 km  R2 no  R1 ok  R5 ok   1.56 ms/f   worst peak/flank 1.43 at frame 306 col 255
+  k   4e+6   live 3272  close   2.3 ->   2.2  (  93%)  belt  353 km  peakH  69.4 km  R2 no  R1 ok  R5 ok   1.38 ms/f   worst peak/flank 1.32 at frame 391 col 255
+  k   1e+7   live 2839  close   3.0 ->   3.9  ( 132%)  belt  312 km  peakH  75.7 km  R2 no  R1 ok  R5 ok   1.53 ms/f   worst peak/flank 1.20 at frame 1142 col 255
+  k   3e+7   live 2726  close   3.5 ->   4.0  ( 113%)  belt  156 km  peakH  69.1 km  R2 ok  R1 ok  R5 ok   1.45 ms/f   worst peak/flank 1.07 at frame 3603 col 255
+INFO  no coefficient in the sweep meets the arrest contract on seed 1   smallest late/early 33%
+
+candidate B (decaying edge memory: tauUp 1 Myr, tauDown 50 Myr)
+  k   2e+5   live 4000  close  21.4 ->  25.9  ( 121%)  belt  400 km  peakH  69.4 km  R2 no  R1 ok  R5 ok   1.68 ms/f   worst peak/flank 1.68 at frame 51 col 255
+  k   5e+5   live 4000  close  14.4 ->  17.2  ( 119%)  belt  400 km  peakH  69.4 km  R2 no  R1 ok  R5 ok   1.63 ms/f   worst peak/flank 1.67 at frame 58 col 255
+  k   1e+6   live 4000  close   9.5 ->  11.0  ( 116%)  belt  400 km  peakH  69.4 km  R2 no  R1 ok  R5 ok   1.59 ms/f   worst peak/flank 1.65 at frame 72 col 255
+  k   2e+6   live 4000  close   5.9 ->   6.4  ( 109%)  belt  400 km  peakH  69.4 km  R2 no  R1 ok  R5 ok   1.39 ms/f   worst peak/flank 1.62 at frame 104 col 255
+  k   4e+6   live  639  close   8.0 ->   2.6  (  33%)  belt  400 km  peakH  54.1 km  R2 no  R1 ok  R5 ok   1.40 ms/f   worst peak/flank 1.54 at frame 178 col 255
+  k   1e+7   live 2723  close   2.7 ->   2.7  (  99%)  belt  377 km  peakH  69.4 km  R2 no  R1 ok  R5 ok   1.63 ms/f   worst peak/flank 1.39 at frame 354 col 255
+  k   3e+7   live 3987  close 317.0 -> 400.0  ( 126%)  belt  303 km  peakH  67.2 km  R2 no  R1 ok  R5 ok   1.55 ms/f   worst peak/flank 1.23 at frame 227 col 510
+INFO  no coefficient in the sweep meets the arrest contract on seed 1   smallest late/early 33%
+
+the same contract on a fed collision (control: ribbon continent, ocean trench feeding it)
+     t     x(km)   peak   flank   root   Vex(e9)   felsic/mafic cols   margin max
+       0    21892    35.0    21.5    13.5     0.01   284 / 228   35.0
+      20    21958    32.1    21.6    10.5     2.64   285 / 228   43.6
+      40    22000    26.3    21.7     4.5     3.10   285 / 228   45.1
+      60    22045    25.4    22.0     3.5     3.11   285 / 228   45.2
+      80    22100    25.4    22.1     3.3     3.22   285 / 229   45.1
+     100    22197    25.5    22.3     3.2     3.58   285 / 229   44.9
+     120    22315    25.7    22.5     3.2     3.50   285 / 229   44.8
+     140    22439    25.8    22.6     3.2     3.43   285 / 229   44.6
+     160    22569    26.0    22.8     3.2     3.36   285 / 229   44.5
+     180    22703    26.1    22.9     3.2     3.31   285 / 229   44.4
+INFO  a fed collision does not accumulate either   the margin ends at 44.4 km against the 35 km reference, and Vex ends at 3.31e9 m2
+
+the model planet: do its own continental collisions last 200 Myr?
+    t    0 Myr   0 continental collide edges   nCol 512
+    t   25 Myr   1 continental collide edge   nCol 521
+    t   50 Myr   0 continental collide edges   nCol 526
+    t   75 Myr   0 continental collide edges   nCol 530
+    t  100 Myr   0 continental collide edges   nCol 536
+    t  125 Myr   0 continental collide edges   nCol 538
+    t  150 Myr   0 continental collide edges   nCol 541
+    t  175 Myr   0 continental collide edges   nCol 542
+INFO  the longest continental collision on the def planet   last seen at t 25 Myr, at most 1 at once: the engine sutures or reclassifies them long before R4 ends
+
+M0 verdict
+  no measure of a built orogen is selected, and the reason is measured, not fitted:
+    the prescribed fixture stops building after the first squeeze. The contact gap reaches
+    the 9.38 km floor at frame 47, the plate widths and the column count
+    then stop changing (512 -> 513 columns), and the belt width and the root plateau.
+    The rest of the run measures a velocity the floor cancels: 0.000 mm/yr
+    of real gap motion against 32.7 mm/yr of reported closing.
+    the fed fixture, whose trench keeps consuming ground behind the collision, spreads its
+    incoming crust into a lower, wider margin rather than accumulating it (44.4 km against
+    the 35 km reference at the end of the run).
+  what the sweep does say: with the collision kept open, the strongest live row (A at k 1e+6)
+    absorbs 88% of the control closing without breaking R1/R3/R5, and every
+    stronger row sutures the collision below P.vSuture and ends the measurement (the k 4e6 rows).
+    So the authority to arrest is one constant away; what is missing is an orogen that keeps
+    growing, and "late <= 75% of early" is a shape test on a machine that has already stopped.
+  M1 should land accumulation first -- a C-C contact must keep accommodating convergence after
+    the floor, the crush/consume path COL.intents reserves for a column with two floor gaps
+    being the only place a floored pair can still shorten -- and restate R4 against that: a
+    brake measure can only be chosen on a fixture whose orogen still responds.
+
+ALL PASS (0 checks)
