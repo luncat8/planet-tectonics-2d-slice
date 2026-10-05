@@ -605,14 +605,13 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   (measured, L5, 10 kyr/f). Import the hole as *data* — a zero in the box filter thins the columns
   it covers, conserves mass by construction, and leaves every elevation identity intact — and keep
   the sliver record for what the model itself drains.
-- **A rate law's comment is a test you can write.** `P.kBelt` is documented as "0.12 /Myr per km of
-  excess" and the code reads `kBelt * excess * 1000 * dt`, where `excess` is a difference of `hTot`
-  — metres. The factor should have been 1e-3. Any "per km of X" law that multiplies a metre-valued
-  X by 1000 is a porting residue from a reference that kept X in km, and its `never more than half
-  in one frame` cap hides it: the model then runs at the cap on every frame size, which *looks* like
-  a working ceiling. Measure one frame's flux against the documented rate before believing either.
-  Fixed in 0.1.7 (`0.1.7-plan.md`), where each law's one-frame arithmetic is now a gate in
-  `m2-check`.
+- **A rate law's comment is a test you can write.** `P.kBelt` multiplies a metre-valued
+  `hTot` excess by `1/Myr`; the old `kBelt * excess * 1000 * dt` made the unclamped flow 1000×
+  too fast. The corrected metre law is `kBelt * excess * dt` — remove the extra factor; do not
+  replace it with `1e-3`. Delamination had a separate typo in its half-excess cap
+  (`over * 500` instead of `over * 0.5`). Measure a hand-computed frame for each law and keep
+  the cap error distinct from the linear-rate error. Fixed and gated in 0.1.7
+  (`0.1.7-plan.md`, `m2-check`).
 - **Feed a corruption through the transport that can carry it.** A `NaN` in a pack cannot survive
   JSON (`stringify` writes `null`, the decoder reads 0), so a harness that mutates a `NaN` and
   encodes is testing the *checksum*, not the field check — and it passes for the wrong reason until
@@ -656,14 +655,12 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   101 outer + 33 inner, with six outer checks never run. Load codecs the way every other harness
   does — through `lib.mods` or the real `../js/` path — and trust a green run only when its total
   equals the suite's own check count.
-- **Holes in a layer stack are an engine representation, not rock; the reader skips them and the
-  validator rejects them.** `CRU.delaminate` consumes a bed by writing `layTh = 0` and keeps the
-  slot for same-lithology refuel — a live column therefore *contains* zero-thickness entries, and
-  so do its aggregate caches by design. Anything that records "what the column holds" must filter
-  `th > 0` (and drop columns that hold only holes); anything that accepts a *foreign* record must
-  refuse a zero bed inside one — the same asymmetry lets both be strict about their own domain.
-  Diagnosing this through `toFixed`-style quantizers first wasted a cycle: `toPrecision(6)`
-  preserves 2.5e-13 exactly, so "the number became 0" needed the actual live array, not a theory.
+- **A foundered bed is removed, not kept as a zero-thickness slot.** The earlier
+  `CRU.delaminate` wrote `layTh = 0` but left `colNL` unchanged, which let empty hosts consume
+  layer capacity and left deposits anchored to rock that no longer existed. Full basal-bed removal
+  now goes through `COL.removeAt`: the host deposit is invalidated and the surviving beds' indices
+  move with them; a partially foundered bed remains in place. Imported records should still reject
+  zero-thickness beds — that validation rule does not make holes a useful live-stack representation.
 - **An import never dates a bed into the past, and a zero-delta test proves nothing about dates.**
   A message older than a pinned section clock (`tNow` ahead of `msg.tMyr`, which the lead rule
   creates by design) would stamp growth beds below the age of the beds above them; one rule —
@@ -695,9 +692,10 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
 - **Calibration constants measured on top of a bug are measurements *of* the bug.** 0.1.5's
   "peak over flanks 1.3–1.44x" was only reachable with the orogenic flow running ~1000x too
   fast, and a kBelt sweep {0.12..40}/Myr cannot reproduce it honestly: the needle ratio falls
-  5.06x to 2.97x monotonically and event memory breaks before the ratio gate passes. When a
-  fix invalidates acceptance numbers, re-measure and hand the calibration decision to its own
-  plan with the sweep data — do not chase the old number with new constants.
+  5.06x to 2.97x monotonically without crossing its gate. The sweep's event-memory conclusion
+  is invalid because the audit site detector was broken; rerun it with the corrected harness.
+  When a fix invalidates acceptance numbers, re-measure and hand the calibration decision to its
+  own plan — do not chase the old number with new constants.
 - **A page global must be resolved as the page resolves it.** `js/perf.js` keeps `PERF`
   private to its IIFE and publishes `COLPERF`; the particle engine's `sim.js` and `ui.js`
   then referenced a bare `PERF` — fine for no one, since the module-global name is the only
@@ -705,3 +703,8 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   *bootstrap* (the preset HUD call), not just the kernels. Keep page harnesses on bootstrap
   paths: a VM that loads the real script order and calls into the real globals is a browser
   stand-in, and a shared file's consumers must look up its published name, per file.
+- **`Set.prototype.values()` is an iterator, not an indexable array.** `values()[i]` returns
+  `undefined`, collapsing every event into one bogus site and feeding `NaN` into the site's
+  surface window. Materialize it with `Array.from` (or iterate) before indexing. A time-gap
+  check must also use the current frame minus the previous event frame, not the run's total
+  frame count; the contact audit now self-tests both rules before trusting R1 or event memory.

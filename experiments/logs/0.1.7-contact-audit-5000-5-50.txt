@@ -1,20 +1,24 @@
-contact audit — seed 5, 50 kyr/frame, 5000 frames (250 Myr), 2.25 ms/frame   [STRICT]
-  crust          max 80.2 km   thickest at a contact 74.8 km   collisions 8971 seen, sharpest peak 6.95x flanks, 77.4% of the 2276 with a root widen to a belt   draining records 3 live holding 0.1% of the crust, widest run 0.0 columns (oldest 9.6 Myr)
-  surface        worst single-frame move 2443 m at frame 665 x 29045.3 km   mean 1.5 m, 10447 raster samples above 100 m
-  event site     0 m at a birth/death site, 2216 m elsewhere on the same frame, quiet-frame worst 2443 m   (quiet-frame drawn thickness 65.7 km and width 10.0%, 0 quiet records with no counterpart, 13770 re-partitioned)
-  columns        worst single-frame drawn-thickness change 65.7 km at frame 3948 x 35095.2 km   worst width change 10.0% at frame 3471   worst local slope 96.3%
-  topology       85 births / 58 deaths (28.60 per 1000 frames) at 0 repeated birth and 0 repeated death sites (540 columns, 8 plates)
+
+contact-audit site bookkeeping
+PASS  event buckets are concrete Set values
+PASS  repeat spacing uses the current event frame
+contact audit — seed 5, 50 kyr/frame, 5000 frames (250 Myr), 2.32 ms/frame   [STRICT]
+  crust          max 80.2 km   thickest at a contact 74.8 km   collisions 8193 seen, sharpest peak 6.64x flanks, 83.7% of the 1931 with a root widen to a belt   draining records 3 live holding 0.1% of the crust, widest run 0.0 columns (oldest 16.5 Myr)
+  surface        worst single-frame move 2443 m at frame 665 x 29045.3 km   mean 1.6 m, 10345 raster samples above 100 m
+  event site     773 m at a birth/death site, 1895 m elsewhere on the same frame, quiet-frame worst 2443 m   (quiet-frame drawn thickness 63.9 km and width 10.0%, 0 quiet records with no counterpart, 12583 re-partitioned)
+  columns        worst single-frame drawn-thickness change 63.9 km at frame 4998 x 30872.7 km   worst width change 10.0% at frame 3129   worst local slope 97.1%
+  topology       82 births / 57 deaths (27.80 per 1000 frames) at 0 repeated birth and 0 repeated death sites (539 columns, 7 plates)
   stacks         0 column-frames with an inverted bed, 0 column-frames at layerCap
 
 contact contract (0.1.5-plan.md §1)
-PASS  R1 an event moves the surface no more than the rest of its own frame   at the site 0 m, elsewhere on that frame 2216 m, ratio 0.00 (max 1.25)
-FAIL  R2 no collision is a needle   8974 collisions measured, the sharpest peak 6.95x its flanks at 31122.7 km (max 1.5)
-FAIL  R2 a collision that builds a belt thickens a run of columns   1761 of 2277 collision-frames with a 4.0 km root thicken 4 or more of the 6 columns around the pair; narrowest seen 1 at 25424.4 km
+PASS  R1 an event moves the surface no more than the rest of its own frame   at the site 773 m, elsewhere on that frame 1895 m, ratio 0.41 (max 1.25)
+FAIL  R2 no collision is a needle   8194 collisions measured, the sharpest peak 6.64x its flanks at 30973.3 km (max 1.5)
+FAIL  R2 a collision that builds a belt thickens a run of columns   1616 of 1931 collision-frames with a 4.0 km root thicken 4 or more of the 6 columns around the pair; narrowest seen 1 at 25424.4 km
 PASS  R3 the crust has a ceiling   80.2 km (ceiling 80.0 km + 1.8 km of one-frame influx at 50 kyr/f)
-PASS  no site changes its topology twice inside the event memory   0 of 143 events (28.60 per 1000 frames) came within 40 frames of an earlier one at the same site
+PASS  no site changes its topology twice inside the event memory   0 of 139 events (27.80 per 1000 frames) came within 40 frames of an earlier one at the same site
 PASS  R5 stacks stay in stratigraphic order   0 inverted column-frames
 PASS  R5 no column runs out of beds   0 column-frames touched layerCap, the longest stay 0 frames (max 3)
 PASS  a draining record holds no ground   0.1% of the crust in 3 draining records, widest run 0.0 columns (max 2.0%)
 PASS  every buffer is finite
 
-2 / 9 FAILURES
+2 / 11 FAILURES

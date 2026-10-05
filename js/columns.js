@@ -248,9 +248,14 @@ COL.removeClass = function (st, c, cls, amount) {
 	return amount - left;
 };
 
-// drop layer k and let the beds above it ride down (deposits above follow)
+// Drop layer k. Deposits hosted there lose their horizon; records above move with their beds.
 COL.removeAt = function (c, k) {
-	var LC = P.layerCap, b = c * LC, n = S.colNL[c], j;
+	var LC = P.layerCap, b = c * LC, n = S.colNL[c], j, d;
+	for (d = 0; d < S.nDep; d++) {
+		if (S.depCol[d] !== c) continue;
+		if (S.depLay[d] === k) S.depLay[d] = -1;
+		else if (S.depLay[d] > k) S.depLay[d]--;
+	}
 	for (j = k; j < n - 1; j++) {
 		S.layTh[b + j] = S.layTh[b + j + 1];
 		S.layLi[b + j] = S.layLi[b + j + 1];
@@ -258,9 +263,6 @@ COL.removeAt = function (c, k) {
 		S.layFl[b + j] = S.layFl[b + j + 1];
 	}
 	S.colNL[c] = n - 1;
-	for (j = 0; j < S.nDep; j++) {
-		if (S.depCol[j] === c && S.depLay[j] > k) S.depLay[j]--;
-	}
 };
 
 // Gravitational collapse transport (crust.js K5): move `volume` (m2 of crust per unit
@@ -275,6 +277,7 @@ COL.removeAt = function (c, k) {
 // and both caches are rebuilt.
 COL.collapseMove = function (from, to, volume) {
 	var LC = P.layerCap, bf = from * LC, bt = to * LC, k, n, t, take, moved = 0, age = 0;
+	var toLayer = -1;
 	var peel = volume / S.colW[from], grow;
 	if (peel > S.hFel[from]) peel = S.hFel[from];
 	if (!(peel > 0)) return 0;
@@ -294,7 +297,15 @@ COL.collapseMove = function (from, to, volume) {
 		k = S.colNL[to] - 1;
 		S.layTh[bt + k] += grow;
 		if (S.layAg[bt + k] < age) S.layAg[bt + k] = age;
-	} else this.insertVol(S, to, P.LITH.fel, grow, age, 0);
+		toLayer = k;
+	} else {
+		// insertVol rank-orders felsic beneath a higher-rank surface cap. Deposits that
+		// ride with this sheet must attach to the felsic bed, not blindly to the top slot.
+		this.insertVol(S, to, P.LITH.fel, grow, age, 0);
+		for (k = S.colNL[to] - 1; k >= 0; k--) {
+			if (S.layLi[bt + k] === P.LITH.fel) { toLayer = k; break; }
+		}
+	}
 	for (k = n - 1; k >= 0 && moved < peel; k--) {
 		if (S.layLi[bf + k] !== P.LITH.fel) continue;
 		t = S.layTh[bf + k];
@@ -302,7 +313,7 @@ COL.collapseMove = function (from, to, volume) {
 		moved += take;
 		S.layTh[bf + k] = t - take;
 		if (S.layTh[bf + k] > 0) break;
-		this.moveDeposits(from, k, to, S.colNL[to] - 1);
+		this.moveDeposits(from, k, to, toLayer);
 		this.removeAt(from, k);
 	}
 	this.sums(from);

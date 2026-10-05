@@ -162,7 +162,7 @@ CRU.zDyn = function (st, dt) {
 // the *base* (the mafic and intrusive beds) and booked as consumed, so the ledger says
 // where the rock went instead of losing it quietly.
 CRU.delaminate = function (st, dt) {
-	var n = st.nCol, i, b, k, over, take, w, h, any = false, m, lit = CRU.delLit, vol = CRU.delVol;
+	var n = st.nCol, i, b, over, take, w, h, shed, any = false;
 	for (i = 0; i < n; i++) {
 		if (st.colGhost[i]) continue;
 		over = st.hTot[i] - P.crustMax;
@@ -175,29 +175,23 @@ CRU.delaminate = function (st, dt) {
 		if (!(take > 0)) continue;
 		b = i * P.layerCap;
 		w = st.colW[i];
-		m = 0;
-		for (k = 0; k < st.colNL[i] && take > 0; k++) {
-			h = st.layTh[b + k];
-			if (!(h > 0)) continue;
-			if (take >= h) {
-				take -= h;
-				st.layTh[b + k] = 0;
-				lit[m] = st.layLi[b + k]; vol[m] = h * w; m++;
-			} else {
-				st.layTh[b + k] = h - take;
-				lit[m] = st.layLi[b + k]; vol[m] = take * w; m++;
-				take = 0;
+		while (take > 0 && st.colNL[i] > 0) {
+			h = st.layTh[b];
+			if (!(h > 0)) {
+				COL.removeAt(i, 0);
+				continue;
 			}
+			shed = take < h ? take : h;
+			st.ledCons[st.layLi[b]] += shed * w;
+			take -= shed;
+			if (shed === h) COL.removeAt(i, 0);
+			else st.layTh[b] = h - shed;
+			any = true;
 		}
-		for (k = 0; k < m; k++) st.ledCons[lit[k]] += vol[k];
 		COL.sums(i);
-		any = true;
 	}
 	return any;
 };
-
-CRU.delLit = new Int32Array(P.layerCap);
-CRU.delVol = new Float64Array(P.layerCap);
 
 // Gravitational collapse (design §4.4, reference §7.2): felsic crust diffuses between
 // neighbours while either side is above hCollapse, so plateaus spread and an orogen

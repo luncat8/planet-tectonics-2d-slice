@@ -204,11 +204,11 @@ PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
 PASS  widths cover the periodic domain   rel 5.96e-8  got 40030173.59204108  want 40030173.59204114
 PASS  plate counts agree
-PASS  700 Myr mixed-rate evolving planet (repeated births) per-lith volume ledger   max relative 1.69e-14
+PASS  700 Myr mixed-rate evolving planet (repeated births) per-lith volume ledger   max relative 9.07e-15
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 2.24e-8  got 40030173.59204112  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 7.45e-9  got 40030173.592041135  want 40030173.59204114
 PASS  plate counts agree
 
 M2.3 age, damage, zDyn, flexure, collapse
@@ -233,6 +233,9 @@ PASS  the sediment cap rides down with the collapsed crust
 PASS  gravitational collapse per-lith volume ledger   max relative 0.00e+0
 PASS  collapse lowers the plateau (isostasy follows the beds)   8054.8 m of 8445.8
 PASS  nothing moves while every column is below hCollapse
+PASS  collapse transports the fully peeled sheet volume   rel 0.00e+0  got 938207193.563464  want 938207193.563464
+PASS  deposits hosted by a moved felsic bed map below a higher-rank cap   moved/retained felsic hosts 1/1, cap host 2
+PASS  collapse deposit-host mapping per-lith volume ledger   max relative 0.00e+0
 PASS  the belt excess is the pair over its flanks less the root it can hold   rel 0.00e+0  got 49000 m  want 49000
 PASS  the orogenic flow sheds the backward-Euler relaxation of the excess   rel 0.00e+0  got 58.72952457051538 m  want 58.72952457051538
 PASS  each feed column gains half a share   rel 2.13e-14  got 29.36476228525771 m  want 29.36476228525769
@@ -243,18 +246,22 @@ PASS  and its side of the pair sheds only what moved   rel 9.31e-13  got 39.3647
 PASS  the shed is the backward-Euler relaxation of the excess   rel 7.28e-12  got 6206.896551724145 m  want 6206.896551724138
 PASS  and books the foundered volume as consumed   rel 0.00e+0  got 485279582.87765384 m3  want 485279582.87765384
 PASS  no frame takes all of it, and none drops the column under the ceiling   overage 0.03 km after dt = 10 Myr
+PASS  foundering removes complete basal beds without leaving empty slots   9 active beds, all positive
+PASS  crossing a basal-bed boundary keeps the backward-Euler amount   rel 1.82e-12  got 13846.153846153844 m  want 13846.153846153846
+PASS  a foundered host loses its deposit and the next bed keeps its deposit   hosted -1, surviving 0
+PASS  a full-bed peel closes the consumed-mass ledger   rel 0.00e+0  got 1082546761.803997 m3  want 1082546761.803997
 PASS  at small dt the shed is kDelam x excess x dt to first order   rel 4.03e-1  got 89.59681433548394 m  want 90
 PASS  the orogenic flow is dt-independent to first order   rel 3.11e+0  got 581.0276679841918 m  want 584.1377554348146
 PASS  K5/K6 never touch the lithology ledger
 PASS  the collided crust stands higher through isostasy alone   -2341 -> 1004 m
 PASS  a frame ends with the profile recomputed from the final state
-PASS  500 Myr at 100 kyr/frame leaves no interpenetrating plates   min cross-plate gap 0.1200 w0 of a 0.12 w0 floor; softest same-plate gap 0.1198 w0
+PASS  500 Myr at 100 kyr/frame leaves no interpenetrating plates   min cross-plate gap 0.1200 w0 of a 0.12 w0 floor; softest same-plate gap 0.1196 w0
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 7.45e-9  got 40030173.59204115  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 2.24e-8  got 40030173.59204112  want 40030173.59204114
 PASS  plate counts agree
-  500 Myr @100 kyr: n=549 plates=9 maxCrust=80 km maxRelief=6.1 km
+  500 Myr @100 kyr: n=554 plates=12 maxCrust=69 km maxRelief=4.7 km
 PASS  50 Myr at 10 kyr/frame is finite too   maxCrust 72 km
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
@@ -265,6 +272,6 @@ PASS  plate counts agree
 M2.1 determinism and finite state at every kernel boundary
 PASS  all buffers finite after every kernel (20 frames)
 PASS  same seed and dtGeo are bitwise deterministic (300 frames)
-PASS  sim frame (K0-K6) within the 4 ms budget   1.930 ms/frame, min of 7x20
+PASS  sim frame (K0-K6) within the 4 ms budget   1.859 ms/frame, min of 7x20
 
-ALL PASS (253 checks)
+ALL PASS (260 checks)

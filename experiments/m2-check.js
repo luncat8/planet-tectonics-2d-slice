@@ -874,9 +874,38 @@ CRU.collapse(S, 1);
 CRU.collapse(S, 1);
 check.ok('nothing moves while every column is below hCollapse', flatHash === S.hash());
 
+// A moved felsic host can land below a higher-rank surface cap. Deposit records must
+// follow the actual felsic layer, not the receiver's last (surface) slot.
+check.planet(1);
+var moveFrom7 = 50, moveTo7 = 51, moveLc7 = P.layerCap;
+S.colNL[moveFrom7] = 0; S.colNL[moveTo7] = 0;
+COL.push(moveFrom7, 12e3, P.LITH.fel, 120, 0);
+COL.push(moveTo7, 10e3, P.LITH.maf, 80, 0);
+COL.push(moveTo7, 25e3, P.LITH.fel, 100, 0);
+COL.push(moveTo7, 2e3, P.LITH.sed, 10, 0);
+COL.sums(moveFrom7); COL.sums(moveTo7);
+S.nDep = 3;
+S.depCol[0] = moveFrom7; S.depLay[0] = 0;
+S.depCol[1] = moveTo7; S.depLay[1] = 1;
+S.depCol[2] = moveTo7; S.depLay[2] = 2;
+var moveMass7 = S.mass().slice(), moveExpected7 = 12e3 * S.colW[moveFrom7];
+var movedVol7 = COL.collapseMove(moveFrom7, moveTo7, moveExpected7);
+check.near('collapse transports the fully peeled sheet volume', movedVol7, moveExpected7, 1e-9);
+check.ok('deposits hosted by a moved felsic bed map below a higher-rank cap',
+	S.colNL[moveFrom7] === 0 && S.colNL[moveTo7] === 3 &&
+	S.depCol[0] === moveTo7 && S.depLay[0] === 1 &&
+	S.depCol[1] === moveTo7 && S.depLay[1] === 1 &&
+	S.depCol[2] === moveTo7 && S.depLay[2] === 2 &&
+	S.layLi[moveTo7 * moveLc7 + S.depLay[0]] === P.LITH.fel &&
+	S.layLi[moveTo7 * moveLc7 + S.depLay[2]] === P.LITH.sed &&
+	S.layLi[moveTo7 * moveLc7 + 2] === P.LITH.sed,
+	'moved/retained felsic hosts ' + S.depLay[0] + '/' + S.depLay[1] +
+	', cap host ' + S.depLay[2]);
+ledger(moveMass7, 'collapse deposit-host mapping');
+
 // 0.1.7 M0/M1 — the flow-law units and the receiver's headroom. A crustal rate
 // constant is 1/Myr multiplying a metre excess to give metres; before this release
-// both laws multiplied the excess by 1000 "for km" and were six digits too fast, and
+// both laws multiplied the excess by an extra 1000 "for km" and were 1000x too fast, and
 // no qualitative check noticed. The arithmetic hand-cited here is the gate.
 function beltFixture() {
 	check.planet(1);
@@ -945,6 +974,36 @@ CRU.delaminate(S, 10);
 check.ok('no frame takes all of it, and none drops the column under the ceiling',
 	S.hTot[50] > P.crustMax && S.hTot[50] < P.crustMax + (20e3 - shed7) / 2,
 	'overage ' + ((S.hTot[50] - P.crustMax) / 1e3).toFixed(2) + ' km after dt = 10 Myr');
+
+// A stiff peel can cross whole basal beds. Remove those slots, not just their thickness:
+// empty entries make layerCap look occupied and leave deposits pointing at missing hosts.
+check.planet(1);
+for (var di7 = 0; di7 < S.nCol; di7++) {
+	S.colNL[di7] = 0;
+	COL.push(di7, 8e3, P.LITH.fel, 100, 0);
+	COL.sums(di7);
+}
+S.colNL[50] = 0;
+for (var dk7 = 0; dk7 < 10; dk7++) COL.push(50, 10e3, P.LITH.maf, 100 - dk7, 0);
+COL.sums(50);
+S.nDep = 2;
+S.depCol[0] = 50; S.depLay[0] = 0;
+S.depCol[1] = 50; S.depLay[1] = 1;
+var stack0 = S.hTot[50], consMaf7 = S.ledCons[P.LITH.maf];
+CRU.delaminate(S, 0.05);
+var activeBeds7 = true;
+for (dk7 = 0; dk7 < S.colNL[50]; dk7++) activeBeds7 = activeBeds7 && S.layTh[50 * P.layerCap + dk7] > 0;
+var stackShed7 = 20e3 * P.kDelam * 0.05 / (1 + P.kDelam * 0.05);
+check.ok('foundering removes complete basal beds without leaving empty slots',
+	S.colNL[50] === 9 && activeBeds7,
+	S.colNL[50] + ' active beds, all positive');
+check.near('crossing a basal-bed boundary keeps the backward-Euler amount',
+	stack0 - S.hTot[50], stackShed7, 1e-9, 'm');
+check.ok('a foundered host loses its deposit and the next bed keeps its deposit',
+	S.depLay[0] === -1 && S.depLay[1] === 0,
+	'hosted ' + S.depLay[0] + ', surviving ' + S.depLay[1]);
+check.near('a full-bed peel closes the consumed-mass ledger',
+	S.ledCons[P.LITH.maf] - consMaf7, stackShed7 * S.colW[50], 1e-9, 'm3');
 
 // the shed is linear in the frame at small dt (a rate, not a step), and bounded at
 // enormous dt (a relaxation, not a divergence): both halves of "no dt hidden in the

@@ -11,7 +11,8 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 
 | release | deliverable | plan | depends on |
 | --- | --- | --- | --- |
-| 0.1.7 | crust flow units: the two relaxations in metres and Myr, the ceiling made honest; R4 left open with its measurements (§3) | `0.1.7-plan.md` | — |
+| 0.1.7 | crust flow units: the two relaxations in metres and Myr, the ceiling made honest; corrected R1/R2/R5 gates and R4 remain open | `0.1.7-plan.md`, `archive/0.1.7-review-followup.md` | — |
+| 0.1.8 | collision arrest: select an orogen measure, preserve its identity, close R1/R2/R4/R5 | `0.1.8-plan.md` | 0.1.7 flow laws and corrected audit |
 | 0.2.x | column engine: eruptives, deposits, extraction; page chrome (pause/step/reset) uses E1/E3 | `0.2.0-plan.md` | — |
 | 0.3.x | particle engine P3+ (melt, eruptions, contact) | `0.3.0-plan.md`, `0.3.0-p3-plan.md` | — |
 | 0.4.0 | sync/exchange: provenance, deposits core, water, checkpoint, section pack | `0.4.0-sync-plan.md` | — |
@@ -58,9 +59,13 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   peel last in K5; `m2-check` gates the arithmetic of each law. The re-measurement it
   owed (`0.1.6-plan.md` §5, "the belt never widens") came back: with honest rates the
   belt *does* build (root 19.6–29.7 km) and is then consumed, and the collision brake
-  fails because it tracks the instantaneous belt width. Closing R4 needs an orogen
-  memory — new persistent state, so it is the next engine plan's decision, not a
-  constant. R2/R3/event-memory numbers in the old plans predate the fix.
+  fails because it tracks the instantaneous belt width. Closing R4 needs a built-orogen
+  measure; whether it is derived from column inventory or persisted as edge memory, and
+  whether that requires checkpoint/format changes, is the next engine plan's decision,
+  not a constant. The review follow-up (`archive/0.1.7-review-followup.md`) also corrected the
+  contact audit's Set-iterator and frame-gap bugs; the original "R2 only" strict result
+  was false-green. Corrected runs still fail R2 on all four legs and reveal R1 plus event
+  repeats at 100 kyr/frame, so those gates are open alongside R4.
 
 ## 4. Not planned
 

@@ -36,6 +36,12 @@ var kyr = +(pos[2] || 50), png = pos[3] && pos[3].charAt(0) !== '-' ? pos[3] : n
 var strict = flags.indexOf('--strict') >= 0;
 var NS = 2048, step = P.wrap / NS;
 
+L.check.section('contact-audit site bookkeeping');
+var siteProbe = siteValues(new Set([4, 9])), seenProbe = { 4: 10 };
+L.check.ok('event buckets are concrete Set values', siteProbe.length === 2 && siteProbe[0] === 4 && siteProbe[1] === 9);
+L.check.ok('repeat spacing uses the current event frame',
+	seen(seenProbe, 4, 10 + P.evGap - 1) === 1 && seen(seenProbe, 4, 10 + P.evGap) === 0);
+
 L.check.planet(seed, 'def');
 SIM.setGeo(kyr * 1e3);
 
@@ -108,20 +114,21 @@ for (f = 0; f < frames; f++) {
 		if (S.colW[i] < halfW) continue;              // a sliver, not a record
 		if (COL.isNew[i] && (MATCH[i] < 0 || !preNew[MATCH[i]])) bSites.add(Math.floor(S.colX[i] / (2.5 * P.w0)));
 	}
-	for (k = 0; k < dSites.size; k++) SITE_X.push(dSites.values()[k] * 2.5 * P.w0);
-	for (k = 0; k < bSites.size; k++) SITE_X.push(bSites.values()[k] * 2.5 * P.w0);
-	births += bSites.size;
-	deaths += dSites.size;
-	for (k = 0; k < bSites.size; k++) {
-		var bs = bSites.values()[k];
-		flipRepeat += seen(SITE.d, bs);
-		if (seen(SITE.b, bs)) birthRepeat++;
+	var bSiteList = siteValues(bSites), dSiteList = siteValues(dSites);
+	for (k = 0; k < dSiteList.length; k++) SITE_X.push(dSiteList[k] * 2.5 * P.w0);
+	for (k = 0; k < bSiteList.length; k++) SITE_X.push(bSiteList[k] * 2.5 * P.w0);
+	births += bSiteList.length;
+	deaths += dSiteList.length;
+	for (k = 0; k < bSiteList.length; k++) {
+		var bs = bSiteList[k];
+		flipRepeat += seen(SITE.d, bs, f);
+		if (seen(SITE.b, bs, f)) birthRepeat++;
 		SITE.b[bs] = f;
 	}
-	for (k = 0; k < dSites.size; k++) {
-		var ds = dSites.values()[k];
-		flipRepeat += seen(SITE.b, ds);
-		if (seen(SITE.d, ds)) deathRepeat++;
+	for (k = 0; k < dSiteList.length; k++) {
+		var ds = dSiteList[k];
+		flipRepeat += seen(SITE.b, ds, f);
+		if (seen(SITE.d, ds, f)) deathRepeat++;
 		SITE.d[ds] = f;
 	}
 	var event = bSites.size + dSites.size > 0;
@@ -329,10 +336,12 @@ function match(thenX, thenG, thenNew, thenW, thenN) {
 // A site that changes again too soon is a boundary flickering between states, which is
 // what the sustained-event gate in the contact kernel exists to prevent. Re-opening a
 // rift after a Wilson cycle is geology, so the test is spacing, not a flat "never twice".
-function seen(table, site) {
+function siteValues(set) { return Array.from(set); }
+
+function seen(table, site, frame) {
 	var prev = table[site];
 	if (prev === undefined) return 0;
-	return (frames - prev) < P.evGap ? 1 : 0;
+	return (frame - prev) < P.evGap ? 1 : 0;
 }
 
 // Is this world position within a column of a record that appeared or was retired this
