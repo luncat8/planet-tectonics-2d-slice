@@ -12,8 +12,8 @@
 //           across frames by position
 //   dw      the largest single-frame *width* change of one column: the mechanism
 //           behind every pop, since thickness is volume / width
-//   belt    the run of thick columns around the thickest contact: a collision belt
-//           should be a wide dome, not a needle under the boundary
+//   belt    the local pair/shoulder ratio and contiguous width around each collision;
+//           legacy outer-flank ratio and count are reported for comparison
 //   events  column births and deaths, their rate, and how many repeat at the same
 //           place (a boundary that flips state every few frames is the worst offender)
 //   order   columns whose stack is inverted in stratigraphic rank (P.LITH_RANK, the
@@ -107,7 +107,16 @@ var capStayMax = 0;
 var contactMax = 0, contactCol = -1, evDz = 0, flipRepeat = 0;
 var quietDz = 0, quietDh = 0, quietDw = 0, ghostMax = 0, ghostWide = 0, ghostAge = 0, ghostShare = 0;
 var siteDz = 0, awayDz = 0, f, i, k, j, m, d;
-var beltN = 0, beltBump = 0, beltWide = 0, beltExcess = 0, beltRunWorst = 99, beltX = 0, beltRunX = 0;
+var beltN = 0, beltBump = 0, beltWide = 0, beltContigWide = 0, beltExcess = 0;
+var beltRunWorst = 99, beltX = 0, beltRunX = 0, beltNeedleMax = 0, beltNeedleX = 0;
+var beltPeakFrame = -1, beltPeakI = -1, beltPeakH = 0, beltPeakFlank = 0, beltPeakLocal = 0;
+var beltPeakLocalR = 0, beltPeakWindow = 0, beltPeakProfile = new Float64Array(8);
+var beltRunFrame = -1, beltRunI = -1, beltRunPeak = 0, beltRunFlank = 0, beltRunProfile = new Float64Array(8);
+var beltNeedleFrame = -1, beltNeedleI = -1, beltNeedlePeak = 0, beltNeedleShoulder = 0;
+var beltNeedleProfile = new Float64Array(8), beltContigWorst = 99, beltContigFrame = -1;
+var beltContigI = -1, beltContigProfile = new Float64Array(8);
+var r2Scratch = { flank: 0, peak: 0, shoulder: 0, outerRatio: 0, needleRatio: 0,
+	widthCount: 0, widthRun: 0, built: false };
 var SITE_X = [], bSites = new Set(), dSites = new Set(), halfW = 0.4 * P.w0, unmatched = 0, rematched = 0, consumed = [];
 
 sampleField(S.z, prevZ);
@@ -238,7 +247,7 @@ for (f = 0; f < frames; f++) {
 			if (S.hTot[i] > contactMax) { contactMax = S.hTot[i]; contactCol = i; }
 		}
 	}
-	beltScan(false);
+	beltScan();
 	if (capStayMax > atCapStay) atCapStay = capStayMax;
 	if (nGhost > ghostMax) ghostMax = nGhost;
 	if (gOldest > ghostAge) ghostAge = gOldest;
@@ -258,12 +267,28 @@ var ms = (Date.now() - t0) / frames;
 console.log('contact audit — seed ' + seed + ', ' + kyr + ' kyr/frame, ' + frames + ' frames (' +
 	SIM.t.toFixed(0) + ' Myr), ' + ms.toFixed(2) + ' ms/frame' + (strict ? '   [STRICT]' : ''));
 console.log('  crust          max ' + fmtKm(maxH) + '   thickest at a contact ' + fmtKm(contactMax) +
-	'   collisions ' + beltN + ' seen, sharpest peak ' + beltExcess.toFixed(2) +
-	'x flanks, ' + (beltBump ? pct(beltWide / beltBump) : '-') + ' of the ' + beltBump +
-	' with a root widen to a belt' +
+	'   collisions ' + beltN + ' seen; legacy peak/flank ' + beltExcess.toFixed(2) +
+	'x, legacy 4-of-6 ' + (beltBump ? pct(beltWide / beltBump) : '-') +
+	', contiguous 4-of-6 ' + (beltBump ? pct(beltContigWide / beltBump) : '-') +
+	' of ' + beltBump + ' built samples' +
 	'   draining records ' + ghostMax + ' live holding ' + pct(ghostShare) +
 	' of the crust, widest run ' + (ghostWide / P.w0).toFixed(1) + ' columns (oldest ' +
 	ghostAge.toFixed(1) + ' Myr)');
+console.log('  R2 legacy peak frame ' + beltPeakFrame + ', edge ' + beltPeakI + ', pair ' + fmtKm(beltPeakH) +
+	' / outer flank ' + fmtKm(beltPeakFlank) + ' (' + beltExcess.toFixed(2) + 'x), mean immediate shoulders ' +
+	fmtKm(beltPeakLocal) + ' (' + beltPeakLocalR.toFixed(2) + 'x), legacy count ' + beltPeakWindow +
+	'/6 above outer flank + ' + fmtKm(P.beltRise) + ': ' +
+	Array.from(beltPeakProfile, function (h) { return (h / 1e3).toFixed(1); }).join('/') + ' km');
+console.log('  R2 local needle frame ' + beltNeedleFrame + ', edge ' + beltNeedleI + ', pair ' +
+	fmtKm(beltNeedlePeak) + ' / higher adjacent shoulder ' + fmtKm(beltNeedleShoulder) +
+	' (' + beltNeedleMax.toFixed(2) + 'x; max ' + P.beltPeak + '), local hTot (-3..+4) km: ' +
+	Array.from(beltNeedleProfile, function (h) { return (h / 1e3).toFixed(1); }).join('/'));
+console.log('  R2 legacy width narrowest count ' + beltRunWorst + '/6 at frame ' + beltRunFrame + ', edge ' +
+	beltRunI + ', pair/flank ' + (beltRunFlank > 0 ? (beltRunPeak / beltRunFlank).toFixed(2) : 'n/a') +
+	': ' + Array.from(beltRunProfile, function (h) { return (h / 1e3).toFixed(1); }).join('/') + ' km');
+console.log('  R2 contiguous width minimum ' + beltContigWorst + '/6 at frame ' + beltContigFrame +
+	', edge ' + beltContigI + ': ' +
+	Array.from(beltContigProfile, function (h) { return (h / 1e3).toFixed(1); }).join('/') + ' km');
 console.log('  max column     frame ' + maxHFrame + ', record ' + maxHCol + ', x ' + fmtKm(maxHX) +
 	'   fel ' + fmtKm(maxHFel) + ', maf ' + fmtKm(maxHMaf) + ', sed ' + fmtKm(maxHSed) +
 	', on a C-C retirement frame: ' + maxHAccrete);
@@ -282,7 +307,6 @@ console.log('  topology       ' + births + ' births / ' + deaths + ' deaths (' +
 	'sites (' + S.nCol + ' columns, ' + S.nPl + ' plates)');
 console.log('  stacks         ' + inversions + ' column-frames with an inverted bed, ' +
 	atCap + ' column-frames at layerCap');
-beltScan(true);
 if (png) writePng(png);
 if (strict) gate();
 
@@ -395,14 +419,11 @@ function atSite(x) {
 // opening across its own width is one event -- so a boundary that keeps flipping in
 // place shows up as a repeat.
 
-// R2, at every continental collision, on every frame of the run: does the boundary build
-// a belt or a needle? The pair of records at a collision is compared with the ground on
-// either side of it, two columns out, and the belt is the run of columns inside that
-// window raised a tenth above the flanks. Both numbers are ratios, so the test is about
-// shape and not about how thick this planet's crust happens to be: a needle is one
-// column far above its neighbours, a belt is several. The run's *worst* collision is
-// reported, because the most needle-like boundary is the one that matters and the last
-// frame's is not necessarily it.
+// R2, at every collision and frame, uses the shared local-shape measure from lib.js:
+// pair peak over the higher of its two immediate shoulders, plus the longest contiguous
+// run in the six-cell window above outer flank + P.beltRise. The old outer-flank ratio and
+// non-contiguous count are retained as legacy diagnostics, never substituted for the
+// local needle and contiguous-width gates. The worst local needle profile is reported.
 //
 // A collision only has a belt to be once it has built one: a pair that is still thinner
 // than the ground beside it (two continental margins meeting across a closing ocean)
@@ -413,31 +434,44 @@ function atSite(x) {
 // that far, so a run that never did cannot pass as if it had.
 function wm(k) { k %= S.nCol; return k < 0 ? k + S.nCol : k; }
 
-function beltScan(final) {
-	var n = S.nCol, i, j, c, h, flank, peak, run, bump;
+function beltScan() {
+	var n = S.nCol, i, j, h, flank, peak, count, contiguous, localFlank;
 	for (i = 0; i < n; i++) {
 		if (S.edge[i] !== P.EDGE.collide) continue;
 		j = i + 1 < n ? i + 1 : 0;
-		if (S.colGhost[i] || S.colGhost[j]) continue;      // mid-consumption: not a section
-		// the flanks are the ground *outside* the belt, three and four columns out, so
-		// the belt's own columns cannot raise the bar they are measured against. This is
-		// COL.beltAt's flank, written out so the gate keeps its own copy of the
-		// arithmetic; the wrapped index matters (the hand-rolled `i > 3 ? i - 3 : n - 3`
-		// sent column 1's flank to n - 3, half a planet away).
-		flank = 0.25 * (S.hTot[wm(i - P.beltFeed - 1)] + S.hTot[wm(i - P.beltFeed - 2)] +
-			S.hTot[wm(j + P.beltFeed + 1)] + S.hTot[wm(j + P.beltFeed + 2)]);
-		peak = Math.max(S.hTot[i], S.hTot[j]);
+		if (S.colGhost[i] || S.colGhost[j]) continue;
+		L.check.r2ShapeAt(S, i, r2Scratch);
+		flank = r2Scratch.flank; peak = r2Scratch.peak;
 		if (!(flank > 0)) continue;
-		run = 0;
-		for (h = -2; h <= 3; h++) {
-			if (S.hTot[wm(i + h)] >= flank + P.beltRise) run++;
-		}
+		count = r2Scratch.widthCount; contiguous = r2Scratch.widthRun;
 		beltN++;
-		if (peak / flank > beltExcess) { beltExcess = peak / flank; beltX = S.colX[i]; }
-		if (peak >= flank + P.beltRoot) {
-			beltBump++;
-			if (run >= P.beltCols) beltWide++;
-			if (run < beltRunWorst) { beltRunWorst = run; beltRunX = S.colX[i]; }
+		if (r2Scratch.outerRatio > beltExcess) {
+			beltExcess = r2Scratch.outerRatio; beltX = S.colX[i];
+			beltPeakFrame = f; beltPeakI = i; beltPeakH = peak; beltPeakFlank = flank;
+			beltPeakWindow = count;
+			localFlank = 0.5 * (S.hTot[wm(i - 1)] + S.hTot[wm(j + 1)]);
+			beltPeakLocal = localFlank;
+			beltPeakLocalR = localFlank > 0 ? peak / localFlank : 0;
+			for (h = -3; h <= 4; h++) beltPeakProfile[h + 3] = S.hTot[wm(i + h)];
+		}
+		if (r2Scratch.needleRatio > beltNeedleMax) {
+			beltNeedleMax = r2Scratch.needleRatio; beltNeedleX = S.colX[i];
+			beltNeedleFrame = f; beltNeedleI = i; beltNeedlePeak = peak;
+			beltNeedleShoulder = r2Scratch.shoulder;
+			for (h = -3; h <= 4; h++) beltNeedleProfile[h + 3] = S.hTot[wm(i + h)];
+		}
+		if (!r2Scratch.built) continue;
+		beltBump++;
+		if (count >= P.beltCols) beltWide++;
+		if (contiguous >= P.beltCols) beltContigWide++;
+		if (count < beltRunWorst) {
+			beltRunWorst = count; beltRunX = S.colX[i]; beltRunFrame = f; beltRunI = i;
+			beltRunPeak = peak; beltRunFlank = flank;
+			for (h = -3; h <= 4; h++) beltRunProfile[h + 3] = S.hTot[wm(i + h)];
+		}
+		if (contiguous < beltContigWorst) {
+			beltContigWorst = contiguous; beltContigFrame = f; beltContigI = i;
+			for (h = -3; h <= 4; h++) beltContigProfile[h + 3] = S.hTot[wm(i + h)];
 		}
 	}
 }
@@ -448,23 +482,24 @@ function pct(v) { return (v * 100).toFixed(1) + '%'; }
 function per1000(v) { return (v / frames * 1000).toFixed(2); }
 
 function gate() {
-	L.check.section('contact contract (0.1.5-plan.md §1)');
+	L.check.section('contact contract (0.1.8-plan.md §2)');
 	L.check.ok('R1 an event moves the surface no more than the rest of its own frame',
 		siteDz <= P.evDzK * awayDz, 'at the site ' + fmtM(siteDz) + ', elsewhere on that frame ' +
 		fmtM(awayDz) + ', ratio ' + (siteDz / Math.max(1, awayDz)).toFixed(2) +
 		' (max ' + P.evDzK + ')');
-	L.check.ok('R2 no collision is a needle', beltExcess <= P.beltPeak,
-		beltN + ' collisions measured, the sharpest peak ' + beltExcess.toFixed(2) +
-		'x its flanks at ' + fmtKm(beltX) + ' (max ' + P.beltPeak + ')');
-	// A belt is not a single frame's measurement: a collision is measured on every frame
-	// it exists, and the test is that all but a tenth of those measurements find a belt
-	// at least P.beltCols wide. The one-in-ten is the frame that catches a collision
-	// between a new root and the flow that widens it.
-	L.check.ok('R2 a collision that builds a belt thickens a run of columns',
-		beltBump === 0 || beltWide >= 0.9 * beltBump,
-		beltWide + ' of ' + beltBump + ' collision-frames with a ' + fmtKm(P.beltRoot) +
-		' root thicken ' + P.beltCols + ' or more of the 6 columns around the pair; ' +
-		'narrowest seen ' + beltRunWorst + ' at ' + fmtKm(beltRunX));
+	L.check.ok('R2 the pair is not a local needle', beltNeedleMax <= P.beltPeak,
+		beltN + ' collisions measured, worst pair / higher adjacent shoulder ' +
+		beltNeedleMax.toFixed(2) + ' at ' + fmtKm(beltNeedleX) + ' (max ' + P.beltPeak + ')');
+	L.check.ok('R2 built belts have a contiguous four-column run',
+		beltBump === 0 || beltContigWide >= 0.9 * beltBump,
+		beltContigWide + ' of ' + beltBump + ' built collision-frames have at least ' +
+		P.beltCols + ' contiguous columns above outer flank + ' + fmtKm(P.beltRise) +
+		' (90% required); narrowest run ' + beltContigWorst + ' at frame ' + beltContigFrame);
+	L.check.info('legacy R2 outer-flank peak ratio',
+		beltExcess.toFixed(2) + 'x at ' + fmtKm(beltX) + ' (historical limit ' + P.beltPeak + ')');
+	L.check.info('legacy R2 non-contiguous four-of-six width',
+		beltWide + ' of ' + beltBump + ' built samples passed; narrowest count ' +
+		beltRunWorst + '/6 at ' + fmtKm(beltRunX));
 	// The sink is rate limited, so its steady state sits a little over the ceiling it
 	// holds: the excess is one frame of squeeze influx, measured (0.1.7) at up to
 	// 35 km/Myr into a compressing column. The allowance is crustMax + influx x dt,

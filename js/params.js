@@ -241,7 +241,7 @@ var P = {
 	beltFeed: 2,                  // columns each side the orogenic flow reaches; the flanks sit just beyond
 	beltRise: 2000,               // m, the thickening that makes a column part of a belt
 	beltRoot: 4000,               // m, the root a collision must stand above its flanks to count as built
-	beltPeak: 1.5,                // a collision peak over its flanks that is a needle, not a belt
+	beltPeak: 1.5,                // local pair peak / higher adjacent shoulder limit (R2 needle test)
 	crustMax: 80e3,               // m, the ceiling on one column's crust
 	evDzK: 1.25,                  // an event frame may move the surface this much more
 	evRate: 2,                    // topology events per 1000 frames

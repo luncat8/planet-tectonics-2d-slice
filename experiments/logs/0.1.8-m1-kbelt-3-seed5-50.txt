@@ -1,0 +1,74 @@
+$ node experiments/orogen-measure.js 4000 5 1 50 none 3
+
+
+0.1.8 M1 — conveyor and orogen response, before brake selection
+fixture: 4000 frames, 50 kyr/frame (200.0 Myr), fit seed 5, check seed 1, drive 30 mm/yr closing, kBelt 3 /Myr
+fixture forcing: prescribed two continents only; plume arrivals and stale trench-distance forcing cleared
+
+brake off: C-C conveyor response
+    t      closing   pairH    belt     root     W(A)     W(B)
+   Myr     mm/yr      km       km       km       km       km
+      0       3.4     35.1      156      0.1        5        0
+     20      16.0     53.2      513     16.7     5705      513
+     40      18.4     60.2      566     21.4     7521      547
+     60      22.6     80.2      476     39.4     8921      556
+     80      28.1     80.1      522     37.0     9625      544
+    100      32.8     78.9      621     33.8     9991      607
+    120      35.5     80.4      567     32.2    10252      615
+    140      35.4     80.5      564     31.4    10519      613
+    160      32.8     80.3      590     31.3    10833      614
+    180      29.1     80.2      602     30.8    11091      613
+    200      25.4     80.2      688     30.3    11325      683
+  control closing 17.6 -> 30.0 mm/yr
+  contact geometry: 3.91 km is the C-C crush floor
+    the first pair reached the floor at frame 90 (t 4.50 Myr); the live pair gap ends at 52.91 km
+    reported closing 27.32 mm/yr; integrated shortening is 5420.0 km (27.11 mm/yr equivalent)
+    69 conveyor retirements release 5394.7 km (58.0 frames/event); 92 births, 69 deaths; columns 512 -> 535, plate widths 20015/20015 -> 19529/20501 km
+    legacy peak/flank 2.10 at frame 979 edge 255; pair 77.4 / outer flank 36.8 km; mean immediate shoulders 79.9 km (pair/mean 0.97), old count 6/6; local hTot (-3..+4) km: 41.7/79.9/79.9/55.2/77.4/79.9/46.5/35.4
+    selected local needle 1.11 at frame 31 edge 255; pair 39.3 / higher shoulder 35.5 km (limit 1.5); local hTot (-3..+4) km: 35.0/35.5/35.5/39.3/39.3/35.5/35.5/35.0
+    legacy width minimum count 2/6 at frame 28 edge 255; selected contiguous width minimum 2/6 at frame 28 edge 255; hTot (-3..+4) km: 35.0/35.3/35.3/39.1/39.1/35.3/35.3/35.0
+    first/last-quarter response (pair hTot / belt / root / excess width): 54.5/477/17.8/5436 -> 80.0/592/30.4/10989 km
+FAIL  the conveyor preserves a live collision and retires records   3999/4000 frames, 69 retirements
+PASS  plate-witness shortening matches reported convergence within 10%   27.11 vs 27.32 mm/yr (99.2%)
+PASS  belt width and plateau excess continue growing before brake selection   belt 477 -> 592 km; excess width 5436 -> 10989 km
+PASS  R1 event-site surface displacement remains bounded   max at event sites 1.57 km vs away 2.49 km
+FAIL  R2 local needle and contiguous-width gates both pass   local peak/shoulder 1.11, contiguous 3361/3972 built frames; legacy outer ratio 2.10, count 3952/3972
+PASS  R3 crust stays under the dt-aware ceiling   80.6 km vs 81.8 km
+PASS  R5 no site flips twice inside evGap   0 reversals, 0 repeated death-sites
+
+the same contract on a fed collision (control: ribbon continent, ocean trench feeding it)
+     t     x(km)   peak   flank   root   Vex(e9)   felsic/mafic cols   margin max
+       0    21892    34.2    21.5    12.7     0.13   284 / 228   35.4
+      20    21935    41.8    21.7    20.1     5.52   285 / 228   63.6
+      40        -     0.0    21.7     0.0     7.48   282 / 231   0.0
+      60        -     0.0    27.7     0.0    11.08   283 / 231   0.0
+      80        -     0.0    25.8     0.0    10.88   282 / 233   0.0
+     100        -     0.0    34.3     0.0    10.14   282 / 233   0.0
+     120    21874    49.6    28.4    21.3     9.30   282 / 234   71.2
+     140    22105    47.5    28.3    19.2     8.32   281 / 236   68.3
+     160        -     0.0    27.5     0.0    11.51   283 / 235   0.0
+     180        -     0.0    31.7     0.0    11.92   283 / 235   0.0
+INFO  a fed collision does not accumulate either   the margin ends at 0.0 km against the 35 km reference, and Vex ends at 11.92e9 m2
+
+the model planet: do its own continental collisions last 200 Myr?
+    t    0 Myr   2 continental collide edges   nCol 512
+    t   25 Myr   2 continental collide edges   nCol 517
+    t   50 Myr   2 continental collide edges   nCol 520
+    t   75 Myr   3 continental collide edges   nCol 523
+    t  100 Myr   1 continental collide edge   nCol 522
+    t  125 Myr   1 continental collide edge   nCol 526
+    t  150 Myr   1 continental collide edge   nCol 527
+    t  175 Myr   1 continental collide edge   nCol 530
+INFO  the longest continental collision on the def planet   last seen at t 175 Myr, at most 3 at once: the engine sutures or reclassifies them long before R4 ends
+
+M1 result — accumulation first; R4 arrest remains a separate open gate
+  conveyor response: not yet sufficient (69 retirements, shortening 99.2% of reported closing, belt/excess both grow: true).
+  R1/R2/R3/R5 audit bundle: not all clear; brake selection readiness: false.
+  no brake candidate was run or selected; the kernel remains unmodified by this harness.
+  Do not call R4 solved from this M1 measurement. Acceptance still requires the full 200 Myr
+  R4 control/brake contract at 50 and 100 kyr/frame, seeds 1 and 5, all strict R1/R2/R3/R5
+  legs, mass/replay gates, and the default-planet regression.
+
+2 / 7 FAILURES
+
+exit: 1

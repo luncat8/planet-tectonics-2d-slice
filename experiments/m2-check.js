@@ -556,10 +556,36 @@ check.ok('and held at the floor by the plate correction instead of interpenetrat
 	'gap ' + squeezeGap.toFixed(0) + ' m of a ' + (P.gFloor * P.w0).toFixed(0) + ' m floor');
 invariants();
 
+// R2 is a local shape criterion: a broad plateau clears the pair's immediate shoulders,
+// while a two-cell spike and a disconnected four-cell pattern do not count as a belt.
+check.section('R2 local needle and contiguous-width measurement');
+check.planet(1);
+var r2ShapeIndex = (S.nCol >> 1) - 1, r2Shape = {};
+S.hTot.fill(40e3, 0, S.nCol);
+for (var ri7 = -2; ri7 <= 3; ri7++) S.hTot[r2ShapeIndex + ri7] = 80e3;
+L.check.r2ShapeAt(S, r2ShapeIndex, r2Shape);
+check.near('a broad six-column plateau has no local needle', r2Shape.needleRatio, 1, 0);
+check.near('the broad plateau supplies six contiguous raised columns', r2Shape.widthRun, 6, 0);
+check.near('legacy outer-flank ratio remains available for comparison', r2Shape.outerRatio, 2, 0);
+for (ri7 = -2; ri7 <= 3; ri7++) S.hTot[r2ShapeIndex + ri7] = 40e3;
+S.hTot[r2ShapeIndex] = 80e3; S.hTot[r2ShapeIndex + 1] = 80e3;
+L.check.r2ShapeAt(S, r2ShapeIndex, r2Shape);
+check.near('a narrow pair rises above both immediate shoulders', r2Shape.needleRatio, 2, 0);
+check.near('a narrow pair supplies only two contiguous raised columns', r2Shape.widthRun, 2, 0);
+for (ri7 = -2; ri7 <= 3; ri7++) S.hTot[r2ShapeIndex + ri7] = 40e3;
+S.hTot[r2ShapeIndex - 2] = 80e3; S.hTot[r2ShapeIndex - 1] = 80e3;
+S.hTot[r2ShapeIndex + 1] = 80e3; S.hTot[r2ShapeIndex + 2] = 80e3;
+L.check.r2ShapeAt(S, r2ShapeIndex, r2Shape);
+check.near('four non-contiguous raised cells remain distinguishable from a four-wide belt',
+	r2Shape.widthCount, 4, 0);
+check.near('the selected width metric returns only the longest contiguous run', r2Shape.widthRun, 2, 0);
+
 // M1: a whole-plate driven fixture reaches the C-C crush floor in ordinary SIM frames,
 // then retires one boundary record. No one-column coordinate edit is used: PLT.solve and
 // COL.transport carry both complete plates, and the K4 move is checked in the full ledger.
 L.check.twoContinents(1);
+check.ok('the prescribed C-C fixture excludes unrelated plume and trench sources',
+	S.nPlm === 0 && S.nRib === 0 && S.trenchDist.subarray(0, S.nCol).every(function (v) { return v === 0; }));
 bi = (S.nCol >> 1) - 1;
 COL.push(bi, 120, P.LITH.sed, 100, 0);
 COL.sums(bi);
@@ -1040,6 +1066,34 @@ CRU.delaminate(S, 10);
 check.ok('no frame takes all of it, and none drops the column under the ceiling',
 	S.hTot[50] > P.crustMax && S.hTot[50] < P.crustMax + (20e3 - shed7) / 2,
 	'overage ' + ((S.hTot[50] - P.crustMax) / 1e3).toFixed(2) + ' km after dt = 10 Myr');
+
+// A high lava cap does not protect a felsic basement when the whole column exceeds the
+// ceiling: the final K5 foundering pass peels the basal bed. Isolate that pass in this test;
+// it mirrors the observed M1 stack order and guards the layer-specific ledger path.
+check.planet(1);
+for (var vi7 = 0; vi7 < S.nCol; vi7++) {
+	S.colNL[vi7] = 0;
+	COL.push(vi7, 8e3, P.LITH.fel, 100, 0);
+	COL.sums(vi7);
+}
+S.colNL[50] = 0;
+COL.push(50, 10e3, P.LITH.fel, 100, 0);
+COL.push(50, 70e3, P.LITH.lava, 80, 0);
+COL.push(50, 5e3, P.LITH.sed, 60, 0);
+COL.sums(50);
+var capFel0 = S.hFel[50], capMaf0 = S.hMaf[50], capSed0 = S.hSed[50];
+var capBase0 = S.layTh[50 * P.layerCap], capLava0 = S.layTh[50 * P.layerCap + 1];
+var capSedBed0 = S.layTh[50 * P.layerCap + 2], capCons0 = S.ledCons[P.LITH.fel];
+var capShed0 = (S.hTot[50] - P.crustMax) * P.kDelam * 0.05 / (1 + P.kDelam * 0.05);
+CRU.delaminate(S, 0.05);
+check.near('foundering peels the basal felsic bed beneath lava', capFel0 - S.hFel[50], capShed0, 1e-9, 'm');
+check.ok('the overlying lava and sediment beds remain unchanged',
+	S.layTh[50 * P.layerCap + 1] === capLava0 &&
+	S.layTh[50 * P.layerCap + 2] === capSedBed0 && S.hMaf[50] === capMaf0 && S.hSed[50] === capSed0);
+check.near('basal felsic foundering closes its lithology ledger',
+	S.ledCons[P.LITH.fel] - capCons0, capShed0 * S.colW[50], 1e-9, 'm3');
+check.near('the basal bed is reduced by exactly the felsic loss',
+	S.layTh[50 * P.layerCap], capBase0 - capShed0, 1e-9, 'm');
 
 // A stiff peel can cross whole basal beds. Remove those slots, not just their thickness:
 // empty entries make layerCap look occupied and leave deposits pointing at missing hosts.

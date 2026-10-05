@@ -71,7 +71,9 @@ check.planet = function (seed, preset) {
 
 // The prescribed two-continent fixture (0.1.6-plan.md §5, corrected 0.1.8 M0): two
 // plates, half the planet each, both uniform continental crust at the undeformed
-// reference. One builder so r4-check and the orogen-measure comparison cannot drift.
+// reference. Plumes and stale trench sources are removed so an unrelated LIP or arc cannot
+// turn this controlled C-C test into a different boundary. One builder keeps r4-check and
+// the orogen-measure comparison identical.
 //
 // The crust is built as *stacks*. The fixture this replaces assigned only `hFel`, and
 // every kernel derives its caches from the stacks (COL.sums), so the continents were the
@@ -92,6 +94,8 @@ check.twoContinents = function (seed) {
 	}
 	S.nPl = 2; S.plN[0] = half; S.plN[1] = n - half;
 	S.plU[0] = 0; S.plU[1] = 0;
+	S.nPlm = 0;
+	S.trenchDist.fill(0, 0, n);
 	for (i = 0; i < n; i++) S.colU[i] = S.plU[S.colPlate[i]];
 	return S;
 };
@@ -108,6 +112,36 @@ check.collisionSite = function () {
 		return i;
 	}
 	return -1;
+};
+
+function wrapR2(k, n) { k %= n; return k < 0 ? k + n : k; }
+
+// The selected R2 shape measure is shared by both audits. `out` is caller-owned so the
+// per-frame scan allocates nothing; outerRatio/widthCount retain the legacy readings.
+check.r2ShapeAt = function (st, i, out) {
+	var P = mods.params, n = st.nCol, j = i + 1 < n ? i + 1 : 0;
+	var h = st.hTot, flank, peak, shoulder, count = 0, width = 0, run = 0, k, c, rise;
+	flank = 0.25 * (h[wrapR2(i - P.beltFeed - 1, n)] + h[wrapR2(i - P.beltFeed - 2, n)] +
+		h[wrapR2(j + P.beltFeed + 1, n)] + h[wrapR2(j + P.beltFeed + 2, n)]);
+	peak = Math.max(h[i], h[j]);
+	shoulder = Math.max(h[wrapR2(i - 1, n)], h[wrapR2(j + 1, n)]);
+	rise = flank + P.beltRise;
+	for (k = -2; k <= 3; k++) {
+		c = wrapR2(i + k, n);
+		if (h[c] >= rise) {
+			count++;
+			if (++run > width) width = run;
+		} else run = 0;
+	}
+	out.flank = flank;
+	out.peak = peak;
+	out.shoulder = shoulder;
+	out.outerRatio = flank > 0 ? peak / flank : (peak > 0 ? Infinity : 1);
+	out.needleRatio = shoulder > 0 ? peak / shoulder : (peak > 0 ? Infinity : 1);
+	out.widthCount = count;
+	out.widthRun = width;
+	out.built = peak >= flank + P.beltRoot;
+	return out;
 };
 
 // brute-force owner of a world x: the reference the column LUT is checked against.

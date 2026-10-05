@@ -28,18 +28,22 @@
 // changes twice inside evGap). 0.1.8 M2 still owes the four strict contact-audit legs on
 // the integrated kernel; this script only decides which representation the kernel takes.
 //
-// run:  node experiments/orogen-measure.js [frames=4000] [fitSeed=1] [checkSeed=5] [kyr=50]
+// run:  node experiments/orogen-measure.js [frames=4000] [fitSeed=1] [checkSeed=5] [kyr=50] [modes=instant,A,B|none] [kBelt=0.12]
 
 'use strict';
 var L = require('./lib.js');
 var P = L.mods.params, S = L.mods.state, SIM = L.mods.sim, GEO = L.mods.geom,
 	PLT = L.mods.plates, COL = L.mods.columns;
 var check = L.check;
+var R2_SHAPE = { flank: 0, peak: 0, shoulder: 0, outerRatio: 0, needleRatio: 0,
+	widthCount: 0, widthRun: 0, built: false };
 
 var FRAMES = Number(process.argv[2]) || 4000;
 var FIT_SEED = Number(process.argv[3]) || 1;
 var CHK_SEED = Number(process.argv[4]) || 5;
 var KYR = Number(process.argv[5]) || 50;
+var BELT_ARG = process.argv[7] === undefined ? NaN : Number(process.argv[7]);
+if (isFinite(BELT_ARG) && BELT_ARG >= 0) P.kBelt = BELT_ARG;
 var DRIVE = 15e3;                 // m/Myr per continent: the prescribed 30 mm/yr closing
 var DT_FRAME = KYR / 1e3;         // Myr per frame (KYR is kyr/frame)
 var TAU_BUILD = 1;                // Myr, candidate B: the edge records what it is building
@@ -230,8 +234,13 @@ function run(seed, mode, k) {
 		accrete: 0, accEventCount: 0, accEventX: new Float64Array(P.colCap), shortening: 0, reopened: 0,
 		live: 0, lost: -1, maxH: 0, ms: 0,
 		nStart: 0, nEnd: 0, pw0Start: 0, pw0End: 0, pw1Start: 0, pw1End: 0,
-		peakR: 0, peakRf: -1, peakRi: -1, contR: 0, contRf: -1, prof: new Float64Array(8),
-		bumps: 0, wide: 0, runWorst: 99,
+		peakR: 0, peakRf: -1, peakRi: -1, peakH: 0, peakFlank: 0, peakRun: 0,
+		peakLocalFlank: 0, peakLocalR: 0, needleR: 0, needleRf: -1, needleRi: -1,
+		needleH: 0, needleShoulder: 0, needleProf: new Float64Array(8),
+		contR: 0, contRf: -1, prof: new Float64Array(8),
+		bumps: 0, wide: 0, wideContig: 0, runWorst: 99, runWorstF: -1, runWorstI: -1,
+		runWorstPeak: 0, runWorstFlank: 0, runProf: new Float64Array(8),
+		contigWorst: 99, contigWorstF: -1, contigWorstI: -1, contigProf: new Float64Array(8),
 		siteDz: 0, awayDz: 0, quietDz: 0,
 		births: 0, deaths: 0, flipRepeat: 0, birthRepeat: 0, deathRepeat: 0
 	};
@@ -447,35 +456,50 @@ var G = {
 			if (a >= 0 && this.PRE[a] !== -2) { this.MATCH[i] = a; this.PRE[a] = i; }
 		}
 	},
-	// R2 and R3, exactly the audit's arithmetic: the pair against the flanks 3-4 columns
-	// out, the five-and-a-half-column run above flank + beltRise, the ceiling with its
-	// dt-aware allowance. Two flank readings are reported: the audit's (whatever crust is
-	// there) and one restricted to continental ground on both sides, because comparing a
-	// continental margin with an ocean is not the needle the contract is about.
+	// R2 uses the shared local-needle / contiguous-width helper in lib.js. The historical
+	// outer-flank ratio and non-contiguous count remain in the same sample for comparison;
+	// R3 keeps the audit's dt-aware ceiling arithmetic.
 	gates: function (f, out) {
-		var n = S.nCol, i, j, k, h, c, flank, peak, run, l, r;
+		var n = S.nCol, i, j, k, c, flank, peak, count, contiguous, localFlank, l, r;
 		for (i = 0; i < n; i++) {
 			if (S.hTot[i] > out.maxH) out.maxH = S.hTot[i];
 			if (S.edge[i] !== P.EDGE.collide) continue;
 			j = i + 1 < n ? i + 1 : 0;
 			if (S.colGhost[i] || S.colGhost[j]) continue;
-			flank = 0.25 * (S.hTot[wm(i - P.beltFeed - 1)] + S.hTot[wm(i - P.beltFeed - 2)] +
-				S.hTot[wm(j + P.beltFeed + 1)] + S.hTot[wm(j + P.beltFeed + 2)]);
+			check.r2ShapeAt(S, i, R2_SHAPE);
+			flank = R2_SHAPE.flank; peak = R2_SHAPE.peak;
 			if (!(flank > 0)) continue;
-			peak = Math.max(S.hTot[i], S.hTot[j]);
-			if (peak / flank > out.peakR) {
-				out.peakR = peak / flank; out.peakRf = f; out.peakRi = i;
+			count = R2_SHAPE.widthCount; contiguous = R2_SHAPE.widthRun;
+			if (R2_SHAPE.outerRatio > out.peakR) {
+				localFlank = 0.5 * (S.hTot[wm(i - 1)] + S.hTot[wm(j + 1)]);
+				out.peakR = R2_SHAPE.outerRatio; out.peakRf = f; out.peakRi = i;
+				out.peakH = peak; out.peakFlank = flank; out.peakRun = count;
+				out.peakLocalFlank = localFlank;
+				out.peakLocalR = localFlank > 0 ? peak / localFlank : 0;
 				for (k = -3; k <= 4; k++) out.prof[k + 3] = S.hTot[wm(i + k)];
+			}
+			if (R2_SHAPE.needleRatio > out.needleR) {
+				out.needleR = R2_SHAPE.needleRatio; out.needleRf = f; out.needleRi = i;
+				out.needleH = peak; out.needleShoulder = R2_SHAPE.shoulder;
+				for (k = -3; k <= 4; k++) out.needleProf[k + 3] = S.hTot[wm(i + k)];
 			}
 			l = cont(wm(i - P.beltFeed - 1)) || cont(wm(i - P.beltFeed - 2));
 			r = cont(wm(j + P.beltFeed + 1)) || cont(wm(j + P.beltFeed + 2));
-			if (l && r && peak / flank > out.contR) { out.contR = peak / flank; out.contRf = f; }
-			if (peak >= flank + P.beltRoot) {
-				run = 0;
-				for (h = -2; h <= 3; h++) if (S.hTot[wm(i + h)] >= flank + P.beltRise) run++;
-				out.bumps++;
-				if (run >= P.beltCols) out.wide++;
-				if (run < out.runWorst) out.runWorst = run;
+			if (l && r && R2_SHAPE.outerRatio > out.contR) {
+				out.contR = R2_SHAPE.outerRatio; out.contRf = f;
+			}
+			if (!R2_SHAPE.built) continue;
+			out.bumps++;
+			if (count >= P.beltCols) out.wide++;
+			if (contiguous >= P.beltCols) out.wideContig++;
+			if (count < out.runWorst) {
+				out.runWorst = count; out.runWorstF = f; out.runWorstI = i;
+				out.runWorstPeak = peak; out.runWorstFlank = flank;
+				for (k = -3; k <= 4; k++) out.runProf[k + 3] = S.hTot[wm(i + k)];
+			}
+			if (contiguous < out.contigWorst) {
+				out.contigWorst = contiguous; out.contigWorstF = f; out.contigWorstI = i;
+				for (k = -3; k <= 4; k++) out.contigProf[k + 3] = S.hTot[wm(i + k)];
 			}
 		}
 	}
@@ -514,7 +538,7 @@ function verdict(r, ctrl) {
 	var fall = late <= 0.75 * early;
 	var ctrlFast = cLate > 0.9 * cEarly;
 	var ceiling = r.maxH <= P.crustMax + 35e3 * KYR / 1e3;
-	var r2 = r.peakR <= P.beltPeak && (r.bumps === 0 || r.wide >= 0.9 * r.bumps);
+	var r2 = r.needleR <= P.beltPeak && (r.bumps === 0 || r.wideContig >= 0.9 * r.bumps);
 	var r5 = r.flipRepeat === 0;
 	var r1 = r.awayDz > 0 ? r.siteDz <= P.evDzK * r.awayDz : true;
 	return { early: early, late: late, hold: hold, fall: fall, ctrlFast: ctrlFast,
@@ -537,9 +561,11 @@ function sweepLine(r, v) {
 		'  close ' + (v.early / 1e3).toFixed(1).padStart(5) + ' -> ' + (v.late / 1e3).toFixed(1).padStart(5) +
 		'  (' + (100 * v.lateEarly).toFixed(0).padStart(4) + '%)  belt ' + (mean(r.wBelt, Math.max(0, r.live - Math.floor(r.live / 4)), r.live) / 1e3).toFixed(0).padStart(4) +
 		' km  peakH ' + (v.peakH / 1e3).toFixed(1).padStart(5) + ' km  R2 ' + (v.r2 ? 'ok ' : 'no ') +
+		' local ' + r.needleR.toFixed(2) + '  contig ' + r.wideContig + '/' + r.bumps +
+		' legacy width ' + r.wide + '/' + r.bumps +
 		' R1 ' + (v.r1 ? 'ok ' : 'no ') + ' R5 ' + (v.r5 ? 'ok ' : 'no ') +
 		'  ' + r.ms.toFixed(2) + ' ms/f' +
-		(r.peakRi >= 0 ? '   worst peak/flank ' + r.peakR.toFixed(2) + ' at frame ' + r.peakRf + ' col ' + r.peakRi : ''));
+		(r.peakRi >= 0 ? '   legacy peak/flank ' + r.peakR.toFixed(2) + ' at frame ' + r.peakRf + ' col ' + r.peakRi : ''));
 }
 
 // Track one untouched material witness in each plate. Their unwrapped relative displacement
@@ -563,8 +589,19 @@ function contactReport(r) {
 		r.births + ' births, ' + r.deaths + ' deaths; columns ' + r.nStart + ' -> ' + r.nEnd + ', plate widths ' +
 		(r.pw0Start / 1e3).toFixed(0) + '/' + (r.pw1Start / 1e3).toFixed(0) + ' -> ' +
 		(r.pw0End / 1e3).toFixed(0) + '/' + (r.pw1End / 1e3).toFixed(0) + ' km');
-	console.log('    peak/flank ' + r.peakR.toFixed(2) + ' at frame ' + r.peakRf + ' edge ' + r.peakRi +
-		'; local hTot (-3..+4) km: ' + Array.from(r.prof, function (h) { return (h / 1e3).toFixed(1); }).join('/'));
+	console.log('    legacy peak/flank ' + r.peakR.toFixed(2) + ' at frame ' + r.peakRf + ' edge ' + r.peakRi +
+		'; pair ' + (r.peakH / 1e3).toFixed(1) + ' / outer flank ' + (r.peakFlank / 1e3).toFixed(1) +
+		' km; mean immediate shoulders ' + (r.peakLocalFlank / 1e3).toFixed(1) + ' km (pair/mean ' +
+		r.peakLocalR.toFixed(2) + '), old count ' + r.peakRun + '/6; local hTot (-3..+4) km: ' +
+		Array.from(r.prof, function (h) { return (h / 1e3).toFixed(1); }).join('/'));
+	console.log('    selected local needle ' + r.needleR.toFixed(2) + ' at frame ' + r.needleRf +
+		' edge ' + r.needleRi + '; pair ' + (r.needleH / 1e3).toFixed(1) + ' / higher shoulder ' +
+		(r.needleShoulder / 1e3).toFixed(1) + ' km (limit ' + P.beltPeak + '); local hTot (-3..+4) km: ' +
+		Array.from(r.needleProf, function (h) { return (h / 1e3).toFixed(1); }).join('/'));
+	console.log('    legacy width minimum count ' + r.runWorst + '/6 at frame ' + r.runWorstF +
+		' edge ' + r.runWorstI + '; selected contiguous width minimum ' + r.contigWorst +
+		'/6 at frame ' + r.contigWorstF + ' edge ' + r.contigWorstI + '; hTot (-3..+4) km: ' +
+		Array.from(r.contigProf, function (h) { return (h / 1e3).toFixed(1); }).join('/'));
 	console.log('    first/last-quarter response (pair hTot / belt / root / excess width): ' +
 		(mean(r.pairH, 0, q) / 1e3).toFixed(1) + '/' + (mean(r.wBelt, 0, q) / 1e3).toFixed(0) + '/' +
 		(mean(r.root, 0, q) / 1e3).toFixed(1) + '/' + (mean(r.wA, 0, q) / 1e3).toFixed(0) + ' -> ' +
@@ -595,7 +632,9 @@ function responseMetrics(r) {
 
 check.section('0.1.8 M1 — conveyor and orogen response, before brake selection');
 console.log('fixture: ' + FRAMES + ' frames, ' + KYR + ' kyr/frame (' + (FRAMES * KYR / 1e3).toFixed(1) +
-	' Myr), fit seed ' + FIT_SEED + ', check seed ' + CHK_SEED + ', drive ' + (2 * DRIVE / 1e3) + ' mm/yr closing');
+	' Myr), fit seed ' + FIT_SEED + ', check seed ' + CHK_SEED + ', drive ' + (2 * DRIVE / 1e3) +
+	' mm/yr closing, kBelt ' + P.kBelt + ' /Myr');
+console.log('fixture forcing: prescribed two continents only; plume arrivals and stale trench-distance forcing cleared');
 
 var ctrl = run(FIT_SEED, 'off', 0);
 table(ctrl, 'brake off: C-C conveyor response');
@@ -616,22 +655,27 @@ check.ok('belt width and plateau excess continue growing before brake selection'
 var ctrlAudit = response.audit;
 check.ok('R1 event-site surface displacement remains bounded', ctrlAudit.r1,
 	'max at event sites ' + (ctrl.siteDz / 1e3).toFixed(2) + ' km vs away ' + (ctrl.awayDz / 1e3).toFixed(2) + ' km');
-check.ok('R2 collision remains a belt, not a needle', ctrlAudit.r2,
-	'peak/flank ' + ctrl.peakR.toFixed(2) + ', wide ' + ctrl.wide + '/' + ctrl.bumps + ' frames');
+check.ok('R2 local needle and contiguous-width gates both pass', ctrlAudit.r2,
+	'local peak/shoulder ' + ctrl.needleR.toFixed(2) + ', contiguous ' + ctrl.wideContig + '/' +
+	ctrl.bumps + ' built frames; legacy outer ratio ' + ctrl.peakR.toFixed(2) + ', count ' +
+	ctrl.wide + '/' + ctrl.bumps);
 check.ok('R3 crust stays under the dt-aware ceiling', ctrlAudit.ceiling,
 	(ctrl.maxH / 1e3).toFixed(1) + ' km vs ' + ((P.crustMax + 35e3 * DT_FRAME) / 1e3).toFixed(1) + ' km');
 check.ok('R5 no site flips twice inside evGap', ctrlAudit.r5,
 	ctrl.flipRepeat + ' reversals, ' + ctrl.deathRepeat + ' repeated death-sites');
 
-// 'instant', A, and B remain diagnostics; they are run only after the mass conveyor has
-// passed its shortening and ongoing-growth gates. No measure is integrated into the kernel here.
+// 'instant', A, and B remain diagnostics; they need a live, mass-responsive conveyor, but
+// the sweep itself is allowed to measure whether a candidate can repair a red shape/event
+// gate. It never changes the kernel or declares M1 complete.
 var MODES = process.argv[6] === 'none' ? [] :
 	(process.argv[6] ? process.argv[6].split(',') : ['instant', 'A', 'B']);
 var rows = [];
-if (!response.selectionReady) {
-	if (MODES.length) check.info('candidate brake sweep deferred',
-		!response.conveyorResponsive ? 'the unbraked conveyor response failed' : 'one or more R1/R2/R3/R5 audit gates remain red');
+if (!response.conveyorResponsive) {
+	if (MODES.length) check.info('candidate brake sweep deferred', 'the unbraked conveyor response failed');
 	MODES = [];
+} else if (!response.auditsPass && MODES.length) {
+	check.info('candidate brake sweep is diagnostic; baseline R1/R2/R3/R5 remain open',
+		'candidate rows must pass the same gates and do not close M1 acceptance');
 }
 MODES.forEach(function (mode) {
 	check.section('candidate ' + mode + (mode === 'instant' ? ' (incumbent: this frame\'s COL.beltW)'

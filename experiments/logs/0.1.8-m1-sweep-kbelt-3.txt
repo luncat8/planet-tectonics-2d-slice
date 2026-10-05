@@ -1,0 +1,103 @@
+$ node experiments/orogen-measure.js 4000 1 5 50 instant,A,B 3
+
+
+0.1.8 M1 — conveyor and orogen response, before brake selection
+fixture: 4000 frames, 50 kyr/frame (200.0 Myr), fit seed 1, check seed 5, drive 30 mm/yr closing, kBelt 3 /Myr
+fixture forcing: prescribed two continents only; plume arrivals and stale trench-distance forcing cleared
+
+brake off: C-C conveyor response
+    t      closing   pairH    belt     root     W(A)     W(B)
+   Myr     mm/yr      km       km       km       km       km
+      0       3.6     35.0      156      0.0        3        0
+     20      28.4     72.8      547     35.8     8543      548
+     40      24.9     80.2      488     37.4     9212      542
+     60      23.0     80.2      486     34.7     9632      540
+     80      23.4     80.1      577     32.6    10116      615
+    100      26.3     80.3      554     31.3    10261      614
+    120      29.8     79.0      622     30.8    10736      613
+    140      31.8     80.5      553     30.3    10831      612
+    160      30.6     80.4      557     29.6    11079      612
+    180      26.5     80.1      694     29.9    11430      688
+  control closing 28.1 -> 27.3 mm/yr
+  contact geometry: 3.91 km is the C-C crush floor
+    the first pair reached the floor at frame 50 (t 2.50 Myr); the live pair gap ends at 63.68 km
+    reported closing 27.29 mm/yr; integrated shortening is 5409.2 km (27.05 mm/yr equivalent)
+    69 conveyor retirements release 5394.7 km (58.0 frames/event); 91 births, 69 deaths; columns 512 -> 534, plate widths 20015/20015 -> 19712/20319 km
+    legacy peak/flank 2.14 at frame 288 edge 254; pair 76.5 / outer flank 35.8 km; mean immediate shoulders 79.9 km (pair/mean 0.96), old count 6/6; local hTot (-3..+4) km: 35.1/43.4/79.9/76.5/47.2/79.9/70.2/38.3
+    selected local needle 1.12 at frame 21 edge 255; pair 39.9 / higher shoulder 35.7 km (limit 1.5); local hTot (-3..+4) km: 35.0/35.7/35.7/39.9/39.9/35.7/35.7/35.0
+    legacy width minimum count 2/6 at frame 17 edge 255; selected contiguous width minimum 2/6 at frame 17 edge 255; hTot (-3..+4) km: 35.0/35.2/35.2/39.2/39.2/35.2/35.2/35.0
+    first/last-quarter response (pair hTot / belt / root / excess width): 69.5/486/30.5/7508 -> 79.8/636/29.2/11300 km
+PASS  the conveyor preserves a live collision and retires records   4000/4000 frames, 69 retirements
+PASS  plate-witness shortening matches reported convergence within 10%   27.05 vs 27.29 mm/yr (99.1%)
+PASS  belt width and plateau excess continue growing before brake selection   belt 486 -> 636 km; excess width 7508 -> 11300 km
+PASS  R1 event-site surface displacement remains bounded   max at event sites 1.14 km vs away 2.38 km
+PASS  R2 local needle and contiguous-width gates both pass   local peak/shoulder 1.12, contiguous 3809/3983 built frames; legacy outer ratio 2.14, count 3971/3983
+PASS  R3 crust stays under the dt-aware ceiling   80.5 km vs 81.8 km
+PASS  R5 no site flips twice inside evGap   0 reversals, 0 repeated death-sites
+
+candidate instant (incumbent: this frame's COL.beltW)
+  k   2e+5   live 3016  close  16.6 ->  23.1  ( 139%)  belt  521 km  peakH  80.0 km  R2 no  local 1.12  contig 379/2998 legacy width 2985/2998 R1 ok  R5 ok   1.95 ms/f   legacy peak/flank 2.03 at frame 403 col 254
+  k   5e+5   live 3696  close  10.5 ->  12.9  ( 123%)  belt  523 km  peakH  80.0 km  R2 no  local 1.11  contig 305/3677 legacy width 3661/3677 R1 ok  R5 ok   1.92 ms/f   legacy peak/flank 1.88 at frame 2723 col 255
+  k   1e+6   live 4000  close   6.9 ->   6.6  (  94%)  belt  529 km  peakH  79.9 km  R2 no  local 1.11  contig 380/3977 legacy width 3958/3977 R1 ok  R5 ok   1.92 ms/f   legacy peak/flank 1.76 at frame 3578 col 254
+  k   2e+6   live 1419  close   6.1 ->   2.6  (  42%)  belt  521 km  peakH  60.9 km  R2 no  local 1.10  contig 513/1387 legacy width 1362/1387 R1 no  R5 ok   1.89 ms/f   legacy peak/flank 1.47 at frame 1014 col 254
+  k   4e+6   live  499  close   6.2 ->   2.5  (  41%)  belt  427 km  peakH  45.1 km  R2 no  local 1.10  contig 27/149 legacy width 122/149 R1 no  R5 ok   1.94 ms/f   legacy peak/flank 1.20 at frame 382 col 254
+  k   1e+7   live 3999  close   3.4 ->   3.1  (  94%)  belt  313 km  peakH  41.8 km  R2 ok  local 1.09  contig 0/0 legacy width 0/0 R1 ok  R5 ok   1.97 ms/f   legacy peak/flank 1.10 at frame 177 col 255
+  k   3e+7   live 4000  close 397.4 -> 400.0  ( 101%)  belt  146 km  peakH  37.6 km  R2 ok  local 1.07  contig 0/0 legacy width 0/0 R1 ok  R5 ok   1.92 ms/f   legacy peak/flank 1.07 at frame 8 col 255
+INFO  no coefficient in the sweep meets the arrest contract on seed 1   smallest late/early 41%
+
+candidate A (plateau excess volume / beltRise: derived, no new state)
+  k   2e+5   live 1399  close  10.3 ->   2.7  (  26%)  belt  549 km  peakH  65.5 km  R2 no  local 1.11  contig 250/1382 legacy width 1367/1382 R1 ok  R5 ok   1.93 ms/f   legacy peak/flank 1.56 at frame 557 col 254
+  k   5e+5   live  899  close   8.9 ->   2.3  (  25%)  belt  518 km  peakH  54.7 km  R2 no  local 1.11  contig 485/880 legacy width 860/880 R1 no  R5 ok   1.93 ms/f   legacy peak/flank 1.43 at frame 517 col 254
+  k   1e+6   live  679  close   7.7 ->   1.9  (  25%)  belt  426 km  peakH  49.9 km  R2 no  local 1.11  contig 126/579 legacy width 553/579 R1 no  R5 ok   1.88 ms/f   legacy peak/flank 1.20 at frame 219 col 254
+  k   2e+6   live 3041  close   3.3 ->   2.2  (  67%)  belt  432 km  peakH  50.0 km  R2 no  local 1.10  contig 24/2084 legacy width 2056/2084 R1 no  R5 ok   1.91 ms/f   legacy peak/flank 1.20 at frame 400 col 254
+  k   4e+6   live 3289  close   2.4 ->   2.1  (  89%)  belt  371 km  peakH  41.8 km  R2 ok  local 1.09  contig 0/0 legacy width 0/0 R1 ok  R5 ok   2.09 ms/f   legacy peak/flank 1.11 at frame 108 col 255
+  k   1e+7   live 2793  close   3.4 ->   4.0  ( 116%)  belt  234 km  peakH  38.4 km  R2 ok  local 1.09  contig 0/0 legacy width 0/0 R1 ok  R5 ok   1.96 ms/f   legacy peak/flank 1.10 at frame 221 col 255
+  k   3e+7   live 2726  close   3.5 ->   4.0  ( 113%)  belt  156 km  peakH  37.3 km  R2 ok  local 1.07  contig 0/0 legacy width 0/0 R1 ok  R5 ok   1.94 ms/f   legacy peak/flank 1.07 at frame 3603 col 255
+INFO  no coefficient in the sweep meets the arrest contract on seed 1   smallest late/early 25%
+
+candidate B (decaying edge memory: tauUp 1 Myr, tauDown 50 Myr)
+  k   2e+5   live 3042  close  16.6 ->  22.9  ( 138%)  belt  522 km  peakH  80.0 km  R2 no  local 1.12  contig 367/3025 legacy width 3012/3025 R1 ok  R5 ok   2.09 ms/f   legacy peak/flank 2.03 at frame 397 col 254
+  k   5e+5   live 3726  close  10.5 ->  12.4  ( 118%)  belt  521 km  peakH  80.0 km  R2 no  local 1.12  contig 288/3708 legacy width 3694/3708 R1 ok  R5 ok   1.95 ms/f   legacy peak/flank 1.87 at frame 2775 col 255
+  k   1e+6   live 4000  close   7.0 ->   6.3  (  90%)  belt  531 km  peakH  79.8 km  R2 no  local 1.11  contig 370/3981 legacy width 3964/3981 R1 ok  R5 ok   1.98 ms/f   legacy peak/flank 1.75 at frame 3662 col 254
+  k   2e+6   live 1399  close   6.6 ->   2.5  (  38%)  belt  522 km  peakH  60.8 km  R2 no  local 1.11  contig 504/1377 legacy width 1354/1377 R1 no  R5 ok   1.94 ms/f   legacy peak/flank 1.46 at frame 999 col 254
+  k   4e+6   live  519  close   6.9 ->   2.4  (  34%)  belt  454 km  peakH  45.9 km  R2 no  local 1.10  contig 38/224 legacy width 192/224 R1 no  R5 ok   1.91 ms/f   legacy peak/flank 1.20 at frame 343 col 254
+  k   1e+7   live 3902  close   2.9 ->   3.0  ( 101%)  belt  318 km  peakH  41.8 km  R2 ok  local 1.09  contig 0/0 legacy width 0/0 R1 ok  R5 ok   1.92 ms/f   legacy peak/flank 1.10 at frame 146 col 255
+  k   3e+7   live 3993  close 358.0 -> 400.0  ( 112%)  belt  146 km  peakH  38.0 km  R2 ok  local 1.09  contig 0/0 legacy width 0/0 R1 ok  R5 ok   2.13 ms/f   legacy peak/flank 1.09 at frame 115 col 510
+INFO  no coefficient in the sweep meets the arrest contract on seed 1   smallest late/early 34%
+
+the same contract on a fed collision (control: ribbon continent, ocean trench feeding it)
+     t     x(km)   peak   flank   root   Vex(e9)   felsic/mafic cols   margin max
+       0    21892    34.2    21.5    12.7     0.13   284 / 228   35.4
+      20        -     0.0    22.0     0.0     5.96   285 / 229   0.0
+      40        -     0.0    22.2     0.0     8.57   283 / 231   0.0
+      60        -     0.0    27.0     0.0     9.65   282 / 232   0.0
+      80        -     0.0    36.1     0.0    10.56   283 / 232   0.0
+     100        -     0.0    33.5     0.0    10.66   284 / 232   0.0
+     120        -     0.0    32.5     0.0     9.76   284 / 232   0.0
+     140        -     0.0    32.1     0.0    10.75   286 / 231   0.0
+     160        -     0.0    31.7     0.0    13.37   286 / 233   0.0
+     180        -     0.0    31.3     0.0    13.46   287 / 234   0.0
+INFO  a fed collision does not accumulate either   the margin ends at 0.0 km against the 35 km reference, and Vex ends at 13.46e9 m2
+
+the model planet: do its own continental collisions last 200 Myr?
+    t    0 Myr   0 continental collide edges   nCol 512
+    t   25 Myr   1 continental collide edge   nCol 519
+    t   50 Myr   0 continental collide edges   nCol 526
+    t   75 Myr   0 continental collide edges   nCol 530
+    t  100 Myr   1 continental collide edge   nCol 534
+    t  125 Myr   1 continental collide edge   nCol 537
+    t  150 Myr   2 continental collide edges   nCol 541
+    t  175 Myr   2 continental collide edges   nCol 539
+INFO  the longest continental collision on the def planet   last seen at t 175 Myr, at most 2 at once: the engine sutures or reclassifies them long before R4 ends
+
+M1 result — accumulation first; R4 arrest remains a separate open gate
+  conveyor response: meets the shortening/growth preconditions on this run (69 retirements, shortening 99.1% of reported closing, belt/excess both grow: true).
+  R1/R2/R3/R5 audit bundle: all clear; brake selection readiness: true.
+  diagnostic sweep only: best live row B at k 1e+6, absorbing 77% of the late control speed.
+  Do not call R4 solved from this M1 measurement. Acceptance still requires the full 200 Myr
+  R4 control/brake contract at 50 and 100 kyr/frame, seeds 1 and 5, all strict R1/R2/R3/R5
+  legs, mass/replay gates, and the default-planet regression.
+
+ALL PASS (7 checks)
+
+exit: 0
