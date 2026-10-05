@@ -226,12 +226,25 @@ CRU.collapse = function (st, dt) {
 			v = CRU.face[i];
 			if (v === 0) continue;
 			ip = i + 1 < n ? i + 1 : 0;
-			if (v > 0) COL.collapseMove(ip, i, v);
-			else COL.collapseMove(i, ip, -v);
+			if (v > 0) collapseTo(st, ip, i, v);
+			else collapseTo(st, i, ip, -v);
 		}
 	}
 	CRU.belt(st, dt);
 };
+
+// Every K5 redistribution uses real stack volume, but a receiver may take only the headroom
+// below crustMax this frame. The face flux is explicit on a short gap; applying it without
+// this cap can put a column several kilometres over the ceiling before foundering runs.
+// Any clipped volume stays in its source column (this is not a sink), and later frames may
+// move it as the receiver opens room. Recompute room at application time because two faces
+// can feed the same column in one pass.
+function collapseTo(st, from, to, volume) {
+	var room = (P.crustMax - st.hTot[to]) * st.colW[to];
+	if (!(volume > 0) || !(room > 0)) return 0;
+	if (volume > room) volume = room;
+	return COL.collapseMove(from, to, volume);
+}
 
 // The orogenic flow (0.1.5 M2). A convergent contact cannot make room for the crust
 // shortening adds: in 1D the only places that crust can go are up (the isostasy) and
@@ -292,10 +305,8 @@ function wmodc(k, n) { k %= n; return k < 0 ? k + n : k; }
 // flow filled the columns behind a contact past crustMax faster than delamination
 // could peel them). A receiver at the ceiling only silences its own side of the wedge.
 function beltFeedTo(st, from, to, th) {
-	var room = (P.crustMax - st.hTot[to]) * st.colW[to];
-	if (!(room > 0)) return;
 	var vol = th * st.colW[from] / P.beltFeed;
-	COL.collapseMove(from, to, vol > room ? room : vol);
+	collapseTo(st, from, to, vol);
 }
 
 if (typeof module !== 'undefined' && module.exports) module.exports = CRU;

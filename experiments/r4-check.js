@@ -1,20 +1,14 @@
-// r4-check.js — R4, "convergence is absorbed", measured on a fixture of its own.
+// r4-check.js — R4, "convergence is absorbed", measured on a prescribed fixture.
 //
-// 0.1.5-plan.md §1 lists R4 as a contract, but nothing in the suite ever measured it:
-// arrest was asserted only indirectly, as a topology-repeat count inside the event
-// memory, and M3 changed shape mid-implementation — arrest turned out to be geometric
-// (the belt widens, and the collision brake grows with the belt) rather than a speed
-// limit on plU. A contract with no number of its own cannot tell those two apart.
+// Two continents are put on a collision course by a far-field drive, and the closing
+// speed, belt width, and root are measured through the whole run. The M1 conveyor now
+// allows the contact to keep consuming convergence; this check still asks whether the
+// incumbent collision brake arrests it. The brake-off control is essential: if the drive
+// alone slows the contact, a low closing speed is not evidence for the brake.
 //
-// This is the number. Two continents are put on a collision course by a prescribed
-// far-field drive, and the closing speed of their boundary is measured against the width
-// of the belt that boundary has built, for 200 Myr. If the geometric route is enough, the
-// closing speed falls as the belt widens. The negative control switches the collision
-// brake off and must show the closing speed staying at the drive: a fixture that cannot
-// fail without the mechanism is not measuring it.
-//
-// The fixture builder and the collision-site walk live in lib.js, shared with
-// experiments/orogen-measure.js (0.1.8 M0), so the two cannot measure different fixtures.
+// A passing exploratory run is not the full M1/M2 acceptance set. Keep the M0 R4 failure
+// open until both frame sizes/seeds, the strict event audits, and all mass/replay gates pass.
+// The fixture builder is shared with experiments/orogen-measure.js so the two cannot drift.
 //
 // run:  node experiments/r4-check.js [frames] [drive_mm_yr] [seed]
 'use strict';
@@ -121,24 +115,20 @@ check.ok('the brake, not the drive, is what slows the boundary', fLate > 0.9 * f
 check.ok('the belt root stays under the crust ceiling', maxRoot <= P.crustMax,
 	(maxRoot / 1e3).toFixed(1) + ' km of root (ceiling ' + (P.crustMax / 1e3).toFixed(0) + ' km)');
 
-// The numbers below are the verdict, and the model does not currently pass them. They are
-// reported, not gated: a red suite that nobody expects hides the finding, and
-// 0.1.8-plan.md §3 carries it as the open item. Measured on the honest fixture (0.1.8 M0),
-// the belt does *not* decay: it is 378-400 km from the first quarter on, because the crust
-// is uniform continental. What fails is that nothing grows after the contact reaches the
-// separation floor (COL.floor), so the brake cannot grow with it.
-console.log('\nR4 verdict — is the geometric route enough?');
+console.log('\nR4 verdict — incumbent brake under the M1 conveyor');
 console.log('  belt width      ' + (earlyW / 1e3).toFixed(0) + ' km over the first quarter -> ' +
-	(lateW / 1e3).toFixed(0) + ' km over the last   (needed: widening)');
+	(lateW / 1e3).toFixed(0) + ' km over the last (needed: widening)');
 console.log('  closing speed   ' + (early / 1e3).toFixed(1) + ' mm/yr -> ' + (late / 1e3).toFixed(1) +
-	' mm/yr, ' + (100 * late / early).toFixed(0) + '%   (needed: falling)');
-console.log('  against a ' + (2 * DRIVE / 1e3).toFixed(0) + ' mm/yr drive, the brake buys ' +
-	(100 * (1 - late / fLate)).toFixed(0) + '%');
-var met = lateW > earlyW && late < 0.75 * early;
-console.log('  ' + (met ? 'MET: the belt widens and the convergence is absorbed.'
-	: 'NOT MET: the width is set by the crust and the contact, not by the brake, and once the ' +
-	'contact pair sits at the separation floor the crust stops evolving, so no measure of it can grow.'));
-console.log('  experiments/orogen-measure.js (0.1.8 M0) measures that limit and the candidate ' +
-	'measures built on it.');
+	' mm/yr, ' + (100 * late / early).toFixed(0) + '% (needed: <= 75%)');
+console.log('  brake-off control ' + (fEarly / 1e3).toFixed(1) + ' -> ' + (fLate / 1e3).toFixed(1) +
+	' mm/yr (' + (100 * fLate / fEarly).toFixed(0) + '% of its early speed; needed: > 90%)');
+console.log('  against a ' + (2 * DRIVE / 1e3).toFixed(0) + ' mm/yr drive, the incumbent brake buys ' +
+	(100 * (1 - late / fLate)).toFixed(0) + '% of the late control speed');
+var met = brake.live === FRAMES && brake.lost < 0 && lateW > earlyW && late <= 0.75 * early &&
+	fLate > 0.9 * fEarly && late < 0.95 * fLate && maxRoot <= P.crustMax;
+console.log('  ' + (met ? 'MET: the collision is held and the incumbent brake absorbs convergence.'
+	: 'NOT MET: R4 remains open; this run does not satisfy the complete brake/control and crust-ceiling contract.'));
+console.log('  M1 accumulation is measured separately in experiments/orogen-measure.js; a passing');
+console.log('  short run here is not full acceptance and does not solve the known M0 R4 failure.');
 
 check.done();

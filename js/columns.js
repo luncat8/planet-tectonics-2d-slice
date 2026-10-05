@@ -18,6 +18,7 @@ var COL = {
 	removed: new Float64Array(3),
 	removedLi: new Float64Array(P.LITH.n),   // the same removal, split by lithology
 	wScratch: new Float64Array(16),
+	floorW: new Float64Array(P.colCap),
 	lidAcc: new Float64Array(P.nCols),
 	lidCov: new Float64Array(P.nCols),
 	mask: null, prox: null, order: null, ridgeX: null
@@ -594,6 +595,10 @@ for (var size = 0; size <= P.colCap; size++) {
 COL.dead = new Uint8Array(P.colCap);
 COL.redirect = new Int32Array(P.colCap);
 COL.intent = new Int8Array(P.colCap);
+COL.accreteLoad = new Float64Array(P.colCap);
+COL.accreteLoadFel = new Float64Array(P.colCap);
+COL.accretePla = new Float64Array(P.colCap);
+COL.accreteLock = new Uint8Array(P.colCap);
 // For a consume forced by geometry rather than by the boundary class: the column that ran
 // out of room, or -1 when the polarity decides.
 COL.crush = new Int32Array(P.colCap);
@@ -680,6 +685,14 @@ COL.transport = function (st, dt) {
 	this.plates();
 };
 
+// A converging continental pair may compress to the conveyor floor; other boundaries keep
+// the ordinary separation floor. Use the current pair velocities, not its old edge class:
+// sorting can hand the edge slot to a different pair in the same frame.
+COL.isClosingCC = function (st, i, j) {
+	return st.colPlate[i] !== st.colPlate[j] && !st.colGhost[i] && !st.colGhost[j] &&
+		st.colU[i] > st.colU[j] && st.hFel[i] >= P.hOceanic && st.hFel[j] >= P.hOceanic;
+};
+
 // Two records of different plates may not interpenetrate. Widths come from spacing, so
 // an unresolved overlap squeezes a column toward zero territory and its volume-conserving
 // stack toward a kilometre-scale spike; the floor is where the contact carries the stress
@@ -696,7 +709,7 @@ COL.transport = function (st, dt) {
 // floor is a bound and not an equality: measured on seed 5 at 500 Myr, 3 passes left a C-C
 // pair 7.5% inside the floor, 8 left 0.8%, 16 left 0.05%, and P.floorTol carries that.
 COL.floor = function (st, n) {
-	var min = P.gFloor * P.w0, i, j, d, p, q, a, pass, disp, any;
+	var min, i, j, d, p, q, a, pass, disp, any;
 	for (pass = 0; pass < P.floorPass; pass++) {
 		for (i = 0; i < P.plateCap; i++) { this.corrL[i] = 0; this.corrR[i] = 0; }
 		any = false;
@@ -706,6 +719,7 @@ COL.floor = function (st, n) {
 			if (p === q) continue;
 			d = st.colX[j] - st.colX[i];
 			if (d < 0) d += P.wrap;
+			min = this.isClosingCC(st, i, j) ? P.crushFloor : P.gFloor * P.w0;
 			if (d >= min) continue;
 			// settled when no pair is inside the floor, not when no plate moved: a plate
 			// held between two equal overlaps has nothing to move and two pairs to fix
@@ -720,6 +734,28 @@ COL.floor = function (st, n) {
 			if (disp === 0) continue;
 			for (i = 0; i < n; i++) if (st.colPlate[i] === p) st.colX[i] = wrapX(st.colX[i] + disp);
 		}
+	}
+};
+
+// K4 can add a newborn or retire an accreted record *after* K3's plate-floor solve. Apply
+// the same rigid plate correction to the resulting topology, then conserve every stack and
+// mobile-load volume over its corrected Voronoi width. Without this end-of-K4 projection a
+// newly exposed C-O edge can finish a frame several kilometres inside its ordinary floor.
+COL.finalFloor = function (st, n) {
+	var i, k, b, ratio;
+	for (i = 0; i < n; i++) this.floorW[i] = st.colW[i];
+	this.floor(st, n);
+	st.widths();
+	for (i = 0; i < n; i++) {
+		ratio = this.floorW[i] / st.colW[i];
+		if (ratio !== 1) {
+			b = i * P.layerCap;
+			for (k = 0; k < st.colNL[i]; k++) st.layTh[b + k] *= ratio;
+			st.colLoad[i] *= ratio;
+			st.colLoadFel[i] *= ratio;
+			st.colPla[i] *= ratio;
+		}
+		this.sums(i);
 	}
 };
 
@@ -778,6 +814,16 @@ COL.intents = function () {
 			else { this.intent[im] = 2; this.crush[im] = i; }
 			continue;
 		}
+		// A closing C-C pair that has exhausted its small crush gap advances by retiring
+		// its thinner boundary record. The stack is split by the exact territory each
+		// neighbour gains; unlike subduction this is an in-crust move, not a sink.
+		if (!this.intent[i] && S.edge[i] === P.EDGE.collide &&
+			this.isClosingCC(S, i, j) && d <= P.crushFloor * 1.0001) {
+			this.intent[i] = 4;
+			this.crush[i] = S.hTot[i] < S.hTot[j] ? i :
+				S.hTot[j] < S.hTot[i] ? j : (i < j ? i : j);
+			continue;
+		}
 		if (!(Math.abs(S.edgeRelN[i]) > P.epsHi && S.edgeAge[i] > P.evAge)) continue;
 		e = S.edge[i];
 		if (e === P.EDGE.open && d > 2 * P.rGap * P.w0) this.intent[i] = 1;
@@ -785,8 +831,8 @@ COL.intents = function () {
 		// the geometry of the pair unchanged (the loser becomes a sliver in the same
 		// place), so a trigger at rContact re-fires on the very next frame and the
 		// trench runs at the frame rate instead of the convergence rate.
-		// A C-C edge consumes nothing at all: there is nowhere for the crust to go, the
-		// pair squeezes against the floor instead, and that is mass-exact shortening.
+		// A closing C-C pair has its own mass-exact conveyor branch above; only an
+		// oceanic subducting column is sent through this consumption sink.
 		if (e === P.EDGE.subduct && d <= min * 1.0001 && S.edgeRelN[i] < 0 && !S.colGhost[j]) this.intent[i] = 2;
 	}
 };
@@ -876,6 +922,74 @@ COL.consume = function (i, j, crushLoser) {
 	S.colGhost[loser] = 1;
 	S.damage[loser] = 0;
 	this.redirect[loser] = winner;
+};
+
+// Blend fields that describe the newly shared surface area, not conserved rock volume.
+COL.mixArea = function (st, to, from, oldW, addW) {
+	var den = oldW + addW, i, v;
+	if (!(den > 0)) return;
+	for (i = 0; i < this.oreFields.length; i++) {
+		v = st[this.oreFields[i]];
+		v[to] = (v[to] * oldW + v[from] * addW) / den;
+	}
+	st.fert[to] = (st.fert[to] * oldW + st.fert[from] * addW) / den;
+	st.noise[to] = (st.noise[to] * oldW + st.noise[from] * addW) / den;
+	st.damage[to] = (st.damage[to] * oldW + st.damage[from] * addW) / den;
+	st.zDyn[to] = (st.zDyn[to] * oldW + st.zDyn[from] * addW) / den;
+	if (!st.syncValid[to] || !st.syncValid[from]) { st.syncValid[to] = 0; return; }
+	st.syncFel[to] = (st.syncFel[to] * oldW + st.syncFel[from] * addW) / den;
+	st.syncMaf[to] = (st.syncMaf[to] * oldW + st.syncMaf[from] * addW) / den;
+	st.syncSed[to] = (st.syncSed[to] * oldW + st.syncSed[from] * addW) / den;
+};
+
+// Retire one compressed C-C boundary record. Its stack remains in the crust: each bed's
+// volume is divided in proportion to the Voronoi territory the two neighbours gain.
+COL.accrete = function (st, c) {
+	var n = st.nCol, prev = c > 0 ? c - 1 : n - 1, next = c + 1 < n ? c + 1 : 0;
+	if (n < 3 || prev === next || st.plN[st.colPlate[c]] < 2 ||
+		this.dead[prev] || this.dead[c] || this.dead[next] ||
+		this.accreteLock[prev] || this.accreteLock[c] || this.accreteLock[next]) return false;
+	var pm = prev > 0 ? prev - 1 : n - 1, np = next + 1 < n ? next + 1 : 0;
+	var gapL = st.colX[c] - st.colX[prev], gapR = st.colX[next] - st.colX[c];
+	var gapP = st.colX[prev] - st.colX[pm], gapN = st.colX[np] - st.colX[next];
+	if (gapL < 0) gapL += P.wrap;
+	if (gapR < 0) gapR += P.wrap;
+	if (gapP < 0) gapP += P.wrap;
+	if (gapN < 0) gapN += P.wrap;
+	var totalGap = gapL + gapR;
+	if (!(totalGap > 0)) return false;
+	var sharePrev = gapR / totalGap, addPrev = 0.5 * gapR, addNext = 0.5 * gapL;
+	var oldPrev = 0.5 * (gapP + gapL), oldNext = 0.5 * (gapR + gapN);
+	var load = st.colLoad[c] * st.oldW[c];
+	var loadFel = st.colLoadFel[c] * st.oldW[c];
+	var pla = st.colPla[c] * st.oldW[c];
+	var chamber = st.colChamber[c], meltArc = st.colMeltArc[c];
+	var meltPlume = st.colMeltPlume[c], recycle = st.colRecycle[c];
+	this.transfer(c, prev, sharePrev, Infinity);
+	this.transfer(c, next, 1, Infinity);
+	this.accreteLoad[prev] += load * sharePrev;
+	this.accreteLoad[next] += load * (1 - sharePrev);
+	this.accreteLoadFel[prev] += loadFel * sharePrev;
+	this.accreteLoadFel[next] += loadFel * (1 - sharePrev);
+	this.accretePla[prev] += pla * sharePrev;
+	this.accretePla[next] += pla * (1 - sharePrev);
+	st.colChamber[prev] += chamber * sharePrev;
+	st.colChamber[next] += chamber * (1 - sharePrev);
+	st.colMeltArc[prev] += meltArc * sharePrev;
+	st.colMeltArc[next] += meltArc * (1 - sharePrev);
+	st.colMeltPlume[prev] += meltPlume * sharePrev;
+	st.colMeltPlume[next] += meltPlume * (1 - sharePrev);
+	st.colRecycle[prev] += recycle * sharePrev;
+	st.colRecycle[next] += recycle * (1 - sharePrev);
+	this.mixArea(st, prev, c, oldPrev, addPrev);
+	this.mixArea(st, next, c, oldNext, addNext);
+	if (st.colBevel[c]) { st.colBevel[prev] = 1; st.colBevel[next] = 1; }
+	st.colLoad[c] = 0; st.colLoadFel[c] = 0; st.colPla[c] = 0;
+	st.colChamber[c] = 0; st.colMeltArc[c] = 0; st.colMeltPlume[c] = 0; st.colRecycle[c] = 0;
+	st.colNL[c] = 0;
+	this.redirect[c] = sharePrev >= 0.5 ? prev : next;
+	this.accreteLock[prev] = 1; this.accreteLock[c] = 1; this.accreteLock[next] = 1;
+	return true;
 };
 
 // What a draining record still holds when the trench retires it. A sliver owns no crust,
@@ -1036,6 +1150,11 @@ COL.k4 = function (st, dt, t, Tm) {
 			if (st.colW[i] === st.oldW[i]) continue;
 			b = i * P.layerCap;
 			for (k = 0; k < st.colNL[i]; k++) st.layTh[b + k] *= st.oldW[i] / st.colW[i];
+			// Mobile sediment and its associated fractions are heights over the same
+			// Voronoi area as the stack. A no-topology frame still changes widths.
+			st.colLoad[i] *= st.oldW[i] / st.colW[i];
+			st.colLoadFel[i] *= st.oldW[i] / st.colW[i];
+			st.colPla[i] *= st.oldW[i] / st.colW[i];
 			self.sums(i);
 		}
 		// no topology ran, so nothing was born: a stale flag would name a record that
@@ -1044,6 +1163,10 @@ COL.k4 = function (st, dt, t, Tm) {
 		return false;
 	}
 	self.dead.fill(0);
+	self.accreteLock.fill(0, 0, n);
+	self.accreteLoad.fill(0, 0, n);
+	self.accreteLoadFel.fill(0, 0, n);
+	self.accretePla.fill(0, 0, n);
 	self.rampN = 0;
 	for (i = 0; i < n; i++) {
 		self.redirect[i] = i;
@@ -1062,6 +1185,13 @@ COL.k4 = function (st, dt, t, Tm) {
 		if (self.intent[i] !== 3 || self.dead[i] || self.dead[j]) continue;
 		self.drain(st, i);
 		self.dead[i] = 1;
+	}
+	for (i = 0; i < n; i++) {
+		j = (i + 1) % n;
+		if (self.intent[i] !== 4 || self.dead[i] || self.dead[j]) continue;
+		k = self.crush[i];
+		if ((k !== i && k !== j) || !self.accrete(st, k)) continue;
+		self.dead[k] = 1;
 	}
 	for (i = 0; i < n; i++) {
 		j = (i + 1) % n;
@@ -1088,7 +1218,13 @@ COL.k4 = function (st, dt, t, Tm) {
 	// ribbon, so the horizon they hosted is gone.
 	for (i = 0; i < st.nDep; i++) {
 		if (st.depCol[i] < 0) continue;
-		if (self.dead[st.depCol[i]] || st.colGhost[st.depCol[i]]) st.depCol[i] = -1;
+		if (self.dead[st.depCol[i]] || st.colGhost[st.depCol[i]]) {
+			j = self.redirect[st.depCol[i]];
+			if (self.accreteLock[st.depCol[i]] && j >= 0 && !self.dead[j]) {
+				st.depCol[i] = j;
+				st.depLay[i] = -1; // the layer was split into the receiving stacks
+			} else st.depCol[i] = -1;
+		}
 	}
 	for (i = 0; i < st.nVen; i++) {
 		if (st.venCol[i] < 0) continue;
@@ -1115,6 +1251,16 @@ COL.k4 = function (st, dt, t, Tm) {
 	}
 	for (i = 0; i < oldN; i++) {
 		j = (i + 1) % oldN;
+		if (self.intent[i] === 4 && self.crush[i] === j && self.dead[j]) {
+			var right = j + 1 < oldN ? j + 1 : 0;
+			if (self.map[i] < 0 || self.map[right] < 0) continue;
+			k = self.map[i];
+			if (st.colPlate[k] !== self.histLP[i] || st.colPlate[self.map[right]] !== self.histRP[i]) continue;
+			st.edge[k] = self.histEdge[i]; st.edgePol[k] = self.histPol[i];
+			st.edgeAge[k] = self.histAge[i]; st.edgeSlow[k] = self.histSlow[i];
+			st.edgeRPlate[k] = self.histRP[i];
+			continue;
+		}
 		if (self.dead[j] || self.map[j] < 0) continue;
 		k = (self.map[j] + count - 1) % count;
 		if (st.colPlate[k] !== self.histLP[i]) continue;
@@ -1131,6 +1277,16 @@ COL.k4 = function (st, dt, t, Tm) {
 	}
 	self.inherit(st, count);
 	st.widths();
+	for (i = 0; i < oldN; i++) {
+		k = self.map[i];
+		if (k < 0 || !(st.colW[k] > 0)) continue;
+		// These are heights over each record's old area. Topology changes the Voronoi
+		// widths, so first carry the retained load over oldW, then divide by its new
+		// area and add the fraction accreted from the retired record.
+		st.colLoad[k] = (st.colLoad[k] * st.oldW[k] + self.accreteLoad[i]) / st.colW[k];
+		st.colLoadFel[k] = (st.colLoadFel[k] * st.oldW[k] + self.accreteLoadFel[i]) / st.colW[k];
+		st.colPla[k] = (st.colPla[k] * st.oldW[k] + self.accretePla[i]) / st.colW[k];
+	}
 	for (i = 0; i < count; i++) {
 		b = i * P.layerCap;
 		for (k = 0; k < st.colNL[i]; k++) st.layTh[b + k] /= st.colW[i];

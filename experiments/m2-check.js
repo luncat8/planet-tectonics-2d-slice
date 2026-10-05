@@ -380,6 +380,20 @@ check.ok('rigid movement retains every spacing through seam',
 ledger(motionStart, 'rigid wrap');
 invariants();
 
+// Mobile sediment, its felsic fraction and placers are heights over Voronoi area.
+// A full rigid-plate transport changes the two boundary widths even without topology;
+// K4 must rescale those reservoirs just as it rescales the layer stack.
+L.check.twoContinents(1);
+var loadCol = Math.floor(S.nCol / 4);
+S.colLoad[loadCol] = 40; S.colLoadFel[loadCol] = 25; S.colPla[loadCol] = 3;
+var loadStart = S.mass().slice();
+for (ai = 0; ai < S.nCol; ai++) S.colU[ai] = S.colPlate[ai] === 0 ? 15e3 : -15e3;
+COL.transport(S, 0.05);
+COL.k4(S, 0.05, 0, 1.6);
+ledger(loadStart, 'mobile-load transport');
+check.ok('mobile sediment fractions remain finite after a width change',
+	Number.isFinite(S.colLoad[loadCol]) && Number.isFinite(S.colLoadFel[loadCol]) && Number.isFinite(S.colPla[loadCol]));
+
 // Three rigid columns cross the seam together. The empty rest of the wrap is
 // intentionally huge: the old-width volume rule must not fabricate crust there.
 check.planet(1);
@@ -542,18 +556,49 @@ check.ok('and held at the floor by the plate correction instead of interpenetrat
 	'gap ' + squeezeGap.toFixed(0) + ' m of a ' + (P.gFloor * P.w0).toFixed(0) + ' m floor');
 invariants();
 
-bi = boundary();
-// A full C-C stack has nowhere to go: both records are continental, so the pair
-// shortens against the floor and nothing is consumed (0.1.5 M1a). The mass check
-// below is the whole contract here.
-COL.push(bi, 20e3, P.LITH.fel, 100, 0);
-COL.push(bi + 1, 40e3, P.LITH.fel, 100, 0);
-COL.sums(bi); COL.sums(bi + 1);
-var collisionMass = S.mass().slice(), collisionN = S.nCol;
-contact(bi, P.gFloor * 0.9, -5e4);
-check.ok('a C-C contact consumes nothing and shortens against the floor',
-	S.nCol === collisionN && drained().length === 0 && S.ledCons.every(function (v) { return v === 0; }));
-ledger(collisionMass, 'collision');
+// M1: a whole-plate driven fixture reaches the C-C crush floor in ordinary SIM frames,
+// then retires one boundary record. No one-column coordinate edit is used: PLT.solve and
+// COL.transport carry both complete plates, and the K4 move is checked in the full ledger.
+L.check.twoContinents(1);
+bi = (S.nCol >> 1) - 1;
+COL.push(bi, 120, P.LITH.sed, 100, 0);
+COL.sums(bi);
+S.nDep = 1; S.depCol[0] = bi + 1; S.depLay[0] = 0; // the thinner mate is retired at the first K4
+var conveyorMass = S.mass().slice(), conveyorBasal = PLT.basal;
+var conveyorV = P.vColl, conveyorD = P.kDam, conveyorFrame = -1, conveyorEvents = 0, conveyorPush = 15e3;
+P.vColl = 0; P.kDam = 0;
+PLT.basal = function (st) {
+	conveyorBasal.call(PLT, st);
+	var push = conveyorPush * PLT.cD(SIM.Tm);
+	for (var i = 0; i < st.nCol; i++) {
+		if (st.colPlate[i] === 0) PLT.wB[i] += push;
+		else if (st.colPlate[i] === 1) PLT.wB[i] -= push;
+	}
+};
+SIM.setGeo(50e3);
+for (var cf = 0; cf < 120; cf++) {
+	COL.accreteLock.fill(0);
+	SIM.step();
+	conveyorEvents = 0;
+	for (var ci = 0; ci < S.nCol; ci++) conveyorEvents += COL.accreteLock[ci];
+	if (conveyorEvents > 0) { conveyorFrame = cf; break; }
+}
+PLT.basal = conveyorBasal; P.vColl = conveyorV; P.kDam = conveyorD;
+var conveyorSite = L.check.collisionSite(), conveyorWidths = true;
+for (var cw = 0; cw < S.nCol; cw++) conveyorWidths = conveyorWidths && S.colW[cw] > 0;
+check.ok('a driven C-C pair reaches the conveyor through complete SIM frames',
+	conveyorFrame >= 0 && conveyorEvents >= 3 && conveyorSite >= 0,
+	'frame ' + conveyorFrame + ', ' + conveyorEvents + ' locked records, ' + S.nCol + ' columns');
+check.ok('the conveyor preserves collision history across the retired boundary record',
+	conveyorSite >= 0 && S.edge[conveyorSite] === E.collide,
+	'live collide edge ' + conveyorSite);
+check.ok('a deposit on the retired stack follows the accretion without a false horizon',
+	S.depCol[0] >= 0 && S.depLay[0] === -1,
+	'column ' + S.depCol[0] + ', layer ' + S.depLay[0]);
+check.ok('accretion keeps every Voronoi width positive', conveyorWidths);
+ledger(conveyorMass, 'C-C conveyor');
+check.ok('the C-C retirement is an in-crust move, not a consumed sink',
+	S.ledCons.every(function (v) { return v === 0; }));
 invariants();
 
 bi = boundary();
@@ -874,6 +919,27 @@ CRU.collapse(S, 1);
 CRU.collapse(S, 1);
 check.ok('nothing moves while every column is below hCollapse', flatHash === S.hash());
 
+// A short face gap can make explicit gravitational flux exceed the headroom of a receiver.
+// Clip the internal transfer, leave the unaccepted volume in its source, and keep the ledger
+// exact instead of letting K5 jump several kilometres above crustMax in one frame.
+check.planet(1);
+for (ai = 0; ai < S.nCol; ai++) {
+	S.colNL[ai] = 0;
+	COL.push(ai, P.crustMax - 10, P.LITH.fel, 100, 0);
+	COL.sums(ai);
+	S.edge[ai] = E.none;
+}
+var collapseCapSource = 50, collapseCapLeft = 49, collapseCapRight = 51;
+S.colNL[collapseCapSource] = 0;
+COL.push(collapseCapSource, P.crustMax + 20e3, P.LITH.fel, 100, 0);
+COL.sums(collapseCapSource);
+var collapseCapMass = S.mass().slice();
+CRU.collapse(S, 10);
+check.ok('gravitational collapse never sends a receiver past crustMax',
+	S.hTot[collapseCapLeft] <= P.crustMax + 1e-6 && S.hTot[collapseCapRight] <= P.crustMax + 1e-6,
+	'left ' + S.hTot[collapseCapLeft].toFixed(3) + ' m, right ' + S.hTot[collapseCapRight].toFixed(3) + ' m');
+ledger(collapseCapMass, 'headroom-limited gravitational collapse');
+
 // A moved felsic host can land below a higher-rank surface cap. Deposit records must
 // follow the actual felsic layer, not the receiver's last (surface) slot.
 check.planet(1);
@@ -1051,38 +1117,49 @@ function longRun(rate, frames) {
 	check.planet(5);
 	SIM.setGeo(rate);
 	SIM.run(frames);
-	var minGap = Infinity, minSoft = Infinity, maxH = 0, maxZ = 0;
+	var minGap = Infinity, minCrush = Infinity, minSoft = Infinity, maxH = 0, maxZ = 0;
+	var minGapWhere = '', minCrushWhere = '';
 	for (var i = 0; i < S.nCol; i++) {
-		var g = S.colX[i + 1 < S.nCol ? i + 1 : 0] - S.colX[i];
+		var j = i + 1 < S.nCol ? i + 1 : 0;
+		var g = S.colX[j] - S.colX[i];
 		if (g <= 0) g += P.wrap;
-		// COL.floor is a plate correction: it promises no interpenetration across a
-		// plate boundary, not inside one. A draining record's territory is soft by
-		// design (0.1.5 M1a), so the gate measures what the floor guarantees and
-		// reports same-plate squeezes beside it. Measured since 0.1.7 M0: a sliver
-		// pinned to 7 km against its own plate's neighbour, both gaps' worth of
-		// crust elsewhere, the trench arriving at 6.6 mm/yr.
-		if (S.colPlate[i] !== S.colPlate[i + 1 < S.nCol ? i + 1 : 0]) minGap = Math.min(minGap, g);
-		else minSoft = Math.min(minSoft, g);
+		// Ordinary contacts keep the separation floor. A live, closing continental pair
+		// is allowed to reach the smaller conveyor floor; its record is retired at K4.
+		if (S.colPlate[i] !== S.colPlate[j]) {
+			if (COL.isClosingCC(S, i, j)) {
+				if (g < minCrush) { minCrush = g; minCrushWhere = i + '/' + j + ' e' + S.edge[i] + ' dU' + (S.colU[i] - S.colU[j]).toFixed(2) + ' hFel ' + (S.hFel[i] / 1e3).toFixed(1) + '/' + (S.hFel[j] / 1e3).toFixed(1); }
+			} else if (g < minGap) {
+				minGap = g; minGapWhere = i + '/' + j + ' e' + S.edge[i] + ' dU' + (S.colU[i] - S.colU[j]).toFixed(2) +
+					' hFel ' + (S.hFel[i] / 1e3).toFixed(1) + '/' + (S.hFel[j] / 1e3).toFixed(1) +
+					' ghost ' + S.colGhost[i] + '/' + S.colGhost[j];
+			}
+		} else minSoft = Math.min(minSoft, g);
 		maxH = Math.max(maxH, S.hTot[i]);
 		maxZ = Math.max(maxZ, S.z[i]);
 	}
-	return { minGap: minGap, minSoft: minSoft, maxH: maxH, maxZ: maxZ, nCol: S.nCol, nPl: S.nPl };
+	return { minGap: minGap, minCrush: minCrush, minSoft: minSoft, minGapWhere: minGapWhere,
+		minCrushWhere: minCrushWhere, maxH: maxH, maxZ: maxZ, nCol: S.nCol, nPl: S.nPl };
 }
 var lr = longRun(100e3, 5000);
 // COL.floor is a rigid plate correction, and a ring of contacts can over-constrain it:
-// a plate held between two equal overlaps has nowhere to move. The floor is therefore a
-// bound (P.floorTol), not an equality -- measured 0.05% short on seed 5 at 500 Myr.
-check.ok('500 Myr at 100 kyr/frame leaves no interpenetrating plates',
-	lr.minGap > P.gFloor * P.w0 * (1 - P.floorTol),
-	'min cross-plate gap ' + (lr.minGap / P.w0).toFixed(4) + ' w0 of a ' + P.gFloor +
-	' w0 floor; softest same-plate gap ' + (lr.minSoft / P.w0).toFixed(4) + ' w0');
+// a plate held between two equal overlaps has nowhere to move. Each floor is therefore
+// a bound (P.floorTol), not an equality.
+check.ok('500 Myr at 100 kyr/frame respects both contact floors',
+	lr.minGap > P.gFloor * P.w0 * (1 - P.floorTol) &&
+	lr.minCrush > P.crushFloor * (1 - P.floorTol),
+	'ordinary ' + (lr.minGap / P.w0).toFixed(4) + ' w0 / ' + P.gFloor +
+	', closing C-C ' + (lr.minCrush / P.w0).toFixed(4) + ' w0 / ' + P.crushGap +
+	'; softest same-plate gap ' + (lr.minSoft / P.w0).toFixed(4) + ' w0; min ordinary: ' + lr.minGapWhere +
+	'; min closing C-C: ' + lr.minCrushWhere);
 invariants();
 console.log('  500 Myr @100 kyr: n=' + lr.nCol + ' plates=' + lr.nPl +
 	' maxCrust=' + (lr.maxH / 1e3).toFixed(0) + ' km maxRelief=' + (lr.maxZ / 1e3).toFixed(1) + ' km');
 lr = longRun(10e3, 5000);
-check.ok('50 Myr at 10 kyr/frame is finite too',
-	Number.isFinite(lr.maxH) && lr.minGap > P.gFloor * P.w0 * (1 - P.floorTol),
-	'maxCrust ' + (lr.maxH / 1e3).toFixed(0) + ' km');
+check.ok('50 Myr at 10 kyr/frame is finite and respects both floors',
+	Number.isFinite(lr.maxH) && lr.minGap > P.gFloor * P.w0 * (1 - P.floorTol) &&
+		lr.minCrush > P.crushFloor * (1 - P.floorTol),
+	'maxCrust ' + (lr.maxH / 1e3).toFixed(0) + ' km; ordinary gap ' +
+		(lr.minGap / P.w0).toFixed(4) + ' w0, closing C-C ' + (lr.minCrush / P.w0).toFixed(4) + ' w0');
 invariants();
 
 check.section('M2.1 determinism and finite state at every kernel boundary');

@@ -55,6 +55,26 @@ var sample = new Float64Array(NS), prevZ = new Float64Array(NS);
 // the measurement the tuning reads, so it may not spend its time in the collector
 var preX = new Float64Array(P.colCap), preTh = new Float64Array(P.colCap);
 var preW = new Float64Array(P.colCap), preG = new Uint8Array(P.colCap), preNew = new Uint8Array(P.colCap);
+var accPreX = new Float64Array(P.colCap), accSiteX = new Float64Array(P.colCap), nAccSite = 0, k4 = COL.k4;
+COL.k4 = function (st, dt, t, Tm) {
+	var n = st.nCol, i, j, c;
+	nAccSite = 0;
+	this.intents();
+	for (i = 0; i < n; i++) {
+		if (this.intent[i] !== 4) continue;
+		c = this.crush[i];
+		if (c >= 0 && c < n) accPreX[i] = st.colX[c];
+	}
+	var changed = k4.call(this, st, dt, t, Tm);
+	if (!changed) return changed;
+	for (i = 0; i < n; i++) {
+		j = i + 1 < n ? i + 1 : 0;
+		c = this.crush[i];
+		if (this.intent[i] === 4 && (c === i || c === j) && this.accreteLock[c] &&
+			this.dead[c] === 1 && this.map[c] < 0) accSiteX[nAccSite++] = accPreX[i];
+	}
+	return changed;
+};
 
 function sampleField(field, out) {
 	var n = S.nCol, m, lo, hi, mid, k, km, f, d, dl;
@@ -72,9 +92,9 @@ function sampleField(field, out) {
 	}
 }
 
-var maxH = 0, maxDz = 0, maxDzFrame = -1, maxDzX = 0, dzSum = 0, dzN = 0, over100 = 0;
+var maxH = 0, maxHFrame = -1, maxHCol = -1, maxHX = 0, maxHAccrete = false, maxHFel = 0, maxHMaf = 0, maxHSed = 0, maxDz = 0, maxDzFrame = -1, maxDzX = 0, dzSum = 0, dzN = 0, over100 = 0;
 var maxDh = 0, maxDhFrame = -1, maxDhX = 0, maxDw = 0, maxDwFrame = -1;
-var births = 0, deaths = 0, birthRepeat = 0, deathRepeat = 0, flipLast = 0;
+var births = 0, deaths = 0, accretions = 0, birthRepeat = 0, deathRepeat = 0, flipLast = 0;
 var inversions = 0, atCap = 0, atCapStay = 0, maxSlope = 0, t0 = Date.now();
 // A stack that is full is fine for the frame it consolidates in and a defect for every
 // frame after that: a column that never frees a bed is dropping the arrivals. Records
@@ -96,6 +116,7 @@ for (f = 0; f < frames; f++) {
 	var preN = S.nCol;
 	for (i = 0; i < preN; i++) { preX[i] = S.colX[i]; preTh[i] = S.hTot[i]; preW[i] = S.colW[i]; preG[i] = S.colGhost[i]; preNew[i] = COL.isNew[i]; }
 	SIM.step();
+	accretions += nAccSite;
 	// Whether this is an event frame is read off the crust itself, and off the code's
 	// own flags rather than off a comparison: a record consumed this frame is a draining
 	// one whose age has been zeroed, and a record born this frame is one the contact
@@ -113,6 +134,9 @@ for (f = 0; f < frames; f++) {
 	for (k = 0; k < consumed.length; k++) {
 		if (!preG[consumed[k]]) dSites.add(Math.floor(preX[consumed[k]] / (2.5 * P.w0)));
 	}
+	// A conveyor retirement has no ghost successor, so merge-walking cannot infer it
+	// from the final topology. COL.k4's instrumentation captures its pre-removal site.
+	for (k = 0; k < nAccSite; k++) dSites.add(Math.floor(accSiteX[k] / (2.5 * P.w0)));
 	for (i = 0; i < S.nCol; i++) {
 		if (S.colGhost[i]) continue;
 		if (S.colW[i] < halfW) continue;              // a sliver, not a record
@@ -183,7 +207,10 @@ for (f = 0; f < frames; f++) {
 	}
 	var nGhost = 0, gOldest = 0;
 	for (i = 0; i < S.nCol; i++) {
-		if (S.hTot[i] > maxH) maxH = S.hTot[i];
+		if (S.hTot[i] > maxH) {
+			maxH = S.hTot[i]; maxHFrame = f; maxHCol = i; maxHX = S.colX[i]; maxHAccrete = nAccSite > 0;
+			maxHFel = S.hFel[i]; maxHMaf = S.hMaf[i]; maxHSed = S.hSed[i];
+		}
 		var b = i * P.layerCap;
 		for (k = 0; k + 1 < S.colNL[i]; k++) {
 			if (RANK[S.layLi[b + k]] > RANK[S.layLi[b + k + 1]]) { inversions++; break; }
@@ -237,6 +264,9 @@ console.log('  crust          max ' + fmtKm(maxH) + '   thickest at a contact ' 
 	'   draining records ' + ghostMax + ' live holding ' + pct(ghostShare) +
 	' of the crust, widest run ' + (ghostWide / P.w0).toFixed(1) + ' columns (oldest ' +
 	ghostAge.toFixed(1) + ' Myr)');
+console.log('  max column     frame ' + maxHFrame + ', record ' + maxHCol + ', x ' + fmtKm(maxHX) +
+	'   fel ' + fmtKm(maxHFel) + ', maf ' + fmtKm(maxHMaf) + ', sed ' + fmtKm(maxHSed) +
+	', on a C-C retirement frame: ' + maxHAccrete);
 console.log('  surface        worst single-frame move ' + fmtM(maxDz) + ' at frame ' + maxDzFrame +
 	' x ' + fmtKm(maxDzX) + '   mean ' + (dzSum / Math.max(1, dzN)).toFixed(1) + ' m, ' +
 	over100 + ' raster samples above 100 m');
@@ -248,7 +278,7 @@ console.log('  columns        worst single-frame drawn-thickness change ' + fmtK
 	maxDhFrame + ' x ' + fmtKm(maxDhX) + '   worst width change ' + pct(maxDw) + ' at frame ' +
 	maxDwFrame + '   worst local slope ' + (maxSlope * 100).toFixed(1) + '%');
 console.log('  topology       ' + births + ' births / ' + deaths + ' deaths (' + per1000(births + deaths) +
-	' per 1000 frames) at ' + birthRepeat + ' repeated birth and ' + deathRepeat + ' repeated death ' +
+	' per 1000 frames, incl. ' + accretions + ' C-C retirements) at ' + birthRepeat + ' repeated birth and ' + deathRepeat + ' repeated death ' +
 	'sites (' + S.nCol + ' columns, ' + S.nPl + ' plates)');
 console.log('  stacks         ' + inversions + ' column-frames with an inverted bed, ' +
 	atCap + ' column-frames at layerCap');

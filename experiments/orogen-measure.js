@@ -1,11 +1,12 @@
-// orogen-measure.js — 0.1.8 M0: which representation carries the orogen a collision built?
+// orogen-measure.js — 0.1.8 M1: measure a collision after the conveyor's crush floor.
 //
-// The collision brake in PLT.basal is proportional to what the belt scan measures *this
-// frame* (COL.beltAt -> beltW), so a belt that the contact has already redistributed, or
-// one whose flanks have risen with it, can report a small orogen while a large one stands
-// there. R4 asks for arrest by the orogen the collision has built, not by a snapshot of
-// it, and 0.1.8-plan.md §3 names two candidates to measure before either becomes a kernel
-// constant:
+// The M1 kernel must let a continent-continent contact keep consuming convergence after its
+// crush floor. This harness first measures the unbraked conveyor against the prescribed
+// drive, then compares three possible arrest signals only if that machine still responds.
+// The incumbent collision brake in PLT.basal uses COL.beltAt -> beltW; a belt redistributed
+// by the contact, or whose flanks rise with it, can report a small orogen while a large one
+// stands there. 0.1.8-plan.md §3 names two alternatives to measure before either becomes a
+// kernel constant:
 //
 //   A. plateau excess volume — the felsic inventory above hFelLand0 in a declared,
 //      moving catchment around the contact. Derived from the stacks, no new state.
@@ -47,6 +48,90 @@ var SWEEP = [2e5, 5e5, 1e6, 2e6, 4e6, 1e7, 3e7];   // m/Myr; vColl is 2e5, so th
 
 var basal = PLT.basal;
 var MEM = new Float64Array(P.colCap);        // candidate B, per edge slot, metres
+var MEM_PREV = new Float64Array(P.colCap), MEM_NEXT = new Float64Array(P.colCap);
+var ACC_GAP = new Float64Array(P.colCap), ACC_X = new Float64Array(P.colCap), ACTIVE_RUN = null;
+var transport = COL.transport, topology = COL.k4;
+
+// Memory belongs to a boundary, not to an array slot. Follow the same neighbour hand-off
+// as edge history through position sorting and K4 topology changes.
+COL.transport = function (st, dt) {
+	var n = st.nCol, i, left, right;
+	var witness0 = ACTIVE_RUN ? ACTIVE_RUN.witness0 : -1;
+	var witness1 = ACTIVE_RUN ? ACTIVE_RUN.witness1 : -1;
+	MEM_PREV.set(MEM.subarray(0, n));
+	transport.call(this, st, dt);
+	if (ACTIVE_RUN) {
+		if (witness0 >= 0) ACTIVE_RUN.witness0 = st.sortInverse[witness0];
+		if (witness1 >= 0) ACTIVE_RUN.witness1 = st.sortInverse[witness1];
+	}
+	MEM_NEXT.fill(0, 0, n);
+	for (i = 0; i < n; i++) {
+		left = st.sortInverse[i];
+		right = st.sortInverse[(i + 1) % n];
+		if (right === (left + 1) % n) MEM_NEXT[left] = MEM_PREV[i];
+	}
+	MEM.set(MEM_NEXT.subarray(0, n));
+};
+
+COL.k4 = function (st, dt, t, Tm) {
+	var n = st.nCol, after, i, j, k, right, c, gap, post;
+	MEM_PREV.set(MEM.subarray(0, n));
+	if (ACTIVE_RUN) {
+		this.intents();
+		ACC_GAP.fill(0, 0, n);
+		for (i = 0; i < n; i++) {
+			if (this.intent[i] !== 4) continue;
+			j = i + 1 < n ? i + 1 : 0;
+			c = this.crush[i];
+			if (ACTIVE_RUN.floorAt < 0) ACTIVE_RUN.floorAt = ACTIVE_RUN.frame;
+			gap = st.colX[j] - st.colX[i];
+			ACC_GAP[i] = gap < 0 ? gap + P.wrap : gap;
+			ACC_X[i] = st.colX[c];
+		}
+	}
+	var changed = topology.call(this, st, dt, t, Tm);
+	if (!changed) return changed;
+	after = st.nCol;
+	if (ACTIVE_RUN) {
+		if (ACTIVE_RUN.witness0 >= 0) ACTIVE_RUN.witness0 = this.map[ACTIVE_RUN.witness0];
+		if (ACTIVE_RUN.witness1 >= 0) ACTIVE_RUN.witness1 = this.map[ACTIVE_RUN.witness1];
+		for (i = 0; i < n; i++) {
+			j = i + 1 < n ? i + 1 : 0;
+			c = this.crush[i];
+			if (this.intent[i] !== 4 || (c !== i && c !== j) || !this.accreteLock[c] ||
+				this.dead[c] !== 1 || this.map[c] >= 0) continue;
+			if (c === i) {
+				if (this.map[j] < 0) continue;
+				k = (this.map[j] + after - 1) % after;
+			} else k = this.map[i];
+			if (k < 0) continue;
+			right = k + 1 < after ? k + 1 : 0;
+			post = st.colX[right] - st.colX[k];
+			if (post < 0) post += P.wrap;
+			gap = ACC_GAP[i];
+			if (post > gap) ACTIVE_RUN.reopened += post - gap;
+			ACTIVE_RUN.accrete++;
+			ACTIVE_RUN.accEventX[ACTIVE_RUN.accEventCount++] = ACC_X[i];
+		}
+	}
+	MEM_NEXT.fill(0, 0, after);
+	for (i = 0; i < n; i++) {
+		j = i + 1 < n ? i + 1 : 0;
+		if (!this.dead[j] && this.map[j] >= 0) {
+			k = (this.map[j] + after - 1) % after;
+			if (st.colPlate[k] === this.histLP[i] && st.colPlate[this.map[j]] === this.histRP[i])
+				MEM_NEXT[k] = MEM_PREV[i];
+			continue;
+		}
+		if (this.intent[i] !== 4 || this.crush[i] !== j || this.map[i] < 0) continue;
+		right = j + 1 < n ? j + 1 : 0;
+		k = this.map[i];
+		if (this.map[right] >= 0 && st.colPlate[k] === this.histLP[i] &&
+			st.colPlate[this.map[right]] === this.histRP[i]) MEM_NEXT[k] = MEM_PREV[i];
+	}
+	MEM.set(MEM_NEXT.subarray(0, after));
+	return changed;
+};
 
 // --- the measures -----------------------------------------------------------------
 
@@ -138,9 +223,11 @@ function run(seed, mode, k) {
 	var out = {
 		mode: mode, k: k, seed: seed,
 		t: new Float64Array(FRAMES), close: new Float64Array(FRAMES),
-		wBelt: new Float64Array(FRAMES), root: new Float64Array(FRAMES),
+		wBelt: new Float64Array(FRAMES), root: new Float64Array(FRAMES), pairH: new Float64Array(FRAMES),
 		wA: new Float64Array(FRAMES), wB: new Float64Array(FRAMES),
 		gap: new Float64Array(FRAMES), floorAt: -1,
+		witness0: -1, witness1: -1, lastX0: 0, lastX1: 0,
+		accrete: 0, accEventCount: 0, accEventX: new Float64Array(P.colCap), shortening: 0, reopened: 0,
 		live: 0, lost: -1, maxH: 0, ms: 0,
 		nStart: 0, nEnd: 0, pw0Start: 0, pw0End: 0, pw1Start: 0, pw1End: 0,
 		peakR: 0, peakRf: -1, peakRi: -1, contR: 0, contRf: -1, prof: new Float64Array(8),
@@ -148,38 +235,53 @@ function run(seed, mode, k) {
 		siteDz: 0, awayDz: 0, quietDz: 0,
 		births: 0, deaths: 0, flipRepeat: 0, birthRepeat: 0, deathRepeat: 0
 	};
-	var keepV = P.vColl, keepD = P.kDam, t0 = Date.now(), i, f;
+	var keepV = P.vColl, keepD = P.kDam, t0 = Date.now(), i, f, c, j, gap, x0, x1, dx0, dx1;
 	P.kDam = 0;                  // the drive diverges the far field; damage would split it
 	P.vColl = mode === 'instant' ? k : 0;
 	check.twoContinents(seed);
 	SIM.setGeo(KYR * 1e3);
-	MEM.fill(0, 0, S.nCol);
+	MEM.fill(0); MEM_PREV.fill(0); MEM_NEXT.fill(0);
 	PLT.basal = makeHook(mode, k);
 	G.init();
 	G.sampleZ(G.prevZ);
 	out.nStart = S.nCol;
 	out.pw0Start = plateWidth(0); out.pw1Start = plateWidth(1);
+	out.witness0 = Math.floor(S.nCol / 4);
+	out.witness1 = Math.floor(3 * S.nCol / 4);
+	out.lastX0 = S.colX[out.witness0]; out.lastX1 = S.colX[out.witness1];
+	ACTIVE_RUN = out;
 	for (f = 0; f < FRAMES; f++) {
 		G.pre();
+		out.frame = f;
+		out.accEventCount = 0;
 		SIM.step();
+		if (out.witness0 < 0 || out.witness1 < 0) { if (out.lost < 0) out.lost = f; continue; }
+		x0 = S.colX[out.witness0]; x1 = S.colX[out.witness1];
+		dx0 = x0 - out.lastX0; dx1 = x1 - out.lastX1;
+		if (dx0 > P.wrap * 0.5) dx0 -= P.wrap; else if (dx0 < -P.wrap * 0.5) dx0 += P.wrap;
+		if (dx1 > P.wrap * 0.5) dx1 -= P.wrap; else if (dx1 < -P.wrap * 0.5) dx1 += P.wrap;
+		out.shortening += dx0 - dx1;
+		out.lastX0 = x0; out.lastX1 = x1;
 		G.events(f, out);
 		G.gates(f, out);
-		var c = check.collisionSite();
+		c = check.collisionSite();
 		if (c < 0) { if (out.lost < 0) out.lost = f; continue; }
 		COL.beltAt(S, S.nCol, c);
-		var j = c + 1 < S.nCol ? c + 1 : 0;
+		j = c + 1 < S.nCol ? c + 1 : 0;
 		out.t[out.live] = SIM.t;
 		out.close[out.live] = -S.edgeRelN[c];
 		out.wBelt[out.live] = COL.beltW;
-		out.root[out.live] = Math.max(S.hTot[c], S.hTot[j]) - COL.flankH;
+		out.pairH[out.live] = Math.max(S.hTot[c], S.hTot[j]);
+		out.root[out.live] = out.pairH[out.live] - COL.flankH;
 		out.wA[out.live] = vexAt(S, c) / P.beltRise;
 		out.wB[out.live] = MEM[c];
-		var gap = S.colX[j] - S.colX[c];
+		gap = S.colX[j] - S.colX[c];
 		if (gap < 0) gap += P.wrap;
 		out.gap[out.live] = gap;
-		if (out.floorAt < 0 && gap <= P.gFloor * P.w0 * 1.01) out.floorAt = f;
+		if (out.floorAt < 0 && gap <= P.crushFloor * 1.01) out.floorAt = f;
 		out.live++;
 	}
+	ACTIVE_RUN = null;
 	out.ms = (Date.now() - t0) / FRAMES;
 	out.nEnd = S.nCol;
 	out.pw0End = plateWidth(0); out.pw1End = plateWidth(1);
@@ -247,6 +349,14 @@ var G = {
 		for (k = 0; k < this.nCons; k++) {
 			if (this.preG[this.CONSUMED[k]]) continue;      // already draining: not a death
 			site = Math.floor(this.preX[this.CONSUMED[k]] / (2.5 * P.w0));
+			if (ns < this.SX.length) this.SX[ns++] = site * 2.5 * P.w0;
+			out.deaths++;
+			if (this.siteB[site & 4095] >= 0 && f - this.siteB[site & 4095] < P.evGap) out.flipRepeat++;
+			if (this.siteD[site & 4095] >= 0 && f - this.siteD[site & 4095] < P.evGap) out.deathRepeat++;
+			this.siteD[site & 4095] = f;
+		}
+		for (k = 0; k < out.accEventCount; k++) {
+			site = Math.floor(out.accEventX[k] / (2.5 * P.w0));
 			if (ns < this.SX.length) this.SX[ns++] = site * 2.5 * P.w0;
 			out.deaths++;
 			if (this.siteB[site & 4095] >= 0 && f - this.siteB[site & 4095] < P.evGap) out.flipRepeat++;
@@ -385,12 +495,13 @@ function mean(a, from, to) {
 function table(r, label) {
 	var i, step = Math.max(1, Math.floor(r.live / 10));
 	console.log('\n' + label);
-	console.log('    t      closing    belt     root     W(A)     W(B)');
-	console.log('   Myr     mm/yr      km       km       km       km');
+	console.log('    t      closing   pairH    belt     root     W(A)     W(B)');
+	console.log('   Myr     mm/yr      km       km       km       km       km');
 	for (i = 0; i < r.live; i += step) {
 		console.log('  ' + r.t[i].toFixed(0).padStart(5) + '  ' + (r.close[i] / 1e3).toFixed(1).padStart(8) +
-			'  ' + (r.wBelt[i] / 1e3).toFixed(0).padStart(7) + '  ' + (r.root[i] / 1e3).toFixed(1).padStart(7) +
-			'  ' + (r.wA[i] / 1e3).toFixed(0).padStart(7) + '  ' + (r.wB[i] / 1e3).toFixed(0).padStart(7));
+			'  ' + (r.pairH[i] / 1e3).toFixed(1).padStart(7) + '  ' + (r.wBelt[i] / 1e3).toFixed(0).padStart(7) +
+			'  ' + (r.root[i] / 1e3).toFixed(1).padStart(7) + '  ' + (r.wA[i] / 1e3).toFixed(0).padStart(7) +
+			'  ' + (r.wB[i] / 1e3).toFixed(0).padStart(7));
 	}
 }
 
@@ -431,64 +542,108 @@ function sweepLine(r, v) {
 		(r.peakRi >= 0 ? '   worst peak/flank ' + r.peakR.toFixed(2) + ' at frame ' + r.peakRf + ' col ' + r.peakRi : ''));
 }
 
-// The contact geometry the control actually has, so the contract's "closing speed" can be
-// read against what the collision does rather than what the velocity field says.
-// After the floor, how far does the *ground* move? A pair whose index changed is a
-// different pair, so a step of more than a few columns is a renumbering, not motion.
-function gapRateAfterFloor(r) {
-	var sum = 0, n = 0, mx = 0, i, d;
-	for (i = r.floorAt + 1; i < r.live; i++) {
-		d = Math.abs(r.gap[i] - r.gap[i - 1]) / DT_FRAME;
-		if (d > 4 * P.w0 / DT_FRAME) continue;
-		sum += d; n++;
-		if (d > mx) mx = d;
-	}
-	return { mean: sum / Math.max(1, n), max: mx };
+// Track one untouched material witness in each plate. Their unwrapped relative displacement
+// is realized convergence even when K4 retires the contact records; adjacent-center gaps jump
+// at those hand-offs and are not themselves material motion.
+function realizedShorteningRate(r) {
+	var duration = Math.max(DT_FRAME, r.live * DT_FRAME);
+	return { mean: r.shortening / duration };
 }
 
 function contactReport(r) {
 	var q = Math.max(1, Math.floor(r.live / 4));
-	var reported = mean(r.close, 0, r.live), g = gapRateAfterFloor(r), sum = g.mean, n = 1, mx = g.max;
-	console.log('  contact geometry: ' + (P.gFloor * P.w0 / 1e3).toFixed(2) + ' km is the separation floor');
-	console.log('    the pair gap reached the floor at frame ' + r.floorAt + ' (t ' + (r.floorAt * DT_FRAME).toFixed(2) + ' Myr) and ends at ' +
-		(r.gap[r.live - 1] / 1e3).toFixed(2) + ' km');
-	console.log('    reported closing ' + (reported / 1e3).toFixed(2) + ' mm/yr; the ground then moves ' + (sum / Math.max(1, n) / 1e3).toFixed(3) +
-		' mm/yr on average (' + (mx / 1e3).toFixed(2) + ' at most): the velocity is not realized');
-	console.log('    columns ' + r.nStart + ' -> ' + r.nEnd + ', plate widths ' + (r.pw0Start / 1e3).toFixed(0) + '/' + (r.pw1Start / 1e3).toFixed(0) +
-		' -> ' + (r.pw0End / 1e3).toFixed(0) + '/' + (r.pw1End / 1e3).toFixed(0) + ' km: nothing is consumed, so nothing keeps shortening');
-	console.log('    belt ' + (mean(r.wBelt, 0, q) / 1e3).toFixed(0) + ' -> ' + (mean(r.wBelt, r.live - q, r.live) / 1e3).toFixed(0) +
-		' km, root ' + (mean(r.root, 0, q) / 1e3).toFixed(1) + ' -> ' + (mean(r.root, r.live - q, r.live) / 1e3).toFixed(1) +
-		' km: the crustal machine is over by the first quarter');
+	var reported = mean(r.close, 0, r.live), g = realizedShorteningRate(r);
+	console.log('  contact geometry: ' + (P.crushFloor / 1e3).toFixed(2) + ' km is the C-C crush floor');
+	console.log('    the first pair reached the floor at frame ' + r.floorAt + ' (t ' + (r.floorAt * DT_FRAME).toFixed(2) +
+		' Myr); the live pair gap ends at ' + (r.gap[r.live - 1] / 1e3).toFixed(2) + ' km');
+	console.log('    reported closing ' + (reported / 1e3).toFixed(2) + ' mm/yr; integrated shortening is ' +
+		(r.shortening / 1e3).toFixed(1) + ' km (' + (g.mean / 1e3).toFixed(2) + ' mm/yr equivalent)');
+	console.log('    ' + r.accrete + ' conveyor retirements release ' + (r.reopened / 1e3).toFixed(1) +
+		' km (' + (r.accrete ? (FRAMES / r.accrete).toFixed(1) : 'n/a') + ' frames/event); ' +
+		r.births + ' births, ' + r.deaths + ' deaths; columns ' + r.nStart + ' -> ' + r.nEnd + ', plate widths ' +
+		(r.pw0Start / 1e3).toFixed(0) + '/' + (r.pw1Start / 1e3).toFixed(0) + ' -> ' +
+		(r.pw0End / 1e3).toFixed(0) + '/' + (r.pw1End / 1e3).toFixed(0) + ' km');
+	console.log('    peak/flank ' + r.peakR.toFixed(2) + ' at frame ' + r.peakRf + ' edge ' + r.peakRi +
+		'; local hTot (-3..+4) km: ' + Array.from(r.prof, function (h) { return (h / 1e3).toFixed(1); }).join('/'));
+	console.log('    first/last-quarter response (pair hTot / belt / root / excess width): ' +
+		(mean(r.pairH, 0, q) / 1e3).toFixed(1) + '/' + (mean(r.wBelt, 0, q) / 1e3).toFixed(0) + '/' +
+		(mean(r.root, 0, q) / 1e3).toFixed(1) + '/' + (mean(r.wA, 0, q) / 1e3).toFixed(0) + ' -> ' +
+		(mean(r.pairH, r.live - q, r.live) / 1e3).toFixed(1) + '/' +
+		(mean(r.wBelt, r.live - q, r.live) / 1e3).toFixed(0) + '/' +
+		(mean(r.root, r.live - q, r.live) / 1e3).toFixed(1) + '/' +
+		(mean(r.wA, r.live - q, r.live) / 1e3).toFixed(0) + ' km');
 }
 
-check.section('0.1.8 M0 — which representation carries a built orogen?');
-console.log('fixture: ' + FRAMES + ' frames, ' + KYR + ' kyr/frame (' + (FRAMES * KYR / 1e9).toFixed(0) +
+function responseMetrics(r) {
+	var q = Math.max(1, Math.floor(r.live / 4));
+	var close = mean(r.close, 0, r.live), equivalent = realizedShorteningRate(r).mean;
+	var earlyBelt = mean(r.wBelt, 0, q), lateBelt = mean(r.wBelt, r.live - q, r.live);
+	var earlyExcess = mean(r.wA, 0, q), lateExcess = mean(r.wA, r.live - q, r.live);
+	var ratio = close > 0 ? equivalent / close : 0;
+	var shorteningMatches = ratio >= 0.9 && ratio <= 1.1;
+	var orogenGrows = lateBelt > earlyBelt && lateExcess > earlyExcess;
+	var held = r.live === FRAMES && r.lost < 0;
+	var audit = verdict(r, r);
+	var conveyorResponsive = held && r.accrete > 0 && shorteningMatches && orogenGrows;
+	var auditsPass = audit.r1 && audit.r2 && audit.ceiling && audit.r5;
+	return { held: held, shorteningMatches: shorteningMatches, orogenGrows: orogenGrows, audit: audit,
+		conveyorResponsive: conveyorResponsive, auditsPass: auditsPass,
+		selectionReady: conveyorResponsive && auditsPass,
+		ratio: ratio, equivalent: equivalent, close: close,
+		earlyBelt: earlyBelt, lateBelt: lateBelt, earlyExcess: earlyExcess, lateExcess: lateExcess };
+}
+
+check.section('0.1.8 M1 — conveyor and orogen response, before brake selection');
+console.log('fixture: ' + FRAMES + ' frames, ' + KYR + ' kyr/frame (' + (FRAMES * KYR / 1e3).toFixed(1) +
 	' Myr), fit seed ' + FIT_SEED + ', check seed ' + CHK_SEED + ', drive ' + (2 * DRIVE / 1e3) + ' mm/yr closing');
-console.log('brake: m = k * W * fb * (-edgeRelN) / vRef, W = the candidate measure, the same hook for all three');
 
 var ctrl = run(FIT_SEED, 'off', 0);
-table(ctrl, 'brake off (negative control)');
+table(ctrl, 'brake off: C-C conveyor response');
 var cQ = Math.max(1, Math.floor(ctrl.live / 4));
 console.log('  control closing ' + (mean(ctrl.close, 0, cQ) / 1e3).toFixed(1) + ' -> ' +
 	(mean(ctrl.close, ctrl.live - cQ, ctrl.live) / 1e3).toFixed(1) + ' mm/yr');
 contactReport(ctrl);
+var response = responseMetrics(ctrl);
+check.ok('the conveyor preserves a live collision and retires records', response.held && ctrl.accrete > 0,
+	ctrl.live + '/' + FRAMES + ' frames, ' + ctrl.accrete + ' retirements');
+check.ok('plate-witness shortening matches reported convergence within 10%', response.shorteningMatches,
+	(response.equivalent / 1e3).toFixed(2) + ' vs ' + (response.close / 1e3).toFixed(2) +
+	' mm/yr (' + (100 * response.ratio).toFixed(1) + '%)');
+check.ok('belt width and plateau excess continue growing before brake selection', response.orogenGrows,
+	'belt ' + (response.earlyBelt / 1e3).toFixed(0) + ' -> ' + (response.lateBelt / 1e3).toFixed(0) +
+	' km; excess width ' + (response.earlyExcess / 1e3).toFixed(0) + ' -> ' +
+	(response.lateExcess / 1e3).toFixed(0) + ' km');
+var ctrlAudit = response.audit;
+check.ok('R1 event-site surface displacement remains bounded', ctrlAudit.r1,
+	'max at event sites ' + (ctrl.siteDz / 1e3).toFixed(2) + ' km vs away ' + (ctrl.awayDz / 1e3).toFixed(2) + ' km');
+check.ok('R2 collision remains a belt, not a needle', ctrlAudit.r2,
+	'peak/flank ' + ctrl.peakR.toFixed(2) + ', wide ' + ctrl.wide + '/' + ctrl.bumps + ' frames');
+check.ok('R3 crust stays under the dt-aware ceiling', ctrlAudit.ceiling,
+	(ctrl.maxH / 1e3).toFixed(1) + ' km vs ' + ((P.crustMax + 35e3 * DT_FRAME) / 1e3).toFixed(1) + ' km');
+check.ok('R5 no site flips twice inside evGap', ctrlAudit.r5,
+	ctrl.flipRepeat + ' reversals, ' + ctrl.deathRepeat + ' repeated death-sites');
 
-// 'instant' is the incumbent measure (COL.beltW in PLT.basal) — the baseline R4 fails.
-// 'A' and 'B' are the candidates; each is fitted by the smallest k that meets the contract.
-var MODES = process.argv[6] ? process.argv[6].split(',') : ['instant', 'A', 'B'];
+// 'instant', A, and B remain diagnostics; they are run only after the mass conveyor has
+// passed its shortening and ongoing-growth gates. No measure is integrated into the kernel here.
+var MODES = process.argv[6] === 'none' ? [] :
+	(process.argv[6] ? process.argv[6].split(',') : ['instant', 'A', 'B']);
 var rows = [];
+if (!response.selectionReady) {
+	if (MODES.length) check.info('candidate brake sweep deferred',
+		!response.conveyorResponsive ? 'the unbraked conveyor response failed' : 'one or more R1/R2/R3/R5 audit gates remain red');
+	MODES = [];
+}
 MODES.forEach(function (mode) {
 	check.section('candidate ' + mode + (mode === 'instant' ? ' (incumbent: this frame\'s COL.beltW)'
 		: mode === 'A' ? ' (plateau excess volume / beltRise: derived, no new state)'
 		: ' (decaying edge memory: tauUp ' + TAU_BUILD + ' Myr, tauDown ' + TAU_FORGET + ' Myr)'));
-	var fitted = null, first = null;
+	var fitted = null;
 	SWEEP.forEach(function (k) {
 		var r = run(FIT_SEED, mode, k), v = verdict(r, ctrl);
 		v.peakH = r.maxH;
 		rows.push({ mode: mode, k: k, r: r, v: v });
 		sweepLine(r, v);
-		if (!first) first = { r: r, v: v };
-		if (!fitted && v.met) fitted = { r: r, v: v };
+		if (!fitted && v.met) fitted = { k: k, r: r, v: v };
 	});
 	if (!fitted) {
 		check.info('no coefficient in the sweep meets the arrest contract on seed ' + FIT_SEED,
@@ -510,17 +665,11 @@ MODES.forEach(function (mode) {
 		fitted.r.live + ' / ' + chk.live + ' of ' + FRAMES + ' frames');
 });
 
-// --- does a *fed* collision accumulate where the prescribed one freezes? -----------
+// --- an independent fed-collision control -----------------------------------------
 //
-// The prescribed fixture has no way to keep shortening: a C-C contact consumes nothing
-// (COL.intents), the pair reaches the separation floor, and the rigid plate correction
-// then holds it there, so the crust stops evolving after the first squeeze. If that is
-// the whole story then no brake measure can be decided on this fixture, and the question
-// moves to whether *any* collision in this model accumulates. The fed fixture puts a
-// three-column ribbon continent on the leading edge of an oceanic plate whose ocean
-// subducts at the far side: the trench keeps consuming ground, the plate keeps advancing,
-// and the ribbon keeps being pushed into the continent. Brake off, because the question
-// is whether the crust accumulates at all.
+// This legacy control keeps a three-column ribbon continent on the leading edge of an
+// oceanic plate whose ocean subducts at the far side. It is reported for comparison only;
+// it is not a substitute for the prescribed C-C conveyor fixture or its acceptance gates.
 function fedControl(frames) {
 	var RIBBON = 3, t, i, k, c, peak, root, vex, fel, maf, margin = 0;
 	var trace = [], n = 0;
@@ -612,39 +761,30 @@ console.log(pl.trace.join('\n'));
 check.info('the longest continental collision on the def planet',
 	'last seen at t ' + pl.lastT.toFixed(0) + ' Myr, at most ' + pl.most + ' at once: the engine sutures or reclassifies them long before R4 ends');
 
-check.section('M0 verdict');
-var cQ2 = Math.max(1, Math.floor(ctrl.live / 4));
-var ctrlLate = mean(ctrl.close, ctrl.live - cQ2, ctrl.live);
-// only coefficients under which the collision survives the whole run can be compared as
-// brakes: a row that sutures at frame 619 has not arrested the collision, it has ended it
-var liveRows = rows.filter(function (x) { return x.r.live === FRAMES; });
-var bestAbsorb = 0, bestAbsorbK = 0, bestAbsorbMode = '', i2, absorbed;
-for (i2 = 0; i2 < liveRows.length; i2++) {
-	absorbed = 1 - liveRows[i2].v.late / ctrlLate;
-	if (absorbed > bestAbsorb) { bestAbsorb = absorbed; bestAbsorbK = liveRows[i2].k; bestAbsorbMode = liveRows[i2].mode; }
-}
-console.log('  no measure of a built orogen is selected, and the reason is measured, not fitted:');
-console.log('    the prescribed fixture stops building after the first squeeze. The contact gap reaches');
-console.log('    the ' + (P.gFloor * P.w0 / 1e3).toFixed(2) + ' km floor at frame ' + ctrl.floorAt + ', the plate widths and the column count');
-console.log('    then stop changing (' + ctrl.nStart + ' -> ' + ctrl.nEnd + ' columns), and the belt width and the root plateau.');
-console.log('    The rest of the run measures a velocity the floor cancels: ' + (gapRateAfterFloor(ctrl).mean / 1e3).toFixed(3) + ' mm/yr');
-console.log('    of real gap motion against ' + (mean(ctrl.close, 0, ctrl.live) / 1e3).toFixed(1) + ' mm/yr of reported closing.');
-if (MODES.indexOf('fed') < 0) {
-	console.log('    the fed fixture, whose trench keeps consuming ground behind the collision, spreads its');
-	console.log('    incoming crust into a lower, wider margin rather than accumulating it (' +
-		(fed.maxMargin / 1e3).toFixed(1) + ' km against');
-	console.log('    the 35 km reference at the end of the run).');
-}
-console.log('  what the sweep does say: with the collision kept open, the strongest live row (' + bestAbsorbMode +
-	' at k ' + bestAbsorbK.toExponential(0) + ')');
-console.log('    absorbs ' + (100 * bestAbsorb).toFixed(0) + '% of the control closing without breaking R1/R3/R5, and every');
-console.log('    stronger row sutures the collision below P.vSuture and ends the measurement (the k 4e6 rows).');
-console.log('    So the authority to arrest is one constant away; what is missing is an orogen that keeps');
-console.log('    growing, and "late <= 75% of early" is a shape test on a machine that has already stopped.');
-console.log('  M1 should land accumulation first -- a C-C contact must keep accommodating convergence after');
-console.log('    the floor, the crush/consume path COL.intents reserves for a column with two floor gaps');
-console.log('    being the only place a floored pair can still shorten -- and restate R4 against that: a');
-console.log('    brake measure can only be chosen on a fixture whose orogen still responds.');
+check.section('M1 result — accumulation first; R4 arrest remains a separate open gate');
+console.log('  conveyor response: ' + (response.conveyorResponsive ? 'meets the shortening/growth preconditions on this run' : 'not yet sufficient') +
+	' (' + ctrl.accrete + ' retirements, shortening ' + (100 * response.ratio).toFixed(1) +
+	'% of reported closing, belt/excess both grow: ' + response.orogenGrows + ').');
+console.log('  R1/R2/R3/R5 audit bundle: ' + (response.auditsPass ? 'all clear' : 'not all clear') +
+	'; brake selection readiness: ' + response.selectionReady + '.');
+if (rows.length) {
+	var liveRows = rows.filter(function (x) { return x.r.live === FRAMES; });
+	var bestAbsorb = 0, bestAbsorbK = 0, bestAbsorbMode = '', i2, absorbed, ctrlLate;
+	var cQ2 = Math.max(1, Math.floor(ctrl.live / 4));
+	ctrlLate = mean(ctrl.close, ctrl.live - cQ2, ctrl.live);
+	for (i2 = 0; i2 < liveRows.length; i2++) {
+		absorbed = 1 - liveRows[i2].v.late / ctrlLate;
+		if (absorbed > bestAbsorb) {
+			bestAbsorb = absorbed; bestAbsorbK = liveRows[i2].k; bestAbsorbMode = liveRows[i2].mode;
+		}
+	}
+	console.log('  diagnostic sweep only: best live row ' + (bestAbsorbMode || 'none') +
+		(bestAbsorbMode ? ' at k ' + bestAbsorbK.toExponential(0) : '') +
+		(bestAbsorbMode ? ', absorbing ' + (100 * bestAbsorb).toFixed(0) + '% of the late control speed.' : '.'));
+} else console.log('  no brake candidate was run or selected; the kernel remains unmodified by this harness.');
+console.log('  Do not call R4 solved from this M1 measurement. Acceptance still requires the full 200 Myr');
+console.log('  R4 control/brake contract at 50 and 100 kyr/frame, seeds 1 and 5, all strict R1/R2/R3/R5');
+console.log('  legs, mass/replay gates, and the default-planet regression.');
 
 check.done();
 

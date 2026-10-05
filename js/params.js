@@ -103,7 +103,8 @@ var P = {
 	plateJitter: 16,             // columns of seeded boundary jitter; 512/8 - 2*16 >= minPlateCells
 	rGap: 0.75,
 	rContact: 0.6,
-	gFloor: 0.12,                 // floor must exceed the per-frame displacement
+	gFloor: 0.12,                 // separation floor for ordinary inter-plate contacts
+	crushGap: 0.05,               // C-C conveyor floor: 3.91 km, above 30 mm/yr at 100 kyr/frame
 	floorPass: 16,                 // bound on COL.floor's settle passes; it stops early when settled
 	floorTol: 0.01,                // x gFloor a ring of contacts may leave uncorrected (see COL.floor)
 	K: 3,                        // rift donors
@@ -257,6 +258,7 @@ var P = {
 // derived, never hardcoded elsewhere: the nominal column width follows from the wrap
 // and the count (2*pi*6371 km / 512 = 78.184 km) so it cannot drift from R
 P.w0 = P.wrap / P.nCols;
+P.crushFloor = P.crushGap * P.w0;
 // A trench sliver is retired when the territory it holds is worth nothing to the
 // picture. Its width is half the sum of its two gaps and the floor keeps each of them at
 // gFloor, so wMin = gFloor puts the retirement exactly where both gaps are on the floor,
