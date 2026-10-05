@@ -178,13 +178,13 @@ CRU.delaminate = function (st, dt) {
 		while (take > 0 && st.colNL[i] > 0) {
 			h = st.layTh[b];
 			if (!(h > 0)) {
-				COL.removeAt(i, 0);
+COL.removeAt(st, i, 0);
 				continue;
 			}
 			shed = take < h ? take : h;
 			st.ledCons[st.layLi[b]] += shed * w;
 			take -= shed;
-			if (shed === h) COL.removeAt(i, 0);
+			if (shed === h) COL.removeAt(st, i, 0);
 			else st.layTh[b] = h - shed;
 			any = true;
 		}

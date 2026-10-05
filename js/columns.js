@@ -250,20 +250,20 @@ COL.removeClass = function (st, c, cls, amount) {
 };
 
 // Drop layer k. Deposits hosted there lose their horizon; records above move with their beds.
-COL.removeAt = function (c, k) {
-	var LC = P.layerCap, b = c * LC, n = S.colNL[c], j, d;
-	for (d = 0; d < S.nDep; d++) {
-		if (S.depCol[d] !== c) continue;
-		if (S.depLay[d] === k) S.depLay[d] = -1;
-		else if (S.depLay[d] > k) S.depLay[d]--;
+COL.removeAt = function (st, c, k) {
+	var LC = P.layerCap, b = c * LC, n = st.colNL[c], j, d;
+	for (d = 0; d < st.nDep; d++) {
+		if (st.depCol[d] !== c) continue;
+		if (st.depLay[d] === k) st.depLay[d] = -1;
+		else if (st.depLay[d] > k) st.depLay[d]--;
 	}
 	for (j = k; j < n - 1; j++) {
-		S.layTh[b + j] = S.layTh[b + j + 1];
-		S.layLi[b + j] = S.layLi[b + j + 1];
-		S.layAg[b + j] = S.layAg[b + j + 1];
-		S.layFl[b + j] = S.layFl[b + j + 1];
+		st.layTh[b + j] = st.layTh[b + j + 1];
+		st.layLi[b + j] = st.layLi[b + j + 1];
+		st.layAg[b + j] = st.layAg[b + j + 1];
+		st.layFl[b + j] = st.layFl[b + j + 1];
 	}
-	S.colNL[c] = n - 1;
+	st.colNL[c] = n - 1;
 };
 
 // Gravitational collapse transport (crust.js K5): move `volume` (m2 of crust per unit
@@ -315,7 +315,7 @@ COL.collapseMove = function (from, to, volume) {
 		S.layTh[bf + k] = t - take;
 		if (S.layTh[bf + k] > 0) break;
 		this.moveDeposits(from, k, to, toLayer);
-		this.removeAt(from, k);
+		this.removeAt(S, from, k);
 	}
 	this.sums(from);
 	this.sums(to);
