@@ -11,6 +11,7 @@ var G = (typeof module !== 'undefined' && module.exports) ? require('./grid.js')
 var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.PTS;
 var F = (typeof module !== 'undefined' && module.exports) ? require('./fluid.js') : window.PTF;
 var SC = (typeof module !== 'undefined' && module.exports) ? require('./solid.js') : window.PTSC;
+var PERF = (typeof module !== 'undefined' && module.exports) ? require('../perf.js') : window.COLPERF;
 
 var SIM = {
 	M: null, S: S,

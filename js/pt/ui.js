@@ -11,6 +11,7 @@
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
 var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.PTS;
+var PERF = (typeof module !== 'undefined' && module.exports) ? require('../perf.js') : window.COLPERF;
 
 var PTUI = {
 	paused: false, stepOnce: false, quality: 0,
