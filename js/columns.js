@@ -21,7 +21,12 @@ var COL = {
 	floorW: new Float64Array(P.colCap),
 	lidAcc: new Float64Array(P.nCols),
 	lidCov: new Float64Array(P.nCols),
-	mask: null, prox: null, order: null, ridgeX: null
+	mask: null, prox: null, order: null, ridgeX: null,
+	// K4 settles the contact floor before K5 redistributes crust.  Keep the C-C choice
+	// made by that solve for the rest of the frame: hFel is a live stack cache and K5 is
+	// allowed to change it, but K5 cannot change the already-settled horizontal geometry.
+	floorClass: new Uint8Array(P.colCap),
+	floorClassValid: false
 };
 
 // --- stack ops ------------------------------------------------------------------
@@ -668,6 +673,9 @@ COL.transport = function (st, dt) {
 		st.colX[i] += st.colU[i] * dt;
 		st.colX[i] -= Math.floor(st.colX[i] / P.wrap) * P.wrap;
 	}
+	// A new K3 transport has changed the horizontal contact geometry, so the previous
+	// frame's settled C-C snapshot must not leak into this solve.
+	this.floorClassValid = false;
 	this.floor(st, n);
 	this.orderView(n).sort(this.sortCompare);
 	this.gather(n);
@@ -689,6 +697,7 @@ COL.transport = function (st, dt) {
 // the ordinary separation floor. Use the current pair velocities, not its old edge class:
 // sorting can hand the edge slot to a different pair in the same frame.
 COL.isClosingCC = function (st, i, j) {
+	if (this.floorClassValid) return this.floorClass[i] === 1;
 	return st.colPlate[i] !== st.colPlate[j] && !st.colGhost[i] && !st.colGhost[j] &&
 		st.colU[i] > st.colU[j] && st.hFel[i] >= P.hOceanic && st.hFel[j] >= P.hOceanic;
 };
@@ -708,6 +717,19 @@ COL.isClosingCC = function (st, i, j) {
 // constrained — a plate held between two equal overlaps has nowhere to move — so the
 // floor is a bound and not an equality: measured on seed 5 at 500 Myr, 3 passes left a C-C
 // pair 7.5% inside the floor, 8 left 0.8%, 16 left 0.05%, and P.floorTol carries that.
+// Snapshot the contact kind immediately before the K4 floor projection.  The snapshot is
+// indexed by the current neighbour slot; finalFloor does not reorder columns, and K5 does
+// not move colX.  It is deliberately valid only for this floor call, so the next transport
+// solve still classifies its newly positioned contacts from the live state.
+COL.freezeFloorClass = function (st, n) {
+	var i, j;
+	for (i = 0; i < n; i++) {
+		j = i + 1 < n ? i + 1 : 0;
+		this.floorClass[i] = this.isClosingCC(st, i, j) ? 1 : 0;
+	}
+	this.floorClassValid = true;
+};
+
 COL.floor = function (st, n) {
 	var min, i, j, d, p, q, a, pass, disp, any;
 	for (pass = 0; pass < P.floorPass; pass++) {
@@ -719,7 +741,8 @@ COL.floor = function (st, n) {
 			if (p === q) continue;
 			d = st.colX[j] - st.colX[i];
 			if (d < 0) d += P.wrap;
-			min = this.isClosingCC(st, i, j) ? P.crushFloor : P.gFloor * P.w0;
+			min = (this.floorClassValid ? this.floorClass[i] === 1 : this.isClosingCC(st, i, j)) ?
+				P.crushFloor : P.gFloor * P.w0;
 			if (d >= min) continue;
 			// settled when no pair is inside the floor, not when no plate moved: a plate
 			// held between two equal overlaps has nothing to move and two pairs to fix
@@ -744,7 +767,10 @@ COL.floor = function (st, n) {
 COL.finalFloor = function (st, n) {
 	var i, k, b, ratio;
 	for (i = 0; i < n; i++) this.floorW[i] = st.colW[i];
+	this.freezeFloorClass(st, n);
 	this.floor(st, n);
+	// Keep the settled classification visible for the remainder of this frame. K5 may
+	// redistribute hFel, but it cannot invalidate a contact floor whose gap it cannot move.
 	st.widths();
 	for (i = 0; i < n; i++) {
 		ratio = this.floorW[i] / st.colW[i];

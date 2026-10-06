@@ -81,6 +81,11 @@ var SIM = {
 			PLT.classify(st, 0, !!SIM.kinematic);
 			PLT.trench(st);
 			COL.finalFloor(st, st.nCol);
+		} else {
+			// K5 may still redistribute crust on an otherwise topology-stable frame. Freeze
+			// the K4 contact kind before that redistribution so hFel depletion cannot revoke
+			// the floor classification already used for this frame's geometry.
+			COL.freezeFloorClass(st, st.nCol);
 		}
 	}, CRU.k5, SURF.k6, null, null, null],
 	dG: 0,          // Myr per frame, from the plates slider
@@ -141,6 +146,7 @@ var SIM = {
 		this.kinematic = null;
 		this.dG = P.sl.geo / 1e6;
 		this.cool();
+		COL.floorClassValid = false;
 		S.reset();
 		MNT.init(P.seed);
 		SLAB.reset();
