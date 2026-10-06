@@ -77,7 +77,11 @@ function simK3(st, dt) {
 var SIM = {
 	// kernel slots; each is (state, dtGeo Myr, t Myr, Tm) and must no-op at dtGeo = 0
 	k: [null, simK1, simK2, simK3, function (st, dt, t, Tm) {
-		if (COL.k4(st, dt, t, Tm)) { PLT.classify(st, 0, !!SIM.kinematic); PLT.trench(st); }
+		if (COL.k4(st, dt, t, Tm)) {
+			PLT.classify(st, 0, !!SIM.kinematic);
+			PLT.trench(st);
+			COL.finalFloor(st, st.nCol);
+		}
 	}, CRU.k5, SURF.k6, null, null, null],
 	dG: 0,          // Myr per frame, from the plates slider
 	kinematic: null, // optional C3 K2 owner; returns true when it supplied plate velocities
@@ -169,7 +173,11 @@ var SIM = {
 			if (f) f(S, this.dG, this.t, this.Tm);
 			if (i === 4 && this.dG > 0 && this.onEvent) {
 				for (var e = 0; e < this.event; e++) {
-					if (this.onEvent(S, this.dG)) { PLT.classify(S, 0, !!this.kinematic); PLT.trench(S); }
+					if (this.onEvent(S, this.dG)) {
+						PLT.classify(S, 0, !!this.kinematic);
+						PLT.trench(S);
+						COL.finalFloor(S, S.nCol);
+					}
 				}
 			}
 		}

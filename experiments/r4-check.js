@@ -10,7 +10,7 @@
 // open until both frame sizes/seeds, the strict event audits, and all mass/replay gates pass.
 // The fixture builder is shared with experiments/orogen-measure.js so the two cannot drift.
 //
-// run:  node experiments/r4-check.js [frames] [drive_mm_yr] [seed]
+// run:  node experiments/r4-check.js [frames] [drive_mm_yr] [seed] [kyr_per_frame]
 'use strict';
 
 var L = require('./lib.js');
@@ -20,8 +20,9 @@ var check = L.check;
 
 var FRAMES = Number(process.argv[2]) || 4000;      // 200 Myr at 50 kyr/frame
 var DRIVE = (Number(process.argv[3]) || 15) * 1e3; // m/Myr per continent, 15 -> 30 mm/yr closing
-var KYR = 50e3;
 var SEED = Number(process.argv[4]) || 1;
+var KYR = Number(process.argv[5]) || 50;            // kyr/frame
+var DT_MYR = KYR / 1e3;
 
 // The drive is a force, not a velocity: a far-field push on each continent, added to the
 // per-column boundary term the plate solve already integrates. Prescribing plU instead
@@ -45,16 +46,18 @@ function driveOn() {
 function run(vColl) {
 	var out = {
 		t: new Float64Array(FRAMES), close: new Float64Array(FRAMES),
-		w: new Float64Array(FRAMES), root: new Float64Array(FRAMES), live: 0, lost: -1
+		w: new Float64Array(FRAMES), root: new Float64Array(FRAMES),
+		live: 0, lost: -1, maxH: 0
 	};
 	var keepV = P.vColl, keepD = P.kDam, i, k, peak, flank;
 	P.vColl = vColl;
 	P.kDam = 0;          // the drive diverges the far field; damage would split the fixture
 	check.twoContinents(SEED);
-	SIM.setGeo(KYR);
+	SIM.setGeo(KYR * 1e3);
 	driveOn();
 	for (i = 0; i < FRAMES; i++) {
 		SIM.step();
+		for (k = 0; k < S.nCol; k++) if (S.hTot[k] > out.maxH) out.maxH = S.hTot[k];
 		k = check.collisionSite();
 		if (k < 0) { if (out.lost < 0) out.lost = i; continue; }
 		COL.beltAt(S, S.nCol, k);
@@ -100,20 +103,40 @@ table(brake, 'with the collision brake (vColl ' + P.vColl + ' m2/Myr per km of b
 table(free, 'negative control: brake off (vColl 0)');
 
 var q = Math.max(1, Math.floor(brake.live / 4));
+var fq = Math.max(1, Math.floor(free.live / 4));
 var early = mean(brake.close, 0, q), late = mean(brake.close, brake.live - q, brake.live);
 var earlyW = mean(brake.w, 0, q), lateW = mean(brake.w, brake.live - q, brake.live);
-var fEarly = mean(free.close, 0, q), fLate = mean(free.close, free.live - q, free.live);
+var fEarly = mean(free.close, 0, fq), fLate = mean(free.close, free.live - fq, free.live);
 var maxRoot = 0, i;
 for (i = 0; i < brake.live; i++) if (brake.root[i] > maxRoot) maxRoot = brake.root[i];
+var brakeHeld = brake.live === FRAMES && brake.lost < 0;
+var controlHeld = free.live === FRAMES && free.lost < 0;
+var beltWidens = lateW > earlyW;
+var controlStaysFast = fEarly > 0 && fLate > 0.9 * fEarly;
+var closesArrested = early > 0 && late <= 0.75 * early;
+var brakeActs = fLate > 0 && late < 0.95 * fLate;
+var ceiling = brake.maxH <= P.crustMax + 35e3 * DT_MYR;
 
-check.ok('the fixture holds a collision for the whole run', brake.live === FRAMES && brake.lost < 0,
+check.ok('the braked fixture holds a collision for the whole run', brakeHeld,
 	brake.live + ' of ' + FRAMES + ' frames measured' + (brake.lost >= 0
-		? ', the boundary welded at t ' + (brake.lost * KYR / 1e9).toFixed(0) + ' Myr' : ''));
-check.ok('the brake, not the drive, is what slows the boundary', fLate > 0.9 * fEarly && late < 0.95 * fLate,
-	'brake off: ' + (fEarly / 1e3).toFixed(1) + ' -> ' + (fLate / 1e3).toFixed(1) +
-	' mm/yr; brake on ends at ' + (late / 1e3).toFixed(1) + ' mm/yr');
-check.ok('the belt root stays under the crust ceiling', maxRoot <= P.crustMax,
-	(maxRoot / 1e3).toFixed(1) + ' km of root (ceiling ' + (P.crustMax / 1e3).toFixed(0) + ' km)');
+		? ', first unmeasurable at t ' + (brake.lost * DT_MYR).toFixed(1) + ' Myr' : ''));
+check.ok('the brake-off control holds a collision for the whole run', controlHeld,
+	free.live + ' of ' + FRAMES + ' frames measured' + (free.lost >= 0
+		? ', first unmeasurable at t ' + (free.lost * DT_MYR).toFixed(1) + ' Myr' : ''));
+check.ok('the orogen keeps widening through the last quarter', beltWidens,
+	(earlyW / 1e3).toFixed(0) + ' -> ' + (lateW / 1e3).toFixed(0) + ' km');
+check.ok('the final-quarter closing rate is at most 75% of the first-quarter mean', closesArrested,
+	(early / 1e3).toFixed(1) + ' -> ' + (late / 1e3).toFixed(1) + ' mm/yr (' +
+	(early > 0 ? (100 * late / early).toFixed(0) : 'n/a') + '%)');
+check.ok('the brake-off control remains above 90% of its early speed', controlStaysFast,
+	(fEarly / 1e3).toFixed(1) + ' -> ' + (fLate / 1e3).toFixed(1) + ' mm/yr (' +
+	(fEarly > 0 ? (100 * fLate / fEarly).toFixed(0) : 'n/a') + '%)');
+check.ok('the incumbent brake slows the contact relative to its control', brakeActs,
+	'brake ' + (late / 1e3).toFixed(1) + ' vs control ' + (fLate / 1e3).toFixed(1) + ' mm/yr');
+check.ok('maximum total crust stays inside the dt-aware R3 ceiling', ceiling,
+	(brake.maxH / 1e3).toFixed(1) + ' km vs ' + ((P.crustMax + 35e3 * DT_MYR) / 1e3).toFixed(1) + ' km');
+check.info('maximum pair root (diagnostic, not the crust ceiling)',
+	(maxRoot / 1e3).toFixed(1) + ' km; maximum total crust ' + (brake.maxH / 1e3).toFixed(1) + ' km');
 
 console.log('\nR4 verdict — incumbent brake under the M1 conveyor');
 console.log('  belt width      ' + (earlyW / 1e3).toFixed(0) + ' km over the first quarter -> ' +
@@ -124,8 +147,10 @@ console.log('  brake-off control ' + (fEarly / 1e3).toFixed(1) + ' -> ' + (fLate
 	' mm/yr (' + (100 * fLate / fEarly).toFixed(0) + '% of its early speed; needed: > 90%)');
 console.log('  against a ' + (2 * DRIVE / 1e3).toFixed(0) + ' mm/yr drive, the incumbent brake buys ' +
 	(100 * (1 - late / fLate)).toFixed(0) + '% of the late control speed');
-var met = brake.live === FRAMES && brake.lost < 0 && lateW > earlyW && late <= 0.75 * early &&
-	fLate > 0.9 * fEarly && late < 0.95 * fLate && maxRoot <= P.crustMax;
+var met = brakeHeld && controlHeld && beltWidens && closesArrested && controlStaysFast && brakeActs && ceiling;
+check.ok('R4 incumbent-brake contract', met,
+	met ? 'all live, accumulation, arrest, negative-control and total-crust gates pass' :
+		'one or more strict R4 gates above remain open');
 console.log('  ' + (met ? 'MET: the collision is held and the incumbent brake absorbs convergence.'
 	: 'NOT MET: R4 remains open; this run does not satisfy the complete brake/control and crust-ceiling contract.'));
 console.log('  M1 accumulation is measured separately in experiments/orogen-measure.js; a passing');

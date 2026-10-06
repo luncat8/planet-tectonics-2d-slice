@@ -149,9 +149,10 @@ var P = {
 	kCollapse: 0.02,             // /Myr
 	tauSliver: 4,                 // Myr, a drained sliver's drawn ground follows the line between
 	                               // its margins over this time rather than in one frame
-	kBelt: 0.12,                 // 1/Myr of the excess (m), orogenic flow out of a collision
+	kBelt: 0.12,                 // 1/Myr of the excess (m), bulk orogenic flow out of a collision
 	                             // pair: a 5.4 km excess moves ~650 m/Myr, scaled by the
 	                             // closing rate; stiff re-calibration is gated by 0.1.7 M0
+	kBeltGradient: 8,             // 1/Myr, local yield-limited felsic flow smooths belt shoulders
 	beltYield: 3000,              // m, the root a collision can hold up without flowing sideways
 	faceGapMin: 0.5,             // x w0: floor on the face gap of both column stencils
 	kEro: 0.05,                  // /Myr

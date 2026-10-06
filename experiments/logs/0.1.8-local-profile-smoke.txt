@@ -1,0 +1,91 @@
+
+A. page load (columns.html order, 29 scripts)
+PASS  columns.html loads every js/*.js file exactly once   js/params.js js/rng.js js/geom.js js/state.js js/surface.js js/columns.js js/mantle.js js/slab.js js/plates.js js/magma.js js/crust.js js/perf.js js/ui.js js/deposit-core.js js/deposits.js js/section-seed.js js/checkpoint.js js/section-pack.js js/coupling.js js/coupling-link.js js/core-log.js js/render.js js/sim.js
+PASS  every bundled section pack loads exactly once   js/data/section-earth-100Ma-gc0.js js/data/section-earth-100Ma-gc1.js js/data/section-earth-gc0.js
+PASS  every shared port/ file loads exactly once and is in the manifest   port/slice-format.js port/deposit-models.js port/deposit-economics.js
+PASS  the shared format loads before any page module reads it   port/slice-format.js
+PASS  the DOM stub found every id in columns.html   bar,sGeo,vGeo,sErupt,vErupt,presets,bMesh,slice,sText,sPaste,sFile,sPick,bRaw,bOvl,bRun,sSave,sLoad,sObs,sObsCopy,sObsOut,sMsg,stage,sVZoom,wrap,c,hud,axis,sHZoom,cScale,vZoom,help
+PASS  the preset buttons come from columns.html   def,ovw,cru,bas
+PASS  each column module exports exactly its one namespaced global   js/params.js=COLP js/rng.js=COLRNG js/geom.js=COLGEO js/state.js=COLS js/surface.js=COLSURF js/columns.js=COLCOLUMNS js/mantle.js=COLMANTLE js/slab.js=COLSLAB js/plates.js=COLPLATES js/magma.js=COLMAGMA js/crust.js=COLCRUST js/perf.js=COLPERF js/ui.js=COLUI js/deposit-core.js=COLDEPOSITCORE js/deposits.js=COLDEPOSITS js/section-seed.js=COLSEED js/checkpoint.js=COLCHECKPOINT js/section-pack.js=COLSECTION js/coupling.js=COLCOUPLING js/coupling-link.js=COLLINK js/core-log.js=COLCORELOG js/render.js=COLRENDER js/sim.js=COLSIM
+PASS  legacy globe and browser names are untouched
+PASS  modules do not self-start; columns.html explicitly calls COLSIM.start(document)
+PASS  page host started one frame loop
+PASS  stop cancels the frame and removes page listeners
+PASS  restart rebinds each control once
+PASS  an element host scopes the engine canvas and controls to its own subtree
+PASS  an element host also scopes section mode and its mode class
+PASS  returning to the document host releases container listeners and mode state
+PASS  SIM ran a planet reset   t=0 nCol=512
+PASS  render built its palettes   palLith 96
+PASS  canvas pointer mapping excludes its CSS border   0,0 / 640,280
+
+B. clocks and sliders
+PASS  300 frames at 50 kyr/f = 15 Myr   rel 7.82e-14  got 15.000000000000078 Myr  want 15
+PASS  Tm(15 Myr)   rel 4.55e-7  got 1.592522455067419  want 1.592522
+PASS  eruptive clock = 300 x 1800 s   rel 0.00e+0  got 540000 s  want 540000
+PASS  geo slider 0 = pause   sl.geo=0
+PASS  geo slider max = 200 kyr/f   rel 0.00e+0  got 200000 yr  want 200000
+PASS  geo slider 738 ~ 50 kyr/f   abs 9.32e+1  got 49906.84743614388 yr  want 50000
+PASS  erupt slider max = 240 min/f   rel 0.00e+0  got 14400 s  want 14400
+PASS  erupt slider 0 = pause
+
+C. view: presets, wheel, drag, keys
+PASS  overview keeps the default horizontal scale   rel 0.00e+0  got 2343.75  want 2343.75
+PASS  overview fits the full depth   abs 9.31e-10  got -6371000.000000001 m  want -6371000
+PASS  basin preset x40   rel 0.00e+0  got 58.59375  want 58.59375
+PASS  crust preset x10   rel 0.00e+0  got 234.375  want 234.375
+PASS  default preset round trip   rel 0.00e+0  got 2343.75  want 2343.75
+PASS  wheel keeps the cursor world x fixed   rel 0.00e+0  got 0 m  want 0
+PASS  wheel keeps the cursor world y fixed   rel 3.64e-12  got 3.637978807091713e-12 m  want 0
+PASS  wheel zoomed in   kx=1286.8556486884174
+PASS  drag keeps the grabbed world x fixed   rel 0.00e+0  got 0 m  want 0
+PASS  drag keeps the grabbed world y fixed   rel 0.00e+0  got 0 m  want 0
+PASS  wheel clamps at zoomMax   kx=11.71875 min=11.71875
+PASS  wheel clamps at zoomMin   kx=117187.5 max=117187.5
+PASS  zoom clamped and came back   kx=117187.5
+
+D. probe, mesh, keys
+PASS  cursor readout built   "40027.8 km  -108 km | 2.34 km/px  713 m/px"
+PASS  geology probe built   "col 517  plate 7  age 957.9 Myr"
+PASS  probe names a layer or the mantle   fel 49.9  maf 0.0  sed 0.0 km
+PASS  probe in the sky reads air/water   fel 49.9  maf 0.0  sed 0.0 km
+PASS  m toggles the mesh overlay
+PASS  m toggles it back
+PASS  preset button 3 = crust x10   rel 0.00e+0  got 234.375  want 234.375
+PASS  space pauses the geologic clock
+PASS  space resumes it   rel 0.00e+0  got 49906.84743614388 yr/f  want 49906.84743614388
+PASS  the mesh button is wired in columns.html
+
+D2. axis scale sliders and the scale-lines toggle
+PASS  the sliders read zoom 1 back as the middle of their log range   abs 2.57e-1  got 425 slider  want 424.74250108400463
+PASS  horizontal slider max = zoomMax   rel 0.00e+0  got 200  want 200
+PASS  the vertical scale did not move with it   rel 0.00e+0  got 1  want 1
+PASS  horizontal slider min = zoomMin   rel 0.00e+0  got 0.02  want 0.02
+PASS  vertical slider max = zoomMax   rel 7.11e-13  got 199.9999999999993  want 200
+PASS  vertical slider min = the whole planet   rel 0.00e+0  got 0.531708204466091  want 0.531708204466091
+PASS  a preset drives both sliders back   abs 1.84e-1  got 495 slider  want 494.81560009750683
+PASS  the scale readout is built   "scale  x 0.23 km/px   y 25 m/px at 0 m"
+PASS  scale lines are on by default, as columns.html says
+PASS  the checkbox turns the scale lines off
+PASS  g turns them back on and re-ticks the checkbox
+
+D3. the toggle highlight: one attribute per switch
+PASS  columns.html carries the lit rule
+PASS  the bar ships its state in the markup (a browser shows it before ui.js runs)   mesh false, 4 preset buttons
+PASS  the startup preset is the lit one, and only it   true,false,false,false
+PASS  a preset click lights it and puts the previous one out
+PASS  a wheel zoom puts the whole preset group out
+PASS  a preset key lights its button
+PASS  one axis slider leaves the preset too
+PASS  a drag leaves the preset too
+PASS  the mesh button lights while the overlay is on
+PASS  the m key puts it out and the button with it
+PASS  g puts the scale lines out and unticks the box
+PASS  g turns them back on and re-ticks the box
+
+E. determinism
+PASS  two fresh 1000-frame runs are bit-identical   4139923139|3778018669,3219501952,3788145402,3620133688 vs 4139923139|3778018669,3219501952,3788145402,3620133688
+PASS  a different seed diverges   3096233400|609912025,1928876461,1656449407,1884274477
+PASS  the state hash is not degenerate   4139923139|3778018669,3219501952,3788145402,3620133688
+
+ALL PASS (75 checks)

@@ -1138,7 +1138,63 @@ for (var fi7 = 0; fi7 < 10; fi7++) CRU.belt(S, 0.01);
 var fine7 = 60e3 - S.hTot[b7];
 b7 = beltFixture();
 CRU.belt(S, 0.1);
-check.near('the orogenic flow is dt-independent to first order', 60e3 - S.hTot[b7], fine7, 2e-2, 'm');
+check.near('the bulk orogenic flow is dt-independent to first order', 60e3 - S.hTot[b7], fine7, 2e-2, 'm');
+
+// The local term uses the same belt catchment but a separate yield-limited face stencil.
+function beltGradientFixture() {
+	check.planet(1);
+	var n = S.nCol, c, center = (n >> 1) - 1;
+	S.colGhost.fill(0, 0, n);
+	for (c = 0; c < n; c++) {
+		S.colNL[c] = 0;
+		COL.push(c, 35e3, P.LITH.fel, 100, 0);
+		COL.sums(c);
+		S.edge[c] = E.none; S.edgeRelN[c] = 0; S.edgePol[c] = 0;
+		S.edgeAge[c] = 0; S.edgeRPlate[c] = -1; S.edgeSlow[c] = 0;
+	}
+	S.colNL[center] = 0;
+	COL.push(center, 60e3, P.LITH.fel, 100, 0);
+	COL.sums(center);
+	S.edge[center] = E.collide;
+	S.edgeRelN[center] = -0.5 * P.vRef;       // speed factor = 1
+	return center;
+}
+var bg7 = beltGradientFixture(), gl7 = bg7 - 1, gr7 = bg7 + 1, dtg7 = 0.0001;
+var kg7 = P.kBeltGradient * dtg7, ag7 = kg7 / (1 + 2 * kg7);
+var eg7 = 60e3 - 35e3 - P.beltYield;
+var vgL7 = eg7 * S.colW[gl7] * S.colW[bg7] / (S.colW[gl7] + S.colW[bg7]) * ag7;
+var vgR7 = eg7 * S.colW[bg7] * S.colW[gr7] / (S.colW[bg7] + S.colW[gr7]) * ag7;
+var gradMass7 = S.mass().slice();
+CRU.beltLocal(S, dtg7);
+check.near('local yield-limited flow matches its small-dt face flux',
+	60e3 - S.hTot[bg7], (vgL7 + vgR7) / S.colW[bg7], 1e-9, 'm');
+check.near('local face flux raises the left shoulder by its volume share',
+	S.hTot[gl7] - 35e3, vgL7 / S.colW[gl7], 1e-9, 'm');
+check.near('local face flux raises the right shoulder by its volume share',
+	S.hTot[gr7] - 35e3, vgR7 / S.colW[gr7], 1e-9, 'm');
+ledger(gradMass7, 'local yield-limited belt flow');
+
+// A very large implicit step approaches the two-face relaxation limit. It is a
+// stability check only: do not demand subdivision invariance for nonlinear large dt.
+bg7 = beltGradientFixture();
+var largeDtMass7 = S.mass().slice();
+CRU.beltLocal(S, 1e6);
+check.ok('large-dt local flow does not reverse either initial belt shoulder',
+	S.hTot[bg7] >= S.hTot[bg7 - 1] && S.hTot[bg7] >= S.hTot[bg7 + 1],
+	'left ' + (S.hTot[bg7 - 1] / 1e3).toFixed(2) + ', peak ' +
+	(S.hTot[bg7] / 1e3).toFixed(2) + ', right ' + (S.hTot[bg7 + 1] / 1e3).toFixed(2) + ' km');
+ledger(largeDtMass7, 'large-dt local yield-limited belt flow');
+
+bg7 = beltGradientFixture();
+S.colNL[bg7] = 0;
+COL.push(bg7, P.crustMax + 10e3, P.LITH.fel, 100, 0);
+COL.sums(bg7);
+S.colNL[bg7 + 1] = 0;
+COL.push(bg7 + 1, P.crustMax - 10, P.LITH.fel, 100, 0);
+COL.sums(bg7 + 1);
+CRU.beltLocal(S, 0.1);
+check.ok('local flow respects the receiver crust ceiling', S.hTot[bg7 + 1] <= P.crustMax,
+	'receiver ' + (S.hTot[bg7 + 1] / 1e3).toFixed(3) + ' km; ceiling ' + (P.crustMax / 1e3).toFixed(1) + ' km');
 
 // K5/K6 add no crust: the relief of a collision comes from the layer sums alone
 bi = boundary();
@@ -1166,54 +1222,202 @@ var profileFresh = true;
 for (ai = 0; ai < S.nCol; ai++) if (S.z[ai] !== SURF.elev(ai)) profileFresh = false;
 check.ok('a frame ends with the profile recomputed from the final state', profileFresh);
 
-// acceptance 8 shape: 500 Myr at both frame rates stays finite, balanced and un-squeezed
-function longRun(rate, frames) {
-	check.planet(5);
-	SIM.setGeo(rate);
-	SIM.run(frames);
-	var minGap = Infinity, minCrush = Infinity, minSoft = Infinity, maxH = 0, maxZ = 0;
-	var minGapWhere = '', minCrushWhere = '';
+// acceptance 8 shape: distinguish the post-transport trajectory from the final topology.
+function contactFloors() {
+	var ordinary = Infinity, crush = Infinity, soft = Infinity, ordinaryAt = -1, crushAt = -1;
 	for (var i = 0; i < S.nCol; i++) {
 		var j = i + 1 < S.nCol ? i + 1 : 0;
 		var g = S.colX[j] - S.colX[i];
 		if (g <= 0) g += P.wrap;
-		// Ordinary contacts keep the separation floor. A live, closing continental pair
-		// is allowed to reach the smaller conveyor floor; its record is retired at K4.
 		if (S.colPlate[i] !== S.colPlate[j]) {
 			if (COL.isClosingCC(S, i, j)) {
-				if (g < minCrush) { minCrush = g; minCrushWhere = i + '/' + j + ' e' + S.edge[i] + ' dU' + (S.colU[i] - S.colU[j]).toFixed(2) + ' hFel ' + (S.hFel[i] / 1e3).toFixed(1) + '/' + (S.hFel[j] / 1e3).toFixed(1); }
-			} else if (g < minGap) {
-				minGap = g; minGapWhere = i + '/' + j + ' e' + S.edge[i] + ' dU' + (S.colU[i] - S.colU[j]).toFixed(2) +
-					' hFel ' + (S.hFel[i] / 1e3).toFixed(1) + '/' + (S.hFel[j] / 1e3).toFixed(1) +
-					' ghost ' + S.colGhost[i] + '/' + S.colGhost[j];
-			}
-		} else minSoft = Math.min(minSoft, g);
-		maxH = Math.max(maxH, S.hTot[i]);
-		maxZ = Math.max(maxZ, S.z[i]);
+				if (g < crush) { crush = g; crushAt = i; }
+			} else if (g < ordinary) { ordinary = g; ordinaryAt = i; }
+		} else if (g < soft) soft = g;
 	}
-	return { minGap: minGap, minCrush: minCrush, minSoft: minSoft, minGapWhere: minGapWhere,
-		minCrushWhere: minCrushWhere, maxH: maxH, maxZ: maxZ, nCol: S.nCol, nPl: S.nPl };
+	return { ordinary: ordinary, crush: crush, soft: soft, ordinaryAt: ordinaryAt, crushAt: crushAt };
+}
+function longRun(rate, frames) {
+	check.planet(5);
+	SIM.setGeo(rate);
+	var trajectoryOrdinary = Infinity, trajectoryCrush = Infinity;
+	var afterK3Ordinary = Infinity, afterK3Crush = Infinity, afterK3At = -1;
+	var afterK4Ordinary = Infinity, afterK4At = -1;
+	var afterEventOrdinary = Infinity, afterEventAt = -1;
+	var afterEventFloorOrdinary = Infinity, afterEventFloorAt = -1;
+	var afterFloorOrdinary = Infinity, afterFloorAt = -1;
+	var afterK5Ordinary = Infinity, afterK5At = -1, afterK5Pair = -1;
+	var afterK5BeforeGap = NaN, afterK5BeforeFel = NaN, afterK5AfterFel = NaN;
+	var afterK5WasClosing = false, eventFloorPending = false;
+	var preK5Gap = new Float64Array(P.colCap), preK5Closing = new Uint8Array(P.colCap);
+	var preK5FelL = new Float64Array(P.colCap), preK5FelR = new Float64Array(P.colCap);
+	var collapseFel = new Float64Array(P.colCap), bulkFel = new Float64Array(P.colCap);
+	var localFel = new Float64Array(P.colCap), arcFel = new Float64Array(P.colCap);
+	var lipFel = new Float64Array(P.colCap), delamFel = new Float64Array(P.colCap);
+	var afterCollapseFel = NaN, afterBulkFel = NaN, afterLocalFel = NaN;
+	var afterArcFel = NaN, afterLipFel = NaN, afterDelamFel = NaN;
+	var savedCollapse = CRU.collapse, savedBelt = CRU.belt, savedBeltLocal = CRU.beltLocal;
+	var savedArc = CRU.arcGrowth;
+	var savedLip = CRU.lipGrowth, savedDelam = CRU.delaminate;
+	var savedK3 = SIM.k[3], savedK4 = SIM.k[4], savedK5 = SIM.k[5];
+	var savedEvent = SIM.onEvent, savedFloor = COL.finalFloor, frame, f;
+	function saveK5Fel(st, out) {
+		for (var c = 0, j; c < st.nCol; c++) {
+			j = c + 1 < st.nCol ? c + 1 : 0;
+			out[c] = Math.min(st.hFel[c], st.hFel[j]);
+		}
+	}
+	CRU.collapse = function (st, dt) {
+		var out = savedCollapse.apply(this, arguments);
+		saveK5Fel(st, collapseFel);
+		return out;
+	};
+	CRU.belt = function (st, dt) {
+		var out = savedBelt.apply(this, arguments);
+		saveK5Fel(st, bulkFel);
+		return out;
+	};
+	CRU.beltLocal = function (st, dt) {
+		var out = savedBeltLocal.apply(this, arguments);
+		saveK5Fel(st, localFel);
+		return out;
+	};
+	CRU.arcGrowth = function (st, dt, t, Tm) {
+		var out = savedArc.apply(this, arguments);
+		saveK5Fel(st, arcFel);
+		return out;
+	};
+	CRU.lipGrowth = function (st, dt, t) {
+		var out = savedLip.apply(this, arguments);
+		saveK5Fel(st, lipFel);
+		return out;
+	};
+	CRU.delaminate = function (st, dt) {
+		var out = savedDelam.apply(this, arguments);
+		saveK5Fel(st, delamFel);
+		return out;
+	};
+	SIM.k[3] = function (st, dt, t, Tm) {
+		savedK3(st, dt, t, Tm);
+		var k3Floor = contactFloors();
+		if (k3Floor.ordinary < afterK3Ordinary) { afterK3Ordinary = k3Floor.ordinary; afterK3At = SIM.frame; }
+		if (k3Floor.crush < afterK3Crush) afterK3Crush = k3Floor.crush;
+	};
+	SIM.k[4] = function (st, dt, t, Tm) {
+		savedK4(st, dt, t, Tm);
+		var k4Floor = contactFloors();
+		if (k4Floor.ordinary < afterK4Ordinary) { afterK4Ordinary = k4Floor.ordinary; afterK4At = SIM.frame; }
+	};
+	SIM.onEvent = function (st, dt) {
+		var changed = savedEvent.apply(this, arguments), eventFloor = contactFloors();
+		if (eventFloor.ordinary < afterEventOrdinary) { afterEventOrdinary = eventFloor.ordinary; afterEventAt = SIM.frame; }
+		if (changed) eventFloorPending = true;
+		return changed;
+	};
+	COL.finalFloor = function (st, n) {
+		savedFloor.call(this, st, n);
+		var floor = contactFloors();
+		if (floor.ordinary < afterFloorOrdinary) { afterFloorOrdinary = floor.ordinary; afterFloorAt = SIM.frame; }
+		if (eventFloorPending && floor.ordinary < afterEventFloorOrdinary) {
+			afterEventFloorOrdinary = floor.ordinary; afterEventFloorAt = SIM.frame;
+		}
+		eventFloorPending = false;
+	};
+	SIM.k[5] = function (st, dt, t, Tm) {
+		var n = st.nCol, i, j, g, k5Floor;
+		for (i = 0; i < n; i++) {
+			j = i + 1 < n ? i + 1 : 0;
+			g = st.colX[j] - st.colX[i];
+			if (g <= 0) g += P.wrap;
+			preK5Gap[i] = g;
+			preK5Closing[i] = COL.isClosingCC(st, i, j) ? 1 : 0;
+			preK5FelL[i] = st.hFel[i]; preK5FelR[i] = st.hFel[j];
+		}
+		savedK5(st, dt, t, Tm);
+		k5Floor = contactFloors();
+		if (k5Floor.ordinary < afterK5Ordinary) {
+			afterK5Ordinary = k5Floor.ordinary; afterK5At = SIM.frame;
+			afterK5Pair = k5Floor.ordinaryAt; j = afterK5Pair + 1 < n ? afterK5Pair + 1 : 0;
+			afterK5BeforeGap = preK5Gap[afterK5Pair];
+			afterK5WasClosing = preK5Closing[afterK5Pair] === 1;
+			afterK5BeforeFel = Math.min(preK5FelL[afterK5Pair], preK5FelR[afterK5Pair]);
+			afterK5AfterFel = Math.min(st.hFel[afterK5Pair], st.hFel[j]);
+			afterCollapseFel = collapseFel[afterK5Pair]; afterBulkFel = bulkFel[afterK5Pair];
+			afterLocalFel = localFel[afterK5Pair]; afterArcFel = arcFel[afterK5Pair];
+			afterLipFel = lipFel[afterK5Pair]; afterDelamFel = delamFel[afterK5Pair];
+		}
+	};
+	for (f = 0; f < frames; f++) {
+		SIM.step();
+		frame = contactFloors();
+		if (frame.ordinary < trajectoryOrdinary) trajectoryOrdinary = frame.ordinary;
+		if (frame.crush < trajectoryCrush) trajectoryCrush = frame.crush;
+	}
+	SIM.k[3] = savedK3;
+	SIM.k[4] = savedK4;
+	SIM.k[5] = savedK5;
+	SIM.onEvent = savedEvent;
+	COL.finalFloor = savedFloor;
+	CRU.collapse = savedCollapse; CRU.belt = savedBelt; CRU.beltLocal = savedBeltLocal;
+	CRU.arcGrowth = savedArc; CRU.lipGrowth = savedLip; CRU.delaminate = savedDelam;
+	var end = contactFloors(), maxH = 0, maxZ = 0;
+	for (var i = 0; i < S.nCol; i++) { maxH = Math.max(maxH, S.hTot[i]); maxZ = Math.max(maxZ, S.z[i]); }
+	return { minGap: end.ordinary, minCrush: end.crush, minSoft: end.soft,
+		minGapAt: end.ordinaryAt, minCrushAt: end.crushAt,
+		trajectoryGap: trajectoryOrdinary, trajectoryCrush: trajectoryCrush,
+		afterK3Gap: afterK3Ordinary, afterK3Crush: afterK3Crush, afterK3At: afterK3At,
+		afterK4Gap: afterK4Ordinary, afterK4At: afterK4At,
+		afterEventGap: afterEventOrdinary, afterEventAt: afterEventAt,
+		afterEventFloorGap: afterEventFloorOrdinary, afterEventFloorAt: afterEventFloorAt,
+		afterFloorGap: afterFloorOrdinary, afterFloorAt: afterFloorAt,
+		afterK5Gap: afterK5Ordinary, afterK5At: afterK5At, afterK5Pair: afterK5Pair,
+		afterK5BeforeGap: afterK5BeforeGap, afterK5WasClosing: afterK5WasClosing,
+		afterK5BeforeFel: afterK5BeforeFel, afterK5AfterFel: afterK5AfterFel,
+		afterCollapseFel: afterCollapseFel, afterBulkFel: afterBulkFel,
+		afterLocalFel: afterLocalFel, afterArcFel: afterArcFel,
+		afterLipFel: afterLipFel, afterDelamFel: afterDelamFel,
+		maxH: maxH, maxZ: maxZ, nCol: S.nCol, nPl: S.nPl };
 }
 var lr = longRun(100e3, 5000);
-// COL.floor is a rigid plate correction, and a ring of contacts can over-constrain it:
-// a plate held between two equal overlaps has nowhere to move. Each floor is therefore
-// a bound (P.floorTol), not an equality.
-check.ok('500 Myr at 100 kyr/frame respects both contact floors',
-	lr.minGap > P.gFloor * P.w0 * (1 - P.floorTol) &&
-	lr.minCrush > P.crushFloor * (1 - P.floorTol),
+// COL.floor is a rigid plate correction; this reports both its evolving per-frame
+// behavior and the final topology, rather than allowing one end-state scan to stand in
+// for 500 Myr of contact geometry.
+var gapFloor = P.gFloor * P.w0 * (1 - P.floorTol);
+var crushFloor = P.crushFloor * (1 - P.floorTol);
+check.ok('500 Myr trajectory respects the ordinary floor after every frame',
+	lr.trajectoryGap > gapFloor,
+	'minimum ' + (lr.trajectoryGap / P.w0).toFixed(4) + ' w0; stage minima K3/K4/event/finalFloor/K5 ' +
+	(lr.afterK3Gap / P.w0).toFixed(4) + '/' + (lr.afterK4Gap / P.w0).toFixed(4) + '/' +
+	(lr.afterEventGap / P.w0).toFixed(4) + '/' + (lr.afterEventFloorGap / P.w0).toFixed(4) + '/' +
+	(lr.afterK5Gap / P.w0).toFixed(4) + ' w0 (event frame ' + lr.afterEventAt + ', floor ' +
+	lr.afterEventFloorAt + ', K5 ' + lr.afterK5At + '; pair ' + lr.afterK5Pair +
+	' was ' + (lr.afterK5WasClosing ? 'closing C-C' : 'ordinary') + ' before K5, gap ' +
+	(lr.afterK5BeforeGap / P.w0).toFixed(4) + ' w0, minimum hFel pre-K5/after gravity+bulk/after local/after arc/after lip/after delam ' +
+	(lr.afterK5BeforeFel / 1e3).toFixed(2) + '/' + (lr.afterBulkFel / 1e3).toFixed(2) + '/' +
+	(lr.afterLocalFel / 1e3).toFixed(2) + '/' + (lr.afterArcFel / 1e3).toFixed(2) + '/' +
+	(lr.afterLipFel / 1e3).toFixed(2) + '/' + (lr.afterDelamFel / 1e3).toFixed(2) + ' km (C-C threshold ' + (P.hOceanic / 1e3).toFixed(2) + ' km; required > ' +
+	(gapFloor / P.w0).toFixed(4) + ' w0)');
+check.ok('500 Myr trajectory respects the closing C-C floor after every frame',
+	lr.trajectoryCrush > crushFloor,
+	'minimum ' + (lr.trajectoryCrush / P.w0).toFixed(4) + ' w0; required > ' +
+	(crushFloor / P.w0).toFixed(4) + ' w0');
+check.ok('500 Myr final topology respects both contact floors',
+	lr.minGap > gapFloor && lr.minCrush > crushFloor,
 	'ordinary ' + (lr.minGap / P.w0).toFixed(4) + ' w0 / ' + P.gFloor +
 	', closing C-C ' + (lr.minCrush / P.w0).toFixed(4) + ' w0 / ' + P.crushGap +
-	'; softest same-plate gap ' + (lr.minSoft / P.w0).toFixed(4) + ' w0; min ordinary: ' + lr.minGapWhere +
-	'; min closing C-C: ' + lr.minCrushWhere);
+	'; softest same-plate gap ' + (lr.minSoft / P.w0).toFixed(4) + ' w0');
 invariants();
 console.log('  500 Myr @100 kyr: n=' + lr.nCol + ' plates=' + lr.nPl +
 	' maxCrust=' + (lr.maxH / 1e3).toFixed(0) + ' km maxRelief=' + (lr.maxZ / 1e3).toFixed(1) + ' km');
 lr = longRun(10e3, 5000);
-check.ok('50 Myr at 10 kyr/frame is finite and respects both floors',
-	Number.isFinite(lr.maxH) && lr.minGap > P.gFloor * P.w0 * (1 - P.floorTol) &&
-		lr.minCrush > P.crushFloor * (1 - P.floorTol),
-	'maxCrust ' + (lr.maxH / 1e3).toFixed(0) + ' km; ordinary gap ' +
-		(lr.minGap / P.w0).toFixed(4) + ' w0, closing C-C ' + (lr.minCrush / P.w0).toFixed(4) + ' w0');
+check.ok('50 Myr trajectory respects both contact floors after every frame',
+	Number.isFinite(lr.maxH) && lr.trajectoryGap > gapFloor && lr.trajectoryCrush > crushFloor,
+	'min ordinary ' + (lr.trajectoryGap / P.w0).toFixed(4) + ' w0, closing C-C ' +
+	(lr.trajectoryCrush / P.w0).toFixed(4) + ' w0; stage minima K3/K4/event/finalFloor/K5 ' +
+	(lr.afterK3Gap / P.w0).toFixed(4) + '/' + (lr.afterK4Gap / P.w0).toFixed(4) + '/' +
+	(lr.afterEventGap / P.w0).toFixed(4) + '/' + (lr.afterEventFloorGap / P.w0).toFixed(4) + '/' +
+	(lr.afterK5Gap / P.w0).toFixed(4) + ' w0; final ' + (lr.minGap / P.w0).toFixed(4) + '/' +
+	(lr.minCrush / P.w0).toFixed(4) + ' w0');
 invariants();
 
 check.section('M2.1 determinism and finite state at every kernel boundary');

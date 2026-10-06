@@ -13,7 +13,12 @@ var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns
 var MAG = (typeof module !== 'undefined' && module.exports) ? require('./magma.js') : window.COLMAGMA;
 
 var CRU = {
-	face: new Float64Array(P.colCap)     // right-face flux of each column, per stencil
+	face: new Float64Array(P.colCap),    // right-face flux of each column, per stencil
+	beltMask: new Uint8Array(P.colCap),
+	beltRate: new Float64Array(P.colCap),
+	beltOut: new Float64Array(P.colCap),
+	beltIn: new Float64Array(P.colCap),
+	beltScale: new Float64Array(P.colCap)
 };
 
 // Lithosphere strength (design §4.4, reference §6.5): thick, old crust on a cold planet
@@ -231,6 +236,7 @@ CRU.collapse = function (st, dt) {
 		}
 	}
 	CRU.belt(st, dt);
+	CRU.beltLocal(st, dt);
 };
 
 // Every K5 redistribution uses real stack volume, but a receiver may take only the headroom
@@ -293,6 +299,92 @@ CRU.belt = function (st, dt) {
 			beltFeedTo(st, i, wmodc(i - k, n), th);
 			beltFeedTo(st, j, wmodc(j + k, n), th);
 		}
+	}
+};
+
+// The bulk belt shed above responds to a pair's mean root. A narrow ridge can still have
+// a steep one-column shoulder while that mean remains below the outer-flank yield. Add a
+// separate, local gradient term over the same six-column catchment: felsic volume moves
+// down total-crust relief only when a face exceeds beltYield. This does not redefine
+// COL.beltAt (still shared by bulk flow and plate resistance), alter the force law, or
+// change the R2 measurement; it supplies the missing short-range lateral redistribution.
+//
+// Fluxes are gathered before any transfer. The fraction k*dt/(1+2*k*dt) accounts for a
+// column's two adjacent faces and stays below 1/2, preventing a simultaneous stencil from
+// reversing a local gradient. Both source inventory and receiver headroom are scaled in
+// volume units before COL.collapseMove applies the flux, so clipping is not a sink.
+CRU.beltLocal = function (st, dt) {
+	var n = st.nCol, i, j, k, c, speed, diff, from, excess, kd, den, volume, room;
+	var face = CRU.face, mask = CRU.beltMask, rate = CRU.beltRate;
+	var outgoing = CRU.beltOut, incoming = CRU.beltIn, scale = CRU.beltScale;
+	if (!(dt > 0) || n < 3 || !(P.kBeltGradient > 0)) return;
+	face.fill(0, 0, n);
+	mask.fill(0, 0, n);
+	rate.fill(0, 0, n);
+	outgoing.fill(0, 0, n);
+	for (i = 0; i < n; i++) {
+		if (st.edge[i] !== P.EDGE.collide || st.colGhost[i]) continue;
+		j = i + 1 < n ? i + 1 : 0;
+		if (st.colGhost[j]) continue;
+		speed = 0.5 + Math.abs(st.edgeRelN[i]) / P.vRef;
+		for (k = -P.beltFeed; k <= 1 + P.beltFeed; k++) {
+			c = wmodc(i + k, n);
+			if (st.colGhost[c]) continue;
+			mask[c] = 1;
+			if (speed > rate[c]) rate[c] = speed;
+		}
+	}
+	for (i = 0; i < n; i++) {
+		j = i + 1 < n ? i + 1 : 0;
+		if (!mask[i] || !mask[j] || st.colGhost[i] || st.colGhost[j]) continue;
+		diff = st.hTot[i] - st.hTot[j];
+		if (diff > P.beltYield) { from = i; excess = diff - P.beltYield; }
+		else if (diff < -P.beltYield) { from = j; excess = -diff - P.beltYield; }
+		else continue;
+		kd = P.kBeltGradient * dt * Math.max(rate[i], rate[j]);
+		den = st.colW[i] + st.colW[j];
+		volume = excess * (st.colW[i] * st.colW[j] / den) * (kd / (1 + 2 * kd));
+		if (!(volume > 0)) continue;
+		face[i] = diff > 0 ? volume : -volume;
+		outgoing[from] += volume;
+	}
+	for (i = 0; i < n; i++) {
+		volume = st.hFel[i] * st.colW[i];
+		if (!(volume > 0)) volume = 0;
+		scale[i] = outgoing[i] > volume && outgoing[i] > 0 ? volume / outgoing[i] : 1;
+	}
+	for (i = 0; i < n; i++) {
+		volume = face[i];
+		if (volume === 0) continue;
+		j = i + 1 < n ? i + 1 : 0;
+		from = volume > 0 ? i : j;
+		face[i] = volume * scale[from];
+	}
+	incoming.fill(0, 0, n);
+	for (i = 0; i < n; i++) {
+		volume = face[i];
+		if (volume === 0) continue;
+		j = i + 1 < n ? i + 1 : 0;
+		if (volume > 0) incoming[j] += volume;
+		else incoming[i] -= volume;
+	}
+	for (i = 0; i < n; i++) {
+		room = (P.crustMax - st.hTot[i]) * st.colW[i];
+		if (!(room > 0)) room = 0;
+		scale[i] = incoming[i] > room && incoming[i] > 0 ? room / incoming[i] : 1;
+	}
+	for (i = 0; i < n; i++) {
+		volume = face[i];
+		if (volume === 0) continue;
+		j = i + 1 < n ? i + 1 : 0;
+		face[i] = volume * scale[volume > 0 ? j : i];
+	}
+	for (i = 0; i < n; i++) {
+		volume = face[i];
+		if (volume === 0) continue;
+		j = i + 1 < n ? i + 1 : 0;
+		if (volume > 0) COL.collapseMove(i, j, volume);
+		else COL.collapseMove(j, i, -volume);
 	}
 };
 

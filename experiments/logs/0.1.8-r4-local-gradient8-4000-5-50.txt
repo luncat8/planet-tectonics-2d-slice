@@ -1,0 +1,72 @@
+
+R4 — convergence is absorbed (0.1.6-plan.md §1)
+
+with the collision brake (vColl 200000 m2/Myr per km of belt)
+    t      closing    belt     root
+   Myr     mm/yr      km       km
+      0       3.4      156      0.1
+     10      11.1      424     15.9
+     20      11.1      472     24.3
+     30       8.8      537     26.1
+     40       8.8      527     29.3
+     50       9.4      515     33.5
+     60       9.9      498     36.9
+     70      10.8      475     35.4
+     80      11.0      525     34.9
+     90      11.4      570     33.5
+    100      11.7      612     32.8
+    110      12.6      570     31.8
+    119      12.7      601     32.1
+    129      13.7      627     32.4
+    139      13.9      572     30.8
+    149      14.1      590     31.0
+    159      14.0      604     31.0
+    169      14.4      617     30.8
+    179      15.2      549     30.8
+    189      15.3      560     29.0
+    199      13.9      653     28.9
+
+negative control: brake off (vColl 0)
+    t      closing    belt     root
+   Myr     mm/yr      km       km
+      0       3.4      156      0.1
+     10      18.4      451     19.8
+     20      15.7      516     31.2
+     30      16.2      515     38.7
+     40      17.0      508     39.0
+     50      18.1      491     37.1
+     60      19.4      541     36.8
+     70      20.8      498     35.2
+     80      22.0      599     34.5
+     90      23.2      608     33.6
+    100      24.4      606     32.7
+    110      25.6      592     32.3
+    119      26.7      570     31.9
+    129      27.4      617     31.9
+    139      28.2      576     31.4
+    149      28.9      608     31.2
+    159      29.5      555     30.5
+    169      29.8      576     30.5
+    179      30.0      673     30.2
+    189      30.1      690     29.9
+    199      30.1      628     29.7
+FAIL  the braked fixture holds a collision for the whole run   3999 of 4000 frames measured, first unmeasurable at t 0.0 Myr
+FAIL  the brake-off control holds a collision for the whole run   3999 of 4000 frames measured, first unmeasurable at t 0.0 Myr
+PASS  the orogen keeps widening through the last quarter   455 -> 604 km
+FAIL  the final-quarter closing rate is at most 75% of the first-quarter mean   10.1 -> 14.5 mm/yr (144%)
+PASS  the brake-off control remains above 90% of its early speed   16.9 -> 29.8 mm/yr (176%)
+PASS  the incumbent brake slows the contact relative to its control   brake 14.5 vs control 29.8 mm/yr
+PASS  maximum total crust stays inside the dt-aware R3 ceiling   80.3 km vs 81.8 km
+INFO  maximum pair root (diagnostic, not the crust ceiling)   38.1 km; maximum total crust 80.3 km
+
+R4 verdict — incumbent brake under the M1 conveyor
+  belt width      455 km over the first quarter -> 604 km over the last (needed: widening)
+  closing speed   10.1 mm/yr -> 14.5 mm/yr, 144% (needed: <= 75%)
+  brake-off control 16.9 -> 29.8 mm/yr (176% of its early speed; needed: > 90%)
+  against a 30 mm/yr drive, the incumbent brake buys 51% of the late control speed
+FAIL  R4 incumbent-brake contract   one or more strict R4 gates above remain open
+  NOT MET: R4 remains open; this run does not satisfy the complete brake/control and crust-ceiling contract.
+  M1 accumulation is measured separately in experiments/orogen-measure.js; a passing
+  short run here is not full acceptance and does not solve the known M0 R4 failure.
+
+4 / 8 FAILURES

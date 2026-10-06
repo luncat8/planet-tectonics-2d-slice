@@ -1,0 +1,61 @@
+
+A. runtime checkpoint codec & validation
+PASS  section arrays, clocks and reconstruction ledger round trip
+PASS  restored section resumes deterministically
+PASS  unaligned file views load
+PASS  refuses damaged header or table at 0 atomically
+PASS  refuses damaged header or table at 4 atomically
+PASS  refuses damaged header or table at 8 atomically
+PASS  refuses damaged header or table at 12 atomically
+PASS  refuses damaged header or table at 16 atomically
+PASS  refuses damaged header or table at 20 atomically
+PASS  refuses damaged header or table at 24 atomically
+PASS  refuses damaged header or table at 28 atomically
+PASS  refuses damaged header or table at 32 atomically
+PASS  refuses damaged header or table at 36 atomically
+PASS  refuses damaged header or table at 496 atomically
+PASS  refuses non-finite state scalar atomically
+PASS  refuses out-of-capacity column count atomically
+PASS  refuses negative geologic step atomically
+PASS  refuses invalid event remainder atomically
+PASS  refuses fractional event count atomically
+PASS  refuses seed inconsistent with header atomically
+PASS  refuses fractional RNG word atomically
+PASS  refuses slider beyond the runtime range atomically
+PASS  refuses truncated data
+
+B. session envelope save & load
+PASS  session format and version are declared
+PASS  session carries mapper and section metadata
+PASS  base64 runtime encoding round-trips bit-identically
+PASS  loadSession restores exact runtime state, mapper and section pack
+PASS  refuses not an object without state corruption
+PASS  refuses foreign format without state corruption
+PASS  refuses future version without state corruption
+PASS  refuses missing runtime without state corruption
+PASS  refuses corrupted embedded pack without state corruption
+
+C. deposit catalogue core & 3D->2D snapshot
+PASS  snapshotSection produces valid snapshot with checksum
+PASS  deposit catalogue is deterministic across repeated generations   21 bodies in plane of 10000 candidates
+PASS  deposit body identity incorporates the pack checksum and the plane reduction   D5e6a558a-00077-vms-1
+PASS  drill returns column stratigraphy and the bodies the hole crosses   beds 2 deposits 1
+PASS  probe detects bodies within its footprint
+
+D. self round-trip export & re-import
+PASS  the self-test lays a cut of the pinned ring without refusal   ok
+PASS  exportSection produces a valid pgt-slice-pack v1
+PASS  exported slice pack passes format validation and checksum verification   valid
+PASS  reconstructed exported slice pack without refusal   ok
+PASS  re-imported thicknesses and ages are inside the pack's own arc quantum   max 14.8 m / 0.121 Myr, bound 42 m / 0.242 Myr at a 50 m quantum over a 78.2 km column
+PASS  re-imported potentials are the exported ones inside the same quantum, and the host class survives it   max potential diff 4.67e-4, 1 host flips
+PASS  every column maps back to the plate the cut named   0 mismatches
+PASS  re-imported volume ledger closes to 1e-9 relative   rel 1.36e-15
+PASS  frame-0 isostasy identity holds on self-exported world (|z - zM| <= 1e-3 m)   worst z identity diff: 9.09e-13 m
+PASS  a quarter-column shift of the cut moves the reconstruction orders past the cap   7143 m vs the round-trip's 14.8 m
+PASS  forward simulation after self round-trip stays inside the spin-up bound   imported 6.14e-2 vs fresh section 6.43e-2 over 1000 frames
+PASS  a re-cut of the engine's own widened ring closes the mass identity to 1e-9   rel 3.56e-16
+PASS  the re-cut invents no crust: every column stays inside the ring's own range   worst outside by 0.000 m of 0.0..80.2 km
+INFO  the re-cut residual of the evolved ring   max thickness move 79156 m over 512 columns, ring 78.2 km nominal
+
+ALL PASS (50 checks)

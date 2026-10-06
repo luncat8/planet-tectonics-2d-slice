@@ -1,0 +1,29 @@
+
+M2 subduction handover
+PASS  a subducted column is consumed, not lost   the loser holds no beds and no crust and is draining; the margin holds 6 beds (13.8 km)
+PASS  the margin stack stays in stratigraphic order   1 holds 6 beds, deepest 2 to top 0
+PASS  subduction transfer is mass neutral before dissolution   rel 0.00e+0
+PASS  the subducted record is left draining and holds no ground   ghost 1 drawn 13.7 km
+PASS  the drained margin keeps a finite section   drawn 9.2 km
+PASS  slab feeds a bounded cold anomaly into fan T   min dT -0.550
+
+M4.2 plume head, chamber and LIP
+PASS  a plume reaches the surface and swells   y -5.0 km r 178 km
+PASS  plume head supplies a chamber and grows a mafic LIP   melt 1200 m2 led 1.200e+3
+PASS  the LIP credits lava production, not mafic melt   prod 5.9e6 m3 mass 5.9e6 m3
+PASS  all M4 buffers are finite
+
+M4.3 water, melt and active-mass ledger
+PASS  active ribbon and chamber mass balances per lithology   worst rel 1.63e-15
+PASS  water is conserved between ribbon, release and wedge sinks   in 2.381e+8 used 7.433e+7 residual 1.638e+8
+PASS  arc melt is present after ribbon dehydration   melt 15579 water 2.346e+7
+PASS  cooling reaches the stagnant-lid speed scale   cD(4 Gyr) 322.1
+PASS  long M4 run remains finite
+
+M4.4 full pipeline: transformation accounting
+PASS  the complete K0-K9 pipeline keeps the per-lithology ledger closed   worst rel 1.07e-15
+PASS  eroded rock is booked as a rock -> sediment transformation   out 0.58e6 m3 in 0.58e6 m3
+PASS  one erosion step stays inside the ledger   worst rel 2.42e-16
+PASS  a spilled chamber is booked as mafic -> sill   sill 0.040e9 m3, maf -0.040e9 m3, worst rel 3.47e-16
+
+ALL PASS (19 checks)
