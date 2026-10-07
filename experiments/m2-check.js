@@ -13,6 +13,7 @@ function invariants() {
 		if (!ArrayBuffer.isView(a)) continue;
 		for (var j = 0; j < a.length; j++) if (!Number.isFinite(a[j])) finite = false;
 	}
+	var owned = true, shortSlots = 0;
 	for (var i = 0; i < S.nCol; i++) {
 		sorted = sorted && S.colX[i] >= 0 && S.colX[i] < P.wrap && (i === 0 || S.colX[i] > S.colX[i - 1]);
 		counts[S.colPlate[i]]++;
@@ -20,12 +21,21 @@ function invariants() {
 		var total = 0;
 		for (var k = 0; k < S.colNL[i]; k++) total += S.layTh[i * P.layerCap + k];
 		sums = sums && Math.abs(total - S.hTot[i]) < 1e-8;
+		// absorbed shortening belongs to a boundary between two plates, never to a slot
+		// inside one (the hand-off dropped it) and never to a draining record
+		if (S.edgeShort[i] < 0) owned = false;
+		if (S.edgeShort[i] > 0) {
+			shortSlots++;
+			if (S.colPlate[i] === S.colPlate[i + 1 < S.nCol ? i + 1 : 0] || S.colGhost[i]) owned = false;
+		}
 	}
+	for (i = S.nCol; i < P.colCap; i++) if (S.edgeShort[i] !== 0) owned = false;
 	check.ok('all state buffers finite', finite);
 	check.ok('positions sorted, unique and wrapped', sorted);
 	check.ok('stack caches agree', sums);
 	check.near('widths cover the periodic domain', width, P.wrap, 1e-12);
 	check.ok('plate counts agree', counts.every(function (n, p) { return n === S.plN[p]; }));
+	check.ok('absorbed shortening sits only on live inter-plate boundaries', owned, shortSlots + ' boundaries carry it');
 }
 
 check.section('M2.0 state, ledger, event order');
@@ -213,7 +223,7 @@ function twoPlates() {
 	for (var i = 0; i < n; i++) {
 		S.colPlate[i] = i < half ? 0 : 1;
 		S.hFel[i] = 35e3; S.colAge[i] = 100;
-		S.edge[i] = 0; S.edgePol[i] = 0; S.edgeAge[i] = 0; S.edgeRPlate[i] = -1;
+		S.edge[i] = 0; S.edgePol[i] = 0; S.edgeAge[i] = 0; S.edgeRPlate[i] = -1; S.edgeShort[i] = 0;
 	}
 	S.nPl = 2; S.plN[0] = half; S.plN[1] = n - half;
 	return half - 1;               // the interior boundary: edge from col half-1 to half
@@ -284,6 +294,13 @@ bi = twoPlates();
 setRel(-5e4);
 S.slope.fill(0);
 PLT.basal(S);
+// The brake's length scale is the shortening the boundary has absorbed through the
+// conveyor (0.1.8 M2, measure D), so a contact that has retired nothing yet brakes
+// nothing, however wide this frame's belt reads.
+check.ok('a collision that has absorbed no shortening yet exerts no resistance',
+	S.edgeShort[bi] === 0 && PLT.fP[S.colPlate[bi]] === 0 && PLT.fP[S.colPlate[bi + 1]] === 0);
+S.edgeShort[bi] = 3 * P.w0;
+PLT.basal(S);
 // The resistance is a line force on the two *plates* (fP, m2/Myr), not a per-column
 // velocity: a boundary term divided by the plate's column count is 1/n of the force it
 // stands for, which is why the 0.1.5 collision never braked anything.
@@ -291,8 +308,9 @@ var collF = PLT.fP[S.colPlate[bi]];
 check.ok('collision resistance pushes both plates apart, equal and opposite',
 	collF < 0 && PLT.fP[S.colPlate[bi + 1]] === -collF, (collF / 1e9).toFixed(2) + 'e9 m2/Myr');
 COL.beltAt(S, S.nCol, bi);
-check.near('the resistance acts over the belt the contact has built', collF,
-	-P.vColl * Math.min(2, COL.beltFel / P.hFelLand0) * 5e4 / P.vRef * COL.beltW, 1e-9);
+check.near('the resistance acts over the shortening the boundary has absorbed', collF,
+	-P.vColl * Math.min(2, COL.beltFel / P.hFelLand0) * 5e4 / P.vRef * S.edgeShort[bi], 1e-9);
+S.edgeShort[bi] = 0;
 
 S.hFel[5] = 0; S.slope[5] = 1e-3;
 PLT.basal(S);
@@ -630,6 +648,18 @@ check.ok('a driven C-C pair reaches the conveyor through complete SIM frames',
 check.ok('the conveyor preserves collision history across the retired boundary record',
 	conveyorSite >= 0 && S.edge[conveyorSite] === E.collide,
 	'live collide edge ' + conveyorSite);
+// The retirement books the territory it released on the surviving boundary: the pair was
+// at the crush floor before K4 and is one released column apart after it.
+var conveyorGap = conveyorSite >= 0 ? S.colX[rightOf(conveyorSite)] - S.colX[conveyorSite] : 0;
+if (conveyorGap < 0) conveyorGap += P.wrap;
+check.ok('the conveyor books the released territory as the boundary\'s absorbed shortening',
+	conveyorSite >= 0 && S.edgeShort[conveyorSite] > 0.5 * P.w0 &&
+	Math.abs(S.edgeShort[conveyorSite] - (conveyorGap - P.crushFloor)) <= 0.01 * P.crushFloor,
+	'edgeShort ' + (S.edgeShort[conveyorSite] / 1e3).toFixed(2) + ' km, pair gap ' +
+	(conveyorGap / 1e3).toFixed(2) + ' km, crush floor ' + (P.crushFloor / 1e3).toFixed(2) + ' km');
+var conveyorOther = 0;
+for (var co = 0; co < S.nCol; co++) if (co !== conveyorSite && S.edgeShort[co] !== 0) conveyorOther++;
+check.ok('no other boundary carries absorbed shortening', conveyorOther === 0, conveyorOther + ' slots');
 check.ok('a deposit on the retired stack follows the accretion without a false horizon',
 	S.depCol[0] >= 0 && S.depLay[0] === -1,
 	'column ' + S.depCol[0] + ', layer ' + S.depLay[0]);
@@ -1019,7 +1049,7 @@ function beltFixture() {
 		COL.push(i, (i === b || i === b + 1) ? 60e3 : 8e3, P.LITH.fel, 100, 0);
 		COL.sums(i);
 		S.edge[i] = P.EDGE.none; S.edgeRelN[i] = 0; S.edgePol[i] = 0;
-		S.edgeAge[i] = 0; S.edgeRPlate[i] = -1; S.edgeSlow[i] = 0;
+		S.edgeAge[i] = 0; S.edgeRPlate[i] = -1; S.edgeSlow[i] = 0; S.edgeShort[i] = 0;
 	}
 	S.edge[b] = P.EDGE.collide;
 	S.edgeRelN[b] = -2.5e4;            // 25 mm/yr closing: the speed factor is exactly 1
@@ -1162,7 +1192,7 @@ function beltGradientFixture() {
 		COL.push(c, 35e3, P.LITH.fel, 100, 0);
 		COL.sums(c);
 		S.edge[c] = E.none; S.edgeRelN[c] = 0; S.edgePol[c] = 0;
-		S.edgeAge[c] = 0; S.edgeRPlate[c] = -1; S.edgeSlow[c] = 0;
+		S.edgeAge[c] = 0; S.edgeRPlate[c] = -1; S.edgeSlow[c] = 0; S.edgeShort[c] = 0;
 	}
 	S.colNL[center] = 0;
 	COL.push(center, 60e3, P.LITH.fel, 100, 0);

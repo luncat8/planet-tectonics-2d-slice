@@ -1,13 +1,14 @@
 // r4-check.js — R4, "convergence is absorbed", measured on a prescribed fixture.
 //
 // Two continents are put on a collision course by a far-field drive, and the closing
-// speed, belt width, and root are measured through the whole run. The M1 conveyor now
-// allows the contact to keep consuming convergence; this check still asks whether the
-// incumbent collision brake arrests it. The brake-off control is essential: if the drive
-// alone slows the contact, a low closing speed is not evidence for the brake.
+// speed, belt width, and root are measured through the whole run. The M1 conveyor lets
+// the contact keep consuming convergence; this check asks whether the engine's collision
+// brake (PLT.basal on the absorbed shortening S.edgeShort, 0.1.8 M2) arrests it. The
+// brake-off control is essential: if the drive alone slows the contact, a low closing
+// speed is not evidence for the brake.
 //
-// A passing exploratory run is not the full M1/M2 acceptance set. Keep the M0 R4 failure
-// open until both frame sizes/seeds, the strict event audits, and all mass/replay gates pass.
+// One run is one row of the R4 matrix. Acceptance (0.1.8 M3) is seeds 1 and 5 at 50 and
+// 100 kyr/frame, the strict event audits, and the mass/replay gates together.
 // The fixture builder is shared with experiments/orogen-measure.js so the two cannot drift.
 //
 // run:  node experiments/r4-check.js [frames] [drive_mm_yr] [seed] [kyr_per_frame]
@@ -47,7 +48,7 @@ function run(vColl) {
 	var out = {
 		t: new Float64Array(FRAMES), close: new Float64Array(FRAMES),
 		w: new Float64Array(FRAMES), root: new Float64Array(FRAMES),
-		live: 0, lost: -1, maxH: 0
+		live: 0, lost: -1, pre: 0, maxH: 0
 	};
 	var keepV = P.vColl, keepD = P.kDam, i, k, peak, flank;
 	P.vColl = vColl;
@@ -59,7 +60,10 @@ function run(vColl) {
 		SIM.step();
 		for (k = 0; k < S.nCol; k++) if (S.hTot[k] > out.maxH) out.maxH = S.hTot[k];
 		k = check.collisionSite();
-		if (k < 0) { if (out.lost < 0) out.lost = i; continue; }
+		// Before the fixture's first contact there is nothing to lose (seed 5 has one such
+		// frame at t = 0, brake on or off); every frame after it must hold a collision.
+		// The same rule as experiments/orogen-measure.js, so the two read one fixture.
+		if (k < 0) { if (out.live === 0) out.pre++; else if (out.lost < 0) out.lost = i; continue; }
 		COL.beltAt(S, S.nCol, k);
 		peak = Math.max(S.hTot[k], S.hTot[k + 1 < S.nCol ? k + 1 : 0]);
 		flank = COL.flankH;
@@ -99,7 +103,7 @@ check.section('R4 — convergence is absorbed (0.1.6-plan.md §1)');
 var brake = run(P.vColl);
 var free = run(0);
 
-table(brake, 'with the collision brake (vColl ' + P.vColl + ' m2/Myr per km of belt)');
+table(brake, 'with the collision brake (vColl ' + P.vColl + ' m/Myr per unit of absorbed shortening)');
 table(free, 'negative control: brake off (vColl 0)');
 
 var q = Math.max(1, Math.floor(brake.live / 4));
@@ -109,8 +113,8 @@ var earlyW = mean(brake.w, 0, q), lateW = mean(brake.w, brake.live - q, brake.li
 var fEarly = mean(free.close, 0, fq), fLate = mean(free.close, free.live - fq, free.live);
 var maxRoot = 0, i;
 for (i = 0; i < brake.live; i++) if (brake.root[i] > maxRoot) maxRoot = brake.root[i];
-var brakeHeld = brake.live === FRAMES && brake.lost < 0;
-var controlHeld = free.live === FRAMES && free.lost < 0;
+var brakeHeld = brake.live + brake.pre === FRAMES && brake.lost < 0;
+var controlHeld = free.live + free.pre === FRAMES && free.lost < 0;
 var beltWidens = lateW > earlyW;
 var controlStaysFast = fEarly > 0 && fLate > 0.9 * fEarly;
 var closesArrested = early > 0 && late <= 0.75 * early;
@@ -118,11 +122,11 @@ var brakeActs = fLate > 0 && late < 0.95 * fLate;
 var ceiling = brake.maxH <= P.crustMax + 35e3 * DT_MYR;
 
 check.ok('the braked fixture holds a collision for the whole run', brakeHeld,
-	brake.live + ' of ' + FRAMES + ' frames measured' + (brake.lost >= 0
-		? ', first unmeasurable at t ' + (brake.lost * DT_MYR).toFixed(1) + ' Myr' : ''));
+	brake.live + ' of ' + FRAMES + ' frames measured' + (brake.pre ? ', ' + brake.pre + ' before the first contact' : '') +
+	(brake.lost >= 0 ? ', first unmeasurable at t ' + (brake.lost * DT_MYR).toFixed(1) + ' Myr' : ''));
 check.ok('the brake-off control holds a collision for the whole run', controlHeld,
-	free.live + ' of ' + FRAMES + ' frames measured' + (free.lost >= 0
-		? ', first unmeasurable at t ' + (free.lost * DT_MYR).toFixed(1) + ' Myr' : ''));
+	free.live + ' of ' + FRAMES + ' frames measured' + (free.pre ? ', ' + free.pre + ' before the first contact' : '') +
+	(free.lost >= 0 ? ', first unmeasurable at t ' + (free.lost * DT_MYR).toFixed(1) + ' Myr' : ''));
 check.ok('the orogen keeps widening through the last quarter', beltWidens,
 	(earlyW / 1e3).toFixed(0) + ' -> ' + (lateW / 1e3).toFixed(0) + ' km');
 check.ok('the final-quarter closing rate is at most 75% of the first-quarter mean', closesArrested,
@@ -131,29 +135,29 @@ check.ok('the final-quarter closing rate is at most 75% of the first-quarter mea
 check.ok('the brake-off control remains above 90% of its early speed', controlStaysFast,
 	(fEarly / 1e3).toFixed(1) + ' -> ' + (fLate / 1e3).toFixed(1) + ' mm/yr (' +
 	(fEarly > 0 ? (100 * fLate / fEarly).toFixed(0) : 'n/a') + '%)');
-check.ok('the incumbent brake slows the contact relative to its control', brakeActs,
+check.ok('the brake slows the contact relative to its control', brakeActs,
 	'brake ' + (late / 1e3).toFixed(1) + ' vs control ' + (fLate / 1e3).toFixed(1) + ' mm/yr');
 check.ok('maximum total crust stays inside the dt-aware R3 ceiling', ceiling,
 	(brake.maxH / 1e3).toFixed(1) + ' km vs ' + ((P.crustMax + 35e3 * DT_MYR) / 1e3).toFixed(1) + ' km');
 check.info('maximum pair root (diagnostic, not the crust ceiling)',
 	(maxRoot / 1e3).toFixed(1) + ' km; maximum total crust ' + (brake.maxH / 1e3).toFixed(1) + ' km');
 
-console.log('\nR4 verdict — incumbent brake under the M1 conveyor');
+console.log('\nR4 verdict — the absorbed-shortening brake (S.edgeShort) under the M1 conveyor');
 console.log('  belt width      ' + (earlyW / 1e3).toFixed(0) + ' km over the first quarter -> ' +
 	(lateW / 1e3).toFixed(0) + ' km over the last (needed: widening)');
 console.log('  closing speed   ' + (early / 1e3).toFixed(1) + ' mm/yr -> ' + (late / 1e3).toFixed(1) +
 	' mm/yr, ' + (100 * late / early).toFixed(0) + '% (needed: <= 75%)');
 console.log('  brake-off control ' + (fEarly / 1e3).toFixed(1) + ' -> ' + (fLate / 1e3).toFixed(1) +
 	' mm/yr (' + (100 * fLate / fEarly).toFixed(0) + '% of its early speed; needed: > 90%)');
-console.log('  against a ' + (2 * DRIVE / 1e3).toFixed(0) + ' mm/yr drive, the incumbent brake buys ' +
+console.log('  against a ' + (2 * DRIVE / 1e3).toFixed(0) + ' mm/yr drive, the brake buys ' +
 	(100 * (1 - late / fLate)).toFixed(0) + '% of the late control speed');
 var met = brakeHeld && controlHeld && beltWidens && closesArrested && controlStaysFast && brakeActs && ceiling;
-check.ok('R4 incumbent-brake contract', met,
+check.ok('R4 brake contract', met,
 	met ? 'all live, accumulation, arrest, negative-control and total-crust gates pass' :
 		'one or more strict R4 gates above remain open');
-console.log('  ' + (met ? 'MET: the collision is held and the incumbent brake absorbs convergence.'
+console.log('  ' + (met ? 'MET: the collision is held and the brake absorbs convergence.'
 	: 'NOT MET: R4 remains open; this run does not satisfy the complete brake/control and crust-ceiling contract.'));
-console.log('  M1 accumulation is measured separately in experiments/orogen-measure.js; a passing');
-console.log('  short run here is not full acceptance and does not solve the known M0 R4 failure.');
+console.log('  One seed at one frame size is one row of the R4 matrix: 0.1.8 M3 requires seeds 1 and 5');
+console.log('  at 50 and 100 kyr/frame (experiments/orogen-measure.js engine mode reads the same fixture).');
 
 check.done();

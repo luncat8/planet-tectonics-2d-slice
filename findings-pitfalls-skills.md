@@ -708,3 +708,38 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   surface window. Materialize it with `Array.from` (or iterate) before indexing. A time-gap
   check must also use the current frame minus the previous event frame, not the run's total
   frame count; the contact audit now self-tests both rules before trusting R1 or event memory.
+
+## 0.1.8 M2 landing (a per-boundary scalar outside the gather)
+
+- **A column field that is not in `COL.fields` is not moved by the gather.** `COL.gather`
+  permutes exactly that list; `S.edgeShort` stays out of it on purpose (the frozen v1 pack is
+  the reason), so `COL.transport` must carry it by hand with the *same* neighbour test it
+  uses to reset edge history, and `COL.k4` must snapshot it with the other `hist*` arrays
+  before the gather and hand it back through the plate-identity branches. Forgetting the
+  transport carry leaves the value on the old index while the column moves — silent, and
+  invisible to a fixture that never sorts. Gate it with an ownership invariant (the value
+  sits only on inter-plate boundaries) in every `invariants()` pass, not with one fixture.
+- **Memory tied to a boundary belongs to the pair of records, not to the boundary's state.**
+  Resetting an orogen's absorbed shortening on `collide → neutral` would release the brake
+  the moment it works (below `epsLo`) and restart the collision from zero: an oscillation
+  the classifier's hysteresis cannot see. Clear it where the pair stops existing (sort,
+  K4 hand-off, birth, suture) and nowhere else.
+- **A new typed array in `S` is a new checkpoint record by construction.** `js/checkpoint.js`
+  enumerates `S`, so the table grows without an edit — which is exactly why the VERSION must
+  be bumped by hand and the previous version's refusal asserted, or an old file would be
+  rejected by a confusing length/table error instead of its version word.
+- **A harness that "keeps the engine's own term" stops meaning that when the engine moves.**
+  `orogen-measure`'s `instant` row was `P.vColl = k` with nothing added; after D landed that
+  is the new brake, not the old one. Re-create the historical term explicitly in the hook and
+  add a named mode for the engine, so the old table stays reproducible and the new engine is
+  measured through the same gates (`engine` reads the identical closing numbers as
+  `r4-check`, which is the drift check between the two).
+- **`var` hoisting makes "configured before declared" read as unconfigured.** `if
+  (isFinite(KFIX)) SWEEP = [KFIX]` placed above `var KFIX = …` is always false; the "frozen"
+  M2 runs swept the full list and happened to select the first row. A constant that gates a
+  sweep must be declared before the sweep is built — and a frozen run should print one row.
+- **R1's site window is anchored at the event bucket's left edge, not at the event.** The
+  window is `bucket × 2.5 w0 ± 1.5 w0`; a conveyor retirement whose merged column spans
+  ~80 km can put its own footprint 2–3 km outside it, and the gate then compares the event
+  with itself (both extremes on the same frame, 20 km apart). The `event site` line now prints
+  frame and x for both extremes so this is visible without a probe.

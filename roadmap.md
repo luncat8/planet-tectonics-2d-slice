@@ -12,7 +12,7 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | release | deliverable | plan | depends on |
 | --- | --- | --- | --- |
 | 0.1.7 | crust flow units: the two relaxations in metres and Myr, the ceiling made honest; corrected R1/R2/R5 gates and R4 remain open | `0.1.7-plan.md`, `archive/0.1.7-review-followup.md` | — |
-| 0.1.8 | collision arrest: select an orogen measure, preserve its identity, close R1/R2/R4/R5 | `0.1.8-plan.md` | 0.1.7 flow laws and corrected audit |
+| 0.1.8 | collision arrest: the absorbed-shortening brake (`S.edgeShort`, checkpoint v4) closes R4; R1/R2/R5 open only as measurement definitions on one 100 kyr leg | `0.1.8-plan.md`, `archive/0.1.8-worklog.md` | 0.1.7 flow laws and corrected audit |
 | 0.2.x | column engine: eruptives, deposits, extraction; page chrome (pause/step/reset) uses E1/E3 | `0.2.0-plan.md` | — |
 | 0.3.x | particle engine P3+ (melt, eruptions, contact) | `0.3.0-plan.md`, `0.3.0-p3-plan.md` | — |
 | 0.4.0 | sync/exchange: provenance, deposits core, water, checkpoint, section pack | `0.4.0-sync-plan.md` | — |
@@ -71,7 +71,11 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   R5 repeats remain on the two 100 kyr legs, all outside the kernel's `P.evAge` memory.
   0.1.8 M2, `archive/0.1.8-m2-worklog.md`: the brake measure is selected by measurement —
   the accumulated boundary shortening at k 2e5 meets the arrest contract on both seeds at
-  50 and 100 kyr/frame; the engine landing and the M3 matrix are what remain.)
+  50 and 100 kyr/frame. Landed as `S.edgeShort` with checkpoint VERSION 4 and the M3 matrix
+  run, `archive/0.1.8-worklog.md`: **R4 MET** on all four seed/rate rows (51/67/33/43%),
+  three strict legs 11/11, `5000/5/100` 8/11 on a re-rolled trajectory with each red traced
+  to a measurement definition — the R1 site-window anchoring and the R2 inherited-margin
+  onset — not to the hand-off. Those two definitions are the next plan's first items.)
 
 ## 4. Not planned
 

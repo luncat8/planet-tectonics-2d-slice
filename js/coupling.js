@@ -398,7 +398,7 @@ var COUP = (function () {
 		}
 		var fields = ['colW', 'colX', 'colNL', 'layTh', 'layLi', 'layAg', 'layFl',
 			'hFel', 'hMaf', 'hSed', 'hTot', 'colAge', 'fert', 'damage', 'Tf', 'colPlate', 'colU',
-			'edge', 'edgePol', 'edgeRPlate', 'edgeAge', 'edgeSlow', 'edgeRelN', 'trenchDist',
+			'edge', 'edgePol', 'edgeRPlate', 'edgeAge', 'edgeSlow', 'edgeShort', 'edgeRelN', 'trenchDist',
 			'z', 'zDyn', 'wet', 'hDraw', 'syncFel', 'syncMaf', 'syncSed', 'syncValid'];
 		for (var i = 0; i < fields.length; i++) {
 			if (!st[fields[i]] || st[fields[i]].length < n) return 'section state is missing ' + fields[i];
@@ -481,6 +481,11 @@ var COUP = (function () {
 			boundaryPol[best] = rows[i].pol;
 			boundaryScore[best] = score;
 		}
+		// The absorbed shortening (S.edgeShort) does not cross a cut or an import: the v1
+		// pack has no field for it, and the boundaries written here are the globe's, not
+		// the ones the section's conveyor built. An import restarts it at zero and the
+		// brake rebuilds from the section's own retirements (0.1.8-plan.md §4, §5 M2).
+		st.edgeShort.fill(0, 0, n);
 		for (j = 0; j < edgeN; j++) {
 			priorEdge[j] = st.edge[j]; priorPol[j] = st.edgePol[j];
 			priorRight[j] = st.edgeRPlate[j]; priorAge[j] = st.edgeAge[j];

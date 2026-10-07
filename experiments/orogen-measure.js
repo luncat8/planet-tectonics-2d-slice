@@ -3,7 +3,7 @@
 // The M1 kernel must let a continent-continent contact keep consuming convergence after its
 // crush floor. This harness first measures the unbraked conveyor against the prescribed
 // drive, then compares three possible arrest signals only if that machine still responds.
-// The incumbent collision brake in PLT.basal uses COL.beltAt -> beltW; a belt redistributed
+// The 0.1.7 collision brake in PLT.basal used COL.beltAt -> beltW; a belt redistributed
 // by the contact, or whose flanks rise with it, can report a small orogen while a large one
 // stands there. 0.1.8-plan.md §3 names two alternatives to measure before either becomes a
 // kernel constant:
@@ -12,15 +12,23 @@
 //      moving catchment around the contact. Derived from the stacks, no new state.
 //   B. decaying edge memory — a bounded scalar on the collision boundary that records the
 //      belt width the edge has built, fast to build and slow to forget in /Myr units.
+//   C. the same memory without the forgetting term.
+//   D. the shortening the boundary has itself absorbed (selected by M2, landed as
+//      S.edgeShort). Here it is booked from the plate-witness walk, continuously; the
+//      engine books it per boundary at each conveyor retirement.
 //
-// Both candidates are run through the *same brake hook* as the incumbent, so the three
-// differ only in the measure W they put in
+// All candidates are run through the *same brake hook*, so they differ only in the
+// measure W they put in
 //
 //   m = k * W * fb * (-edgeRelN) / vRef        (m2/Myr, a line force, as PLT.basal's)
 //
 // and each is fitted by the smallest k that meets R4's arrest contract on the fit seed,
-// then checked on the other. The fixture, the drive and the collision-site walk are
-// shared with experiments/r4-check.js through lib.js, so the two cannot drift.
+// then checked on the other. `instant` re-creates the 0.1.7 term (W = this frame's
+// COL.beltW) in the hook, so the M0/M2 tables stay reproducible after the engine moved
+// on; `engine` leaves PLT.basal's own term on (P.vColl = k) and adds nothing, which is
+// how the landed S.edgeShort brake is verified against the same contract. The fixture,
+// the drive and the collision-site walk are shared with experiments/r4-check.js through
+// lib.js, so the two cannot drift.
 //
 // The fixture-scoped gates below are the audit's contracts read on this run: R1 (the
 // events move the drawn surface no more than the rest of their own frame), R2 (a collision
@@ -28,7 +36,8 @@
 // changes twice inside evGap). 0.1.8 M2 still owes the four strict contact-audit legs on
 // the integrated kernel; this script only decides which representation the kernel takes.
 //
-// run:  node experiments/orogen-measure.js [frames=4000] [fitSeed=1] [checkSeed=5] [kyr=50] [modes=instant,A,B|none] [kBelt=0.12]
+// run:  node experiments/orogen-measure.js [frames=4000] [fitSeed=1] [checkSeed=5] [kyr=50] [modes=instant,A,B,C,D,engine|none] [kBelt=0.12]
+//       KFIX=2e5 node experiments/orogen-measure.js 4000 1 5 100 engine     # frozen k, both seeds
 
 'use strict';
 var L = require('./lib.js');
@@ -48,14 +57,13 @@ var DRIVE = 15e3;                 // m/Myr per continent: the prescribed 30 mm/y
 var DT_FRAME = KYR / 1e3;         // Myr per frame (KYR is kyr/frame)
 var TAU_BUILD = 1;                // Myr, candidate B: the edge records what it is building
 var TAU_FORGET = 50;              // Myr, candidate B: and forgets it on a geological one
+// KFIX freezes the constant for the M2/M3 verification runs: no sweep, one k, both seeds.
+var KFIX = process.env.KFIX === undefined ? NaN : Number(process.env.KFIX);
 var SWEEP = [2e5, 5e5, 1e6, 2e6, 4e6, 1e7, 3e7];   // m/Myr; vColl is 2e5, so the sweep starts there
-if (isFinite(KFIX)) SWEEP = [KFIX];
 // D's measure is the accumulated shortening in metres, the same unit band as the belt
 // width, so it shares the sweep (it starts near zero and must end near the drive).
 var SWEEP_D_LOW = [5e4, 1e5, 1.5e5];
-// KFIX freezes the constant for the M2/M3 verification runs: no sweep, one k, both seeds.
-var KFIX = process.env.KFIX === undefined ? NaN : Number(process.env.KFIX);
-if (isFinite(KFIX)) SWEEP_D_LOW = [];
+if (isFinite(KFIX)) { SWEEP = [KFIX]; SWEEP_D_LOW = []; }
 var DBG = 0;
 
 var basal = PLT.basal;
@@ -235,7 +243,7 @@ function makeHook(mode, k) {
 				if (mode === 'C') { if (w > MEM[i]) MEM[i] = w; }
 				else MEM[i] += (w > MEM[i] ? aUp : aDown) * (w - MEM[i]);
 			} else if (mode !== 'C') MEM[i] -= MEM[i] * aDown;
-			if (mode === 'instant' || mode === 'off') continue;
+			if (mode === 'engine' || mode === 'off') continue;
 			if (st.edge[i] !== P.EDGE.collide || st.colGhost[i] || st.colGhost[j]) continue;
 			// the prescribed collision only: the fixture has one, and a candidate must not
 			// brake the rift the drive opens behind it
@@ -250,7 +258,8 @@ function makeHook(mode, k) {
 			// territory against 5303 km of witness shortening on seed 1, 98.8%). The
 			// engine's per-boundary form is the released territory at each retirement,
 			// which COL.k4 already measures as the before/after gap change.
-			w = mode === 'A' ? vexAt(st, i) / P.beltRise :
+			w = mode === 'instant' ? COL.beltW :
+				mode === 'A' ? vexAt(st, i) / P.beltRise :
 				mode === 'D' ? (ACTIVE_RUN ? ACTIVE_RUN.shortening : 0) : MEM[i];
 			m = k * w * fb * close / P.vRef;
 			if (process.env.SHORTDBG && DBG < 8) { DBG++; console.log('   [D] w ' + w.toFixed(1) + ' km  close ' + (close / 1e3).toFixed(2) + '  fb ' + fb.toFixed(2) + '  m ' + m.toExponential(2) + '  k ' + k.toExponential(1) + '  drive ' + (DRIVE * cD).toExponential(2)); }
@@ -262,9 +271,9 @@ function makeHook(mode, k) {
 
 // --- the run ----------------------------------------------------------------------
 
-// One R4 run under one brake. `instant` keeps PLT.basal's own term with the swept k
-// (P.vColl = k); A and B switch that term off (P.vColl = 0) and add theirs, so no run
-// ever carries two collision brakes.
+// One R4 run under one brake. `engine` keeps PLT.basal's own term with the swept k
+// (P.vColl = k); every other mode switches that term off (P.vColl = 0) and adds its own in
+// the hook, so no run ever carries two collision brakes.
 function run(seed, mode, k) {
 	var out = {
 		mode: mode, k: k, seed: seed,
@@ -288,7 +297,7 @@ function run(seed, mode, k) {
 	};
 	var keepV = P.vColl, keepD = P.kDam, t0 = Date.now(), i, f, c, j, gap, x0, x1, dx0, dx1;
 	P.kDam = 0;                  // the drive diverges the far field; damage would split it
-	P.vColl = mode === 'instant' ? k : 0;
+	P.vColl = mode === 'engine' ? k : 0;
 	check.twoContinents(seed);
 	SIM.setGeo(KYR * 1e3);
 	MEM.fill(0); MEM_PREV.fill(0); MEM_NEXT.fill(0);
@@ -735,13 +744,14 @@ if (!response.conveyorResponsive) {
 		'candidate rows must pass the same gates and do not close M1 acceptance');
 }
 MODES.forEach(function (mode) {
-	check.section('candidate ' + mode + (mode === 'instant' ? ' (incumbent: this frame\'s COL.beltW)'
+	check.section('candidate ' + mode + (mode === 'instant' ? ' (the 0.1.7 term: this frame\'s COL.beltW)'
+		: mode === 'engine' ? ' (the landed brake: PLT.basal on S.edgeShort, booked per retirement)'
 		: mode === 'A' ? ' (plateau excess volume / beltRise: derived, no new state)'
 		: mode === 'C' ? ' (accumulated edge memory: the widest belt the boundary has built, no decay)'
 		: mode === 'D' ? ' (accumulated boundary shortening: released territory booked by the conveyor)'
 		: ' (decaying edge memory: tauUp ' + TAU_BUILD + ' Myr, tauDown ' + TAU_FORGET + ' Myr)'));
 	var fitted = null;
-	var sweepK = mode === 'D' ? SWEEP_D_LOW.concat(SWEEP) : SWEEP;
+	var sweepK = mode === 'D' || mode === 'engine' ? SWEEP_D_LOW.concat(SWEEP) : SWEEP;
 	// The constant is fitted on the fit seed, but a candidate is only selected at a k whose
 	// frozen check also passes: the sweep is walked upwards and the first k that meets the
 	// contract on both seeds is taken. The smallest seed-1-only k is reported when it is
@@ -798,7 +808,7 @@ function fedControl(frames) {
 	for (i = 0; i < S.nCol; i++) {
 		S.colAge[i] = 100;
 		S.edge[i] = P.EDGE.none; S.edgePol[i] = 0; S.edgeAge[i] = 0;
-		S.edgeRPlate[i] = -1; S.edgeSlow[i] = 0;
+		S.edgeRPlate[i] = -1; S.edgeSlow[i] = 0; S.edgeShort[i] = 0;
 		S.colNL[i] = 0;
 		if (i < wc) { S.colPlate[i] = 0; COL.push(i, P.hFelLand0, P.LITH.fel, 100, 0); }
 		else if (i < wc + RIBBON) { S.colPlate[i] = 1; COL.push(i, P.hFelLand0, P.LITH.fel, 100, 0); }

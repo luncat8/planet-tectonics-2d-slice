@@ -116,7 +116,7 @@ var capLast = new Int32Array(CAP_K).fill(-1), capStay = new Int32Array(CAP_K);
 var capStayMax = 0;
 var contactMax = 0, contactCol = -1, evDz = 0, flipRepeat = 0;
 var quietDz = 0, quietDh = 0, quietDw = 0, ghostMax = 0, ghostWide = 0, ghostAge = 0, ghostShare = 0;
-var siteDz = 0, awayDz = 0, f, i, k, j, m, d;
+var siteDz = 0, awayDz = 0, siteDzFrame = -1, siteDzX = 0, awayDzFrame = -1, awayDzX = 0, f, i, k, j, m, d;
 var beltN = 0, beltBump = 0, beltWide = 0, beltContigWide = 0, beltExcess = 0;
 var beltRunWorst = 99, beltX = 0, beltRunX = 0, beltNeedleMax = 0, beltNeedleX = 0;
 var beltPeakFrame = -1, beltPeakI = -1, beltPeakH = 0, beltPeakFlank = 0, beltPeakLocal = 0;
@@ -246,8 +246,8 @@ for (f = 0; f < frames; f++) {
 		if (d > 0) {
 			if (event) {
 				if (d > evDz) evDz = d;
-				if (atSite(m * step)) { if (d > siteDz) siteDz = d; }
-				else if (d > awayDz) awayDz = d;
+				if (atSite(m * step)) { if (d > siteDz) { siteDz = d; siteDzFrame = f; siteDzX = m * step; } }
+				else if (d > awayDz) { awayDz = d; awayDzFrame = f; awayDzX = m * step; }
 			} else if (d > quietDz) quietDz = d;
 		}
 		prevZ[m] = sample[m];
@@ -380,8 +380,9 @@ console.log('  max column     frame ' + maxHFrame + ', record ' + maxHCol + ', x
 console.log('  surface        worst single-frame move ' + fmtM(maxDz) + ' at frame ' + maxDzFrame +
 	' x ' + fmtKm(maxDzX) + '   mean ' + (dzSum / Math.max(1, dzN)).toFixed(1) + ' m, ' +
 	over100 + ' raster samples above 100 m');
-console.log('  event site     ' + fmtM(siteDz) + ' at a birth/death site, ' + fmtM(awayDz) +
-	' elsewhere on the same frame, quiet-frame worst ' + fmtM(quietDz) +
+console.log('  event site     ' + fmtM(siteDz) + ' at a birth/death site (frame ' + siteDzFrame + ' x ' +
+	fmtKm(siteDzX) + '), ' + fmtM(awayDz) + ' elsewhere on an event frame (frame ' + awayDzFrame + ' x ' +
+	fmtKm(awayDzX) + '), quiet-frame worst ' + fmtM(quietDz) +
 	'   (quiet-frame drawn thickness ' + fmtKm(quietDh) + ' and width ' + pct(quietDw) +
 	', ' + unmatched + ' quiet records with no counterpart, ' + rematched + ' re-partitioned)');
 console.log('  columns        worst single-frame drawn-thickness change ' + fmtKm(maxDh) + ' at frame ' +

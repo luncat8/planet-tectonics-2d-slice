@@ -606,10 +606,15 @@ check.ok('a newly reported subduction edge and its polarity land on the matching
 	boundaryApplied || 'edge ' + seam + ', left plate ' + S.colPlate[seam] +
 	', overriding plate ' + S.colPlate[rightAtSeam] + ', ribbon x ' + S.ribX0[0] + ', ribbons ' + S.nRib);
 S.edgeAge[seam] = 2.5;
+S.edgeShort[seam] = 5e4;
 boundaryApplied = COUP.apply(S, boundaryMsg, applyOpts(S.nCol));
 check.ok('a stable reported crossing preserves its age and does not duplicate its ribbon',
 	boundaryApplied === '' && S.edgeAge[seam] === 2.5 && S.nRib === 1,
 	boundaryApplied || 'edge age ' + S.edgeAge[seam] + ' Myr, ribbons ' + S.nRib);
+// the v1 pack carries no absorbed shortening, so an import restarts the brake memory at
+// zero even on a boundary whose age survives (0.1.8-plan.md §4)
+check.ok('an import restarts the absorbed boundary shortening at zero',
+	S.edgeShort[seam] === 0 && S.edgeShort.subarray(0, S.nCol).every(function (v) { return v === 0; }));
 boundaryMsg.plates[boundaryRow].bnd = SP.EDGE.open;
 boundaryMsg.plates[boundaryRow].pol = 0;
 boundaryMsg.checksum = COUP.checksum(boundaryMsg);

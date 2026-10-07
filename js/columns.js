@@ -613,6 +613,8 @@ COL.histRP = new Int32Array(P.colCap);
 COL.histLP = new Int32Array(P.colCap);
 COL.histAge = new Float64Array(P.colCap);
 COL.histSlow = new Float64Array(P.colCap);
+COL.histShort = new Float64Array(P.colCap);
+COL.histGap = new Float64Array(P.colCap);  // a conveyor pair's gap before this K4, m
 COL.map = new Int32Array(P.colCap);
 COL.birthSlot = new Int32Array(P.colCap);
 COL.isNew = new Uint8Array(P.colCap);      // final index -> born in this frame's K4
@@ -681,12 +683,15 @@ COL.transport = function (st, dt) {
 	this.gather(n);
 	// An edge's history is valid only if the same two records are still neighbours;
 	// the right plate id alone cannot distinguish a column overtaking its neighbour.
+	// edgeShort is not a COL.fields entry (it must not reach the slice pack), so the
+	// gather did not move it: carry it by hand with the same neighbour test.
+	for (i = 0; i < n; i++) this.histShort[i] = st.edgeShort[i];
 	for (i = 0; i < n; i++) {
 		oldRight[i] = st.sortInverse[(st.sortOrder[i] + 1) % n];
-		if (oldRight[i] === (i + 1) % n) continue;
+		if (oldRight[i] === (i + 1) % n) { st.edgeShort[i] = this.histShort[st.sortOrder[i]]; continue; }
 		st.edge[i] = P.EDGE.neutral;
 		st.edgePol[i] = 0;
-		st.edgeAge[i] = 0; st.edgeSlow[i] = 0;
+		st.edgeAge[i] = 0; st.edgeSlow[i] = 0; st.edgeShort[i] = 0;
 		st.edgeRPlate[i] = -1;
 	}
 	st.widths();
@@ -795,6 +800,31 @@ function wrapX(x) {
 	x %= P.wrap;
 	return x < 0 ? x + P.wrap : x;
 }
+
+// the gap from record i to its right neighbour j, across the wrap
+function pairGap(st, i, j) {
+	var d = st.colX[j] - st.colX[i];
+	return d < 0 ? d + P.wrap : d;
+}
+
+// Hand the pre-K4 boundary i's history to the final slot k. edgeShort rides the same
+// hand-off: the memory belongs to the pair of records, and a slot that takes no history
+// was reset to zero with the rest.
+COL.handEdge = function (st, i, k) {
+	st.edge[k] = this.histEdge[i]; st.edgePol[k] = this.histPol[i];
+	st.edgeAge[k] = this.histAge[i]; st.edgeSlow[k] = this.histSlow[i];
+	st.edgeShort[k] = this.histShort[i];
+	st.edgeRPlate[k] = this.histRP[i];
+};
+
+// The shortening a conveyor retirement lets the boundary absorb: the surviving pair's gap
+// now against the retired pair's gap before K4 (one released column of territory, which
+// the drive then closes back to the crush floor). Metres; the brake's length scale in
+// PLT.basal (0.1.8 M2, measure D).
+COL.released = function (st, count, k, pre) {
+	var post = pairGap(st, k, k + 1 < count ? k + 1 : 0) - pre;
+	return post > 0 ? post : 0;
+};
 
 // What, if anything, a boundary does to the *number* of columns this frame. Both
 // topology intents are gated on the terms the classifier itself uses to enter a state —
@@ -1080,7 +1110,7 @@ COL.rift = function (i, j, birth, Tm) {
 	S.oldW[birth] = 0;
 	S.edgeRPlate[birth] = -1;
 	S.edge[birth] = P.EDGE.neutral;
-	S.edgeAge[birth] = 0; S.edgeSlow[birth] = 0;
+	S.edgeAge[birth] = 0; S.edgeSlow[birth] = 0; S.edgeShort[birth] = 0;
 	// The newborn's final width is exactly half the gap (it sits at the midpoint), so a
 	// continental rift inherits the whole of it and an oceanic one is filled out to
 	// hMafNew(Tm) of new crust over that width, whatever the inherited sliver already
@@ -1205,6 +1235,8 @@ COL.k4 = function (st, dt, t, Tm) {
 		self.histEdge[i] = st.edge[i]; self.histPol[i] = st.edgePol[i];
 		self.histRP[i] = st.edgeRPlate[i]; self.histLP[i] = st.colPlate[i];
 		self.histAge[i] = st.edgeAge[i]; self.histSlow[i] = st.edgeSlow[i];
+		self.histShort[i] = st.edgeShort[i];
+		if (self.intent[i] === 4) self.histGap[i] = pairGap(st, i, (i + 1) % n);
 	}
 	// Convert to volume once; compaction in COL.push now records volume, not thickness.
 	for (i = 0; i < n; i++) {
@@ -1278,7 +1310,7 @@ COL.k4 = function (st, dt, t, Tm) {
 	// neighbour (which may be the newborn at a ridge or the left of a consumed one).
 	for (i = 0; i < count; i++) {
 		st.edge[i] = P.EDGE.none;
-		st.edgeAge[i] = 0; st.edgeSlow[i] = 0;
+		st.edgeAge[i] = 0; st.edgeSlow[i] = 0; st.edgeShort[i] = 0;
 		st.edgePol[i] = 0; st.edgeRPlate[i] = -1;
 	}
 	for (i = 0; i < oldN; i++) {
@@ -1288,18 +1320,17 @@ COL.k4 = function (st, dt, t, Tm) {
 			if (self.map[i] < 0 || self.map[right] < 0) continue;
 			k = self.map[i];
 			if (st.colPlate[k] !== self.histLP[i] || st.colPlate[self.map[right]] !== self.histRP[i]) continue;
-			st.edge[k] = self.histEdge[i]; st.edgePol[k] = self.histPol[i];
-			st.edgeAge[k] = self.histAge[i]; st.edgeSlow[k] = self.histSlow[i];
-			st.edgeRPlate[k] = self.histRP[i];
+			self.handEdge(st, i, k);
+			st.edgeShort[k] += self.released(st, count, k, self.histGap[i]);
 			continue;
 		}
 		if (self.dead[j] || self.map[j] < 0) continue;
 		k = (self.map[j] + count - 1) % count;
 		if (st.colPlate[k] !== self.histLP[i]) continue;
 		if (st.colPlate[self.map[j]] !== self.histRP[i]) continue;
-		st.edge[k] = self.histEdge[i]; st.edgePol[k] = self.histPol[i];
-		st.edgeAge[k] = self.histAge[i]; st.edgeSlow[k] = self.histSlow[i];
-		st.edgeRPlate[k] = self.histRP[i];
+		self.handEdge(st, i, k);
+		if (self.intent[i] === 4 && self.crush[i] === i && self.dead[i])
+			st.edgeShort[k] += self.released(st, count, k, self.histGap[i]);
 	}
 	self.isNew.fill(0, 0, count);
 	for (i = 0; i < births; i++) {

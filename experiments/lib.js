@@ -87,7 +87,7 @@ check.twoContinents = function (seed) {
 		S.colPlate[i] = i < half ? 0 : 1;
 		S.colAge[i] = 100;
 		S.edge[i] = P.EDGE.none; S.edgePol[i] = 0; S.edgeAge[i] = 0;
-		S.edgeRPlate[i] = -1; S.edgeSlow[i] = 0;
+		S.edgeRPlate[i] = -1; S.edgeSlow[i] = 0; S.edgeShort[i] = 0;
 		S.colNL[i] = 0;
 		COL.push(i, P.hFelLand0, P.LITH.fel, 100, 0);
 		COL.sums(i);

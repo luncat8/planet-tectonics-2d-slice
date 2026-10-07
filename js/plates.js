@@ -79,14 +79,19 @@ PLT.basal = function (S) {
 			f[S.colPlate[loser]] += dir * P.vSlab * P.slabPullK * slabAge * len;
 		}
 		if (S.edge[i] !== P.EDGE.collide || S.edgeRelN[i] >= 0) continue;
-		// The resistance is what the orogen is, not what the two records at the contact
-		// are: it acts over the whole belt the collision has built (COL.beltAt, the same
-		// measurement the R2 gate uses) and it scales with the felsic thickness standing
-		// in it. A young two-column contact is a narrow wall and brakes little; a
-		// twelve-column orogen of thickened crust is a buttress and brakes hard, which is
-		// how a collision comes to rest without a speed limit anywhere (R4).
+		// The resistance is what the orogen has absorbed, not what this frame's belt
+		// looks like: its length scale is the shortening the boundary has itself taken
+		// up through the C-C conveyor (S.edgeShort, booked at each retirement in
+		// COL.k4). The instantaneous belt only decides how thick the crust standing in
+		// the collision is (COL.beltAt, the same measurement the R2 gate uses). A young
+		// contact has absorbed nothing and brakes little; a collision that has consumed
+		// thousands of kilometres of convergence is a buttress and brakes hard, which is
+		// how it comes to rest without a speed limit anywhere (R4). A belt-width scale
+		// fades as the contact consumes and redistributes its own belt (0.1.8 M2, the
+		// instant/B/C rows); the absorbed shortening only grows while the collision
+		// keeps accommodating convergence.
 		COL.beltAt(S, n, i);
-		lb = COL.beltW;
+		lb = S.edgeShort[i];
 		fb = COL.beltFel / P.hFelLand0;
 		if (fb > 2) fb = 2;
 		m = P.vColl * fb * -S.edgeRelN[i] / P.vRef * lb;
@@ -185,7 +190,10 @@ PLT.classify = function (S, dt, kinematic) {
 		prevPol = same && prev === E.subduct ? S.edgePol[i] : 0;
 		S.edgeRPlate[i] = rp;
 		if (S.colPlate[i] === rp) {
+			// the pair is one plate now (a suture): there is no boundary left to own the
+			// absorbed shortening, so it is cleared with the rest of the history
 			S.edge[i] = E.none; S.edgePol[i] = 0; S.edgeAge[i] = 0; S.edgeSlow[i] = 0;
+			S.edgeShort[i] = 0;
 			continue;
 		}
 		if (kinematic) {

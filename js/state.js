@@ -53,6 +53,11 @@ var S = {
 	edge: new Int8Array(P.colCap),          // boundary type with the right neighbour
 	edgeAge: new Float64Array(P.colCap),    // Myr in that boundary state
 	edgeSlow: new Float64Array(P.colCap),   // consecutive Myr of slow C-C contact
+	// The shortening a C-C boundary has itself absorbed, m: the territory each conveyor
+	// retirement releases (0.1.8 M2, measure D). It is the collision brake's length scale.
+	// Section-local by design: not a COL.fields entry, so the v1 slice pack is untouched
+	// and a cut or import restarts it at zero. It is a checkpoint array.
+	edgeShort: new Float64Array(P.colCap),
 	colLoad: new Float64Array(P.colCap),    // mobile sediment load, m (one-hop routing)
 	colLoadFel: new Float64Array(P.colCap), // felsic fraction of mobile load, m
 	colPla: new Float64Array(P.colCap),     // placer load riding colLoad, m
