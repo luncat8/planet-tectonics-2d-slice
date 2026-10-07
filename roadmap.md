@@ -12,7 +12,8 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | release | deliverable | plan | depends on |
 | --- | --- | --- | --- |
 | 0.1.7 | crust flow units: the two relaxations in metres and Myr, the ceiling made honest; corrected R1/R2/R5 gates and R4 remain open | `0.1.7-plan.md`, `archive/0.1.7-review-followup.md` | — |
-| 0.1.8 | collision arrest: the absorbed-shortening brake (`S.edgeShort`, checkpoint v4) closes R4; R1/R2/R5 open only as measurement definitions on one 100 kyr leg | `0.1.8-plan.md`, `archive/0.1.8-worklog.md` | 0.1.7 flow laws and corrected audit |
+| 0.1.8 | collision arrest: the absorbed-shortening brake (`S.edgeShort`, checkpoint v4) closes R4; R1/R2/R5 left open only as measurement definitions on one 100 kyr leg | `archive/0.1.8-plan.md`, `archive/0.1.8-worklog.md` | 0.1.7 flow laws and corrected audit |
+| 0.1.9 | the two contact measurements: R1's site window anchored at the event and its background taken from the quiet-frame yardstick, R2's needle shoulder read over the belt's own neighbourhood | `0.1.9-plan.md`, `archive/0.1.9-worklog.md` | 0.1.8's M3 matrix |
 | 0.2.x | column engine: eruptives, deposits, extraction; page chrome (pause/step/reset) uses E1/E3 | `0.2.0-plan.md` | — |
 | 0.3.x | particle engine P3+ (melt, eruptions, contact) | `0.3.0-plan.md`, `0.3.0-p3-plan.md` | — |
 | 0.4.0 | sync/exchange: provenance, deposits core, water, checkpoint, section pack | `0.4.0-sync-plan.md` | — |
@@ -75,7 +76,17 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   run, `archive/0.1.8-worklog.md`: **R4 MET** on all four seed/rate rows (51/67/33/43%),
   three strict legs 11/11, `5000/5/100` 8/11 on a re-rolled trajectory with each red traced
   to a measurement definition — the R1 site-window anchoring and the R2 inherited-margin
-  onset — not to the hand-off. Those two definitions are the next plan's first items.)
+  onset — not to the hand-off. Those two definitions are the next plan's first items.
+  0.1.9 (`0.1.9-plan.md`, `archive/0.1.9-worklog.md`) decides both by re-measurement on all
+  four legs: R1's site is the event's own footprint and its background is the section's
+  quiet-frame yardstick (0.1.5 §1's own wording; the corrected site reads 1848/2179/1286/
+  2673 m against 5633/4532/1651/4815 m of quiet-frame background), and R2's needle shoulder
+  is the highest real ground in the belt's own neighbourhood (the four failing samples at
+  1424.1 km read 2.23 against the notch and 1.26 or less against the neighbourhood; across
+  14,586 collision samples the wider shoulder flips exactly those four). After the landing
+  the four strict legs read **ALL PASS (12 checks) / ALL PASS / ALL PASS / 1 of 12**, the
+  single red being R5's documented frame-window repeat on `5000/5/100` (0 of 211 inside
+  `P.evAge`). No engine kernel, constant, checkpoint or slice-format change.)
 
 ## 4. Not planned
 

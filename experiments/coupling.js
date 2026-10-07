@@ -612,7 +612,7 @@ check.ok('a stable reported crossing preserves its age and does not duplicate it
 	boundaryApplied === '' && S.edgeAge[seam] === 2.5 && S.nRib === 1,
 	boundaryApplied || 'edge age ' + S.edgeAge[seam] + ' Myr, ribbons ' + S.nRib);
 // the v1 pack carries no absorbed shortening, so an import restarts the brake memory at
-// zero even on a boundary whose age survives (0.1.8-plan.md §4)
+// zero even on a boundary whose age survives (archive/0.1.8-plan.md §4)
 check.ok('an import restarts the absorbed boundary shortening at zero',
 	S.edgeShort[seam] === 0 && S.edgeShort.subarray(0, S.nCol).every(function (v) { return v === 0; }));
 boundaryMsg.plates[boundaryRow].bnd = SP.EDGE.open;

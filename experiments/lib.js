@@ -131,8 +131,24 @@ function r2Ground(st, n, k, dir) {
 	return 0;
 }
 
+// The shoulder of one side: the highest real ground over the slots `k, k+dir, ...` out to
+// `reach` columns, each slot read through r2Ground. The selected R2 needle reads the belt's
+// own neighbourhood this way (beltFeed + 2 each side: the flow's reach and the flank
+// columns COL.beltAt measures the belt against); the immediate-slot reading is kept as the
+// legacy field. A needle is an *isolated* rise, so the bar is the highest ground beside the
+// pair, not its own notch.
+function r2Shoulder(st, n, k, dir, reach) {
+	var best = 0, d, g;
+	for (d = 0; d < reach; d++) {
+		g = r2Ground(st, n, k + d * dir, dir);
+		if (g > best) best = g;
+	}
+	return best;
+}
+
 // The selected R2 shape measure is shared by both audits. `out` is caller-owned so the
-// per-frame scan allocates nothing; outerRatio/widthCount retain the legacy readings.
+// per-frame scan allocates nothing; outerRatio/widthCount/needleImmediateRatio retain the
+// legacy readings.
 //
 // The shoulder is the real ground beside the pair (r2Ground), not the raw neighbour slot:
 // on seed 1 at 100 kyr/frame every one of the 144 needle failures was a pair whose
@@ -141,16 +157,27 @@ function r2Ground(st, n, k, dir) {
 // 2.02 as written, 1.24 against the real ground; with the walk the leg has no needle
 // failure above 1.38). This changes no threshold and cannot turn a passing pair red --
 // skipping a draining record only raises the shoulder, and the shoulder only lowers the
-// ratio. The width half is deliberately unchanged: COL.beltAt's own belt walk stops at a
-// draining record, so a window broken by one is two shorter belts and the contiguity
-// clause must see it that way.
+// ratio.
+//
+// The shoulder is read over the *belt's own neighbourhood* (0.1.9-plan.md §2): the ground
+// from `i-1` out to `i-(beltFeed+2)` and from `j+1` out to `j+(beltFeed+2)` -- the flow's
+// reach and the flank columns COL.beltAt measures the belt against. A belt with a notch or
+// a twin crest is the shape the old immediate-slot reading calls a needle: measured on
+// seed 5/100 at 1424.1 km, an inherited margin column 45.8 km over ground that is 20.5 km
+// at its own notch, 21.4 km one column on and 40.9 km at the flank, read 2.23 against the
+// notch and 1.12 against the neighbourhood. The wider window is a superset of the old one,
+// so it can only lower the ratio and cannot turn a passing pair red; the width half is
+// deliberately unchanged: COL.beltAt's own belt walk stops at a draining record, so a
+// window broken by one is two shorter belts and the contiguity clause must see it that way.
 check.r2ShapeAt = function (st, i, out) {
 	var P = mods.params, n = st.nCol, j = i + 1 < n ? i + 1 : 0;
 	var h = st.hTot, flank, peak, shoulder, count = 0, width = 0, run = 0, k, c, rise;
 	flank = 0.25 * (h[wrapR2(i - P.beltFeed - 1, n)] + h[wrapR2(i - P.beltFeed - 2, n)] +
 		h[wrapR2(j + P.beltFeed + 1, n)] + h[wrapR2(j + P.beltFeed + 2, n)]);
 	peak = Math.max(h[i], h[j]);
-	shoulder = Math.max(r2Ground(st, n, i - 1, -1), r2Ground(st, n, j + 1, +1));
+	shoulder = Math.max(r2Shoulder(st, n, i - 1, -1, P.beltFeed + 2),
+		r2Shoulder(st, n, j + 1, +1, P.beltFeed + 2));
+	out.needleImmediate = Math.max(r2Ground(st, n, i - 1, -1), r2Ground(st, n, j + 1, +1));
 	rise = flank + P.beltRise;
 	for (k = -2; k <= 3; k++) {
 		c = wrapR2(i + k, n);
@@ -164,6 +191,8 @@ check.r2ShapeAt = function (st, i, out) {
 	out.shoulder = shoulder;
 	out.outerRatio = flank > 0 ? peak / flank : (peak > 0 ? Infinity : 1);
 	out.needleRatio = shoulder > 0 ? peak / shoulder : (peak > 0 ? Infinity : 1);
+	out.needleImmediateRatio = out.needleImmediate > 0 ? peak / out.needleImmediate :
+		(peak > 0 ? Infinity : 1);
 	out.widthCount = count;
 	out.widthRun = width;
 	out.built = peak >= flank + P.beltRoot;

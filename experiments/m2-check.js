@@ -609,6 +609,41 @@ check.near('a draining shoulder is stepped over instead of read as a 0 km should
 check.ok('and the stepped-over shoulder stays under the needle limit', r2Shape.needleRatio <= P.beltPeak,
 	'ratio ' + r2Shape.needleRatio.toFixed(3) + ' (raw slot would read ' + (80 / 40) + ')');
 S.colGhost[r2ShapeIndex - 1] = 0;
+// The selected shoulder is the highest real ground in the belt's own neighbourhood (the
+// flow's reach and the flank columns), so a pair standing inside a high margin is not a
+// needle even when the slot beside it is its own notch. The measured case is the one the
+// 0.1.8 M3 matrix exposed: seed 5/100, frame 3180, x 1424.1 km -- an inherited, compressed
+// margin column 45.8 km over ground that is 8.5 km on the thin plate, 20.5 km at its own
+// notch and 40.9 km at the flank. Immediate-slot reading 2.23 (a needle), belt
+// neighbourhood 1.12 (the pair is inside the margin, which is what the section shows).
+for (ri7 = -6; ri7 <= 6; ri7++) S.hTot[r2ShapeIndex + ri7] = 40e3;
+S.hTot[r2ShapeIndex - 4] = 8.3e3; S.hTot[r2ShapeIndex - 3] = 8.1e3;
+S.hTot[r2ShapeIndex - 2] = 8.1e3; S.hTot[r2ShapeIndex - 1] = 8.5e3;
+S.hTot[r2ShapeIndex] = 20.6e3; S.hTot[r2ShapeIndex + 1] = 45.8e3;
+S.hTot[r2ShapeIndex + 2] = 20.5e3; S.hTot[r2ShapeIndex + 3] = 21.4e3; S.hTot[r2ShapeIndex + 4] = 40.9e3;
+L.check.r2ShapeAt(S, r2ShapeIndex, r2Shape);
+check.near('a pair inside a high margin is not a needle at its own notch',
+	r2Shape.needleRatio, 45.8 / 40.9, 1e-12);
+check.ok('and the immediate-slot reading is kept beside it as the legacy field',
+	r2Shape.needleImmediateRatio > P.beltPeak,
+	'immediate ' + r2Shape.needleImmediateRatio.toFixed(2) + 'x over the notch ' +
+	(r2Shape.needleImmediate / 1e3).toFixed(1) + ' km vs selected ' + r2Shape.needleRatio.toFixed(2) + 'x');
+check.near('the same pair still counts as built and takes its width from the flank columns',
+	r2Shape.widthRun, 1, 0);
+// A pair that is not the tallest ground in its neighbourhood is not an isolated rise by
+// construction; the isolated spike that the clause exists for stays red (the narrow-pair
+// fixture above reads 2.0 on a 40 km plain, and here on a 60 km plateau: 95 / 60 = 1.58).
+for (ri7 = -6; ri7 <= 6; ri7++) S.hTot[r2ShapeIndex + ri7] = 60e3;
+S.hTot[r2ShapeIndex] = 95e3; S.hTot[r2ShapeIndex + 1] = 95e3;
+L.check.r2ShapeAt(S, r2ShapeIndex, r2Shape);
+check.near('an isolated pair on a plateau is still a needle', r2Shape.needleRatio, 95 / 60, 1e-12);
+check.ok('and the gate would reject it', r2Shape.needleRatio > P.beltPeak,
+	'ratio ' + r2Shape.needleRatio.toFixed(2) + ' (max ' + P.beltPeak + ')');
+S.hTot[r2ShapeIndex + 4] = 99e3;
+L.check.r2ShapeAt(S, r2ShapeIndex, r2Shape);
+check.ok('a pair below the ground four columns away is not the isolated rise the clause names',
+	r2Shape.needleRatio < 1, 'ratio ' + r2Shape.needleRatio.toFixed(2) + ' against ' +
+	(r2Shape.shoulder / 1e3).toFixed(1) + ' km');
 
 // M1: a whole-plate driven fixture reaches the C-C crush floor in ordinary SIM frames,
 // then retires one boundary record. No one-column coordinate edit is used: PLT.solve and

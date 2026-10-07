@@ -221,7 +221,11 @@ var P = {
 	thermAgeCap: 80,
 	ciLo: 5e3,                   // continental-interpolation band of hFel, m
 	ciHi: 20e3,
-	// ores (design §4.7)
+	// ores (design §4.7). Read by the 0.2.0-M3 ore kernel (js/ore.js, deposit potentials),
+	// not by this engine: today only kA (arc potential, js/crust.js) and kRec (recycled-arc
+	// enrichment) and kB (placer source, js/surface.js) have readers here. The values live in
+	// this table because the design fixes them in one place; do not delete them for having no
+	// reader in the column engine.
 	kV: 0.3,
 	kM: 0.2,
 	kM2: 0.15,

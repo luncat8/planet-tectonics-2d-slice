@@ -5,7 +5,7 @@
 // drive, then compares three possible arrest signals only if that machine still responds.
 // The 0.1.7 collision brake in PLT.basal used COL.beltAt -> beltW; a belt redistributed
 // by the contact, or whose flanks rise with it, can report a small orogen while a large one
-// stands there. 0.1.8-plan.md §3 names two alternatives to measure before either becomes a
+// stands there. archive/0.1.8-plan.md §3 names two alternatives to measure before either becomes a
 // kernel constant:
 //
 //   A. plateau excess volume — the felsic inventory above hFelLand0 in a declared,
@@ -45,7 +45,7 @@ var P = L.mods.params, S = L.mods.state, SIM = L.mods.sim, GEO = L.mods.geom,
 	PLT = L.mods.plates, COL = L.mods.columns;
 var check = L.check;
 var R2_SHAPE = { flank: 0, peak: 0, shoulder: 0, outerRatio: 0, needleRatio: 0,
-	widthCount: 0, widthRun: 0, built: false };
+	needleImmediate: 0, needleImmediateRatio: 0, widthCount: 0, widthRun: 0, built: false };
 
 var FRAMES = Number(process.argv[2]) || 4000;
 var FIT_SEED = Number(process.argv[3]) || 1;
@@ -661,7 +661,7 @@ function contactReport(r) {
 		r.peakLocalR.toFixed(2) + '), old count ' + r.peakRun + '/6; local hTot (-3..+4) km: ' +
 		Array.from(r.prof, function (h) { return (h / 1e3).toFixed(1); }).join('/'));
 	console.log('    selected local needle ' + r.needleR.toFixed(2) + ' at frame ' + r.needleRf +
-		' edge ' + r.needleRi + '; pair ' + (r.needleH / 1e3).toFixed(1) + ' / higher shoulder ' +
+		' edge ' + r.needleRi + '; pair ' + (r.needleH / 1e3).toFixed(1) + ' / highest belt-neighbourhood shoulder ' +
 		(r.needleShoulder / 1e3).toFixed(1) + ' km (limit ' + P.beltPeak + '); local hTot (-3..+4) km: ' +
 		Array.from(r.needleProf, function (h) { return (h / 1e3).toFixed(1); }).join('/'));
 	console.log('    legacy width minimum count ' + r.runWorst + '/6 at frame ' + r.runWorstF +

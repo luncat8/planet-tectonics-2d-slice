@@ -255,6 +255,11 @@ COL.removeClass = function (st, c, cls, amount) {
 };
 
 // Drop layer k. Deposits hosted there lose their horizon; records above move with their beds.
+// The removal exposes a contact, so the bed now above the gap is marked as an unconformity --
+// the same rule COL.removeClass applies to its own shift (0.4.1-plan.md §4.3.2: the removal is
+// an unconformity on the next bed), or the column is beveled when the top bed was the one
+// removed. Callers are internal shifts behind an existing interface: CRU.delaminate drops the
+// fully foundered basal bed, COL.collapseMove a fully peeled felsic bed.
 COL.removeAt = function (st, c, k) {
 	var LC = P.layerCap, b = c * LC, n = st.colNL[c], j, d;
 	for (d = 0; d < st.nDep; d++) {
@@ -269,6 +274,8 @@ COL.removeAt = function (st, c, k) {
 		st.layFl[b + j] = st.layFl[b + j + 1];
 	}
 	st.colNL[c] = n - 1;
+	if (k < n - 1) st.layFl[b + k] |= P.FLAG.unconf;
+	else st.colBevel[c] = 1;
 };
 
 // Gravitational collapse transport (crust.js K5): move `volume` (m2 of crust per unit

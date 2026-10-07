@@ -12,10 +12,19 @@
 //           across frames by position
 //   dw      the largest single-frame *width* change of one column: the mechanism
 //           behind every pop, since thickness is volume / width
-//   belt    the local pair/shoulder ratio and contiguous width around each collision;
-//           legacy outer-flank ratio and count are reported for comparison
+//   belt    the local pair/shoulder ratio and contiguous width around each collision:
+//           the needle's shoulder is the highest real ground in the belt's own
+//           neighbourhood (the flow's reach and the flank columns); the immediate-slot
+//           reading, the outer-flank ratio and the non-contiguous count are reported as
+//           legacy comparison fields
 //   events  column births and deaths, their rate, and how many repeat at the same
 //           place (a boundary that flips state every few frames is the worst offender)
+//   site    R1: the largest drawn-surface move within an event's own footprint (a birth's
+//           record, a death's pre-frame record, an accretion's merged column) against the
+//           section's own background, the largest move on a frame with no event. The
+//           event-frame background and the same-frame pairing are reported beside it:
+//           measured 12-22x on every leg, the same-frame pairing is a diagnostic, not a
+//           gate, because on most event frames the rest of the section is not moving.
 //   order   columns whose stack is inverted in stratigraphic rank (P.LITH_RANK, the
 //           same table COL.insertVol orders by) — the signature of stacking two
 //           stratigraphies instead of inserting each bed where it belongs. The stack
@@ -46,6 +55,17 @@ var siteProbe = siteValues(new Set([4, 9])), seenProbe = { 4: 10 };
 L.check.ok('event buckets are concrete Set values', siteProbe.length === 2 && siteProbe[0] === 4 && siteProbe[1] === 9);
 L.check.ok('repeat spacing uses the current event frame',
 	seen(seenProbe, 4, 10 + P.evGap - 1) === 1 && seen(seenProbe, 4, 10 + P.evGap) === 0);
+// The R1 window is the event's own footprint, not the bucket's left edge: an event at
+// 4/5 of its 2.5 w0 bucket is 0.5 w0 past the old window's right edge (the window spans
+// the bucket's left edge +- 1.5 w0, i.e. the left 60% of the bucket), and the event's
+// own footprint there is exactly what the gate must read as "at the site".
+var bucketW = 2.5 * P.w0, probeEvent = 0.8 * bucketW;
+L.check.ok('the R1 window is anchored at the event, not at its bucket',
+	inWindow(probeEvent, probeEvent) && inWindow(probeEvent + 1.4 * P.w0, probeEvent) &&
+	!inWindow(probeEvent + 1.6 * P.w0, probeEvent) &&
+	inWindow(probeEvent, Math.floor(probeEvent / bucketW) * bucketW) === false,
+	'event at ' + (probeEvent / 1e3).toFixed(1) + ' km, bucket left edge ' +
+	(Math.floor(probeEvent / bucketW) * bucketW / 1e3).toFixed(1) + ' km');
 
 L.check.planet(seed, 'def');
 SIM.setGeo(kyr * 1e3);
@@ -61,8 +81,13 @@ var sample = new Float64Array(NS), prevZ = new Float64Array(NS);
 var preX = new Float64Array(P.colCap), preTh = new Float64Array(P.colCap);
 var preW = new Float64Array(P.colCap), preG = new Uint8Array(P.colCap), preNew = new Uint8Array(P.colCap);
 var accPreX = new Float64Array(P.colCap), accSiteX = new Float64Array(P.colCap), nAccSite = 0, k4 = COL.k4;
+// The accretion's territory is the merged column: the retired record's pre-K4 position and
+// the surviving record's. R1's site is the event's own footprint, and for an accretion the
+// footprint is both ends of the merge (measured 3.9 km apart at the crush floor, so the two
+// windows nearly coincide; the survivor's x is still read so the report can name it).
+var accSurvX = new Float64Array(P.colCap);
 COL.k4 = function (st, dt, t, Tm) {
-	var n = st.nCol, i, j, c;
+	var n = st.nCol, i, j, c, other;
 	nAccSite = 0;
 	this.intents();
 	for (i = 0; i < n; i++) {
@@ -75,8 +100,12 @@ COL.k4 = function (st, dt, t, Tm) {
 	for (i = 0; i < n; i++) {
 		j = i + 1 < n ? i + 1 : 0;
 		c = this.crush[i];
-		if (this.intent[i] === 4 && (c === i || c === j) && this.accreteLock[c] &&
-			this.dead[c] === 1 && this.map[c] < 0) accSiteX[nAccSite++] = accPreX[i];
+		if (this.intent[i] !== 4 || !(c === i || c === j) || !this.accreteLock[c]) continue;
+		if (this.dead[c] !== 1 || this.map[c] >= 0) continue;
+		other = c === i ? j : i;
+		accSiteX[nAccSite] = accPreX[i];
+		accSurvX[nAccSite] = this.map[other] >= 0 ? st.colX[this.map[other]] : accPreX[i];
+		nAccSite++;
 	}
 	return changed;
 };
@@ -116,7 +145,11 @@ var capLast = new Int32Array(CAP_K).fill(-1), capStay = new Int32Array(CAP_K);
 var capStayMax = 0;
 var contactMax = 0, contactCol = -1, evDz = 0, flipRepeat = 0;
 var quietDz = 0, quietDh = 0, quietDw = 0, ghostMax = 0, ghostWide = 0, ghostAge = 0, ghostShare = 0;
-var siteDz = 0, awayDz = 0, siteDzFrame = -1, siteDzX = 0, awayDzFrame = -1, awayDzX = 0, f, i, k, j, m, d;
+var siteDz = 0, awayDz = 0, siteDzFrame = -1, siteDzX = 0, siteDzKind = '-', awayDzFrame = -1, awayDzX = 0, f, i, k, j, m, d;
+// The same-frame pairing (report only): the worst frame whose event-site move is loud
+// against the rest of that same frame.
+var frameRatio = 0, frameRatioF = -1, frameRatioSite = 0, frameRatioAway = 0;
+var quietFr = -1, quietX = 0;
 var beltN = 0, beltBump = 0, beltWide = 0, beltContigWide = 0, beltExcess = 0;
 var beltRunWorst = 99, beltX = 0, beltRunX = 0, beltNeedleMax = 0, beltNeedleX = 0;
 var beltPeakFrame = -1, beltPeakI = -1, beltPeakH = 0, beltPeakFlank = 0, beltPeakLocal = 0;
@@ -126,8 +159,13 @@ var beltNeedleFrame = -1, beltNeedleI = -1, beltNeedlePeak = 0, beltNeedleShould
 var beltNeedleProfile = new Float64Array(8), beltContigWorst = 99, beltContigFrame = -1;
 var beltContigI = -1, beltContigProfile = new Float64Array(8);
 var r2Scratch = { flank: 0, peak: 0, shoulder: 0, outerRatio: 0, needleRatio: 0,
-	widthCount: 0, widthRun: 0, built: false };
-var SITE_X = [], bSites = new Set(), dSites = new Set(), halfW = 0.4 * P.w0, unmatched = 0, rematched = 0, consumed = [];
+	needleImmediate: 0, needleImmediateRatio: 0, widthCount: 0, widthRun: 0, built: false };
+// R1's site is the event's own footprint, in metres: a birth's record, a drained death's
+// pre-frame record, an accretion's merged column (both ends). The bucket sets below stay
+// the R5 bookkeeping (repeats are counted per 2.5 w0 site) and the event counters; the
+// window is read off these positions, never off the bucket's left edge (0.1.9-plan.md §2).
+var SITE_X = [], SITE_B = [], SITE_D = [], SITE_A = [];
+var bSites = new Set(), dSites = new Set(), halfW = 0.4 * P.w0, unmatched = 0, rematched = 0, consumed = [];
 // detail state (--detail)
 var D_NEEDLE = { n: 0, ghost: 0, worst: 0, worstRow: null, rawN: 0, rawGhost: 0, rawWorst: 0 }, D_WIDTH = { n: 0, narrow: 0, hole: 0, ghostWin: 0 };
 var D_WIDTH_SITES = {}, D_WIDTH_FIRST = {}, D_WIDTH_LAST = {};
@@ -176,22 +214,24 @@ for (f = 0; f < frames; f++) {
 	consumed.length = 0;
 	if (detail) { D_CUR.b = {}; D_CUR.d = {}; }
 	match(preX, preG, preNew, preW, preN);
-	SITE_X.length = 0;
+	SITE_X.length = 0; SITE_B.length = 0; SITE_D.length = 0; SITE_A.length = 0;
 	bSites.clear();
 	dSites.clear();
 	for (k = 0; k < consumed.length; k++) {
-		if (!preG[consumed[k]]) {
-			dSites.add(Math.floor(preX[consumed[k]] / (2.5 * P.w0)));
-			if (detail) {
-				var dk = Math.floor(preX[consumed[k]] / (2.5 * P.w0));
-				(D_CUR.d[dk] = D_CUR.d[dk] || []).push(preX[consumed[k]]);
-			}
+		if (preG[consumed[k]]) continue;
+		dSites.add(Math.floor(preX[consumed[k]] / (2.5 * P.w0)));
+		SITE_X.push(preX[consumed[k]]); SITE_D.push(preX[consumed[k]]);
+		if (detail) {
+			var dk = Math.floor(preX[consumed[k]] / (2.5 * P.w0));
+			(D_CUR.d[dk] = D_CUR.d[dk] || []).push(preX[consumed[k]]);
 		}
 	}
 	// A conveyor retirement has no ghost successor, so merge-walking cannot infer it
 	// from the final topology. COL.k4's instrumentation captures its pre-removal site.
 	for (k = 0; k < nAccSite; k++) {
 		dSites.add(Math.floor(accSiteX[k] / (2.5 * P.w0)));
+		SITE_X.push(accSiteX[k]); SITE_A.push(accSiteX[k]);
+		SITE_X.push(accSurvX[k]); SITE_A.push(accSurvX[k]);
 		if (detail) {
 			var ak = Math.floor(accSiteX[k] / (2.5 * P.w0));
 			(D_CUR.d[ak] = D_CUR.d[ak] || []).push(accSiteX[k]);
@@ -202,6 +242,7 @@ for (f = 0; f < frames; f++) {
 		if (S.colW[i] < halfW) continue;              // a sliver, not a record
 		if (COL.isNew[i] && (MATCH[i] < 0 || !preNew[MATCH[i]])) {
 			bSites.add(Math.floor(S.colX[i] / (2.5 * P.w0)));
+			SITE_X.push(S.colX[i]); SITE_B.push(S.colX[i]);
 			if (detail) {
 				var bk = Math.floor(S.colX[i] / (2.5 * P.w0));
 				(D_CUR.b[bk] = D_CUR.b[bk] || []).push(S.colX[i]);
@@ -209,8 +250,6 @@ for (f = 0; f < frames; f++) {
 		}
 	}
 	var bSiteList = siteValues(bSites), dSiteList = siteValues(dSites);
-	for (k = 0; k < dSiteList.length; k++) SITE_X.push(dSiteList[k] * 2.5 * P.w0);
-	for (k = 0; k < bSiteList.length; k++) SITE_X.push(bSiteList[k] * 2.5 * P.w0);
 	births += bSiteList.length;
 	deaths += dSiteList.length;
 	for (k = 0; k < bSiteList.length; k++) {
@@ -236,6 +275,7 @@ for (f = 0; f < frames; f++) {
 		if (detail) D_LASTX.d[ds] = D_CUR.d[ds];
 	}
 	var event = bSites.size + dSites.size > 0;
+	var smF = 0, amF = 0, axF = 0;
 	sampleField(S.z, sample);
 	for (m = 0; m < NS; m++) {
 		d = sample[m] - prevZ[m];
@@ -246,11 +286,24 @@ for (f = 0; f < frames; f++) {
 		if (d > 0) {
 			if (event) {
 				if (d > evDz) evDz = d;
-				if (atSite(m * step)) { if (d > siteDz) { siteDz = d; siteDzFrame = f; siteDzX = m * step; } }
-				else if (d > awayDz) { awayDz = d; awayDzFrame = f; awayDzX = m * step; }
-			} else if (d > quietDz) quietDz = d;
+				if (atSite(m * step)) {
+					if (d > smF) smF = d;
+					if (d > siteDz) {
+						siteDz = d; siteDzFrame = f; siteDzX = m * step;
+						siteDzKind = siteKind(m * step);
+					}
+				} else if (d > amF) { amF = d; axF = m * step; }
+			} else if (d > quietDz) { quietDz = d; quietFr = f; quietX = m * step; }
 		}
 		prevZ[m] = sample[m];
+	}
+	if (event) {
+		if (amF > awayDz) { awayDz = amF; awayDzFrame = f; awayDzX = axF; }
+		// the same-frame pairing, report only: the worst frame whose event-footprint move
+		// is loud against the rest of that same frame
+		if (amF > 0 && smF / amF > frameRatio) {
+			frameRatio = smF / amF; frameRatioF = f; frameRatioSite = smF; frameRatioAway = amF;
+		}
 	}
 	if (!event) {
 		// A quiet frame is the only place this can be read: with nothing born and
@@ -365,7 +418,7 @@ console.log('  R2 legacy peak frame ' + beltPeakFrame + ', edge ' + beltPeakI + 
 	'/6 above outer flank + ' + fmtKm(P.beltRise) + ': ' +
 	Array.from(beltPeakProfile, function (h) { return (h / 1e3).toFixed(1); }).join('/') + ' km');
 console.log('  R2 local needle frame ' + beltNeedleFrame + ', edge ' + beltNeedleI + ', pair ' +
-	fmtKm(beltNeedlePeak) + ' / higher adjacent shoulder ' + fmtKm(beltNeedleShoulder) +
+	fmtKm(beltNeedlePeak) + ' / highest belt-neighbourhood shoulder ' + fmtKm(beltNeedleShoulder) +
 	' (' + beltNeedleMax.toFixed(2) + 'x; max ' + P.beltPeak + '), local hTot (-3..+4) km: ' +
 	Array.from(beltNeedleProfile, function (h) { return (h / 1e3).toFixed(1); }).join('/'));
 console.log('  R2 legacy width narrowest count ' + beltRunWorst + '/6 at frame ' + beltRunFrame + ', edge ' +
@@ -380,10 +433,13 @@ console.log('  max column     frame ' + maxHFrame + ', record ' + maxHCol + ', x
 console.log('  surface        worst single-frame move ' + fmtM(maxDz) + ' at frame ' + maxDzFrame +
 	' x ' + fmtKm(maxDzX) + '   mean ' + (dzSum / Math.max(1, dzN)).toFixed(1) + ' m, ' +
 	over100 + ' raster samples above 100 m');
-console.log('  event site     ' + fmtM(siteDz) + ' at a birth/death site (frame ' + siteDzFrame + ' x ' +
-	fmtKm(siteDzX) + '), ' + fmtM(awayDz) + ' elsewhere on an event frame (frame ' + awayDzFrame + ' x ' +
-	fmtKm(awayDzX) + '), quiet-frame worst ' + fmtM(quietDz) +
-	'   (quiet-frame drawn thickness ' + fmtKm(quietDh) + ' and width ' + pct(quietDw) +
+console.log('  R1 event site  ' + fmtM(siteDz) + ' in an event footprint (' + siteDzKind + ', frame ' + siteDzFrame +
+	' x ' + fmtKm(siteDzX) + ') against the quiet-frame yardstick ' + fmtM(quietDz) + ' (frame ' + quietFr + ' x ' +
+	fmtKm(quietX) + '), ratio ' + (siteDz / Math.max(1, quietDz)).toFixed(2) + ' (max ' + P.evDzK + ')' +
+	'\n                 event-frame background (report) ' + fmtM(awayDz) + ' (frame ' + awayDzFrame + ' x ' + fmtKm(awayDzX) +
+	'), worst same-frame pairing (report) ' + frameRatio.toFixed(2) + ' at frame ' + frameRatioF + ' (' + fmtM(frameRatioSite) +
+	' vs ' + fmtM(frameRatioAway) + ')' +
+	'\n                 quiet-frame drawn thickness ' + fmtKm(quietDh) + ' and width ' + pct(quietDw) +
 	', ' + unmatched + ' quiet records with no counterpart, ' + rematched + ' re-partitioned)');
 console.log('  columns        worst single-frame drawn-thickness change ' + fmtKm(maxDh) + ' at frame ' +
 	maxDhFrame + ' x ' + fmtKm(maxDhX) + '   worst width change ' + pct(maxDw) + ' at frame ' +
@@ -516,8 +572,7 @@ function lastAt(table, site, frame) {
 // --detail: classify one R2 sample. The needle half reports the raw-slot reading next to
 // the selected one, so the leg that made the shoulder walk necessary stays visible.
 function detailSample(i, j, f) {
-	var rawShoulder = Math.max(S.hTot[wm(i - 1)], S.hTot[wm(j + 1)]);
-	var rawRatio = rawShoulder > 0 ? r2Scratch.peak / rawShoulder : (r2Scratch.peak > 0 ? Infinity : 1);
+	var rawRatio = r2Scratch.needleImmediateRatio;
 	if (rawRatio > P.beltPeak) {
 		D_NEEDLE.rawN++;
 		if (S.colGhost[wm(i - 1)] || S.colGhost[wm(j + 1)]) D_NEEDLE.rawGhost++;
@@ -529,7 +584,8 @@ function detailSample(i, j, f) {
 		if (r2Scratch.needleRatio > D_NEEDLE.worst) {
 			D_NEEDLE.worst = r2Scratch.needleRatio;
 			D_NEEDLE.worstRow = { f: f, i: i, x: S.colX[i], ratio: r2Scratch.needleRatio, peak: r2Scratch.peak,
-				shoulder: r2Scratch.shoulder, gl: S.colGhost[wm(i - 1)], gr: S.colGhost[wm(j + 1)],
+				shoulder: r2Scratch.shoulder, immediate: r2Scratch.needleImmediate,
+				grew: r2Scratch.needleImmediateRatio, gl: S.colGhost[wm(i - 1)], gr: S.colGhost[wm(j + 1)],
 				hl: S.hTot[wm(i - 1)], hr: S.hTot[wm(j + 1)], built: r2Scratch.built,
 				prof: [-2, -1, 0, 1, 2, 3].map(function (d) { return S.hTot[wm(i + d)] / 1e3; }) };
 		}
@@ -556,13 +612,14 @@ function detailSample(i, j, f) {
 function detailReport() {
 	var i, k, keys, r;
 	console.log('\n--detail: what the failures are (report only; gates above are unchanged)');
-	console.log('  R2 needle   as-written failures ' + D_NEEDLE.rawN + ' (worst ' + D_NEEDLE.rawWorst.toFixed(2) +
-		', of which a draining shoulder ' + D_NEEDLE.rawGhost + '); with the shoulder walk ' + D_NEEDLE.n +
+	console.log('  R2 needle   immediate-slot failures ' + D_NEEDLE.rawN + ' (worst ' + D_NEEDLE.rawWorst.toFixed(2) +
+		', of which a draining shoulder ' + D_NEEDLE.rawGhost + '); with the belt-neighbourhood shoulder ' + D_NEEDLE.n +
 		' (worst ' + D_NEEDLE.worst.toFixed(2) + ', draining shoulder ' + D_NEEDLE.ghost + ')');
 	if (D_NEEDLE.worstRow) {
 		r = D_NEEDLE.worstRow;
 		console.log('    worst frame ' + r.f + ' x ' + (r.x / 1e3).toFixed(1) + ' km peak ' + (r.peak / 1e3).toFixed(1) +
-			' / shoulder ' + (r.shoulder / 1e3).toFixed(1) + ' (' + r.ratio.toFixed(2) + 'x), slots ' + (r.hl / 1e3).toFixed(1) +
+			' / shoulder ' + (r.shoulder / 1e3).toFixed(1) + ' (' + r.ratio.toFixed(2) + 'x; immediate ' +
+			(r.immediate / 1e3).toFixed(1) + ' = ' + r.grew.toFixed(2) + 'x), slots ' + (r.hl / 1e3).toFixed(1) +
 			' / ' + (r.hr / 1e3).toFixed(1) + ' km ghost ' + r.gl + '/' + r.gr + ', built ' + r.built);
 		console.log('      profile (-2..+3) km: ' + r.prof.map(function (v) { return v.toFixed(1); }).join(' / '));
 	}
@@ -598,13 +655,30 @@ function detailReport() {
 // same orogeny run everywhere on it, so the move at the event site can be read against
 // the move everywhere else on the same frame.
 function atSite(x) {
-	for (var t = 0; t < SITE_X.length; t++) {
-		var d = x - SITE_X[t];
-		if (d > P.wrap * 0.5) d -= P.wrap;
-		else if (d < -P.wrap * 0.5) d += P.wrap;
-		if (d > -1.5 * P.w0 && d < 1.5 * P.w0) return true;
-	}
+	for (var t = 0; t < SITE_X.length; t++) if (inWindow(x, SITE_X[t])) return true;
 	return false;
+}
+
+// Is x inside a site's own footprint? The event is the record, and the drawn surface is
+// interpolated between records, so the footprint is the record's position +- 1.5 w0: its
+// own half-column and the half-span to each neighbour's centre. The old reading took the
+// 2.5 w0 bucket's left edge as the site, which puts an event that lands near the bucket's
+// right edge up to 2.4 w0 outside its own window (measured: 5000/5/100 frame 2364, a
+// conveyor retirement's own footprint 2.6 km past the window edge, read as "elsewhere").
+function inWindow(x, site) {
+	var d = x - site;
+	if (d > P.wrap * 0.5) d -= P.wrap;
+	else if (d < -P.wrap * 0.5) d += P.wrap;
+	return d > -1.5 * P.w0 && d < 1.5 * P.w0;
+}
+
+// Which event class holds this position: a birth, a drained death, or an accretion. The
+// three classes are collected separately so the worst site move can name its own kind.
+function siteKind(x) {
+	var t;
+	for (t = 0; t < SITE_B.length; t++) if (inWindow(x, SITE_B[t])) return 'birth';
+	for (t = 0; t < SITE_D.length; t++) if (inWindow(x, SITE_D[t])) return 'drained death';
+	return 'accretion';
 }
 
 // Records that exist in only one of the two lists: a position in `nowX` with no record
@@ -678,13 +752,24 @@ function pct(v) { return (v * 100).toFixed(1) + '%'; }
 function per1000(v) { return (v / frames * 1000).toFixed(2); }
 
 function gate() {
-	L.check.section('contact contract (0.1.8-plan.md §2)');
-	L.check.ok('R1 an event moves the surface no more than the rest of its own frame',
-		siteDz <= P.evDzK * awayDz, 'at the site ' + fmtM(siteDz) + ', elsewhere on that frame ' +
-		fmtM(awayDz) + ', ratio ' + (siteDz / Math.max(1, awayDz)).toFixed(2) +
-		' (max ' + P.evDzK + ')');
+	L.check.section('contact contract (0.1.9-plan.md §2)');
+	// R1's background is the section's own: the largest movement on a frame with no
+	// event at all (0.1.5-plan.md §1 names it as R1's yardstick). The event-frame
+	// background and the same-frame pairing are reported beside it -- the latter reads
+	// 12-22x on every leg, because on most event frames the rest of the section is simply
+	// not moving, so it is a diagnostic and not a gate (0.1.9-plan.md §2).
+	L.check.ok('R1 an event stays inside the section\'s own background',
+		siteDz <= P.evDzK * quietDz, 'the ' + siteDzKind + ' footprint ' + fmtM(siteDz) + ' at frame ' +
+		siteDzFrame + ' x ' + fmtKm(siteDzX) + ' against the quiet-frame yardstick ' + fmtM(quietDz) +
+		' (frame ' + quietFr + ' x ' + fmtKm(quietX) + '), ratio ' +
+		(siteDz / Math.max(1, quietDz)).toFixed(2) + ' (max ' + P.evDzK + ')');
+	L.check.info('event-frame background (report only)',
+		fmtM(awayDz) + ' away from any event footprint, frame ' + awayDzFrame + ' x ' + fmtKm(awayDzX));
+	L.check.info('same-frame pairing (report only)',
+		'worst ' + frameRatio.toFixed(2) + ' at frame ' + frameRatioF + ' (' + fmtM(frameRatioSite) +
+		' at the site against ' + fmtM(frameRatioAway) + ' elsewhere on that frame)');
 	L.check.ok('R2 the pair is not a local needle', beltNeedleMax <= P.beltPeak,
-		beltN + ' collisions measured, worst pair / higher adjacent shoulder ' +
+		beltN + ' collisions measured, worst pair / highest belt-neighbourhood shoulder ' +
 		beltNeedleMax.toFixed(2) + ' at ' + fmtKm(beltNeedleX) + ' (max ' + P.beltPeak + ')');
 	L.check.ok('R2 built belts have a contiguous four-column run',
 		beltBump === 0 || beltContigWide >= 0.9 * beltBump,

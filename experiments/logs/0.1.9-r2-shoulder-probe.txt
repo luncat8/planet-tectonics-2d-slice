@@ -1,0 +1,32 @@
+== seed 1 50 kyr/frame 3000 frames: 2191 collide samples, 1701 built, 0 needle failures
+   candidate worst ratios   c0 immediate 1.35 (fail 0)   c1 flow-reach 1.33 (fail 0)   c2 flank-window 1.33 (fail 0)   c3 growth 1.50 (fail 0)
+== seed 1 100 kyr/frame 3000 frames: 3229 collide samples, 3022 built, 0 needle failures
+   candidate worst ratios   c0 immediate 1.39 (fail 0)   c1 flow-reach 1.39 (fail 0)   c2 flank-window 1.39 (fail 0)   c3 growth 1.55 (fail 8)
+== seed 5 50 kyr/frame 5000 frames: 3638 collide samples, 3084 built, 0 needle failures
+   candidate worst ratios   c0 immediate 1.15 (fail 0)   c1 flow-reach 1.15 (fail 0)   c2 flank-window 1.15 (fail 0)   c3 growth 2.02 (fail 492)
+== seed 5 100 kyr/frame 5000 frames: 5528 collide samples, 5058 built, 4 needle failures
+   candidate worst ratios   c0 immediate 2.23 (fail 4)   c1 flow-reach 2.15 (fail 3)   c2 flank-window 1.26 (fail 0)   c3 growth 1.71 (fail 428)
+ f3180 x1424.1 i22 edgeAge 0.00Myr rel -3.1 plates 5/0 built true run 1
+    peak 45.8 sh 20.5 (1.12x) flowReach 21.4 flankWin 40.9 growth 1.00 onset peak0 45.8 sh0 20.5
+    hTot   8.3 8.1 8.1 8.5 20.6 45.8 20.5 21.4 40.9 27.1
+    hFel   5.4 4.0 2.9 3.3 11.6 35.9 3.2 0.0 0.0 0.0
+    plate  5 5 5 5 5 0 0 0 0 0
+    colWkm 59.8 58.9 59.0 60.0 42.4 51.1 78.2 78.2 78.2 78.2
+ f3181 x1424.3 i22 edgeAge 0.10Myr rel -4.2 plates 5/0 built true run 1
+    peak 40.2 sh 22.7 (0.98x) flowReach 22.7 flankWin 40.9 growth 0.79 onset peak0 45.8 sh0 20.5
+    hTot   8.3 8.1 8.2 9.4 22.3 40.2 22.7 21.4 40.9 27.1
+    hFel   5.4 4.0 2.9 4.2 13.3 30.3 5.4 0.0 0.0 0.0
+    plate  5 5 5 5 5 0 0 0 0 0
+    colWkm 59.8 58.9 59.0 60.0 42.2 50.9 78.2 78.2 78.2 78.2
+ f3182 x1424.6 i22 edgeAge 0.20Myr rel -5.4 plates 5/0 built true run 2
+    peak 36.5 sh 24.1 (0.89x) flowReach 24.1 flankWin 40.9 growth 0.68 onset peak0 45.8 sh0 20.5
+    hTot   8.3 8.1 8.2 10.4 22.9 36.5 24.1 21.4 40.9 27.1
+    hFel   5.4 4.0 2.9 5.3 13.9 26.5 6.8 0.0 0.0 0.0
+    plate  5 5 5 5 5 0 0 0 0 0
+    colWkm 59.8 58.9 59.0 60.0 41.9 50.6 78.2 78.2 78.2 78.2
+ f3312 x1344.5 i21 edgeAge 4.10Myr rel -5.6 plates 5/0 built true run 4
+    peak 39.5 sh 25.2 (0.96x) flowReach 40.9 flankWin 40.9 growth 1.00 onset peak0 39.5 sh0 25.2
+    hTot   8.0 8.0 14.1 19.1 27.6 39.5 25.2 40.9 27.1 36.1
+    hFel   6.5 6.5 11.2 15.0 19.1 11.6 3.9 0.0 0.0 0.0
+    plate  5 5 5 5 5 0 0 0 0 0
+    colWkm 59.3 60.2 59.8 58.9 38.8 48.5 78.2 78.2 78.2 78.2
