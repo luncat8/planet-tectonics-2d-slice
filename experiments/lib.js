@@ -116,15 +116,41 @@ check.collisionSite = function () {
 
 function wrapR2(k, n) { k %= n; return k < 0 ? k + n : k; }
 
+// The ground at a shoulder slot. A draining record holds no ground -- its hTot is ~0 and
+// the trench retires it within a few frames -- so it is not a shoulder the pair can rise
+// above: step outward to the nearest real column. The walk is bounded to the orogenic
+// flow's own reach (beltFeed + 1) so a wide draining run cannot pull in a distant flank.
+// With no real column at all the shoulder is 0, which keeps the pre-existing reading (a
+// pair with no ground beside it has nothing to prove it is a belt and fails the ratio).
+function r2Ground(st, n, k, dir) {
+	var c = wrapR2(k, n), d;
+	for (d = 0; d <= mods.params.beltFeed + 1; d++) {
+		if (!st.colGhost[c]) return st.hTot[c];
+		c = wrapR2(c + dir, n);
+	}
+	return 0;
+}
+
 // The selected R2 shape measure is shared by both audits. `out` is caller-owned so the
 // per-frame scan allocates nothing; outerRatio/widthCount retain the legacy readings.
+//
+// The shoulder is the real ground beside the pair (r2Ground), not the raw neighbour slot:
+// on seed 1 at 100 kyr/frame every one of the 144 needle failures was a pair whose
+// immediate left slot held a draining record, so the pair was compared against the low
+// ground beyond a trench instead of the plateau one column further out (measured worst
+// 2.02 as written, 1.24 against the real ground; with the walk the leg has no needle
+// failure above 1.38). This changes no threshold and cannot turn a passing pair red --
+// skipping a draining record only raises the shoulder, and the shoulder only lowers the
+// ratio. The width half is deliberately unchanged: COL.beltAt's own belt walk stops at a
+// draining record, so a window broken by one is two shorter belts and the contiguity
+// clause must see it that way.
 check.r2ShapeAt = function (st, i, out) {
 	var P = mods.params, n = st.nCol, j = i + 1 < n ? i + 1 : 0;
 	var h = st.hTot, flank, peak, shoulder, count = 0, width = 0, run = 0, k, c, rise;
 	flank = 0.25 * (h[wrapR2(i - P.beltFeed - 1, n)] + h[wrapR2(i - P.beltFeed - 2, n)] +
 		h[wrapR2(j + P.beltFeed + 1, n)] + h[wrapR2(j + P.beltFeed + 2, n)]);
 	peak = Math.max(h[i], h[j]);
-	shoulder = Math.max(h[wrapR2(i - 1, n)], h[wrapR2(j + 1, n)]);
+	shoulder = Math.max(r2Ground(st, n, i - 1, -1), r2Ground(st, n, j + 1, +1));
 	rise = flank + P.beltRise;
 	for (k = -2; k <= 3; k++) {
 		c = wrapR2(i + k, n);

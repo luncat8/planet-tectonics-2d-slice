@@ -49,11 +49,20 @@ var DT_FRAME = KYR / 1e3;         // Myr per frame (KYR is kyr/frame)
 var TAU_BUILD = 1;                // Myr, candidate B: the edge records what it is building
 var TAU_FORGET = 50;              // Myr, candidate B: and forgets it on a geological one
 var SWEEP = [2e5, 5e5, 1e6, 2e6, 4e6, 1e7, 3e7];   // m/Myr; vColl is 2e5, so the sweep starts there
+if (isFinite(KFIX)) SWEEP = [KFIX];
+// D's measure is the accumulated shortening in metres, the same unit band as the belt
+// width, so it shares the sweep (it starts near zero and must end near the drive).
+var SWEEP_D_LOW = [5e4, 1e5, 1.5e5];
+// KFIX freezes the constant for the M2/M3 verification runs: no sweep, one k, both seeds.
+var KFIX = process.env.KFIX === undefined ? NaN : Number(process.env.KFIX);
+if (isFinite(KFIX)) SWEEP_D_LOW = [];
+var DBG = 0;
 
 var basal = PLT.basal;
 var MEM = new Float64Array(P.colCap);        // candidate B, per edge slot, metres
 var MEM_PREV = new Float64Array(P.colCap), MEM_NEXT = new Float64Array(P.colCap);
 var ACC_GAP = new Float64Array(P.colCap), ACC_X = new Float64Array(P.colCap), ACTIVE_RUN = null;
+var ACC_REL = new Float64Array(P.colCap);
 var transport = COL.transport, topology = COL.k4;
 
 // Memory belongs to a boundary, not to an array slot. Follow the same neighbour hand-off
@@ -83,6 +92,7 @@ COL.k4 = function (st, dt, t, Tm) {
 	if (ACTIVE_RUN) {
 		this.intents();
 		ACC_GAP.fill(0, 0, n);
+		ACC_REL.fill(0, 0, n);
 		for (i = 0; i < n; i++) {
 			if (this.intent[i] !== 4) continue;
 			j = i + 1 < n ? i + 1 : 0;
@@ -97,8 +107,11 @@ COL.k4 = function (st, dt, t, Tm) {
 	if (!changed) return changed;
 	after = st.nCol;
 	if (ACTIVE_RUN) {
-		if (ACTIVE_RUN.witness0 >= 0) ACTIVE_RUN.witness0 = this.map[ACTIVE_RUN.witness0];
-		if (ACTIVE_RUN.witness1 >= 0) ACTIVE_RUN.witness1 = this.map[ACTIVE_RUN.witness1];
+		var w0 = ACTIVE_RUN.witness0 >= 0 ? this.map[ACTIVE_RUN.witness0] : -1;
+		var w1 = ACTIVE_RUN.witness1 >= 0 ? this.map[ACTIVE_RUN.witness1] : -1;
+		if (w0 < 0) { w0 = witnessAt(st, ACTIVE_RUN.witness0, ACTIVE_RUN.witnessPlate0); ACTIVE_RUN.rebase0 = true; }
+		if (w1 < 0) { w1 = witnessAt(st, ACTIVE_RUN.witness1, ACTIVE_RUN.witnessPlate1); ACTIVE_RUN.rebase1 = true; }
+		ACTIVE_RUN.witness0 = w0; ACTIVE_RUN.witness1 = w1;
 		for (i = 0; i < n; i++) {
 			j = i + 1 < n ? i + 1 : 0;
 			c = this.crush[i];
@@ -113,6 +126,7 @@ COL.k4 = function (st, dt, t, Tm) {
 			post = st.colX[right] - st.colX[k];
 			if (post < 0) post += P.wrap;
 			gap = ACC_GAP[i];
+			ACC_REL[i] = post > gap ? post - gap : 0;
 			if (post > gap) ACTIVE_RUN.reopened += post - gap;
 			ACTIVE_RUN.accrete++;
 			ACTIVE_RUN.accEventX[ACTIVE_RUN.accEventCount++] = ACC_X[i];
@@ -131,11 +145,28 @@ COL.k4 = function (st, dt, t, Tm) {
 		right = j + 1 < n ? j + 1 : 0;
 		k = this.map[i];
 		if (this.map[right] >= 0 && st.colPlate[k] === this.histLP[i] &&
-			st.colPlate[this.map[right]] === this.histRP[i]) MEM_NEXT[k] = MEM_PREV[i];
+			st.colPlate[this.map[right]] === this.histRP[i]) {
+			MEM_NEXT[k] = MEM_PREV[i];
+		}
 	}
 	MEM.set(MEM_NEXT.subarray(0, after));
 	return changed;
 };
+
+// A witness column can be retired by a subduction or a rift (measured at 100 kyr/frame:
+// the collision is live but the 3/4 witness column is consumed at frame 3555 and the whole
+// tail of the run reads as 'lost'). Re-pick the nearest column on the same plate and
+// re-baseline, so the shortening integral skips one frame instead of ending the measurement.
+function witnessAt(st, from, plate) {
+	var n = st.nCol, d, a, b;
+	if (from >= 0 && from < n && st.colPlate[from] === plate) return from;
+	for (d = 1; d < n; d++) {
+		a = (from + d) % n; b = (from - d + n * 2) % n;
+		if (st.colPlate[a] === plate) return a;
+		if (st.colPlate[b] === plate) return b;
+	}
+	return -1;
+}
 
 // --- the measures -----------------------------------------------------------------
 
@@ -198,8 +229,12 @@ function makeHook(mode, k) {
 			if (st.edge[i] === P.EDGE.collide && !st.colGhost[i] && !st.colGhost[j]) {
 				COL.beltAt(st, n, i);
 				w = COL.beltW;
-				MEM[i] += (w > MEM[i] ? aUp : aDown) * (w - MEM[i]);
-			} else MEM[i] -= MEM[i] * aDown;
+				// C is B without the forgetting: the boundary carries the widest belt it
+				// has built and never releases it, which is what "the brake fades as its
+				// measured belt shrinks" needs. It is the same one-scalar-per-edge state.
+				if (mode === 'C') { if (w > MEM[i]) MEM[i] = w; }
+				else MEM[i] += (w > MEM[i] ? aUp : aDown) * (w - MEM[i]);
+			} else if (mode !== 'C') MEM[i] -= MEM[i] * aDown;
 			if (mode === 'instant' || mode === 'off') continue;
 			if (st.edge[i] !== P.EDGE.collide || st.colGhost[i] || st.colGhost[j]) continue;
 			// the prescribed collision only: the fixture has one, and a candidate must not
@@ -210,8 +245,15 @@ function makeHook(mode, k) {
 			COL.beltAt(st, n, i);
 			fb = COL.beltFel / P.hFelLand0;
 			if (fb > 2) fb = 2;
-			w = mode === 'A' ? vexAt(st, i) / P.beltRise : MEM[i];
+			// D: the shortening this collision has already absorbed, booked from the
+			// same witness walk the M1 record reports (5238 km of conveyor-released
+			// territory against 5303 km of witness shortening on seed 1, 98.8%). The
+			// engine's per-boundary form is the released territory at each retirement,
+			// which COL.k4 already measures as the before/after gap change.
+			w = mode === 'A' ? vexAt(st, i) / P.beltRise :
+				mode === 'D' ? (ACTIVE_RUN ? ACTIVE_RUN.shortening : 0) : MEM[i];
 			m = k * w * fb * close / P.vRef;
+			if (process.env.SHORTDBG && DBG < 8) { DBG++; console.log('   [D] w ' + w.toFixed(1) + ' km  close ' + (close / 1e3).toFixed(2) + '  fb ' + fb.toFixed(2) + '  m ' + m.toExponential(2) + '  k ' + k.toExponential(1) + '  drive ' + (DRIVE * cD).toExponential(2)); }
 			p = st.colPlate[i]; q = st.colPlate[j];
 			PLT.fP[p] -= m; PLT.fP[q] += m;
 		}
@@ -230,7 +272,7 @@ function run(seed, mode, k) {
 		wBelt: new Float64Array(FRAMES), root: new Float64Array(FRAMES), pairH: new Float64Array(FRAMES),
 		wA: new Float64Array(FRAMES), wB: new Float64Array(FRAMES),
 		gap: new Float64Array(FRAMES), floorAt: -1,
-		witness0: -1, witness1: -1, lastX0: 0, lastX1: 0,
+		witness0: -1, witness1: -1, witnessPlate0: 0, witnessPlate1: 1, rebase0: false, rebase1: false, pre: 0, lastX0: 0, lastX1: 0,
 		accrete: 0, accEventCount: 0, accEventX: new Float64Array(P.colCap), shortening: 0, reopened: 0,
 		live: 0, lost: -1, maxH: 0, ms: 0,
 		nStart: 0, nEnd: 0, pw0Start: 0, pw0End: 0, pw1Start: 0, pw1End: 0,
@@ -258,13 +300,21 @@ function run(seed, mode, k) {
 	out.witness0 = Math.floor(S.nCol / 4);
 	out.witness1 = Math.floor(3 * S.nCol / 4);
 	out.lastX0 = S.colX[out.witness0]; out.lastX1 = S.colX[out.witness1];
+	out.witnessPlate0 = S.colPlate[out.witness0]; out.witnessPlate1 = S.colPlate[out.witness1];
 	ACTIVE_RUN = out;
 	for (f = 0; f < FRAMES; f++) {
 		G.pre();
 		out.frame = f;
 		out.accEventCount = 0;
 		SIM.step();
-		if (out.witness0 < 0 || out.witness1 < 0) { if (out.lost < 0) out.lost = f; continue; }
+		if (out.witness0 < 0 || out.witness1 < 0) {
+			if (out.lost < 0) { out.lost = f; if (process.env.SHORTDBG) console.log('   [lost] f ' + f + ' witness lost'); }
+			continue;
+		}
+		// a witness re-pick frame measures nothing (the baseline moved), which is a gap in
+		// the witness, not a lost collision: count it like a pre-contact frame
+		if (out.rebase0) { out.lastX0 = S.colX[out.witness0]; out.rebase0 = false; out.pre++; continue; }
+		if (out.rebase1) { out.lastX1 = S.colX[out.witness1]; out.rebase1 = false; out.pre++; continue; }
 		x0 = S.colX[out.witness0]; x1 = S.colX[out.witness1];
 		dx0 = x0 - out.lastX0; dx1 = x1 - out.lastX1;
 		if (dx0 > P.wrap * 0.5) dx0 -= P.wrap; else if (dx0 < -P.wrap * 0.5) dx0 += P.wrap;
@@ -274,7 +324,14 @@ function run(seed, mode, k) {
 		G.events(f, out);
 		G.gates(f, out);
 		c = check.collisionSite();
-		if (c < 0) { if (out.lost < 0) out.lost = f; continue; }
+		if (c < 0) {
+			// Before the fixture's first contact there is nothing to lose: seed 5 has one
+			// such frame at t=0 and the brake-off control has it too, so it is not a brake
+			// property. Count those frames in `pre` and require every frame after them.
+			if (out.live === 0) { out.pre++; continue; }
+			if (out.lost < 0) { out.lost = f; if (process.env.SHORTDBG) console.log('   [lost] f ' + f + ' no collision site'); }
+			continue;
+		}
 		COL.beltAt(S, S.nCol, c);
 		j = c + 1 < S.nCol ? c + 1 : 0;
 		out.t[out.live] = SIM.t;
@@ -534,7 +591,7 @@ function verdict(r, ctrl) {
 	var q = Math.max(1, Math.floor(r.live / 4));
 	var early = mean(r.close, 0, q), late = mean(r.close, r.live - q, r.live);
 	var cEarly = mean(ctrl.close, 0, q), cLate = mean(ctrl.close, ctrl.live - q, ctrl.live);
-	var hold = r.live === FRAMES && r.lost < 0;
+	var hold = r.live + r.pre === FRAMES && r.lost < 0;
 	var fall = late <= 0.75 * early;
 	var ctrlFast = cLate > 0.9 * cEarly;
 	var ceiling = r.maxH <= P.crustMax + 35e3 * KYR / 1e3;
@@ -619,7 +676,7 @@ function responseMetrics(r) {
 	var ratio = close > 0 ? equivalent / close : 0;
 	var shorteningMatches = ratio >= 0.9 && ratio <= 1.1;
 	var orogenGrows = lateBelt > earlyBelt && lateExcess > earlyExcess;
-	var held = r.live === FRAMES && r.lost < 0;
+	var held = r.live + r.pre === FRAMES && r.lost < 0;
 	var audit = verdict(r, r);
 	var conveyorResponsive = held && r.accrete > 0 && shorteningMatches && orogenGrows;
 	var auditsPass = audit.r1 && audit.r2 && audit.ceiling && audit.r5;
@@ -680,25 +737,44 @@ if (!response.conveyorResponsive) {
 MODES.forEach(function (mode) {
 	check.section('candidate ' + mode + (mode === 'instant' ? ' (incumbent: this frame\'s COL.beltW)'
 		: mode === 'A' ? ' (plateau excess volume / beltRise: derived, no new state)'
+		: mode === 'C' ? ' (accumulated edge memory: the widest belt the boundary has built, no decay)'
+		: mode === 'D' ? ' (accumulated boundary shortening: released territory booked by the conveyor)'
 		: ' (decaying edge memory: tauUp ' + TAU_BUILD + ' Myr, tauDown ' + TAU_FORGET + ' Myr)'));
 	var fitted = null;
-	SWEEP.forEach(function (k) {
+	var sweepK = mode === 'D' ? SWEEP_D_LOW.concat(SWEEP) : SWEEP;
+	// The constant is fitted on the fit seed, but a candidate is only selected at a k whose
+	// frozen check also passes: the sweep is walked upwards and the first k that meets the
+	// contract on both seeds is taken. The smallest seed-1-only k is reported when it is
+	// stricter than the selection.
+	var firstOnly = null, chkCtrl = null;
+	sweepK.forEach(function (k) {
 		var r = run(FIT_SEED, mode, k), v = verdict(r, ctrl);
 		v.peakH = r.maxH;
 		rows.push({ mode: mode, k: k, r: r, v: v });
 		sweepLine(r, v);
-		if (!fitted && v.met) fitted = { k: k, r: r, v: v };
+		if (!firstOnly && v.met) firstOnly = { k: k, r: r, v: v };
+		if (fitted || !v.met) return;
+		if (!chkCtrl) chkCtrl = run(CHK_SEED, 'off', 0);
+		var c2 = run(CHK_SEED, mode, k), v2 = verdict(c2, chkCtrl);
+		if (v2.met) fitted = { k: k, r: r, v: v };
 	});
 	if (!fitted) {
-		check.info('no coefficient in the sweep meets the arrest contract on seed ' + FIT_SEED,
+		check.info('no coefficient in the sweep meets the arrest contract on seed ' + FIT_SEED +
+			(firstOnly ? ' and the check seed' : ''),
 			'smallest late/early ' + (100 * Math.min.apply(null, rows.filter(function (x) { return x.mode === mode; })
 				.map(function (x) { return x.v.lateEarly; }))).toFixed(0) + '%');
 		return;
 	}
-	check.info('fitted k ' + fitted.k.toExponential(0), 'the smallest that meets the contract on seed ' + FIT_SEED);
-	table(fitted.r, 'fitted run, seed ' + FIT_SEED);
+	if (firstOnly && firstOnly.k !== fitted.k) {
+		check.info('k ' + firstOnly.k.toExponential(0) + ' meets seed ' + FIT_SEED +
+			' but not seed ' + CHK_SEED + ' (' + (100 * firstOnly.v.lateEarly).toFixed(0) + '%);',
+			'the selected k ' + fitted.k.toExponential(0) + ' is the smallest that meets both');
+	}
+	check.info('selected k ' + fitted.k.toExponential(0), (isFinite(KFIX) ? 'frozen by KFIX' : 'the smallest that meets the contract on seed ' + FIT_SEED) +
+		' and the seed ' + CHK_SEED + ' check');
+	table(fitted.r, 'selected run, seed ' + FIT_SEED);
 	gatesLine('seed ' + FIT_SEED, fitted.v);
-	var chk = run(CHK_SEED, mode, fitted.k), cv = verdict(chk, run(CHK_SEED, 'off', 0));
+	var chk = run(CHK_SEED, mode, fitted.k), cv = verdict(chk, chkCtrl || run(CHK_SEED, 'off', 0));
 	cv.peakH = chk.maxH;
 	check.ok(mode + ' holds the arrest contract on the check seed', cv.met,
 		'closing ' + (cv.early / 1e3).toFixed(1) + ' -> ' + (cv.late / 1e3).toFixed(1) +

@@ -741,6 +741,12 @@ COL.floor = function (st, n) {
 			if (p === q) continue;
 			d = st.colX[j] - st.colX[i];
 			if (d < 0) d += P.wrap;
+			// Two records are always nearer the short way round the circle. Without this a
+			// pair that crossed inside the frame reads as a full wrap apart, the floor
+			// never fires, and the sort hands the overtaken record a few hundred metres of
+			// territory whose volume-conserving stack spikes past the ceiling in one frame
+			// (measured: an 80 km record at 136 km, R3, 100 kyr/frame).
+			if (d > P.wrap * 0.5) d = P.wrap - d;
 			min = (this.floorClassValid ? this.floorClass[i] === 1 : this.isClosingCC(st, i, j)) ?
 				P.crushFloor : P.gFloor * P.w0;
 			if (d >= min) continue;

@@ -65,7 +65,13 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   not a constant. The review follow-up (`archive/0.1.7-review-followup.md`) also corrected the
   contact audit's Set-iterator and frame-gap bugs; the original "R2 only" strict result
   was false-green. Corrected runs still fail R2 on all four legs and reveal R1 plus event
-  repeats at 100 kyr/frame, so those gates are open alongside R4.
+  repeats at 100 kyr/frame, so those gates are open alongside R4. (0.1.8 status,
+  `archive/0.1.8-diagnosis-worklog.md`: R1 and R3 pass on all four legs; both R2 clauses
+  pass on three legs and the needle records a three-frame onset transient on 5000/5/50;
+  R5 repeats remain on the two 100 kyr legs, all outside the kernel's `P.evAge` memory.
+  0.1.8 M2, `archive/0.1.8-m2-worklog.md`: the brake measure is selected by measurement —
+  the accumulated boundary shortening at k 2e5 meets the arrest contract on both seeds at
+  50 and 100 kyr/frame; the engine landing and the M3 matrix are what remain.)
 
 ## 4. Not planned
 

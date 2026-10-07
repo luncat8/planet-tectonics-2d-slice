@@ -26,7 +26,7 @@
 // Run: node experiments/contact-audit.js [frames=3000] [seed=1] [kyrPerFrame=50] [png] [--strict]
 'use strict';
 var L = require('./lib.js');
-var P = L.mods.params, S = L.mods.state, GEO = L.mods.geom, SIM = L.mods.sim, COL = L.mods.columns;
+var P = L.mods.params, S = L.mods.state, GEO = L.mods.geom, SIM = L.mods.sim, COL = L.mods.columns, CRU = L.mods.crust;
 var R = L.mods.render;
 
 var arg = process.argv.slice(2), flags = [], pos = [];
@@ -34,6 +34,11 @@ for (var a = 0; a < arg.length; a++) (arg[a].charAt(0) === '-' ? flags : pos).pu
 var frames = +(pos[0] || 3000), seed = +(pos[1] || 1);
 var kyr = +(pos[2] || 50), png = pos[3] && pos[3].charAt(0) !== '-' ? pos[3] : null;
 var strict = flags.indexOf('--strict') >= 0;
+// --detail names the failures a strict run reports: which R2 samples fail and what they
+// are (a pair beside a draining record, a narrow belt, a belt broken by a hole), the
+// stage chain that takes a column over the R3 ceiling, and both ends of each R5 repeat
+// with the distance and time between them. Report only; the gate arithmetic is unchanged.
+var detail = flags.indexOf('--detail') >= 0;
 var NS = 2048, step = P.wrap / NS;
 
 L.check.section('contact-audit site bookkeeping');
@@ -93,6 +98,11 @@ function sampleField(field, out) {
 }
 
 var maxH = 0, maxHFrame = -1, maxHCol = -1, maxHX = 0, maxHAccrete = false, maxHFel = 0, maxHMaf = 0, maxHSed = 0, maxDz = 0, maxDzFrame = -1, maxDzX = 0, dzSum = 0, dzN = 0, over100 = 0;
+// The same repeats read against the model's own memory, P.evAge (Myr), instead of the
+// gate's P.evGap frames. They coincide at the 50 kyr reference rate (40 frames = 2 Myr);
+// at 100 kyr the frame window is twice the time the kernel promises. Reported, never
+// gated: the gate stays the frame window the contract names.
+var flipRepeatAge = 0, evAgeFrames = P.evAge / (kyr * 1e-3);
 var maxDh = 0, maxDhFrame = -1, maxDhX = 0, maxDw = 0, maxDwFrame = -1;
 var births = 0, deaths = 0, accretions = 0, birthRepeat = 0, deathRepeat = 0, flipLast = 0;
 var inversions = 0, atCap = 0, atCapStay = 0, maxSlope = 0, t0 = Date.now();
@@ -118,6 +128,34 @@ var beltContigI = -1, beltContigProfile = new Float64Array(8);
 var r2Scratch = { flank: 0, peak: 0, shoulder: 0, outerRatio: 0, needleRatio: 0,
 	widthCount: 0, widthRun: 0, built: false };
 var SITE_X = [], bSites = new Set(), dSites = new Set(), halfW = 0.4 * P.w0, unmatched = 0, rematched = 0, consumed = [];
+// detail state (--detail)
+var D_NEEDLE = { n: 0, ghost: 0, worst: 0, worstRow: null, rawN: 0, rawGhost: 0, rawWorst: 0 }, D_WIDTH = { n: 0, narrow: 0, hole: 0, ghostWin: 0 };
+var D_WIDTH_SITES = {}, D_WIDTH_FIRST = {}, D_WIDTH_LAST = {};
+var D_BREACH = { n: 0, frames: 0, rows: [] }, D_BREACH_ALLOW = P.crustMax + 35e3 * kyr / 1e3;
+var D_STAGE = ['k4', 'zDyn', 'collapse', 'arcGrowth', 'lipGrowth', 'delaminate'], D_HIST = {};
+var D_CUR = { b: {}, d: {} }, D_LASTX = { b: {}, d: {} }, D_REPEATS = [];
+var dPreH = new Float64Array(P.colCap), dPreW = new Float64Array(P.colCap), dPreX = new Float64Array(P.colCap);
+if (detail) {
+	for (i = 0; i < D_STAGE.length; i++) D_HIST[D_STAGE[i]] = new Float64Array(P.colCap);
+	var dK4 = COL.k4;
+	COL.k4 = function (st, dt, t, Tm) {
+		var n = st.nCol, q;
+		for (q = 0; q < n; q++) { dPreH[q] = st.hTot[q]; dPreW[q] = st.colW[q]; dPreX[q] = st.colX[q]; }
+		var r = dK4.call(COL, st, dt, t, Tm);
+		D_HIST.k4.set(st.hTot.subarray(0, st.nCol));
+		return r;
+	};
+	for (i = 1; i < D_STAGE.length; i++) {
+		var dFn = CRU[D_STAGE[i]];
+		CRU[D_STAGE[i]] = (function (nm, orig) {
+			return function (st, dt, t, Tm) {
+				var r = orig.call(CRU, st, dt, t, Tm);
+				D_HIST[nm].set(st.hTot.subarray(0, st.nCol));
+				return r;
+			};
+		})(D_STAGE[i], dFn);
+	}
+}
 
 sampleField(S.z, prevZ);
 
@@ -136,20 +174,39 @@ for (f = 0; f < frames; f++) {
 	// (measured: 53.5 km of drawn thickness and 135% of width on a frame the audit had
 	// called quiet).
 	consumed.length = 0;
+	if (detail) { D_CUR.b = {}; D_CUR.d = {}; }
 	match(preX, preG, preNew, preW, preN);
 	SITE_X.length = 0;
 	bSites.clear();
 	dSites.clear();
 	for (k = 0; k < consumed.length; k++) {
-		if (!preG[consumed[k]]) dSites.add(Math.floor(preX[consumed[k]] / (2.5 * P.w0)));
+		if (!preG[consumed[k]]) {
+			dSites.add(Math.floor(preX[consumed[k]] / (2.5 * P.w0)));
+			if (detail) {
+				var dk = Math.floor(preX[consumed[k]] / (2.5 * P.w0));
+				(D_CUR.d[dk] = D_CUR.d[dk] || []).push(preX[consumed[k]]);
+			}
+		}
 	}
 	// A conveyor retirement has no ghost successor, so merge-walking cannot infer it
 	// from the final topology. COL.k4's instrumentation captures its pre-removal site.
-	for (k = 0; k < nAccSite; k++) dSites.add(Math.floor(accSiteX[k] / (2.5 * P.w0)));
+	for (k = 0; k < nAccSite; k++) {
+		dSites.add(Math.floor(accSiteX[k] / (2.5 * P.w0)));
+		if (detail) {
+			var ak = Math.floor(accSiteX[k] / (2.5 * P.w0));
+			(D_CUR.d[ak] = D_CUR.d[ak] || []).push(accSiteX[k]);
+		}
+	}
 	for (i = 0; i < S.nCol; i++) {
 		if (S.colGhost[i]) continue;
 		if (S.colW[i] < halfW) continue;              // a sliver, not a record
-		if (COL.isNew[i] && (MATCH[i] < 0 || !preNew[MATCH[i]])) bSites.add(Math.floor(S.colX[i] / (2.5 * P.w0)));
+		if (COL.isNew[i] && (MATCH[i] < 0 || !preNew[MATCH[i]])) {
+			bSites.add(Math.floor(S.colX[i] / (2.5 * P.w0)));
+			if (detail) {
+				var bk = Math.floor(S.colX[i] / (2.5 * P.w0));
+				(D_CUR.b[bk] = D_CUR.b[bk] || []).push(S.colX[i]);
+			}
+		}
 	}
 	var bSiteList = siteValues(bSites), dSiteList = siteValues(dSites);
 	for (k = 0; k < dSiteList.length; k++) SITE_X.push(dSiteList[k] * 2.5 * P.w0);
@@ -159,14 +216,24 @@ for (f = 0; f < frames; f++) {
 	for (k = 0; k < bSiteList.length; k++) {
 		var bs = bSiteList[k];
 		flipRepeat += seen(SITE.d, bs, f);
+		flipRepeatAge += seenAge(SITE.d, bs, f);
+		if (detail && lastAt(SITE.d, bs, f) >= 0) D_REPEATS.push({ f: f, kind: 'birth', site: bs, gap: f - lastAt(SITE.d, bs, f),
+			x: minSepX(D_CUR.b[bs], D_LASTX.d[bs]), events: D_CUR.b[bs].length + D_LASTX.d[bs].length,
+			otherKind: 'death', otherF: lastAt(SITE.d, bs, f) });
 		if (seen(SITE.b, bs, f)) birthRepeat++;
 		SITE.b[bs] = f;
+		if (detail) D_LASTX.b[bs] = D_CUR.b[bs];
 	}
 	for (k = 0; k < dSiteList.length; k++) {
 		var ds = dSiteList[k];
 		flipRepeat += seen(SITE.b, ds, f);
+		flipRepeatAge += seenAge(SITE.b, ds, f);
+		if (detail && lastAt(SITE.b, ds, f) >= 0) D_REPEATS.push({ f: f, kind: 'death', site: ds, gap: f - lastAt(SITE.b, ds, f),
+			x: minSepX(D_CUR.d[ds], D_LASTX.b[ds]), events: D_CUR.d[ds].length + D_LASTX.b[ds].length,
+			otherKind: 'birth', otherF: lastAt(SITE.b, ds, f) });
 		if (seen(SITE.d, ds, f)) deathRepeat++;
 		SITE.d[ds] = f;
+		if (detail) D_LASTX.d[ds] = D_CUR.d[ds];
 	}
 	var event = bSites.size + dSites.size > 0;
 	sampleField(S.z, sample);
@@ -214,8 +281,9 @@ for (f = 0; f < frames; f++) {
 			if (d > quietDh) quietDh = d;
 		}
 	}
-	var nGhost = 0, gOldest = 0;
+	var nGhost = 0, gOldest = 0, fMax = 0, fMaxCol = 0;
 	for (i = 0; i < S.nCol; i++) {
+		if (detail && S.hTot[i] > fMax) { fMax = S.hTot[i]; fMaxCol = i; }
 		if (S.hTot[i] > maxH) {
 			maxH = S.hTot[i]; maxHFrame = f; maxHCol = i; maxHX = S.colX[i]; maxHAccrete = nAccSite > 0;
 			maxHFel = S.hFel[i]; maxHMaf = S.hMaf[i]; maxHSed = S.hSed[i];
@@ -246,6 +314,23 @@ for (f = 0; f < frames; f++) {
 		if (S.edge[i] === P.EDGE.collide || (S.edge[i] === P.EDGE.subduct && S.edgePol[i] > 0)) {
 			if (S.hTot[i] > contactMax) { contactMax = S.hTot[i]; contactCol = i; }
 		}
+	}
+	if (detail && fMax > D_BREACH_ALLOW) {
+		// the stage chain of the breaching column: hTot after K4 and after every K5 stage,
+		// with its width and the volume those imply, plus where it came from (the pre-K4
+		// state, matched by position)
+		var row = { f: f, c: fMaxCol, x: S.colX[fMaxCol], w: S.colW[fMaxCol], ghost: S.colGhost[fMaxCol],
+			edge: S.edge[fMaxCol], h: fMax, stages: [], pre: null };
+		for (k = 0; k < D_STAGE.length; k++) row.stages.push(D_HIST[D_STAGE[k]][fMaxCol]);
+		for (k = 0; k < S.nCol; k++) {
+			if (dPreH[k] <= 0 || dPreH[k] < dPreH[fMaxCol] * 0.5) continue;
+			d = S.colX[fMaxCol] - dPreX[k];
+			if (d > P.wrap * 0.5) d -= P.wrap; else if (d < -P.wrap * 0.5) d += P.wrap;
+			if (d < 0) d = -d;
+			if (d < 2e3) { row.pre = { h: dPreH[k], w: dPreW[k], x: dPreX[k] }; break; }
+		}
+		D_BREACH.n++;
+		if (D_BREACH.frames < 8) { D_BREACH.frames++; D_BREACH.rows.push(row); }
 	}
 	beltScan();
 	if (capStayMax > atCapStay) atCapStay = capStayMax;
@@ -308,6 +393,7 @@ console.log('  topology       ' + births + ' births / ' + deaths + ' deaths (' +
 console.log('  stacks         ' + inversions + ' column-frames with an inverted bed, ' +
 	atCap + ' column-frames at layerCap');
 if (png) writePng(png);
+if (detail) detailReport();
 if (strict) gate();
 
 // The pre-frame record each current record continues, by position: a gather reorders
@@ -398,6 +484,114 @@ function seen(table, site, frame) {
 	return (frame - prev) < P.evGap ? 1 : 0;
 }
 
+// The closest pair of event positions between two frames' event lists, and the list
+// sizes: a "site" is a 2.5-column bucket, so the separation, not the bucket, is what says
+// whether the two events are the same boundary or two boundaries that share a bucket.
+function minSepX(a, b) {
+	if (!a || !b) return NaN;
+	var i, j, d, cost = Infinity;
+	for (i = 0; i < a.length; i++) for (j = 0; j < b.length; j++) {
+		d = Math.abs(a[i] - b[j]);
+		if (d > P.wrap * 0.5) d = P.wrap - d;
+		if (d < cost) cost = d;
+	}
+	return cost;
+}
+
+// the same spacing test in time: inside P.evAge Myr of the previous event
+function seenAge(table, site, frame) {
+	var prev = table[site];
+	if (prev === undefined) return 0;
+	return (frame - prev) < evAgeFrames ? 1 : 0;
+}
+
+// the frame of the last event at a site when it is inside the event memory, else -1
+function lastAt(table, site, frame) {
+	var prev = table[site];
+	if (prev === undefined || (frame - prev) >= P.evGap) return -1;
+	return prev;
+}
+
+// --detail: classify one R2 sample. The needle half reports the raw-slot reading next to
+// the selected one, so the leg that made the shoulder walk necessary stays visible.
+function detailSample(i, j, f) {
+	var rawShoulder = Math.max(S.hTot[wm(i - 1)], S.hTot[wm(j + 1)]);
+	var rawRatio = rawShoulder > 0 ? r2Scratch.peak / rawShoulder : (r2Scratch.peak > 0 ? Infinity : 1);
+	if (rawRatio > P.beltPeak) {
+		D_NEEDLE.rawN++;
+		if (S.colGhost[wm(i - 1)] || S.colGhost[wm(j + 1)]) D_NEEDLE.rawGhost++;
+		if (rawRatio > D_NEEDLE.rawWorst) D_NEEDLE.rawWorst = rawRatio;
+	}
+	if (r2Scratch.needleRatio > P.beltPeak) {
+		D_NEEDLE.n++;
+		if (S.colGhost[wm(i - 1)] || S.colGhost[wm(j + 1)]) D_NEEDLE.ghost++;
+		if (r2Scratch.needleRatio > D_NEEDLE.worst) {
+			D_NEEDLE.worst = r2Scratch.needleRatio;
+			D_NEEDLE.worstRow = { f: f, i: i, x: S.colX[i], ratio: r2Scratch.needleRatio, peak: r2Scratch.peak,
+				shoulder: r2Scratch.shoulder, gl: S.colGhost[wm(i - 1)], gr: S.colGhost[wm(j + 1)],
+				hl: S.hTot[wm(i - 1)], hr: S.hTot[wm(j + 1)], built: r2Scratch.built,
+				prof: [-2, -1, 0, 1, 2, 3].map(function (d) { return S.hTot[wm(i + d)] / 1e3; }) };
+		}
+	}
+	if (!r2Scratch.built || r2Scratch.widthRun >= P.beltCols) return;
+	D_WIDTH.n++;
+	var rise = r2Scratch.flank + P.beltRise, cnt = 0, gwin = 0, d, c;
+	for (d = -2; d <= 3; d++) {
+		c = wm(i + d);
+		if (S.colGhost[c]) gwin++; else if (S.hTot[c] >= rise) cnt++;
+	}
+	if (gwin) D_WIDTH.ghostWin++;
+	if (cnt < P.beltCols) D_WIDTH.narrow++; else D_WIDTH.hole++;
+	var key = Math.round(S.colX[i] / P.w0);
+	D_WIDTH_SITES[key] = (D_WIDTH_SITES[key] || 0) + 1;
+	if (D_WIDTH_FIRST[key] === undefined) D_WIDTH_FIRST[key] = { f: f, i: i, x: S.colX[i], cnt: cnt, ghost: gwin,
+		run: r2Scratch.widthRun, margin: r2Scratch.peak - r2Scratch.flank, needle: r2Scratch.needleRatio,
+		rel: S.edgeRelN[i], prof: [-2, -1, 0, 1, 2, 3].map(function (d) { return S.hTot[wm(i + d)] / 1e3; }) };
+	D_WIDTH_LAST[key] = f;
+}
+
+// --detail report. Report only: it reads the same state the gates read and changes none
+// of it (no counters here feed a gate decision).
+function detailReport() {
+	var i, k, keys, r;
+	console.log('\n--detail: what the failures are (report only; gates above are unchanged)');
+	console.log('  R2 needle   as-written failures ' + D_NEEDLE.rawN + ' (worst ' + D_NEEDLE.rawWorst.toFixed(2) +
+		', of which a draining shoulder ' + D_NEEDLE.rawGhost + '); with the shoulder walk ' + D_NEEDLE.n +
+		' (worst ' + D_NEEDLE.worst.toFixed(2) + ', draining shoulder ' + D_NEEDLE.ghost + ')');
+	if (D_NEEDLE.worstRow) {
+		r = D_NEEDLE.worstRow;
+		console.log('    worst frame ' + r.f + ' x ' + (r.x / 1e3).toFixed(1) + ' km peak ' + (r.peak / 1e3).toFixed(1) +
+			' / shoulder ' + (r.shoulder / 1e3).toFixed(1) + ' (' + r.ratio.toFixed(2) + 'x), slots ' + (r.hl / 1e3).toFixed(1) +
+			' / ' + (r.hr / 1e3).toFixed(1) + ' km ghost ' + r.gl + '/' + r.gr + ', built ' + r.built);
+		console.log('      profile (-2..+3) km: ' + r.prof.map(function (v) { return v.toFixed(1); }).join(' / '));
+	}
+	console.log('  R2 width    failures ' + D_WIDTH.n + ' (narrow belt ' + D_WIDTH.narrow + ', broken belt ' + D_WIDTH.hole +
+		', with a draining cell inside the window ' + D_WIDTH.ghostWin + ')');
+	keys = Object.keys(D_WIDTH_SITES).sort(function (a, b) { return D_WIDTH_SITES[b] - D_WIDTH_SITES[a]; });
+	for (k = 0; k < keys.length && k < 10; k++) {
+		r = D_WIDTH_FIRST[keys[k]];
+		console.log('    site x ' + (r.x / 1e3).toFixed(1) + ' km frames ' + r.f + '..' + D_WIDTH_LAST[keys[k]] +
+			' fail ' + D_WIDTH_SITES[keys[k]] + ' first run ' + r.run + ' cells ' + r.cnt + ' margin ' + (r.margin / 1e3).toFixed(1) +
+			' km needle ' + r.needle.toFixed(2) + ' rel ' + (r.rel / 1e3).toFixed(1) + ' mm/yr');
+		console.log('      profile (-2..+3) km: ' + r.prof.map(function (v) { return v.toFixed(1); }).join(' / '));
+	}
+	console.log('  R3 ceiling  breaching frames ' + D_BREACH.n + ' (allowance ' + (D_BREACH_ALLOW / 1e3).toFixed(1) + ' km); first ' + D_BREACH.frames + ' traced:');
+	for (k = 0; k < D_BREACH.rows.length; k++) {
+		r = D_BREACH.rows[k];
+		console.log('    frame ' + r.f + ' x ' + (r.x / 1e3).toFixed(1) + ' km w ' + (r.w / P.w0).toFixed(2) + 'w0 ghost ' + r.ghost +
+			' edge ' + r.edge + ' end hTot ' + (r.h / 1e3).toFixed(2) + ' km');
+		console.log('      ' + D_STAGE.map(function (nm, q) { return nm + ' ' + (r.stages[q] / 1e3).toFixed(2); }).join(' -> ') +
+			(r.pre ? '   pre-K4 ' + (r.pre.h / 1e3).toFixed(2) + ' km at ' + (r.pre.w / P.w0).toFixed(2) + 'w0' : ''));
+	}
+	console.log('  R5 repeats  ' + D_REPEATS.length + ':');
+	for (k = 0; k < D_REPEATS.length; k++) {
+		r = D_REPEATS[k];
+		console.log('    ' + r.kind + ' frame ' + r.f + ', after ' + r.otherKind + ' frame ' + r.otherF + ': gap ' + r.gap +
+			' frames (' + (r.gap * kyr / 1e3).toFixed(2) + ' Myr), closest pair of ' + r.events + ' event columns ' +
+			(r.x / 1e3).toFixed(1) + ' km apart, site bucket ' + (2.5 * P.w0 / 1e3).toFixed(0) + ' km wide');
+	}
+}
+
 // Is this world position within a column of a record that appeared or was retired this
 // frame? An event frame is its own control: the same flow, the same erosion and the
 // same orogeny run everywhere on it, so the move at the event site can be read against
@@ -444,6 +638,7 @@ function beltScan() {
 		flank = r2Scratch.flank; peak = r2Scratch.peak;
 		if (!(flank > 0)) continue;
 		count = r2Scratch.widthCount; contiguous = r2Scratch.widthRun;
+		if (detail) detailSample(i, j, f);
 		beltN++;
 		if (r2Scratch.outerRatio > beltExcess) {
 			beltExcess = r2Scratch.outerRatio; beltX = S.colX[i];
@@ -511,6 +706,8 @@ function gate() {
 		flipRepeat === 0, flipRepeat + ' of ' + (births + deaths) + ' events (' +
 		per1000(births + deaths) + ' per 1000 frames) came within ' + P.evGap +
 		' frames of an earlier one at the same site');
+	L.check.info('R5 repeats inside the model\'s own memory (P.evAge ' + P.evAge + ' Myr = ' +
+		evAgeFrames.toFixed(0) + ' frames here)', flipRepeatAge + ' of ' + (births + deaths) + ' events');
 	L.check.ok('R5 stacks stay in stratigraphic order', inversions === 0,
 		inversions + ' inverted column-frames');
 	L.check.ok('R5 no column runs out of beds', atCapStay <= P.capStay,

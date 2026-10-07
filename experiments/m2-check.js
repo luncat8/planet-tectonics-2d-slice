@@ -579,6 +579,18 @@ L.check.r2ShapeAt(S, r2ShapeIndex, r2Shape);
 check.near('four non-contiguous raised cells remain distinguishable from a four-wide belt',
 	r2Shape.widthCount, 4, 0);
 check.near('the selected width metric returns only the longest contiguous run', r2Shape.widthRun, 2, 0);
+// A draining record holds no ground, so it is not a shoulder: the pair is measured against
+// the real ground beyond it. Raw: max(0, 40 km) -> 2.0x. Walked: max(70 km, 40 km).
+for (ri7 = -2; ri7 <= 3; ri7++) S.hTot[r2ShapeIndex + ri7] = 40e3;
+S.hTot[r2ShapeIndex] = 80e3; S.hTot[r2ShapeIndex + 1] = 80e3;
+S.hTot[r2ShapeIndex - 2] = 70e3; S.hTot[r2ShapeIndex - 1] = 0;
+S.colGhost[r2ShapeIndex - 1] = 1;
+L.check.r2ShapeAt(S, r2ShapeIndex, r2Shape);
+check.near('a draining shoulder is stepped over instead of read as a 0 km shoulder',
+	r2Shape.needleRatio, 80 / 70, 1e-12);
+check.ok('and the stepped-over shoulder stays under the needle limit', r2Shape.needleRatio <= P.beltPeak,
+	'ratio ' + r2Shape.needleRatio.toFixed(3) + ' (raw slot would read ' + (80 / 40) + ')');
+S.colGhost[r2ShapeIndex - 1] = 0;
 
 // M1: a whole-plate driven fixture reaches the C-C crush floor in ordinary SIM frames,
 // then retires one boundary record. No one-column coordinate edit is used: PLT.solve and
