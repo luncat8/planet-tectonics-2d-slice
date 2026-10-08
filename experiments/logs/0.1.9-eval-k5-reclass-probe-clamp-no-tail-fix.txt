@@ -1,0 +1,6 @@
+# donor clamp WITHOUT the freed-tail fix (scratch tree cf98c); same probe, mixed-rate schedule
+K5 reclassification probe: seed 1, schedule 100e3:1000,200e3:3000, 4000 frames
+  transport floor solves 4000; next-frame reclassifications in 480 frames (518 pairs): 12 from a K5 drain below P.hOceanic, 506 from a velocity change
+  largest deficit (ordinary floor minus gap) 5.90 km
+  first at frame 1109; largest column shift by the floor solve in those frames 10.29 km, in all other frames 8.38 km
+  frames with absorbed shortening past nCol 594

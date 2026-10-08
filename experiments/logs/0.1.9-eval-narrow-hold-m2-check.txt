@@ -1,0 +1,351 @@
+
+M2.0 state, ledger, event order
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  zero geological time leaves tectonic state unchanged
+PASS  edge history starts invalid
+PASS  mixed merge ledger lith 0   rel 0.00e+0  got 33120000784.30707  want 33120000784.30707
+PASS  mixed merge ledger lith 1   rel 0.00e+0  got 714595282782.2257  want 714595282782.2257
+PASS  mixed merge ledger lith 2   rel 0.00e+0  got 335331177336.26263  want 335331177336.26263
+PASS  mixed merge ledger lith 3   rel 0.00e+0  got 0  want 0
+PASS  mixed merge ledger lith 4   rel 0.00e+0  got 0  want 0
+PASS  mixed merge ledger lith 5   rel 0.00e+0  got 0  want 0
+PASS  mixed merge records one event
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  all due events execute after K4 and before K5
+PASS  reset is deterministic, including new buffers
+
+M2.1 mantle flow and fan T
+PASS  modes are integer harmonics of the wrap   3,5,6,8 want 3,5,6,8
+PASS  the drive survives plate averaging   plates feel 11.54 mm/yr of a 24.01 mm/yr flow (48%)
+PASS  mode obliquity, precession and phase within the design ranges
+PASS  flow repeats after P.wrap to double precision   1.43e-9 m/Myr
+PASS  surface drive is u_x(x, 0)   0.00e+0
+PASS  streamfunction flow is divergence-free   max |div|/(|du/dx|+|dv/dy|) 3.99e-7
+PASS  flow speed bounded by the mode sum   3.75 cm/yr
+PASS  constant T is preserved (times the relaxation)   0.00e+0
+PASS  back-trace recurrence equals the closed-form flow   2.55e-15
+PASS  T stays finite and inside its initial bounds over 40 Myr   [-0.550, 0.000]
+PASS  plate speeds finite and within vMax   0.64 -0.89 5.39 -0.74 -0.20 2.48 -0.87 0.36 cm/yr
+PASS  damage stays a fraction after 40 Myr of real tectonics   360/525 columns damaged, max 0.790
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 5.96e-8  got 40030173.59204108  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   1 boundaries carry it
+
+M2.1 plate solve
+PASS  dt = tauOmega gives the width-weighted mean fit   0.00e+0
+PASS  columns carry their plate velocity
+PASS  relaxation moves u by dt/tauOmega of the gap   rel 0.00e+0  got 45378.20309139526  want 45378.20309139526
+PASS  speed clamps at vMax
+PASS  cD grows as the mantle cools (stagnant lid)
+
+M2.1 boundary classifier (prescribed two plates)
+PASS  epsHi enters / epsLo leaves opening and closing (C–C collides)   1,2,2,1,1,4,4,1,2,4,2
+PASS  the seam edge (last -> first) is the mirrored boundary
+PASS  same-plate edges are interior
+PASS  edgeAge accumulates in one state   rel 0.00e+0  got 0.1  want 0.1
+PASS  edgeAge resets on a state change
+PASS  fast collision never advances the slow suture timer
+PASS  a slow collision starts the consecutive suture timer   rel 0.00e+0  got 0.05  want 0.05
+PASS  fast convergence resets the consecutive slow timer
+PASS  history is kept only for the same ordered plate pair
+PASS  O–C: the oceanic side subducts
+PASS  trenchDist 1..3 on the overriding (right) side
+PASS  O–O: the older side subducts
+PASS  trenchDist 1..3 on the overriding (left) side
+PASS  O–O polarity holds while the trench runs
+PASS  O–C overrides a held O–O polarity
+PASS  continent arriving at the trench turns it into collision
+PASS  a collision that has absorbed no shortening yet exerts no resistance
+PASS  collision resistance pushes both plates apart, equal and opposite   -46.91e9 m2/Myr
+PASS  the resistance acts over the shortening the boundary has absorbed   rel 0.00e+0  got -46910359678.17322  want -46910359678.17322
+PASS  ridge push is downslope on oceanic columns only
+
+M2.2 transport and contact fixtures
+PASS  wrap gather carries stack, marker, vent and deposit together
+PASS  rigid movement retains every spacing through seam
+PASS  rigid wrap per-lith volume ledger   max relative 0.00e+0
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  mobile-load transport per-lith volume ledger   max relative 0.00e+0
+PASS  mobile sediment fractions remain finite after a width change
+PASS  5 cm/yr rigid plate translates 2000 km including the wrap   rel 2.33e-10  got 2007818.3932796954  want 2007818.3932796957
+PASS  rigid plate carries its own width through 40 translations   rel 8.00e-10  got 78183.93279695604  want 78183.93279695524
+PASS  no rigid spacing drift after 1e5 frames   rel 1.31e-10  got 78183.93279695511  want 78183.93279695524
+PASS  rigid 2000 km + 1e5 frames per-lith volume ledger   max relative 1.27e-16
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  one opening creates one oceanic packet on the left plate   newborn at 13
+PASS  the mantle source is the shortfall under hMafNew over the newborn own width   shortfall 7.031e+7 of 8.319e+8 m2
+PASS  the newborn is a full ridge, not a needle over the gap it was born into   13.30 km between 10.67 and 13.68 km
+PASS  oceanic ridge per-lith volume ledger   max relative 1.82e-16
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  continental opening creates one rift column on the left plate   newborn at 13
+PASS  the newborn is cut from the margins it was born between, not invented   43.14 km between 37.59 and 48.68 km
+PASS  the newborn inherits beds, it does not invent them
+PASS  continental rift per-lith volume ledger   max relative 0.00e+0
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  a diverging uniform pair spawns exactly one column   41 frames
+PASS  the newborn sits between the two margins   nb=5
+PASS  opening thinned both margins by the same factor   rel 1.09e-11  got 22959.78647185018  want 22959.78647185019
+PASS  and the birth left both at the newborn thickness   rel 7.28e-12  got 22959.786471850188  want 22959.78647185018
+PASS  the rift axis is a valley below the inland crust   z=-1606 m inland 400 m
+PASS  the stretched margins stay below the inland thickness   22.96 km of 35.00
+PASS  a continental rift sources nothing from the mantle
+PASS  uniform continental rift per-lith volume ledger   max relative 5.23e-16
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 7.45e-9  got 40030173.59204115  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  ore potentials stay concentrations in 0..1 through a birth   oArc=0.9
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  a slow closing overlap is forced to a contact   edge=3
+PASS  and held at the floor by the plate correction instead of interpenetrating   gap 151752 m of a 9382 m floor
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+
+R2 local needle and contiguous-width measurement
+PASS  a broad six-column plateau has no local needle   rel 0.00e+0  got 1  want 1
+PASS  the broad plateau supplies six contiguous raised columns   rel 0.00e+0  got 6  want 6
+PASS  legacy outer-flank ratio remains available for comparison   rel 0.00e+0  got 2  want 2
+PASS  a narrow pair rises above both immediate shoulders   rel 0.00e+0  got 2  want 2
+PASS  a narrow pair supplies only two contiguous raised columns   rel 0.00e+0  got 2  want 2
+PASS  four non-contiguous raised cells remain distinguishable from a four-wide belt   rel 0.00e+0  got 4  want 4
+PASS  the selected width metric returns only the longest contiguous run   rel 0.00e+0  got 2  want 2
+PASS  a draining shoulder is stepped over instead of read as a 0 km shoulder   rel 0.00e+0  got 1.1428571428571428  want 1.1428571428571428
+PASS  and the stepped-over shoulder stays under the needle limit   ratio 1.143 (raw slot would read 2)
+PASS  a pair inside a high margin is not a needle at its own notch   rel 0.00e+0  got 1.119804400977995  want 1.119804400977995
+PASS  and the immediate-slot reading is kept beside it as the legacy field   immediate 2.23x over the notch 20.5 km vs selected 1.12x
+PASS  the same pair still counts as built and takes its width from the flank columns   rel 0.00e+0  got 1  want 1
+PASS  an isolated pair on a plateau is still a needle   rel 0.00e+0  got 1.5833333333333333  want 1.5833333333333333
+PASS  and the gate would reject it   ratio 1.58 (max 1.5)
+PASS  a pair below the ground four columns away is not the isolated rise the clause names   ratio 0.96 against 99.0 km
+PASS  the prescribed C-C fixture excludes unrelated plume and trench sources
+PASS  a driven C-C pair reaches the conveyor through complete SIM frames   frame 50, 3 locked records, 512 columns
+PASS  the conveyor preserves collision history across the retired boundary record   live collide edge 255
+PASS  the conveyor books the released territory as the boundary's absorbed shortening   edgeShort 78.18 km, pair gap 82.09 km, crush floor 3.91 km
+PASS  no other boundary carries absorbed shortening   0 slots
+PASS  a deposit on the retired stack follows the accretion without a false horizon   column 255, layer -1
+PASS  accretion keeps every Voronoi width positive
+PASS  C-C conveyor per-lith volume ledger   max relative 2.79e-15
+PASS  the C-C retirement is an in-crust move, not a consumed sink
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.04e-7  got 40030173.59204104  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   1 boundaries carry it
+PASS  subduction drains the ocean record, books the rest and keeps half its sediment as prism   prism 2.227e+7 m2 of 4.454e+7 m2 scraped
+PASS  a consumed record hands its deposit horizon and vent to the winner
+PASS  subduction per-lith volume ledger   max relative 0.00e+0
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  the consumed edge is retired and the boundary left of it starts fresh   left edge=0 age=0 drained=1
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  one newly slow frame cannot suture an old fast collision
+PASS  20-Myr slow C-C suture merges exactly one plate
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  damaged corridor splits two sufficiently large daughter plates
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  widespread damage leaves every plate intact
+PASS  a multi-cell corridor splits at its midpoint, nearer daughter first
+PASS  the whole corridor becomes a weak line and cannot split again
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  a single planet-wide plate never splits
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  wrapped last-to-first gap produces one left-plate packet   newborn at 512 x 39967.6 km
+PASS  seam opening per-lith volume ledger   max relative 5.10e-16
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  at colCap a birth that does not fit is skipped whole   n=768 skipped=1 prod=0
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  a draining record frees no slot, so the birth is still skipped   n=768 skipped=1 drained=1
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
+PASS  100 Myr evolving planet per-lith volume ledger   max relative 7.67e-15
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 5.22e-8  got 40030173.59204109  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   2 boundaries carry it
+PASS  700 Myr mixed-rate evolving planet (repeated births) per-lith volume ledger   max relative 1.16e-14
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 1.49e-8  got 40030173.59204113  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   7 boundaries carry it
+
+M2.3 age, damage, zDyn, flexure, collapse
+PASS  K5/K6 at zero geological time change nothing
+PASS  thermal age grows by exactly dtGeo
+PASS  damage grows at kDam*ext/extRef/strength - kHeal*damage   rel 0.00e+0  got 0.5744230769230769  want 0.5744230769230769
+PASS  convergence has no damage source, only healing   rel 0.00e+0  got 0.4975  want 0.4975
+PASS  thick old crust is stronger than thin young crust   1.300 vs 0.300
+PASS  a hot mantle weakens the lithosphere
+PASS  strength stays inside its clamp
+PASS  damage saturates at 1 and never leaves 0..1   max 1.0000
+PASS  a running trench pulls the margin down (signed source)   -1727.1 m
+PASS  the depression is bounded by zTrench and dies away inland   -1727 / -466 / -125 / -2 m
+PASS  100 Myr at 50 kyr and at 200 kyr per frame agree within 1%   max drift 0.49% of zTrench
+PASS  flexure conserves SUM(w*zDyn) while relaxation decays it   rel 1.49e-8  got 77405989.66748153  want 77405989.66748154
+PASS  a localized load spreads to both neighbours symmetrically   4.950 / 980.149 / 4.950
+PASS  400 Myr of flexure stays finite and never amplifies
+PASS  a plateau above hCollapse spreads into both neighbours   78.200 km, neighbours 35.900
+PASS  collapse conserves felsic volume exactly   rel 0.00e+0  got 1404574352697.2922  want 1404574352697.2922
+PASS  collapse moves real beds, not just the cache   35.900 km in the neighbour bed
+PASS  the sediment cap rides down with the collapsed crust
+PASS  gravitational collapse per-lith volume ledger   max relative 0.00e+0
+PASS  collapse lowers the plateau (isostasy follows the beds)   8054.8 m of 8445.8
+PASS  nothing moves while every column is below hCollapse
+PASS  gravitational collapse never sends a receiver past crustMax   left 80000.000 m, right 80000.000 m
+PASS  headroom-limited gravitational collapse per-lith volume ledger   max relative 0.00e+0
+PASS  collapse transports the fully peeled sheet volume   rel 0.00e+0  got 938207193.563464  want 938207193.563464
+PASS  deposits hosted by a moved felsic bed map below a higher-rank cap   moved/retained felsic hosts 1/1, cap host 2
+PASS  collapse deposit-host mapping per-lith volume ledger   max relative 0.00e+0
+PASS  the belt excess is the pair over its flanks less the root it can hold   rel 0.00e+0  got 49000 m  want 49000
+PASS  the orogenic flow sheds the backward-Euler relaxation of the excess   rel 0.00e+0  got 58.72952457051538 m  want 58.72952457051538
+PASS  each feed column gains half a share   rel 2.13e-14  got 29.36476228525771 m  want 29.36476228525769
+PASS  and the pair loses a whole share   rel 1.86e-12  got 58.72952457051724 m  want 58.72952457051538
+PASS  a receiver at the ceiling receives nothing
+PASS  a receiver with 10 m of headroom gains exactly it   rel 0.00e+0  got 10 m  want 10
+PASS  and its side of the pair sheds only what moved   rel 9.31e-13  got 39.36476228525862 m  want 39.36476228525769
+PASS  the shed is the backward-Euler relaxation of the excess   rel 7.28e-12  got 6206.896551724145 m  want 6206.896551724138
+PASS  and books the foundered volume as consumed   rel 0.00e+0  got 485279582.87765384 m3  want 485279582.87765384
+PASS  no frame takes all of it, and none drops the column under the ceiling   overage 0.03 km after dt = 10 Myr
+PASS  foundering peels the basal felsic bed beneath lava   rel 4.55e-13  got 3461.538461538461 m  want 3461.5384615384614
+PASS  the overlying lava and sediment beds remain unchanged
+PASS  basal felsic foundering closes its lithology ledger   rel 0.00e+0  got 270636690.45099926 m3  want 270636690.45099926
+PASS  the basal bed is reduced by exactly the felsic loss   rel 0.00e+0  got 6538.461538461539 m  want 6538.461538461539
+PASS  foundering removes complete basal beds without leaving empty slots   9 active beds, all positive
+PASS  crossing a basal-bed boundary keeps the backward-Euler amount   rel 1.82e-12  got 13846.153846153844 m  want 13846.153846153846
+PASS  a foundered host loses its deposit and the next bed keeps its deposit   hosted -1, surviving 0
+PASS  a full-bed peel closes the consumed-mass ledger   rel 0.00e+0  got 1082546761.803997 m3  want 1082546761.803997
+PASS  at small dt the shed is kDelam x excess x dt to first order   rel 4.03e-1  got 89.59681433548394 m  want 90
+PASS  the bulk orogenic flow is dt-independent to first order   rel 3.11e+0  got 581.0276679841918 m  want 584.1377554348146
+PASS  local yield-limited flow matches its small-dt face flux   rel 6.00e-12  got 17.57188498401956 m  want 17.57188498402556
+PASS  local face flux raises the left shoulder by its volume share   rel 3.00e-12  got 8.78594249200978 m  want 8.78594249201278
+PASS  local face flux raises the right shoulder by its volume share   rel 3.00e-12  got 8.78594249200978 m  want 8.78594249201278
+PASS  local yield-limited belt flow per-lith volume ledger   max relative 0.00e+0
+PASS  large-dt local flow does not reverse either initial belt shoulder   left 40.50, peak 49.00, right 40.50 km
+PASS  large-dt local yield-limited belt flow per-lith volume ledger   max relative 0.00e+0
+PASS  local flow respects the receiver crust ceiling   receiver 73.540 km; ceiling 80.0 km
+FAIL  a lateral flow leaves the donor its continental thickness   rel 8.00e+3  got 0 m  want 8000
+FAIL  the flow moves exactly the felsic above that floor, and no mafic   rel 8.00e+3  got 12000 m  want 4000
+PASS  the clipped volume stays in the three columns, it is not a sink   rel 0.00e+0  got 10476646994.791985  want 10476646994.791985
+PASS  donor-floor-limited local belt flow per-lith volume ledger   max relative 0.00e+0
+PASS  the fixture starts as a closing continental pair inside the ordinary floor   gap 0.0800 w0, minimum hFel 8.60 km
+PASS  the flow drains that pair all the way to the donor floor   rel 0.00e+0  got 8000 m  want 8000
+PASS  K5 cannot re-class a floored continental pair as ordinary   minimum hFel after K5 8.00 km (threshold 8.00 km)
+PASS  K5 over a floored continental pair per-lith volume ledger   max relative 0.00e+0
+PASS  K5/K6 never touch the lithology ledger
+PASS  the collided crust stands higher through isostasy alone   -2341 -> 270 m
+PASS  a frame ends with the profile recomputed from the final state
+PASS  500 Myr trajectory respects the ordinary floor after every frame   minimum 0.1192 w0; stage minima K3/K4/event/finalFloor/K5 0.1191/0.1192/0.1193/0.1200/0.1192 w0 (event frame 2841, floor 2151, K5 2279; pair 75 was ordinary before K5, gap 0.1192 w0, minimum hFel pre-K5/after gravity+bulk/after local/after arc/after lip/after delam 2.16/2.16/2.16/2.16/2.16/2.16 km (C-C threshold 8.00 km; required > 0.1188 w0)
+PASS  500 Myr trajectory respects the closing C-C floor after every frame   minimum 0.0501 w0; required > 0.0495 w0
+PASS  500 Myr final topology respects both contact floors   ordinary 0.1200 w0 / 0.12, closing C-C 0.2158 w0 / 0.05; softest same-plate gap 0.1200 w0
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 2.24e-8  got 40030173.59204112  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   3 boundaries carry it
+  500 Myr @100 kyr: n=542 plates=8 maxCrust=78 km maxRelief=4.7 km
+PASS  50 Myr trajectory respects both contact floors after every frame   min ordinary 0.1200 w0, closing C-C 0.0501 w0; stage minima K3/K4/event/finalFloor/K5 0.1200/0.1200/0.1200/Infinity/0.1200 w0; final 0.1200/0.7571 w0
+PASS  all state buffers finite
+PASS  positions sorted, unique and wrapped
+PASS  stack caches agree
+PASS  widths cover the periodic domain   rel 9.69e-8  got 40030173.592041045  want 40030173.59204114
+PASS  plate counts agree
+PASS  absorbed shortening sits only on live inter-plate boundaries   3 boundaries carry it
+
+M2.1 determinism and finite state at every kernel boundary
+PASS  all buffers finite after every kernel (20 frames)
+PASS  same seed and dtGeo are bitwise deterministic (300 frames)
+PASS  sim frame (K0-K6) within the 4 ms budget   1.864 ms/frame, min of 7x20
+
+2 / 332 FAILURES

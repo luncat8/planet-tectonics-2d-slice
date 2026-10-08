@@ -743,3 +743,24 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   ~80 km can put its own footprint 2–3 km outside it, and the gate then compares the event
   with itself (both extremes on the same frame, 20 km apart). The `event site` line now prints
   frame and x for both extremes so this is visible without a probe.
+
+## 0.1.9 evaluation of a K5 donor floor (35816d1, see archive/0.1.9-k5-donor-floor-evaluation-worklog.md)
+
+- **A donor-side clamp on lateral felsic flow strands collision roots.** `flowAvail = hFel - floor`
+  on every column stops the felsic of a thick collision column at the floor; the local flow
+  cannot move it, the mafic root keeps the column thick, and R2 needles return (immediate-slot
+  failures 0 to 202 on one leg). Measure any flow-law change on the strict legs with the same
+  harness. The m2 trajectory check cannot see it.
+- **m2's trajectory check reads the state right after `SIM.step()`.** A classification fix can
+  pass it and still move the next frame: a frozen contact kind is cleared at the next transport,
+  so a pair can change kind again in the next K3. Measure next-frame effects with
+  `experiments/k5-reclass-probe.js`.
+- **Name the cause before naming the operator.** Most next-frame flips in this model are
+  velocity-driven (the K2 solve changes between frames), and no K5 change prevents them. Only the
+  drain-caused share belongs to K5.
+- **Per-slot history past `nCol` goes stale when a topology hand-off shrinks the column count.**
+  The freed slots keep old values unless cleared. Readers stop at `nCol`, so it is inert, but the
+  m2 invariant checks it. Clear freed slots whenever `nCol` falls.
+- **Frozen per-slot state survives transport only if nothing reorders the slots in between.**
+  The floor runs before the transport sort, and both freeze sites run after K4's own reorder.
+  Keep that order if the call sequence changes.
