@@ -764,3 +764,19 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
 - **Frozen per-slot state survives transport only if nothing reorders the slots in between.**
   The floor runs before the transport sort, and both freeze sites run after K4's own reorder.
   Keep that order if the call sequence changes.
+
+## 0.1.10 evaluation of the narrow crush hold (archive/0.1.10-narrow-hold-worklog.md)
+
+- **A three-thousand-frame leg can hide the effect a recommendation rests on.** The narrow hold
+  read clean on seed 1 at 50 kyr over 3000 frames; over 5000 frames the same seed had 232
+  drain events against 1 and failed R3. Test a recommendation at the run length where its
+  effect appears, and count the events, not only the verdict.
+- **One seed does not carry a verdict.** Over eight seeds at two rates the variant passed
+  5 of 16 strict runs against the base's 11, and fixed none of the base's failures. Use the
+  full seed sweep before a recommendation, and print the base and the variant side by side.
+- **A variant rebuilt from prose must reproduce the logged numbers before it is measured.**
+  Seed 1 at 100 kyr, the mixed schedule and seeds 2 and 5 matched the old log exactly, which is
+  what made the new sweep comparable. Keep the patch in `experiments/logs/` as the artifact.
+- **A checkpoint spin-up check catches a trajectory change the gates do not.** The variant's
+  imported run diverged from its fresh run by 3.4e-3 (bound 1e-3) while every strict gate
+  it was judged on still stood. Run the whole suite on a candidate, not only its own harness.

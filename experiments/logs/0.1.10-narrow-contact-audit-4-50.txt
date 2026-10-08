@@ -1,0 +1,61 @@
+
+contact-audit site bookkeeping
+PASS  event buckets are concrete Set values
+PASS  repeat spacing uses the current event frame
+PASS  the R1 window is anchored at the event, not at its bucket   event at 156.4 km, bucket left edge 0.0 km
+contact audit — seed 4, 50 kyr/frame, 5000 frames (250 Myr), 2.29 ms/frame   [STRICT]
+  crust          max 81.0 km   thickest at a contact 80.4 km   collisions 4574 seen; legacy peak/flank 6.37x, legacy 4-of-6 88.4%, contiguous 4-of-6 88.4% of 3601 built samples   draining records 4 live holding 0.0% of the crust, widest run 0.0 columns (oldest 98.8 Myr)
+  R2 legacy peak frame 3994, edge 338, pair 80.4 km / outer flank 12.6 km (6.37x), mean immediate shoulders 55.3 km (1.45x), legacy count 6/6 above outer flank + 2.0 km: 13.1/58.6/56.8/80.4/69.0/53.7/42.6/14.3 km
+  R2 local needle frame 3320, edge 330, pair 58.5 km / highest belt-neighbourhood shoulder 37.5 km (1.56x; max 1.5), local hTot (-3..+4) km: 8.7/11.6/37.5/58.5/41.3/24.1/29.3/14.0
+  R2 legacy width narrowest count 1/6 at frame 1326, edge 205, pair/flank 1.08: 50.0/48.4/51.7/55.4/53.2/49.8/49.6/51.8 km
+  R2 contiguous width minimum 1/6 at frame 1326, edge 205: 50.0/48.4/51.7/55.4/53.2/49.8/49.6/51.8 km
+  max column     frame 4119, record 340, x 24995.7 km   fel 77.7 km, maf 0.0 km, sed 3.3 km, on a C-C retirement frame: false
+  surface        worst single-frame move 5189 m at frame 4807 x 24823.4 km   mean 2.3 m, 16677 raster samples above 100 m
+  R1 event site  2502 m in an event footprint (birth, frame 3351 x 18764.1 km) against the quiet-frame yardstick 5189 m (frame 4807 x 24823.4 km), ratio 0.48 (max 1.25)
+                 event-frame background (report) 820 m (frame 2342 x 1368.2 km), worst same-frame pairing (report) 16.18 at frame 4797 (1494 m vs 92 m)
+                 quiet-frame drawn thickness 65.8 km and width 10.0%, 0 quiet records with no counterpart, 12162 re-partitioned)
+  columns        worst single-frame drawn-thickness change 65.8 km at frame 947 x 35312.0 km   worst width change 10.0% at frame 651   worst local slope 125.5%
+  topology       130 births / 99 deaths (45.80 per 1000 frames, incl. 34 C-C retirements) at 10 repeated birth and 1 repeated death sites (544 columns, 9 plates)
+  stacks         0 column-frames with an inverted bed, 0 column-frames at layerCap
+
+--detail: what the failures are (report only; gates above are unchanged)
+  R2 needle   immediate-slot failures 1 (worst 1.56, of which a draining shoulder 0); with the belt-neighbourhood shoulder 1 (worst 1.56, draining shoulder 0)
+    worst frame 3320 x 24783.3 km peak 58.5 / shoulder 37.5 (1.56x; immediate 37.5 = 1.56x), slots 37.5 / 24.1 km ghost 0/0, built true
+      profile (-2..+3) km: 11.6 / 37.5 / 58.5 / 41.3 / 24.1 / 29.3
+  R2 width    failures 419 (narrow belt 416, broken belt 3, with a draining cell inside the window 0)
+    site x 30180.8 km frames 4612..4724 fail 103 first run 3 cells 3 margin 7.8 km needle 0.72 rel -2.4 mm/yr
+      profile (-2..+3) km: 9.7 / 25.9 / 32.5 / 39.5 / 39.1 / 42.4
+    site x 30280.7 km frames 4429..4550 fail 102 first run 3 cells 3 margin 4.0 km needle 0.63 rel -1.4 mm/yr
+      profile (-2..+3) km: 25.0 / 28.2 / 31.7 / 35.0 / 38.1 / 41.2
+    site x 15713.0 km frames 1326..1418 fail 93 first run 1 cells 1 margin 4.0 km needle 1.05 rel -4.4 mm/yr
+      profile (-2..+3) km: 48.4 / 51.7 / 55.4 / 53.2 / 49.8 / 49.6
+    site x 4183.3 km frames 46..156 fail 70 first run 3 cells 3 margin 4.1 km needle 0.74 rel -20.8 mm/yr
+      profile (-2..+3) km: 38.2 / 35.2 / 33.0 / 28.3 / 22.8 / 18.6
+    site x 30119.6 km frames 4865..4986 fail 22 first run 3 cells 3 margin 6.3 km needle 0.72 rel -2.8 mm/yr
+      profile (-2..+3) km: 10.0 / 28.8 / 33.9 / 39.4 / 40.0 / 43.0
+    site x 29800.1 km frames 19..33 fail 15 first run 2 cells 2 margin 4.1 km needle 1.04 rel -11.3 mm/yr
+      profile (-2..+3) km: 64.4 / 64.7 / 67.8 / 67.5 / 64.2 / 64.0
+    site x 4268.8 km frames 1752..1762 fail 11 first run 3 cells 3 margin 4.2 km needle 0.73 rel -13.9 mm/yr
+      profile (-2..+3) km: 32.3 / 27.5 / 26.5 / 34.5 / 44.1 / 42.3
+    site x 34995.1 km frames 1577..1579 fail 3 first run 3 cells 4 margin 21.9 km needle 0.99 rel -13.1 mm/yr
+      profile (-2..+3) km: 41.8 / 33.6 / 37.0 / 60.8 / 61.6 / 60.5
+  R3 ceiling  breaching frames 0 (allowance 81.8 km); first 0 traced:
+  R5 repeats  0:
+
+contact contract (0.1.9-plan.md §2)
+PASS  R1 an event stays inside the section's own background   the birth footprint 2502 m at frame 3351 x 18764.1 km against the quiet-frame yardstick 5189 m (frame 4807 x 24823.4 km), ratio 0.48 (max 1.25)
+INFO  event-frame background (report only)   820 m away from any event footprint, frame 2342 x 1368.2 km
+INFO  same-frame pairing (report only)   worst 16.18 at frame 4797 (1494 m at the site against 92 m elsewhere on that frame)
+FAIL  R2 the pair is not a local needle   4574 collisions measured, worst pair / highest belt-neighbourhood shoulder 1.56 at 24783.3 km (max 1.5)
+FAIL  R2 built belts have a contiguous four-column run   3182 of 3601 built collision-frames have at least 4 contiguous columns above outer flank + 2.0 km (90% required); narrowest run 1 at frame 1326
+INFO  legacy R2 outer-flank peak ratio   6.37x at 24927.2 km (historical limit 1.5)
+INFO  legacy R2 non-contiguous four-of-six width   3185 of 3601 built samples passed; narrowest count 1/6 at 15713.0 km
+PASS  R3 the crust has a ceiling   81.0 km (ceiling 80.0 km + 1.8 km of one-frame influx at 50 kyr/f)
+PASS  no site changes its topology twice inside the event memory   0 of 229 events (45.80 per 1000 frames) came within 40 frames of an earlier one at the same site
+INFO  R5 repeats inside the model's own memory (P.evAge 2 Myr = 40 frames here)   0 of 229 events
+PASS  R5 stacks stay in stratigraphic order   0 inverted column-frames
+PASS  R5 no column runs out of beds   0 column-frames touched layerCap, the longest stay 0 frames (max 3)
+PASS  a draining record holds no ground   0.0% of the crust in 4 draining records, widest run 0.0 columns (max 2.0%)
+PASS  every buffer is finite
+
+2 / 12 FAILURES

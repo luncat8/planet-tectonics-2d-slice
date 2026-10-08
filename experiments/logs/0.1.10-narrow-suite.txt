@@ -1,0 +1,33 @@
+== ledger-check
+ALL PASS (19 checks)
+== checkpoint
+FAIL  forward simulation after self round-trip stays inside the spin-up bound   imported 6.91e-2 vs fresh section 6.57e-2 over 1000 frames
+1 / 52 FAILURES
+== coupling
+ALL PASS (124 checks)
+== coupling-link
+ALL PASS (11 checks)
+== core-log
+ALL PASS (33 checks)
+== section-pack
+ALL PASS (84 checks)
+== section-seed
+ALL PASS (36 checks)
+== slice-cut
+ALL PASS (63 checks)
+== smoke
+ALL PASS (75 checks)
+== view-check
+ALL PASS (119 checks)
+== pt-ui
+ALL PASS (37 checks)
+== port-check
+ALL PASS (15 checks)
+== deposits
+ALL PASS (76 checks)
+== m3-check
+ALL PASS (22 checks)
+== m2-check
+ALL PASS (324 checks)
+== r4-check
+ALL PASS (8 checks)

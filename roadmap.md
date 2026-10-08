@@ -87,6 +87,11 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   the four strict legs read **ALL PASS (12 checks) / ALL PASS / ALL PASS / 1 of 12**, the
   single red being R5's documented frame-window repeat on `5000/5/100` (0 of 211 inside
   `P.evAge`). No engine kernel, constant, checkpoint or slice-format change.)
+- **K5 closing-kind drain (0.1.9 evaluation §7): settled as far as the narrow hold goes.**
+  `archive/0.1.10-narrow-hold-worklog.md`: the narrow variant cuts drain-caused reclassification
+  (1006 to 67 pairs over 16 runs) and fails six strict runs the base passes, so it is not
+  adopted. Accepting the base is the recommendation; hysteresis on the closing kind is the only
+  open option and needs its own plan.
 
 ## 4. Not planned
 

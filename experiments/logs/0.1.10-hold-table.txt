@@ -1,0 +1,31 @@
+seed	kyr	base verdict	R1	R2n	R2w%	R3	R5	base drain/vel	narrow verdict	R1	R2n	R2w%	R3	R5	narrow drain/vel
+1	50	pass	0.33	1.36	93.5	81.3	0	232/1	1 fail	0.31	1.48	94.7	82.5	0	1/0
+1	100	1 fail	0.48	1.40	92.9	81.2	1	11/39	1 fail	0.48	1.48	95.4	81.3	2	0/59
+2	50	pass	0.49	1.34	99.6	80.2	0	37/3	pass	0.37	1.42	98.5	80.6	0	2/0
+2	100	1 fail	0.52	1.41	94.1	80.7	2	23/179	1 fail	0.48	1.50	95.7	80.3	6	6/2
+3	50	pass	0.68	1.33	97.9	80.8	0	76/1	pass	0.68	1.38	97.6	80.5	0	1/0
+3	100	pass	0.59	1.32	92.4	81.0	0	221/2	1 fail	0.58	1.30	95.9	80.6	1	19/2
+4	50	pass	0.65	1.36	92.1	80.5	0	208/0	2 fail	0.48	1.56	88.4	81.0	0	3/1
+4	100	1 fail	0.63	1.45	91.5	81.1	1	24/2	1 fail	1.10	1.49	90.8	81.3	2	1/147
+5	50	pass	0.78	1.15	97.9	80.2	0	0/0	pass	0.78	1.15	97.9	80.2	0	0/0
+5	100	1 fail	0.56	1.26	93.0	80.8	1	13/0	1 fail	0.56	1.32	97.6	81.1	2	4/6
+6	50	pass	1.06	1.18	97.3	81.2	0	2/10	pass	1.06	1.49	97.4	81.2	0	1/11
+6	100	pass	0.46	1.41	98.2	80.2	0	20/1	1 fail	0.66	1.49	98.8	80.6	1	2/21
+7	50	pass	0.46	1.34	92.6	81.7	0	7/7	1 fail	0.46	1.36	91.9	82.0	0	1/6
+7	100	1 fail	0.50	1.37	92.5	80.8	2	15/3	1 fail	0.55	1.45	92.5	80.8	1	22/299
+8	50	pass	0.35	1.31	94.5	80.5	0	13/0	1 fail	0.43	1.60	94.2	81.0	0	1/0
+8	100	pass	0.66	1.49	94.4	80.5	0	104/24	pass	0.48	1.50	97.0	80.8	0	3/1
+
+strict verdicts: base 11 of 16 pass, narrow 5 of 16 pass
+gate failures in total: base 5, narrow 12
+R5 repeats in total: base 7, narrow 15
+K5 next-frame reclassifications (pairs): base drain 1006, velocity 272; narrow drain 67, velocity 555
+
+runs where narrow fails a gate the base passes:
+  seed 1 50 kyr: R3 the crust has a ceiling
+  seed 3 100 kyr: no site changes its topology twice inside the event memory
+  seed 4 50 kyr: R2 the pair is not a local needle; R2 built belts have a contiguous four-column run
+  seed 6 100 kyr: no site changes its topology twice inside the event memory
+  seed 7 50 kyr: R3 the crust has a ceiling
+  seed 8 50 kyr: R2 the pair is not a local needle
+runs where narrow passes a gate the base fails (fixed):
