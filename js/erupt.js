@@ -3,9 +3,11 @@
 // vent, in screen cells. A toy column is a pile of height toyH; toyFz is its solid part
 // and the rest is molten at toyT. Effusive feeds pour molten lava into the conduit column,
 // which cools and freezes. Explosive feeds eject ballistic packets that land as cold
-// tephra. Slumping moves material only downhill at the angle of repose. The box is a pure
-// function of its state and the vent's flux, so the bench steps it without a page. Mass is
-// in cells^2 (the toy volume); the jacobian to world mass is write-back's job (0.2.0 M2).
+// tephra. The feed character is the schedule's call (venBlast: gas above gasBlast and
+// pressure above blastP, design §5.2) — the box itself only executes it. Slumping moves
+// material only downhill at the angle of repose. The box is a pure function of its state
+// and the vent's flux, so the bench steps it without a page. Mass is in cells^2 (the toy
+// volume); the jacobian to world mass is P.toyCellM2 (write-back, 0.2.0 M2).
 'use strict';
 var node = typeof module !== 'undefined' && module.exports;
 var P = node ? require('./params.js') : window.COLP;
@@ -49,7 +51,7 @@ var ERUPT = {
 		for (var k = 0; k < P.toyPasses; k++) this.slump(v);
 	},
 
-	explosive: function (v) { return S.venGas[v] > P.gasBlast; },
+	explosive: function (v) { return S.venBlast[v] > 0; },
 
 	feed: function (v, dt) {
 		var m = S.venFlux[v] * dt, rest;

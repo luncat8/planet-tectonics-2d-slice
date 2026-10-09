@@ -826,3 +826,27 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   seam that must not be treated as crossed pairs. Bounding the crossing overlap to physical
   advance limits (`2 * w0`, far exceeding `2 * vMax * dt = 40..80 km`) protects sparse fixtures
   while catching every real transport crossing.
+
+## 0.2.0 M1 — vents and the second clock (archive/0.2.0-m1-worklog.md)
+
+- **A k-slot kernel is invoked unbound.** `SIM.step` calls `this.k[i](S, dG, t, Tm)` with no
+  owner, so a slot that writes `this.ownHelper()` throws only through `SIM.run` — direct
+  `MAG.k7(st, ...)` calls in a bench bind `this` and hide it. Address the module object inside
+  a slot kernel (as `CRU.k5` does), and put at least one check through `SIM.run` in the
+  harness.
+- **Anything in transit between reservoirs must sit in `S.mass()`.** The measured ledger
+  identity compares `S.mass()` against `ledProd - ledCons + ...`; melt parked in a vent
+  chamber or in a toy box (cells^2 x the jacobian) is real mass with a production entry and no
+  stack yet. Count it where it waits, or every run with one live vent reads as a leak the
+  frame it drains. Give the in-transit store one jacobian (`P.toyCellM2`) and let the writer
+  (schedule, later write-back) reuse it — two conversions are a silent mass bug.
+- **A threshold that plugs instead of draining makes its own death rule unreachable.** A
+  design that says "erupts above 1.3 P0" and "dies below Vdie" needs the drain to reach zero:
+  if the pressure gate simply stops the eruption at the threshold, the vent parks above Vdie
+  forever. When two rules of one lifecycle disagree, a fallback regime (here: effusive below
+  blast pressure) beats inventing a timer.
+- **Units of a caricature need one stated boundary constant, and a probe to pick it.** The
+  design quotes chamber sizes in km3; the engine's volume unit is section m2. Converting at
+  the kernel boundary (`venKm3M2`) with the constant chosen from a measured supply probe
+  (chamber plateau 5e5 m2 in 500 Myr) keeps the design's table intact and the lifecycle live;
+  the strict 1e9 reading would never birth a vent in a run.

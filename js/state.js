@@ -138,11 +138,12 @@ var S = {
 	venW: new Float64Array(P.maxVents),
 	venH: new Float64Array(P.maxVents),
 	venStyle: new Int8Array(P.maxVents),    // 0 strato, 1 shield, 2 fissure, 3 arc
-	venV: new Float64Array(P.maxVents),     // chamber volume, km3
+	venV: new Float64Array(P.maxVents),     // chamber volume, m2 per unit depth (design §9 km3 x P.venKm3M2)
 	venGas: new Float64Array(P.maxVents),
 	venCol: new Int32Array(P.maxVents),     // owning column or -1
 	venIdle: new Float64Array(P.maxVents),  // Myr with an empty chamber
 	venFlux: new Float64Array(P.maxVents),  // toy cells^2 per eruptive s, set by the vent's schedule
+	venBlast: new Uint8Array(P.maxVents),   // this frame's feed: 1 gas blast, 0 effusive (MAG.k7's call)
 	venToyIn: new Float64Array(P.maxVents), // toy cells^2 supplied to the box, cumulative (ledger)
 	// per toy column: total height, solid (frozen) height, molten temperature, lithology
 	toyH: new Float64Array(P.maxVents * P.ventBoxW),
@@ -211,6 +212,8 @@ var S = {
 	meltArc: 0,                              // generated arc melt volume, m2
 	meltPlume: 0,                            // generated plume melt volume, m2
 	meltSill: 0,                             // chamber overflow emplaced as sill, m2
+	meltIdle: 0,                             // melt that reached a vent-ready chamber while the vent list was full, m2
+	venLost: 0,                              // chamber + box mass a consumed vent's slot still held at reap, m2
 	massBy: new Float64Array(P.LITH.n)      // measured crust mass per LITH, m3
 };
 
@@ -219,6 +222,7 @@ S.reset = function () {
 	this.ledMix = 0; this.spawnSkipped = 0; this.seaLevel = 0;
 	this.waterIn = 0; this.waterReleased = 0; this.waterUsed = 0;
 	this.meltArc = 0; this.meltPlume = 0; this.meltSill = 0;
+	this.meltIdle = 0; this.venLost = 0;
 	for (var k in this.recon) this.recon[k] = 0;
 	for (k in this) {
 		var v = this[k];
@@ -281,7 +285,7 @@ S.widths = function () {
 // includes mobile sediment load as sediment so total crust+mobile is conserved
 // through an erosion->routing->deposition frame (M3)
 S.mass = function () {
-	var m = this.massBy, i, k, b, n, rb, rn;
+	var m = this.massBy, i, k, b, n, rb, rn, x;
 	m.fill(0);
 	for (i = 0; i < this.nCol; i++) {
 		b = i * P.layerCap;
@@ -296,6 +300,16 @@ S.mass = function () {
 		rb = i * P.layerCap;
 		rn = this.ribNL[i];
 		for (k = 0; k < rn; k++) m[this.ribLLi[rb + k]] += this.ribLTh[rb + k];
+	}
+	// Vent chambers and toy boxes hold melt in transit to write-back (0.2.0 M2). The
+	// chamber is already m2; the box is toy cells^2 and crosses the one jacobian to be
+	// counted here, so the ledger identity holds across the schedule's drain.
+	for (i = 0; i < this.nVen; i++) {
+		m[P.LITH.maf] += this.venV[i];
+		rb = i * P.ventBoxW;
+		for (x = 0; x < P.ventBoxW; x++) m[P.LITH.maf] += this.toyH[rb + x] * P.toyCellM2;
+		rb = i * P.partCap;
+		for (x = 0; x < this.prN[i]; x++) m[P.LITH.maf] += this.prL[rb + x] * P.toyCellM2;
 	}
 	return m;
 };

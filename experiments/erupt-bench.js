@@ -43,7 +43,7 @@ function ledgerError(v) {
 
 check.section('M0.1 throughput: 16 vents, one frame (1800 s) each');
 reset(15);
-for (var v = 0; v < 16; v++) { S.venGas[v] = 0.1; S.venFlux[v] = 0.02; }
+for (var v = 0; v < 16; v++) { S.venBlast[v] = 0; S.venFlux[v] = 0.02; }
 var frames = 300, t0 = process.hrtime.bigint(), f;
 for (f = 0; f < frames; f++) for (v = 0; v < 16; v++) ERUPT.step(1800, v);
 var secs = Number(process.hrtime.bigint() - t0) / 1e9;
@@ -52,7 +52,7 @@ check.ok('16 vents step >= 60 frames/s', frames / secs >= 60, (frames / secs).to
 
 check.section('M0.2 effusive: a prescribed flux builds a repose cone that freezes');
 reset(0);
-S.venGas[0] = 0.1;
+S.venBlast[0] = 0;
 S.venFlux[0] = 150 / (2 * 3600);     // 150 cells^2 (a 30-wide, 10-high triangle) over 2 h
 for (f = 0; f < 4; f++) ERUPT.step(1800, 0);
 S.venFlux[0] = 0;
@@ -75,7 +75,7 @@ check.ok('effusive mass is exact (rel < 1e-9 at every frame)', worstLedger < 1e-
 
 check.section('M0.3 explosive: packets land as cold tephra, and the box drains');
 reset(0);
-S.venGas[0] = 0.6;
+S.venBlast[0] = 1;
 S.venFlux[0] = 150 / (2 * 3600);
 worstLedger = 0;
 for (f = 0; f < 4; f++) {
@@ -98,7 +98,7 @@ check.ok('explosive edifice has a 10-30 cell height and width', p.H >= 10 && p.H
 
 check.section('M0.4 packet pool is bounded and overflow stays molten');
 reset(0);
-S.venGas[0] = 0.6;
+S.venBlast[0] = 1;
 S.venFlux[0] = 0.5;
 S.prN[0] = P.partCap;                 // the pool is full before the feed
 ERUPT.step(60, 0);
@@ -138,7 +138,7 @@ check.ok('a steep spike relaxes to the repose slope', pr.step <= tanR + 0.05, 's
 check.section('M0.6 determinism and idle');
 function run() {
 	reset(0);
-	S.venGas[0] = 0.6; S.venFlux[0] = 0.03;
+	S.venBlast[0] = 1; S.venFlux[0] = 0.03;
 	for (var k = 0; k < 6; k++) ERUPT.step(1800, 0);
 	return S.hash();
 }

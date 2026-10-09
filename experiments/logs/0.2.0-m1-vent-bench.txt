@@ -1,0 +1,58 @@
+
+M1.1 birth: a chamber at Vbirth opens a vent on its column
+PASS  a chamber at Vbirth births a vent on its column   nVen 1 venCol 250 volc 0
+PASS  a chamber just below Vbirth waits
+PASS  the column chamber feeds the vent chamber (Vbirth under Vch)   venV 100000 colChamber 0
+PASS  the new vent holds no toy mass
+
+M1.2 placement and style: arc front, plume shield, LIP fissure, strato
+PASS  an arc factory column births an arc-style vent   style 3
+PASS  the gas fraction is fixed at birth from the style   gas 0.5
+PASS  a plume's own column births a shield   col 20 style 1
+PASS  the plume province births a fissure vent   col 22 style 2
+PASS  any other charged column births strato
+
+M1.3 schedule: a prescribed full chamber starts and stops an eruption
+PASS  the eruption starts on the first frame
+PASS  the eruption stops once the chamber is empty   flux 0 venV 0
+PASS  chamber out = toy in on every frame (rel <= 1e-9)
+PASS  chamber + box is conserved over the episode (rel <= 1e-12)   rel 8.15e-15
+PASS  S.mass() sees chamber, vent and box melt alike
+INFO  full-chamber drain   4 frames of 1800 s = 2.00 h eruptive, box holds 5.000e+5 m2
+
+M1.4 an empty chamber idles the toy
+PASS  zero chamber, running toy clock: nothing moves at all
+PASS  zero chamber over Myr: the box stays empty and the vent idles toward death
+
+M1.5 gas and pressure decide the feed character (design §5.2)
+PASS  gas above gasBlast at P > 1.3 P0 is a gas blast   blast 1 flux 0.00011973169236744605
+PASS  gas above gasBlast below 1.3 P0 falls back to effusive (so the drain reaches empty)   blast 0 flux 0.000009578535389395683
+PASS  gas below gasBlast is effusive at any pressure   blast 0
+PASS  the blast drains by gas and the effusive drain by (1-gas)   rel 0.00e+0  got 0.5555555555555556  want 0.5555555555555556
+
+M1.6 death: tauVent of an empty chamber, and the pile guard
+PASS  below Vdie for tauVent (2 Myr) the vent dies and the slot frees   after 2 Myr, venIdle 0
+PASS  the last dribble goes home to the column chamber (nothing dropped)   chamber 5000
+PASS  the dead slot is reused by the next birth
+PASS  a vent with an unwritten-back pile stays alive (a dead vent may leak no state)   after 3 Myr
+
+M1.7 a consumed vent books its residual
+PASS  the residual is booked to the named line and the consume side   lost 1.161e+6 want 1.161e+6
+PASS  the orphan slot is freed
+
+M1.8 the two clocks stop fighting
+PASS  eruptive pause: the chamber fills to Vch and the toy never moves   venV 500000 box 0
+PASS  paused geology: the toy runs and no vent is born   left 2.750e+5 m2 in the chamber
+PASS  the vent list never exceeds maxVents
+PASS  a full vent list idles the magma in its chamber and counts the wait   meltIdle 1234 chamber 100000
+PASS  an over-full chamber builds sills (the existing spill path, not a 17th vent)   sill 5.000e+6
+PASS  no frame gives the toy mass the chamber system did not (60 mixed-clock frames)
+
+M1.9 determinism
+PASS  same setup, same feed: bitwise-identical state
+
+M1.10 live run: vents birth from real supply
+INFO  seed 1 after 200 Myr   vent slots 9, alive 9, idle ledger 0 m2, lost 0 m2
+PASS  at least one vent births from the engine's own supply   nVen 9
+
+ALL PASS (34 checks)

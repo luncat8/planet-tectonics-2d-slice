@@ -67,6 +67,14 @@ var P = {
 	Vbirth: 1,                   // vent birth threshold, km3
 	Vdie: 0.1,                   // vent death threshold, km3
 	tauVent: 2,                  // Myr of empty chamber before a vent dies
+	// The design's chamber km3 convert to the engine's section m2 at the magma.js
+	// boundary (1 km3 := venKm3M2 m2). Calibrated so Vbirth/Vch/Vdie all sit inside the
+	// measured supply range (plume-column chambers plateau near 5e5 m2 in 500 Myr);
+	// M5 re-tunes the three chamber figures against erupt-bench and the section look.
+	venKm3M2: 1e5,
+	blastP: 1.3,                 // explosive needs P > 1.3 P0 (design §5.2)
+	tDrain: 7200,                // eruptive s for a gas-free full chamber to empty under the sqrt law
+	venGas0: [0.45, 0.1, 0.15, 0.5], // gas fraction fixed at birth, by style (strato, shield, fissure, arc)
 	// toy box time and ballistics (0.2.0 M0): a frame is cut into toy ticks of at most
 	// toyTickSec, at most toyMaxTicks per call; the ballistic peak is ~12 cells at the defaults
 	toyTickSec: 10,              // eruptive s per toy tick
@@ -274,6 +282,18 @@ var P = {
 // and the count (2*pi*6371 km / 512 = 78.184 km) so it cannot drift from R
 P.w0 = P.wrap / P.nCols;
 P.crushFloor = P.crushGap * P.w0;
+// vent chamber thresholds in the engine's m2, and the toy jacobian: one toy cell is one
+// default-window pixel (design §1.5: 2.34 km x 0.25 km at the surface band), so its world
+// area is winW/cw by the display map's slope at 0 m. The schedule's chamber drain and the
+// M2 write-back share this one conversion, so toy mass and world mass cannot drift apart.
+P.VchM2 = P.Vch * P.venKm3M2;
+P.VbirthM2 = P.Vbirth * P.venKm3M2;
+P.VdieM2 = P.Vdie * P.venKm3M2;
+P.toyCellM2 = (P.winW / P.cw) * P.yLin *
+	(Math.asinh(P.winTop / P.yLin) - Math.asinh(P.winBot / P.yLin)) / P.ch;
+// design §5.2 rate law dV/dt = -kErupt * sqrt(V/Vbirth): this k empties a gas-free full
+// chamber in tDrain seconds of eruptive time (integrate 2*sqrt(Vch*Vbirth)/tDrain)
+P.kErupt = 2 * Math.sqrt(P.VchM2 * P.VbirthM2) / P.tDrain;
 // A trench sliver is retired when the territory it holds is worth nothing to the
 // picture. Its width is half the sum of its two gaps and the floor keeps each of them at
 // gFloor, so wMin = gFloor puts the retirement exactly where both gaps are on the floor,

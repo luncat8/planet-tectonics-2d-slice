@@ -271,10 +271,12 @@ var UI = {
 	// second HUD.
 	hudText: function () {
 		var s = 't ' + sim().t.toFixed(3) + ' Myr   Tm ' + sim().Tm.toFixed(3) + '   frame ' + sim().frame;
+		var vents = 0, vi;
+		for (vi = 0; vi < S.nVen; vi++) if (S.venCol[vi] >= 0) vents++;
 		s += '\nplates ' + this.fmtGeo(P.sl.geo) + '   lava ' + this.fmtErupt(P.sl.erupt);
 		s += '\nfps ' + perf().fps.toFixed(1) + '   ms ' + (perf().msSim + perf().msDraw).toFixed(2) +
 			' (sim ' + perf().msSim.toFixed(2) + ' + draw ' + perf().msDraw.toFixed(2) + ')';
-		s += '\ncols ' + S.nCol + '/' + P.colCap + '   plates ' + S.nPl + '   vents ' + S.nVen +
+		s += '\ncols ' + S.nCol + '/' + P.colCap + '   plates ' + S.nPl + '   vents ' + vents +
 			'   ribbons ' + S.nRib + '   plumes ' + S.nPlm + '   deposits ' + S.nDep + '   seed ' + P.seed;
 		s += '\n' + this.tectonics();
 		s += '   arc melt ' + Math.round(S.meltArc) + ' m2   plume melt ' + Math.round(S.meltPlume) + ' m2';

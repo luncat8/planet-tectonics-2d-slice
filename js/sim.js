@@ -5,7 +5,9 @@
 //   K4 contact (spawn/consume)   K5 column update   K6 surface   K7 vents (eruptive
 //   clock)   K8 reserved   K9 diag
 // Geologic time is Myr here: the slider is yr/frame and is converted on entry, so no
-// kernel ever multiplies a Myr rate by a yr step (design §9 one unit system).
+// kernel ever multiplies a Myr rate by a yr step (design §9 one unit system). K7 is the
+// one kernel with its own clock: it runs while dtGeo is 0 (lava time is free) and idles
+// its toy while the eruptive slider is 0 (geology fills chambers all the same).
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.COLP;
 var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.COLS;
@@ -87,7 +89,7 @@ var SIM = {
 			// the floor classification already used for this frame's geometry.
 			COL.freezeFloorClass(st, st.nCol);
 		}
-	}, CRU.k5, SURF.k6, null, null, null],
+	}, CRU.k5, SURF.k6, MAG.k7, null, null],
 	dG: 0,          // Myr per frame, from the plates slider
 	kinematic: null, // optional C3 K2 owner; returns true when it supplied plate velocities
 	t: 0,           // Myr

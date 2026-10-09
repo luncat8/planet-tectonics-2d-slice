@@ -54,7 +54,7 @@ var Checkpoint = (function () {
 
 	return {
 		MAGIC: 0x31435450,
-		VERSION: 5, // 5: toy box fields (0.2.0 M0); 4: S.edgeShort (0.1.8 M2)
+		VERSION: 6, // 6: vent schedule fields (0.2.0 M1); 5: toy box fields (0.2.0 M0); 4: S.edgeShort (0.1.8 M2)
 		SESSION_FORMAT: 'pgt-slice-session',
 		SESSION_VERSION: 1,
 		b64enc: b64enc,
