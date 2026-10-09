@@ -67,6 +67,16 @@ var P = {
 	Vbirth: 1,                   // vent birth threshold, km3
 	Vdie: 0.1,                   // vent death threshold, km3
 	tauVent: 2,                  // Myr of empty chamber before a vent dies
+	// toy box time and ballistics (0.2.0 M0): a frame is cut into toy ticks of at most
+	// toyTickSec, at most toyMaxTicks per call; the ballistic peak is ~12 cells at the defaults
+	toyTickSec: 10,              // eruptive s per toy tick
+	toyMaxTicks: 256,
+	toyG: 0.5,                   // cells/s^2
+	toyVx: 0.5,                  // lateral ejection speed, cells/s; 1 spreads a 150-cell^2 ash fan to 6 x 33 cells
+	toyVy: 3.5,                  // vertical ejection speed, cells/s
+	toyPackets: 8,               // ballistic packets per tick of an explosive feed
+	tauCool: 1800,               // s, e-folding of the molten part's temperature
+	toyPasses: 2,                // slump passes per tick (design §5.1)
 	// time (design §1.6)
 	tauOmega: 0.5,               // Myr, plate velocity relaxation
 	eventCadence: 1,             // Myr, split / suture / compaction cadence

@@ -58,13 +58,13 @@ var rngAt = paramAt + 3 * 8;
 var threw = false;
 try { CP.load(saved.subarray(0, saved.length - 1)); } catch (e) { threw = true; }
 check.ok('refuses truncated data', threw && equal(saved, CP.save()));
-// VERSION 4 added S.edgeShort (0.1.8 M2): a version-3 file has no record for it and is
-// refused by its version word before any table or length check can be misread.
+// VERSION 5 added the toy box fields (0.2.0 M0): a version-4 file has no record for them and
+// is refused by its version word before any table or length check can be misread.
 var older = saved.slice();
 new Uint32Array(older.buffer)[1] = CP.VERSION - 1;
 threw = false;
-try { CP.load(older); } catch (e) { threw = e instanceof RangeError && /version 3/.test(e.message); }
-check.ok('refuses the previous checkpoint version atomically', CP.VERSION === 4 && threw && equal(saved, CP.save()));
+try { CP.load(older); } catch (e) { threw = e instanceof RangeError && /version 4/.test(e.message); }
+check.ok('refuses the previous checkpoint version atomically', CP.VERSION === 5 && threw && equal(saved, CP.save()));
 var shortAt = Math.min(5, S.nCol - 1), shortHash;
 S.edgeShort[shortAt] = 78125;
 shortHash = S.hash();

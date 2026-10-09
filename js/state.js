@@ -142,16 +142,21 @@ var S = {
 	venGas: new Float64Array(P.maxVents),
 	venCol: new Int32Array(P.maxVents),     // owning column or -1
 	venIdle: new Float64Array(P.maxVents),  // Myr with an empty chamber
-	toyH: new Float32Array(P.maxVents * P.ventBoxW),
+	venFlux: new Float64Array(P.maxVents),  // toy cells^2 per eruptive s, set by the vent's schedule
+	venToyIn: new Float64Array(P.maxVents), // toy cells^2 supplied to the box, cumulative (ledger)
+	// per toy column: total height, solid (frozen) height, molten temperature, lithology
+	toyH: new Float64Array(P.maxVents * P.ventBoxW),
+	toyFz: new Float64Array(P.maxVents * P.ventBoxW),
 	toyLi: new Int8Array(P.maxVents * P.ventBoxW),
-	toyT: new Float32Array(P.maxVents * P.ventBoxW),
+	toyT: new Float64Array(P.maxVents * P.ventBoxW),
+	// ballistic packets: launch x and height, velocity, age (s), mass (cells^2)
 	prN: new Int32Array(P.maxVents),
 	prX: new Float32Array(P.maxVents * P.partCap),
 	prY: new Float32Array(P.maxVents * P.partCap),
 	prVX: new Float32Array(P.maxVents * P.partCap),
 	prVY: new Float32Array(P.maxVents * P.partCap),
 	prT: new Float32Array(P.maxVents * P.partCap),
-	prL: new Float32Array(P.maxVents * P.partCap),
+	prL: new Float64Array(P.maxVents * P.partCap),
 
 	// deposits (design §2.2, §4.7)
 	nDep: 0,
