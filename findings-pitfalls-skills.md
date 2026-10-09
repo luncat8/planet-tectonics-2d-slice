@@ -801,3 +801,9 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   variant switches in a scratch copy and check the candidate's own tree with the full suite.
 - **Trace the mechanism at the frame, not only the run.** The breach frame's column was traced to
   eleven held-opening pairs within 120 km and 25 frames; the run-level counts did not show it.
+  Co-location is not cause: the per-step view (which operations ran in the jump's frame) and
+  the hold applied at one site at a time (K4 freeze only, transport floor only) separated them.
+- **A volume-conserving rescale turns a width change into a thickness spike.** A record that
+  swapped order with its neighbour went from 2.70 to 0.32 w0 in one transport step, and K4's
+  `oldW / colW` multiplied its 60 km stack by 8.4. Any width change that comes from a reorder,
+  not from a topology event, can do this. Check the width history of a spike before the stack.

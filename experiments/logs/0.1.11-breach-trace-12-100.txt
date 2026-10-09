@@ -1,0 +1,11 @@
+frame 4261 (nCol 559)
+  col 16 x 1181.0 w 0.36 w0 hTot 65.6 hFel 8.7 plate 7 | edge 4 relN -29.1 mm/yr gap 6.5 km
+  col 17 x 1187.4 w 2.72 w0 hTot 60.1 hFel 53.2 plate 0 | edge 2 relN 9.6 mm/yr gap 419.2 km
+frame 4262 (nCol 559)
+  col 16 x 1183.1 w 0.36 w0 hTot 65.5 hFel 8.5 plate 7 | edge 4 relN -1.0 mm/yr gap 6.4 km
+  col 17 x 1189.4 w 2.70 w0 hTot 60.0 hFel 53.0 plate 0 | edge 4 relN -17.7 mm/yr gap 416.1 km
+frame 4263 (nCol 559)
+  col 16 x 1175.6 w 0.32 w0 hTot 126.1 hFel 121.2 plate 0 | edge 2 relN 159.9 mm/yr gap 9.6 km
+  col 17 x 1185.2 w 2.74 w0 hTot 30.0 hFel 22.0 plate 7 | edge 4 relN -13.4 mm/yr gap 419.4 km
+global-max rises over 25 km from frame 4163: 1
+frame 4263: global max 67.8 -> 126.1 km; topology ops: none
