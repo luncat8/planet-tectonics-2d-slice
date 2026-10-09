@@ -1,0 +1,20 @@
+--- a/js/columns.js
++++ b/js/columns.js
+@@ -708,10 +708,15 @@
+ // A converging continental pair may compress to the conveyor floor; other boundaries keep
+ // the ordinary separation floor. Use the current pair velocities, not its old edge class:
+ // sorting can hand the edge slot to a different pair in the same frame.
++var HYS = +(process.env.HYS_MODE || 0), HYS_BAND = +(process.env.HYS_BAND || 1000);
+ COL.isClosingCC = function (st, i, j) {
+ 	if (this.floorClassValid) return this.floorClass[i] === 1;
+-	return st.colPlate[i] !== st.colPlate[j] && !st.colGhost[i] && !st.colGhost[j] &&
+-		st.colU[i] > st.colU[j] && st.hFel[i] >= P.hOceanic && st.hFel[j] >= P.hOceanic;
++	if (st.colPlate[i] === st.colPlate[j] || st.colGhost[i] || st.colGhost[j]) return false;
++	var held = HYS > 0 && st.edge[i] === P.EDGE.collide && st.edgeRPlate[i] === st.colPlate[j] &&
++		(HYS !== 3 || st.colU[j] - st.colU[i] < P.epsHi);
++	var hMin = held && HYS === 2 ? P.hOceanic - HYS_BAND : P.hOceanic;
++	if (!(st.colU[i] > st.colU[j] || held)) return false;
++	return st.hFel[i] >= hMin && st.hFel[j] >= hMin;
+ };
+ 
+ // Two records of different plates may not interpenetrate. Widths come from spacing, so

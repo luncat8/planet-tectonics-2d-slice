@@ -1,0 +1,63 @@
+
+contact-audit site bookkeeping
+PASS  event buckets are concrete Set values
+PASS  repeat spacing uses the current event frame
+PASS  the R1 window is anchored at the event, not at its bucket   event at 156.4 km, bucket left edge 0.0 km
+contact audit — seed 3, 50 kyr/frame, 5000 frames (250 Myr), 1.89 ms/frame   [STRICT]
+  crust          max 80.8 km   thickest at a contact 80.1 km   collisions 9872 seen; legacy peak/flank 5.29x, legacy 4-of-6 97.9%, contiguous 4-of-6 97.9% of 9279 built samples   draining records 2 live holding 0.0% of the crust, widest run 0.0 columns (oldest 27.4 Myr)
+  R2 legacy peak frame 1714, edge 83, pair 73.8 km / outer flank 13.9 km (5.29x), mean immediate shoulders 44.3 km (1.66x), legacy count 4/6 above outer flank + 2.0 km: 14.1/14.1/15.5/37.8/73.8/73.2/49.1/13.8 km
+  R2 local needle frame 3005, edge 23, pair 66.3 km / highest belt-neighbourhood shoulder 49.8 km (1.33x; max 1.5), local hTot (-3..+4) km: 8.7/29.8/35.6/50.7/66.3/49.8/42.7/39.4
+  R2 legacy width narrowest count 1/6 at frame 321, edge 243, pair/flank 1.08: 48.9/46.8/47.9/52.2/55.1/51.1/51.4/53.0 km
+  R2 contiguous width minimum 1/6 at frame 321, edge 243: 48.9/46.8/47.9/52.2/55.1/51.1/51.4/53.0 km
+  max column     frame 2419, record 79, x 5899.3 km   fel 54.4 km, maf 22.5 km, sed 3.9 km, on a C-C retirement frame: false
+  surface        worst single-frame move 3619 m at frame 1522 x 10027.1 km   mean 1.5 m, 4286 raster samples above 100 m
+  R1 event site  2473 m in an event footprint (birth, frame 2102 x 9870.7 km) against the quiet-frame yardstick 3619 m (frame 1522 x 10027.1 km), ratio 0.68 (max 1.25)
+                 event-frame background (report) 1059 m (frame 1595 x 6274.3 km), worst same-frame pairing (report) 63.53 at frame 4820 (963 m vs 15 m)
+                 quiet-frame drawn thickness 55.6 km and width 10.0%, 0 quiet records with no counterpart, 5362 re-partitioned)
+  columns        worst single-frame drawn-thickness change 55.6 km at frame 1674 x 6240.2 km   worst width change 10.0% at frame 1048   worst local slope 102.3%
+  topology       85 births / 68 deaths (30.60 per 1000 frames, incl. 47 C-C retirements) at 0 repeated birth and 0 repeated death sites (530 columns, 6 plates)
+  stacks         0 column-frames with an inverted bed, 0 column-frames at layerCap
+
+--detail: what the failures are (report only; gates above are unchanged)
+  R2 needle   immediate-slot failures 0 (worst 0.00, of which a draining shoulder 0); with the belt-neighbourhood shoulder 0 (worst 0.00, draining shoulder 0)
+  R2 width    failures 194 (narrow belt 191, broken belt 3, with a draining cell inside the window 0)
+    site x 34814.7 km frames 983..1051 fail 69 first run 2 cells 2 margin 4.0 km needle 1.07 rel -9.1 mm/yr
+      profile (-2..+3) km: 35.8 / 37.5 / 41.5 / 41.6 / 37.5 / 34.0
+    site x 18865.5 km frames 321..386 fail 48 first run 1 cells 1 margin 4.1 km needle 1.02 rel -9.9 mm/yr
+      profile (-2..+3) km: 46.8 / 47.9 / 52.2 / 55.1 / 51.1 / 51.4
+    site x 16638.2 km frames 3079..3107 fail 29 first run 3 cells 3 margin 22.0 km needle 0.97 rel -2.0 mm/yr
+      profile (-2..+3) km: 8.6 / 9.5 / 25.2 / 54.2 / 51.9 / 54.1
+    site x 18881.9 km frames 341..358 fail 18 first run 3 cells 3 margin 6.5 km needle 1.07 rel -11.2 mm/yr
+      profile (-2..+3) km: 46.9 / 50.4 / 55.1 / 57.5 / 53.2 / 51.6
+    site x 9799.4 km frames 2667..2681 fail 15 first run 3 cells 3 margin 8.4 km needle 0.46 rel -2.0 mm/yr
+      profile (-2..+3) km: 8.5 / 8.6 / 13.3 / 26.8 / 47.9 / 58.7
+    site x 16596.5 km frames 3143..3148 fail 6 first run 3 cells 3 margin 11.2 km needle 0.77 rel -10.6 mm/yr
+      profile (-2..+3) km: 10.4 / 25.3 / 32.5 / 43.2 / 48.5 / 51.7
+    site x 1621.9 km frames 2590..2592 fail 3 first run 3 cells 3 margin 25.1 km needle 1.00 rel -5.1 mm/yr
+      profile (-2..+3) km: 8.7 / 9.6 / 25.0 / 49.8 / 49.8 / 45.3
+    site x 9842.2 km frames 3785..3787 fail 3 first run 3 cells 5 margin 4.5 km needle 0.54 rel -2.0 mm/yr
+      profile (-2..+3) km: 27.6 / 29.2 / 19.0 / 23.0 / 35.1 / 39.6
+    site x 34831.0 km frames 1052..1053 fail 2 first run 3 cells 3 margin 8.6 km needle 1.08 rel -7.2 mm/yr
+      profile (-2..+3) km: 37.7 / 41.0 / 44.5 / 41.3 / 37.8 / 36.7
+    site x 787.5 km frames 17..17 fail 1 first run 3 cells 3 margin 4.2 km needle 0.97 rel -17.1 mm/yr
+      profile (-2..+3) km: 53.7 / 52.1 / 54.0 / 51.6 / 47.8 / 46.1
+  R3 ceiling  breaching frames 0 (allowance 81.8 km); first 0 traced:
+  R5 repeats  0:
+
+contact contract (0.1.9-plan.md §2)
+PASS  R1 an event stays inside the section's own background   the birth footprint 2473 m at frame 2102 x 9870.7 km against the quiet-frame yardstick 3619 m (frame 1522 x 10027.1 km), ratio 0.68 (max 1.25)
+INFO  event-frame background (report only)   1059 m away from any event footprint, frame 1595 x 6274.3 km
+INFO  same-frame pairing (report only)   worst 63.53 at frame 4820 (963 m at the site against 15 m elsewhere on that frame)
+PASS  R2 the pair is not a local needle   9872 collisions measured, worst pair / highest belt-neighbourhood shoulder 1.33 at 1636.1 km (max 1.5)
+PASS  R2 built belts have a contiguous four-column run   9085 of 9279 built collision-frames have at least 4 contiguous columns above outer flank + 2.0 km (90% required); narrowest run 1 at frame 321
+INFO  legacy R2 outer-flank peak ratio   5.29x at 6218.1 km (historical limit 1.5)
+INFO  legacy R2 non-contiguous four-of-six width   9088 of 9279 built samples passed; narrowest count 1/6 at 18865.5 km
+PASS  R3 the crust has a ceiling   80.8 km (ceiling 80.0 km + 1.8 km of one-frame influx at 50 kyr/f)
+PASS  no site changes its topology twice inside the event memory   0 of 153 events (30.60 per 1000 frames) came within 40 frames of an earlier one at the same site
+INFO  R5 repeats inside the model's own memory (P.evAge 2 Myr = 40 frames here)   0 of 153 events
+PASS  R5 stacks stay in stratigraphic order   0 inverted column-frames
+PASS  R5 no column runs out of beds   0 column-frames touched layerCap, the longest stay 0 frames (max 3)
+PASS  a draining record holds no ground   0.0% of the crust in 2 draining records, widest run 0.0 columns (max 2.0%)
+PASS  every buffer is finite
+
+ALL PASS (12 checks)

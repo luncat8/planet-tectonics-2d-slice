@@ -1,0 +1,12 @@
+held-opening transport-floor pairs (distinct frame and column): 715
+within 120 km of x 1175.6 km and 25 frames of frame 4263: 11
+  frame 4239 x 1193.8 km, opening 73.1 mm/yr, felsic 45.5 / 44.0 km
+  frame 4242 x 1189.0 km, opening 75.1 mm/yr, felsic 46.1 / 44.9 km
+  frame 4245 x 1184.0 km, opening 74.7 mm/yr, felsic 46.9 / 45.7 km
+  frame 4248 x 1180.8 km, opening 53.9 mm/yr, felsic 47.6 / 46.5 km
+  frame 4251 x 1177.1 km, opening 60.9 mm/yr, felsic 48.4 / 47.3 km
+  frame 4251 x 1177.5 km, opening 60.9 mm/yr, felsic 48.4 / 47.3 km
+  frame 4255 x 1181.8 km, opening 20.4 mm/yr, felsic 49.5 / 48.3 km
+  frame 4255 x 1183.6 km, opening 20.4 mm/yr, felsic 49.5 / 48.3 km
+  frame 4260 x 1186.3 km, opening 16.6 mm/yr, felsic 52.7 / 49.6 km
+  frame 4260 x 1188.1 km, opening 16.6 mm/yr, felsic 52.7 / 49.6 km

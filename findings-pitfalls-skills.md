@@ -780,3 +780,24 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
 - **A checkpoint spin-up check catches a trajectory change the gates do not.** The variant's
   imported run diverged from its fresh run by 3.4e-3 (bound 1e-3) while every strict gate
   it was judged on still stood. Run the whole suite on a candidate, not only its own harness.
+
+## 0.1.11 evaluation of closing-kind hysteresis (archive/0.1.11-hysteresis-worklog.md)
+
+- **A hold on a state is not a hold on its inputs.** The classifier's boundary state already has
+  hysteresis, but the floor predicate re-read the raw velocity sign. Holding the state fixed
+  removed every velocity-caused reclassification, and the crush floor then stayed on pairs that
+  had turned to open at 75 mm/yr, eleven of them within 120 km of a 126 km column. Before holding a state, ask what the
+  state permits once the input has reversed, and bound it at the threshold the owner uses.
+- **Removing one cause can be the same event as another.** The velocity flips and the opening
+  holds were the same pairs. A bound that removed the breach left the flips, and a rule without
+  the bound removed the flips and produced the breach. Count both causes on the same run before
+  choosing a threshold.
+- **A gate written before a measurement can miss the effect it was meant to catch.** The
+  acceptance gate on strict verdicts tied for the candidate (17 against 17) while it breached the
+  crust ceiling on one run. Name each physical bound (the ceiling, the needle, the spin-up) as its
+  own gate, and say which were added after the measurement.
+- **A measurement switch in `js/` breaks the page harnesses.** `process.env` in `columns.js` loads
+  fine in node and throws in the VM page harness (`smoke.js`), which has no `process`. Keep
+  variant switches in a scratch copy and check the candidate's own tree with the full suite.
+- **Trace the mechanism at the frame, not only the run.** The breach frame's column was traced to
+  eleven held-opening pairs within 120 km and 25 frames; the run-level counts did not show it.

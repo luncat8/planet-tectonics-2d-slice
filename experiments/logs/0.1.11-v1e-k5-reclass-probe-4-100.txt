@@ -1,0 +1,5 @@
+K5 reclassification probe: seed 4, schedule 100e3:5000, 5000 frames
+  transport floor solves 5000; next-frame reclassifications in 214 frames (214 pairs): 19 from a K5 drain below P.hOceanic, 195 from a velocity change
+  largest deficit (ordinary floor minus gap) 5.71 km
+  first at frame 114; largest column shift by the floor solve in those frames 6.04 km, in all other frames 6.52 km
+  frames with absorbed shortening past nCol 0

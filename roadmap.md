@@ -87,11 +87,15 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   the four strict legs read **ALL PASS (12 checks) / ALL PASS / ALL PASS / 1 of 12**, the
   single red being R5's documented frame-window repeat on `5000/5/100` (0 of 211 inside
   `P.evAge`). No engine kernel, constant, checkpoint or slice-format change.)
-- **K5 closing-kind drain (0.1.9 evaluation §7): settled as far as the narrow hold goes.**
+- **K5 closing-kind drain (0.1.9 evaluation §7): measured, base kept.**
   `archive/0.1.10-narrow-hold-worklog.md`: the narrow variant cuts drain-caused reclassification
   (1006 to 67 pairs over 16 runs) and fails six strict runs the base passes, so it is not
-  adopted. Decided: the base is accepted. Hysteresis on the closing kind is the only remaining
-  option and needs its own plan.
+  adopted. Decided: the base is accepted. `0.1.11-plan.md` and
+  `archive/0.1.11-hysteresis-worklog.md` measure hysteresis on the closing kind over sixteen
+  seeds: the candidate removes every velocity-caused reclassification and ties the base on
+  strict verdicts, but it holds opening pairs in the crush floor and breaches the crust ceiling
+  (126.1 km, seed 12 at 100 kyr/frame). Not landed; the choice to land it is open with the user.
+  The drain-band forms fail gates. No engine change in 0.1.10 or 0.1.11.
 
 ## 4. Not planned
 
