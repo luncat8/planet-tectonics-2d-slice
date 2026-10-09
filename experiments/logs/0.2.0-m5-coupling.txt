@@ -46,19 +46,19 @@ PASS  every message of the sequence validates   20 derived messages
 PASS  the sequence advances the globe's clock one cadence a step   from 120.5 to 220.5 Myr
 PASS  every message is its own cut
 PASS  re-deriving a message from the same pack and path is the same message   message 7
-INFO  message size over the sequence   65364 chars mean, 64112..66166
+INFO  message size over the sequence   65293 chars mean, 64105..65924
 
 D. the section's half: the join, the deltas and the import budget
-PASS  a message derived from the section itself books nothing but the format's own metre   max thickness delta 0.499 m over 512 columns
-PASS  every column joins the message interval that covers it   512 columns, 14732 thickness moves over 20 messages
+PASS  a message derived from the section itself books nothing but the format's own metre   max thickness delta 0.500 m over 512 columns
+PASS  every column joins the message interval that covers it   512 columns, 14410 thickness moves over 20 messages
 PASS  the section never runs ahead of the last message by more than the cadence   cadence 5 Myr, section clock 220.50 Myr
-PASS  the reconcile the sequence would book stays smaller than the crust it corrects   first message +445.9 / -412.4 Mm3/m, last +126442.0 / -139601.3 Mm3/m, 6856 age moves
-INFO  deltas per message (m, globe minus section)   max 80329, age max 281.470 Myr, 494 of 512 columns moved
+PASS  the reconcile the sequence would book stays smaller than the crust it corrects   first message +473.0 / -351.4 Mm3/m, last +86987.3 / -97730.1 Mm3/m, 6303 age moves
+INFO  deltas per message (m, globe minus section)   max 72361, age max 280.320 Myr, 410 of 512 columns moved
 PASS  a message with spans wider than the join radius leaves those columns unjoined   129 of 512 columns joined, 383 left at a 78.2 km join spacing
 PASS  an open cut omits a false trench at its un-crossed terminal endpoint   3 interior crossings
 PASS  the geographic join does not wrap an open window across its endpoints   open -1, periodic 0
-PASS  a hard reset import keeps the ledger the message carried   seed 1045603271236 of cut 1045603271236 m3/m
-PASS  the import cost is finite and inside a frame budget at this resolution   mean 1.8 ms, worst 3.4 ms over 21 layout imports
+PASS  a hard reset import keeps the ledger the message carried   seed 1052152178003 of cut 1052152178003 m3/m
+PASS  the import cost is finite and inside a frame budget at this resolution   mean 1.3 ms, worst 2.3 ms over 21 layout imports
 
 E. apply refusals are atomic and a matched reconcile edits beds
 PASS  an unsigned in-memory message is refused before state mutation   message refused: checksum mismatch
@@ -81,29 +81,29 @@ F. the real 20-import cycle: evolve, reconcile, retain
 PASS  message 1 applies cleanly   refused
 PASS  apply 1 leaves matched bed aggregates on their targets   max residual 0.00e+0 m
 PASS  message 2 applies cleanly   refused
-PASS  apply 2 leaves matched bed aggregates on their targets   max residual 3.69e-12 m
+PASS  apply 2 leaves matched bed aggregates on their targets   max residual 1.82e-12 m
 PASS  message 3 applies cleanly   refused
 PASS  apply 3 leaves matched bed aggregates on their targets   max residual 3.64e-12 m
 PASS  message 4 applies cleanly   refused
-PASS  apply 4 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  apply 4 leaves matched bed aggregates on their targets   max residual 3.64e-12 m
 PASS  message 5 applies cleanly   refused
-PASS  apply 5 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  apply 5 leaves matched bed aggregates on their targets   max residual 3.64e-12 m
 PASS  message 6 applies cleanly   refused
 PASS  apply 6 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
 PASS  message 7 applies cleanly   refused
-PASS  apply 7 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  apply 7 leaves matched bed aggregates on their targets   max residual 3.64e-12 m
 PASS  message 8 applies cleanly   refused
-PASS  apply 8 leaves matched bed aggregates on their targets   max residual 1.46e-11 m
+PASS  apply 8 leaves matched bed aggregates on their targets   max residual 1.27e-11 m
 PASS  message 9 applies cleanly   refused
 PASS  apply 9 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
 PASS  message 10 applies cleanly   refused
-PASS  apply 10 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  apply 10 leaves matched bed aggregates on their targets   max residual 1.09e-11 m
 PASS  message 11 applies cleanly   refused
 PASS  apply 11 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
 PASS  message 12 applies cleanly   refused
 PASS  apply 12 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
 PASS  message 13 applies cleanly   refused
-PASS  apply 13 leaves matched bed aggregates on their targets   max residual 3.64e-12 m
+PASS  apply 13 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
 PASS  message 14 applies cleanly   refused
 PASS  apply 14 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
 PASS  message 15 applies cleanly   refused
@@ -117,13 +117,13 @@ PASS  apply 18 leaves matched bed aggregates on their targets   max residual 7.2
 PASS  message 19 applies cleanly   refused
 PASS  apply 19 leaves matched bed aggregates on their targets   max residual 1.46e-11 m
 PASS  message 20 applies cleanly   refused
-PASS  apply 20 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
-PASS  all 20 mass identities close to 1e-9 relative   worst relative error 1.297e-15
+PASS  apply 20 leaves matched bed aggregates on their targets   max residual 1.46e-11 m
+PASS  all 20 mass identities close to 1e-9 relative   worst relative error 8.593e-16
 PASS  recomputing every aggregate from beds cannot undo an import   worst relative cache change 0.000e+0
 PASS  matched columns retain their bed identities through the sequence   worst import retained 98.9% of non-empty columns
-PASS  the cumulative reconcile ledger never resets between imports   reconciled 4226808201194, diverged 739992948560 m3/m
+PASS  the cumulative reconcile ledger never resets between imports   reconciled 3513914433724, diverged 696965798148 m3/m
 PASS  twenty imports of evolution leave the strata of every column legal under the §8.5 rule   all columns
-PASS  fresh and retired are measured volumes and unmatched columns stay bounded   total matched 10674, fresh cols 0, retired cols 0, fresh volume 0
+PASS  fresh and retired are measured volumes and unmatched columns stay bounded   total matched 10684, fresh cols 0, retired cols 0, fresh volume 0
 
 G. C3 owns K2 while the live message is active
 PASS  the active coupling prescribes rigid plate and column velocities in K2   12 plates at 12345 m/Myr
@@ -152,16 +152,16 @@ L. an active vent survives checkpoint restore and a C4 import
 PASS  a charged chamber births its vent on the column   vent 0
 PASS  import moment: airborne packets over a live, still-feeding vent   2 packets, 0.3 cells2 fed
 PASS  import moment: melt is in transit in the toy   0.000 cells2 in transit
-PASS  the per-lithology ledger closes from ledger zero to the import moment   max relative 5.43e-16 (sed)
-PASS  the checkpoint restores bit-identically with the eruption mid-flight   hash 2615240783, vent 0 at column 0
+PASS  the per-lithology ledger closes from ledger zero to the import moment   max relative 2.33e-16 (fel)
+PASS  the checkpoint restores bit-identically with the eruption mid-flight   hash 3606462434, vent 0 at column 0
 PASS  the growth import applies cleanly over the live vent   applied
-PASS  the import books its identity exactly   relative 4.89e-16
+PASS  the import books its identity exactly   relative 3.67e-16
 PASS  the import edits the vent's host column by the message's growth   hTot 7.819 -> 8.069 km at column 0 (growth 250 m within the message's metre quantization)
 PASS  the import leaves the vent's own bookkeeping untouched   chamber 0.000, queues 0.000000, packets 2
 PASS  the import moves no melt (the chamber supply is a move inside the crust)   chambers 0.000 -> 0.000e6 m2
 PASS  the continued eruption drains every vent's write-back queues   vent 0 queues 0.000000 cells2
 PASS  the edifice record stays a retained stock, never a source   venEdV 0 m2 of 160000 m2 placed
 PASS  the restored-and-imported section keeps every buffer finite
-PASS  the per-lithology ledger closes across the 400 frames after the import   max relative 5.47e-14 (fel)
+PASS  the per-lithology ledger closes across the 400 frames after the import   max relative 5.74e-14 (fel)
 
 ALL PASS (138 checks)

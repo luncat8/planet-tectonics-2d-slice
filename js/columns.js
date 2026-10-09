@@ -726,18 +726,39 @@ COL.transport = function (st, dt) {
 		st.edgeRPlate[i] = -1;
 	}
 	st.widths();
+	// The snapshot of what this frame's geometry was settled under, taken here and not
+	// before the solve: it is indexed by column slot, and the gather above has just
+	// renumbered the slots. It is taken before the classifier runs, so a contact the
+	// classifier is about to declare neutral (its collision ended this frame) is still
+	// judged against the floor the solve actually held it at, and K5's hFel
+	// redistribution cannot revoke it either (0.2.0 M5 acceptance §2.4).
+	this.freezeFloorClass(st, n);
 	this.plates();
 };
 
 // A converging continental pair may compress to the conveyor floor; other boundaries keep
 // the ordinary separation floor. A held pair keeps the floor while its classified state is
 // collide for the same plate pair (0.1.11-plan.md §3).
-COL.isClosingCC = function (st, i, j) {
-	if (this.floorClassValid) return this.floorClass[i] === 1;
+//
+// Two readings, on purpose. `closingCC` is the rule evaluated on the state it is handed;
+// `isClosingCC` is the reading the *frame's own geometry* was settled under, which is the
+// snapshot once one exists. They differ inside a frame, because the classifier runs after
+// the floor solve: a C-C pair held at the crush floor can be declared neutral (it started
+// to diverge) before the frame ends, and the gap it holds is then the crush floor and not
+// the ordinary one. Anything judging the settled geometry — the K9 sweep above all — must
+// read the snapshot, or it reports a floor breach on the frame the collision ended
+// (measured: 5-6 frames in 3000 on both 100 kyr legs, every one a pair that had just
+// stopped converging; 0.2.0 M5 acceptance §2.4 samples the sweep every frame).
+COL.closingCC = function (st, i, j) {
 	if (st.colPlate[i] === st.colPlate[j] || st.colGhost[i] || st.colGhost[j]) return false;
 	var held = st.edge[i] === P.EDGE.collide && st.edgeRPlate[i] === st.colPlate[j];
 	if (!(st.colU[i] > st.colU[j] || held)) return false;
 	return st.hFel[i] >= P.hOceanic && st.hFel[j] >= P.hOceanic;
+};
+
+COL.isClosingCC = function (st, i, j) {
+	if (this.floorClassValid) return this.floorClass[i] === 1;
+	return this.closingCC(st, i, j);
 };
 
 // Two records of different plates may not interpenetrate. Widths come from spacing, so
@@ -763,7 +784,9 @@ COL.freezeFloorClass = function (st, n) {
 	var i, j;
 	for (i = 0; i < n; i++) {
 		j = i + 1 < n ? i + 1 : 0;
-		this.floorClass[i] = this.isClosingCC(st, i, j) ? 1 : 0;
+		// the live rule, never the outgoing snapshot: a freeze has to be able to replace
+		// the one before it (K4's own freeze follows K3's on a topology frame)
+		this.floorClass[i] = this.closingCC(st, i, j) ? 1 : 0;
 	}
 	this.floorClassValid = true;
 };
@@ -909,9 +932,12 @@ COL.intents = function () {
 		}
 		// A closing C-C pair that has exhausted its small crush gap advances by retiring
 		// its thinner boundary record. The stack is split by the exact territory each
-		// neighbour gains; unlike subduction this is an in-crust move, not a sink.
+		// neighbour gains; unlike subduction this is an in-crust move, not a sink. The
+		// live rule, not the frame's floor snapshot: retiring a record is a topology
+		// decision and belongs to the classifier's current verdict, while the snapshot
+		// only says which floor the geometry was settled against.
 		if (!this.intent[i] && S.edge[i] === P.EDGE.collide &&
-			this.isClosingCC(S, i, j) && d <= P.crushFloor * 1.0001) {
+			this.closingCC(S, i, j) && d <= P.crushFloor * 1.0001) {
 			this.intent[i] = 4;
 			this.crush[i] = S.hTot[i] < S.hTot[j] ? i :
 				S.hTot[j] < S.hTot[i] ? j : (i < j ? i : j);
@@ -1349,6 +1375,14 @@ COL.k4 = function (st, dt, t, Tm) {
 	// Map pre-K4 indices into the final topology for edge-history hand-off.
 	self.map.fill(-1, 0, n + appended);
 	for (i = 0; i < count; i++) self.map[st.sortOrder[i]] = i;
+	// The compaction list has served its purpose. sortOrder/sortInverse are the position
+	// permutation of the last gather, and after a compaction they hold *source* indices
+	// instead — not a permutation of 0..count-1 whenever this frame consumed a column.
+	// Leave the pair as the identity the records now have, so a reader between K4 and the
+	// next transport cannot mistake the source list for positions (measured: the K9 sweep
+	// read it that way and reported a red `sorted` frame on every column death, ~40 legs
+	// per 1000 frames; 0.2.0 M5 acceptance §2.4 samples it every frame).
+	for (i = 0; i < count; i++) { st.sortOrder[i] = i; st.sortInverse[i] = i; }
 	// gather() already remapped deposits/vents using inverse; dead deposits are -1.
 	// For each old boundary, its new right column takes the edge from its new left
 	// neighbour (which may be the newborn at a ridge or the left of a consumed one).

@@ -61,4 +61,4 @@ PASS  the present-day transect opens the same way, at t 0   cut at t 0 Myr · pl
 PASS  an unknown id is a visible refusal on the real page too   no bundled pack 'not-a-bundle' — paste a cut, or open ?start=section&pack=<id>
 
 ALL PASS (52 checks)
-  (bundle gate in 2727 ms)
+  (bundle gate in 2061 ms)

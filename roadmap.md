@@ -14,30 +14,27 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | 0.1.7 | crust flow units: the two relaxations in metres and Myr, the ceiling made honest; corrected R1/R2/R5 gates and R4 remain open | `0.1.7-plan.md`, `archive/0.1.7-review-followup.md` | — |
 | 0.1.8 | collision arrest: the absorbed-shortening brake (`S.edgeShort`, checkpoint v4) closes R4; R1/R2/R5 left open only as measurement definitions on one 100 kyr leg | `archive/0.1.8-plan.md`, `archive/0.1.8-worklog.md` | 0.1.7 flow laws and corrected audit |
 | 0.1.9 | the two contact measurements: R1's site window anchored at the event and its background taken from the quiet-frame yardstick, R2's needle shoulder read over the belt's own neighbourhood | `0.1.9-plan.md`, `archive/0.1.9-worklog.md` | 0.1.8's M3 matrix |
-| 0.2.x | column engine: eruptives, deposits, extraction; page chrome (pause/step/reset) uses E1/E3 | `0.2.0-plan.md` | — |
+| 0.2.x | column engine: eruptives, deposits, extraction; page chrome (pause/step/reset) uses E1/E3 — **closed at M5** | `archive/0.2.0-plan.md` | — |
 | 0.3.x | particle engine P3+ (melt, eruptions, contact) | `0.3.0-plan.md`, `0.3.0-p3-plan.md` | — |
 | 0.4.0 | sync/exchange: provenance, deposits core, water, checkpoint, section pack | `0.4.0-sync-plan.md` | — |
 | 0.4.1 | the cut: draw a line on the globe, copy/save, paste/load, reconstruct a section | `0.4.1-plan.md` | 0.4.0's format (`port/slice-format.js`, M0 done) |
 | 0.9.0 | globe page hosts the section as a library; live sync is C3+C4 | `0.9.0-draft-sync.md`, `0.4.1-plan.md` §8 | 0.4.1 M1–M2; C1 on the column engine |
 
-0.2.0 status: M0 (the headless toy box), M1 (vent lifecycle / second clock), M2
-(stack write-back / visible edifice), M3 (bed-anchored deposits / finite extraction) and
-M4 (save/load and diagnostics under the plan's E1/E3 page ownership: the bar's seed field
-and save/load buttons over checkpoint v9's session JSON, K9's 2 Hz invariant sweep with
-the named `ledDelam` sink line, and the toy step cost on the HUD) implemented; worklogs
-are `archive/0.2.0-m0-worklog.md`, `archive/0.2.0-m1-worklog.md`,
-`archive/0.2.0-m2-worklog.md`, `archive/0.2.0-m3-worklog.md` and
-`archive/0.2.0-m4-worklog.md`. M4's done protocol (save -> reload -> 1000 frames bitwise
-at three zoom levels with an active eruption at save time) passes in
-`experiments/save-bench.js` (24 checks) and its page harness in `experiments/diag-ui.js`
-(36 checks). Live slice resources are separate from the immutable 3D catalogue and its
-shared priors. M2 was reviewed without rerunning its previously passed suites; the review
-found and fixed two pre-existing reds at HEAD (the m2-check accretion marker fixture —
-324/324 again — and the section-pack DOM stub — 84/84). The whole-series regression is
-not all-green: long 100 kyr contact legs retain R2/R5 reds, with original-HEAD
-comparisons in the M2 log. Contact tuning / frame-versus-clock policy and active-vent C4
-import coverage stay open for M5. Next: M5, the numerical isomorphism and the regression
-pass that closes those open items.
+0.2.0 status: **closed.** M0 (the headless toy box), M1 (vent lifecycle / second clock),
+M2 (stack write-back / visible edifice), M3 (bed-anchored deposits / finite extraction),
+M4 (save/load and diagnostics under the plan's E1/E3 page ownership) and M5 (acceptance and
+tuning) are landed; worklogs are `archive/0.2.0-m0-worklog.md` … `archive/0.2.0-m4-worklog.md`
+and `archive/0.2.0-m5-worklog.md`, with `archive/0.2.0-m5-report.md` as the paste-back
+report. The series' seven acceptance claims are decided by one harness,
+`experiments/acceptance.js` (48 checks, log `experiments/logs/0.2.0-m5-acceptance.txt`),
+which delegates to the owning milestone harness and measures the three claims none of them
+owned (the two clocks, determinism, 500 Myr stability at 10 and 100 kyr/frame). M5 landed
+`P.kBeltGradient` 8 → 12 from a nine-candidate sweep, and its every-frame K9 sweep found and
+fixed two engine reds that the 2 Hz HUD sample could not see (a stale sort permutation after
+a column death, and a contact-floor snapshot taken after the classifier); both fixes are
+provably geometry-neutral. One item is measured and deferred: a design-scale 10–30 px
+edifice needs ~50× this section's melt production, which is a `kMelt`/`kPlumeMelt`
+(crust-budget) decision, not a chamber constant.
 
 A release may pull a milestone out of 0.2 or 0.3 when it is the piece that makes a page usable;
 it never re-specifies a kernel.

@@ -170,7 +170,13 @@ var P = {
 	kBelt: 0.12,                 // 1/Myr of the excess (m), bulk orogenic flow out of a collision
 	                             // pair: a 5.4 km excess moves ~650 m/Myr, scaled by the
 	                             // closing rate; stiff re-calibration is gated by 0.1.7 M0
-	kBeltGradient: 8,             // 1/Myr, local yield-limited felsic flow smooths belt shoulders
+	kBeltGradient: 12,           // 1/Myr, local yield-limited felsic flow smooths belt shoulders.
+	                             // 0.2.0 M5 sweep (experiments/belt-tune-sweep.js, nine candidates
+	                             // x the four strict legs): 12 is the only rate whose worst
+	                             // single-frame needle stays inside the historical 1.5 on every
+	                             // leg (1.31/1.40/1.28/1.25); 8 reads 2.03 on 5000/5/100 and every
+	                             // other candidate 1.61-2.11, i.e. needs the standing-needle
+	                             // allowance, and 16 also loses R1 on 3000/1/50 (ratio 1.30).
 	beltYield: 3000,              // m, the root a collision can hold up without flowing sideways
 	faceGapMin: 0.5,             // x w0: floor on the face gap of both column stencils
 	kEro: 0.05,                  // /Myr

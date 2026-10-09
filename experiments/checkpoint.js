@@ -259,32 +259,56 @@ check.ok('a quarter-column shift of the cut moves the reconstruction orders past
 	!shiftedRefused && shiftedH > 100 * maxHDiff && shiftedH > boundH,
 	shiftedH.toFixed(0) + ' m vs the round-trip\'s ' + maxHDiff.toFixed(1) + ' m');
 
-// D2. The spin-up bound. The imported section is run 1000 frames against a freshly laid one
-// of the same cut and rate: an import that leaves the world agitated shows up as a mass ratio
-// the fresh run does not have. The engine's own dynamics move crust on both sides, so the gate
-// is the difference, not zero.
+// D2. Forward simulation after the round-trip: the re-imported section is run 1000 frames
+// against a freshly laid one of the same pinned cut and rate, and both the invariants and
+// the crustal mass are read on the way.
 // S.mass() is the engine's own accounting: crust plus the mobile load, the chamber and the
 // ribbons, so an eroding section does not read as a leaker.
+//
+// Two corrections (0.2.0 M5), both from measurement:
+//  - The world under test is the round-trip's own. The quarter-column shift above leaves its
+//    mis-registered reconstruction in the state, so the good cut is laid again here; without
+//    the re-lay this gate measured the shifted world and its verdict moved with any constant.
+//  - The mass bound is the metric's own spread, not a guess. The section's spin-up moves
+//    ~6e-2 of its crustal mass in 1000 frames, and two runs that start within the pack's own
+//    quantum of each other diverge chaotically inside that: 1.3e-3 to 7.8e-3 apart over nine
+//    values of P.kBeltGradient (8..32), in both directions, with no trend in the constant.
+//    The bound is four times the worst of those. A quarter-column mis-registration does NOT
+//    leave that noise behind either -- its own delta sits within 0.7e-2 of the fresh
+//    section's -- so no bound on this metric can witness a wrong world, which is why the
+//    invariant sweep runs on the same 1000 frames and is the gate that can fail.
+var SPIN_TOL = 3e-2;
 function crustalMass() {
 	var m = S.mass(), sum = 0, k;
 	for (k = 0; k < m.length; k++) sum += m[k];
 	return sum;
 }
-var importedStartMass = crustalMass();
-SIM.t = t0; SIM.cool();
-SIM.setGeo(50e3);
-SIM.run(1000);
-var importedDeltaRel = Math.abs(crustalMass() - importedStartMass) / importedStartMass;
+function forwardRun(frames) {
+	var start = crustalMass(), f, d, red = 0, firstRed = -1, worst = 0;
+	SIM.t = t0; SIM.cool();
+	SIM.setGeo(50e3);
+	SIM.diagReset();                 // a laid cut is a new world: the ledger identity re-bases
+	for (f = 0; f < frames; f++) {
+		SIM.step();
+		d = SIM.diag();
+		if (!d.ok) { red++; if (firstRed < 0) firstRed = f + 1; }
+		if (d.worst > worst) worst = d.worst;
+	}
+	return { delta: Math.abs(crustalMass() - start) / start, red: red, firstRed: firstRed, worst: worst };
+}
+SEED.layout(expWorld, { seed: 12345, t: t0, Tm: SIM.Tm });
+var imported = forwardRun(1000);
 var freshRefused = SEED.layout(FIX.pinned(), { seed: 12345, t: t0, Tm: SIM.Tm });
-SIM.t = t0; SIM.cool();
-SIM.setGeo(50e3);
-var freshStartMass = crustalMass();
-SIM.run(1000);
-var freshDeltaRel = Math.abs(crustalMass() - freshStartMass) / freshStartMass;
+var fresh = forwardRun(1000);
 check.ok('forward simulation after self round-trip stays inside the spin-up bound',
-	!freshRefused && importedDeltaRel <= freshDeltaRel + 1e-3,
-	'imported ' + importedDeltaRel.toExponential(2) + ' vs fresh section ' + freshDeltaRel.toExponential(2) +
-	' over 1000 frames');
+	!freshRefused && Math.abs(imported.delta - fresh.delta) <= SPIN_TOL,
+	'imported ' + imported.delta.toExponential(2) + ' vs fresh section ' + fresh.delta.toExponential(2) +
+	' over 1000 frames, ' + Math.abs(imported.delta - fresh.delta).toExponential(2) +
+	' apart (bound ' + SPIN_TOL.toExponential(0) + ', the metric\'s own measured spread)');
+check.ok('the re-imported world keeps every K9 invariant for 1000 frames',
+	imported.red === 0 && imported.worst < 1e-9,
+	imported.red + ' red frames' + (imported.red ? ', first at ' + imported.firstRed : '') +
+	', worst ledger ' + imported.worst.toExponential(2));
 
 // D3. What the engine's ring becomes is not what it was laid: transported columns differ in
 // width, so the export's arc table is no longer the section's lattice and the reader re-cuts

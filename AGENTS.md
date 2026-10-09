@@ -62,6 +62,14 @@ column-state checkpoint codec and deterministic restore), coupling.js (the envel
 20-import identity), coupling-link.js (the postMessage → localStorage → manual ladder), and
 core-log.js (the §8.5 return path: the one age convention, the acceptance rules, the cadence).
 Each prints PASS/FAIL and exits non-zero on failure.
+experiments/acceptance.js is a release's whole-series pass: one section per numbered
+acceptance claim, delegating to the owning harness where one exists (its PASS count is
+quoted, never re-measured) and measuring the claims no harness owns. Sampling an invariant
+every frame rather than at the HUD's 2 Hz is what found the two 0.2.0 M5 reds, so long-run
+checks belong here and not in a page harness.
+experiments/belt-tune-sweep.js and experiments/vent-tune-sweep.js are tuning tables: report
+only, they never edit params.js — a chosen value lands through a normal edit and a
+full-suite re-acceptance, and a table keeps a tag naming the gate it was measured against.
 
 port/ - files shared byte-identical with planet-geotectonics (0.4.0-sync-plan.md §1.2);
 port/PORT.json is the manifest. They are not in js/ on purpose: experiments/smoke.js asserts
@@ -71,7 +79,9 @@ plans: 0.1.7-plan.md (crust flow-law units and the honest ceiling), 0.1.9-plan.m
 contact measurements: R1's site and background, R2's needle shoulder), 0.4.0-sync-plan.md (what
 is exchanged with the reference project, in which direction), 0.4.1-plan.md (the cut: a line on
 the globe's map -> a section here), 0.9.0-draft-sync.md (the integrated globe, later). The
-completed 0.1.8 plan is `archive/0.1.8-plan.md` (collision arrest and orogen memory). Drafts are
+completed 0.1.8 plan is `archive/0.1.8-plan.md` (collision arrest and orogen memory) and the
+completed 0.2.0 plan is `archive/0.2.0-plan.md` (eruptives, deposits, save/load; the series
+is accepted at M5, `archive/0.2.0-m5-worklog.md`). Drafts are
 0.3.0-draft.md and 0.4.1-draft.md.
 roadmap.md — which release owns what, the runtime-authority table, what is deferred; each
 release's own plan is still the authority for its milestones.

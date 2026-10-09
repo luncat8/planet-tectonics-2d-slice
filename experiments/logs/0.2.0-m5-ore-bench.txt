@@ -81,12 +81,12 @@ PASS  C4 removal retires only the erased host while the surviving arc id remains
 PASS  an unmatched fresh C4 stack cannot inherit a retired deposit pointer or tombstone
 PASS  the checkpoint refuses an older header instead of a legacy reader
 PASS  checkpoint restore resumes resources and geological state bit-identically
-PASS  same seed, sliders and explicit mining events reproduce the complete hash   4092171709 / 4092171709
-PASS  new full-pipeline mining fixture keeps both ledgers and host invariants   crust 7.73e-16, resources 1.39e-15, 39 deposits
-PASS  100 kyr mining leg remains finite, depth-valid and mass-exact   crust 5.31e-15, resources 1.00e-15, 45 deposits
+PASS  same seed, sliders and explicit mining events reproduce the complete hash   523261183 / 523261183
+PASS  new full-pipeline mining fixture keeps both ledgers and host invariants   crust 2.32e-15, resources 8.39e-16, 38 deposits
+PASS  100 kyr mining leg remains finite, depth-valid and mass-exact   crust 6.26e-15, resources 1.07e-15, 45 deposits
 
 M3.7 dedicated K8 cost (not a previous raster benchmark)
-INFO  K8   0.375 ms/step, 521 columns / 46 deposits
+INFO  K8   0.205 ms/step, 520 columns / 46 deposits
 PASS  K8 fits a 2 ms dedicated kernel budget
 
 ALL PASS (75 checks)

@@ -935,3 +935,54 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   be `S.hash()`-neutral (ore-ui gates it). Give the measurer its own buffer
   (`S.massInto`) instead of the state's scratch (`S.mass`), and keep the 2 Hz sweep
   read-only down to `isClosingCC`'s cache.
+
+## 0.2.0 M5 (acceptance and tuning, archive/0.2.0-m5-worklog.md)
+
+- **Sample an invariant every frame, not at the HUD's cadence.** The K9 sweep was read at
+  2 Hz on the page and every 100 frames in save-bench, and two real reds lived entirely
+  inside one-frame windows (a column-death frame, the frame a collision ended). An
+  acceptance harness that samples every frame found both in a 3000-frame leg; the same legs
+  look clean at any coarser cadence. Long-run invariant checks belong in a harness, not in
+  a page timer.
+- **A per-slot classification snapshot must be taken where the geometry is settled, and
+  after the gather renumbers the slots.** Freezing the C-C contact class after the
+  classifier ran meant the frame's settled gap was judged against a floor no solve ever
+  used; freezing it before the sort meant `floorClass[i]` described the pre-sort column.
+  The working position is the end of `COL.transport` (post-gather, pre-classify), with
+  `COL.finalFloor` re-freezing after any topology change.
+- **Split the live rule from the snapshot, or a freeze cannot replace a freeze.**
+  `freezeFloorClass` calling `isClosingCC` while a snapshot is valid copies the old values
+  onto themselves — a silent no-op. `COL.closingCC` (live) and `COL.isClosingCC` (snapshot)
+  are now two functions, and the one topology-deciding caller uses the live one on purpose.
+- **A buffer with two contracts is a trap; leave the boring value behind.** `S.sortOrder`
+  is a position permutation after K3's transport and a list of surviving *source* indices
+  after K4's compaction. The first reader to assume the permutation (the M4 diag) reported
+  an unsorted world on every column death. Since nothing reads the source list once
+  `COL.map` is built, K4 now leaves the identity.
+- **Prove a fix geometry-neutral instead of asserting it.** Both engine fixes above were
+  checked by re-running `contact-audit 5000 5 100 --strict` and diffing against the
+  pre-fix log: byte-identical apart from `ms/frame`. That is what let the tuning table
+  stand without a re-sweep.
+- **Re-run a tuning sweep after the gate it was measured against changes.** The first
+  `kBeltGradient` table was taken against the single-frame needle gate; M5 replaced that
+  gate with the standing-needle clause, and on the new gate *every* candidate passes, so
+  the old table could not choose. The re-run keeps a tag in its log names so both tables
+  stay on the record. When the gate stops discriminating, choose on the reported metric
+  behind it (here: the worst single-frame ratio, 1.40 at 12 vs 1.61–2.11 elsewhere).
+- **A gate bound that was never measured is a coin flip, and a metric that cannot witness
+  the bad case is not a gate.** checkpoint D2's 1e-3 bound sat on a metric whose own spread
+  is 1.3e-3–7.8e-3 (nine constants, both directions), and the deliberately mis-registered
+  cut lands *inside* that noise — so the bound was widened to four times the measured worst
+  and paired with a non-chaotic gate (the K9 invariants over the same 1000 frames). Also
+  check which world a harness left in the state: D2 was measuring the previous check's
+  shifted cut, not the round-trip it was named for.
+- **When one harness quotes another's total, read the owner's *last* summary line.**
+  `acceptance.js` delegates §2.3 to `isomorphism.js`, which itself spawns `deposits.js`; a
+  first-match `/ALL PASS \((\d+) checks\)/` quoted the child's 76 as the owner's own 8.
+  The verdict was still right (`status === 0` is the gate), but the number a reader would
+  check was wrong — the kind of detail that makes a green log untrustworthy.
+- **"No constant moved" is a legitimate tuning result, if it is measured.** The chamber
+  scale sweep shows the live edifice is supply-limited (the whole section makes ~5 toy
+  cells of melt per 150 Myr against the ~50–450 cells² a design-scale cone needs), so no
+  value of `Vch`/`Vbirth`/`Vdie` can reach it. Record the table, name the constant that
+  *would* (`kMelt`/`kPlumeMelt`), and defer it to the release that owns the crust budget.

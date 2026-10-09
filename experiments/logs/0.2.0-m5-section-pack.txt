@@ -92,13 +92,13 @@ PASS  a clock for another path is refused without pausing the section   clock re
 D4. the observation return and the abandoned cadence
 PASS  the live import auto-logged and the manual paste did not spam the out field   506 columns logged at the live rung
 PASS  the out field holds a checksummed pgt-core-log for this exact cut   506 records, log 438a62c989d7c19e
-PASS  the button re-logs the whole section (a threshold build would say nothing here)   core log: 507 of 512 columns · placed · out field ready to copy · 55270b04ebed4691
-PASS  a manual rung records "placed", never a live send it did not make   core log: 507 of 512 columns · placed · out field ready to copy · 55270b04ebed4691
+PASS  the button re-logs the whole section (a threshold build would say nothing here)   core log: 507 of 512 columns · placed · out field ready to copy · cf6924dee92501f9
+PASS  a manual rung records "placed", never a live send it did not make   core log: 507 of 512 columns · placed · out field ready to copy · cf6924dee92501f9
 PASS  the cadence guard pins the clock and counts the wait   stall 1, dG 0
 PASS  an abandoned wait demotes the section: its own solve, K2 released, said unsynced   cut at t 120.5 Myr · unsynced · own solve (detached G)   paste
 PASS  the demoted clock runs free of the message that never came   160.550 → 160.600 Myr
 PASS  a later snapshot re-arms the live state, staleness and all   imports 3
-PASS  and answering it goes back to logging, not to waiting   core log: 26 of 512 columns · placed · out field ready to copy · 285e0d9b50d34d9c
+PASS  and answering it goes back to logging, not to waiting   core log: 26 of 512 columns · placed · out field ready to copy · b4d89169a18cd530
 PASS  a failed live send leaves the observation due and says it can be copied   core log: 1 of 512 columns · send failed · retry pending · out field ready to copy · fa147917b1f5c53c
 PASS  a manual observation is not committed when its host has no output field   core log: 1 of 512 columns · placed · out field ready to copy · fa147917b1f5c53c
 PASS  a quiet (never imported) section owes the globe its baseline and nothing else   510 columns at first registration
@@ -138,6 +138,6 @@ PASS  the empty Cut-from option drops the cut, its world and its overlay   cut c
 PASS  and an id the bundle does not have is a message from the same control   no bundled pack 'no-such-pack' — paste a cut, or open ?start=section&pack=<id>
 PASS  and the next draw is the idle strip again
 
-  total 8.0 s
+  total 5.8 s
 
 ALL PASS (84 checks)

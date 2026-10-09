@@ -12,7 +12,7 @@ B. the globe's acceptance rules hold on evolved and reconciled states
 PASS  sixty frames of the section's own kernels keep every column's strata legal   all columns
 PASS  a C4 reconcile with 250 m of bottom growth applies   ok
 PASS  injected growth beds are flagged, and the age law reads across them, not around them   all columns after reconcile
-PASS  the intrusive-contact flag carries the inversions the growth made   630 flagged beds
+PASS  the intrusive-contact flag carries the inversions the growth made   627 flagged beds
 PASS  the log after the import passes the globe's own rule, record by record   2 records
 PASS  a record's divergence is the column's own residual, on every record
 PASS  a coarse table rebuilding unmatched stacks still logs clean   one law for seeded, grown and rebuilt columns

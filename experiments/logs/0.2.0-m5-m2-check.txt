@@ -35,12 +35,12 @@ PASS  flow speed bounded by the mode sum   3.75 cm/yr
 PASS  constant T is preserved (times the relaxation)   0.00e+0
 PASS  back-trace recurrence equals the closed-form flow   2.55e-15
 PASS  T stays finite and inside its initial bounds over 40 Myr   [-0.550, 0.000]
-PASS  plate speeds finite and within vMax   0.64 -0.89 5.39 -0.74 -0.20 2.48 -0.87 0.36 cm/yr
-PASS  damage stays a fraction after 40 Myr of real tectonics   360/525 columns damaged, max 0.790
+PASS  plate speeds finite and within vMax   0.64 -0.89 5.38 -0.74 -0.21 1.52 -0.89 0.34 cm/yr
+PASS  damage stays a fraction after 40 Myr of real tectonics   360/525 columns damaged, max 0.789
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 5.96e-8  got 40030173.59204108  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 6.71e-8  got 40030173.592041075  want 40030173.59204114
 PASS  plate counts agree
 PASS  absorbed shortening sits only on live inter-plate boundaries   1 boundaries carry it
 
@@ -168,7 +168,7 @@ PASS  the conveyor books the released territory as the boundary's absorbed short
 PASS  no other boundary carries absorbed shortening   0 slots
 PASS  a deposit on the retired stack follows the accretion without a false horizon   column 255, layer -1
 PASS  accretion keeps every Voronoi width positive
-PASS  C-C conveyor per-lith volume ledger   max relative 2.79e-15
+PASS  C-C conveyor per-lith volume ledger   max relative 2.61e-15
 PASS  the C-C retirement is an in-crust move, not a consumed sink
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
@@ -245,20 +245,20 @@ PASS  stack caches agree
 PASS  widths cover the periodic domain   rel 1.12e-7  got 40030173.59204103  want 40030173.59204114
 PASS  plate counts agree
 PASS  absorbed shortening sits only on live inter-plate boundaries   0 boundaries carry it
-PASS  100 Myr evolving planet per-lith volume ledger   max relative 9.41e-15
+PASS  100 Myr evolving planet per-lith volume ledger   max relative 3.89e-15
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 4.47e-8  got 40030173.5920411  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 3.73e-8  got 40030173.592041105  want 40030173.59204114
 PASS  plate counts agree
-PASS  absorbed shortening sits only on live inter-plate boundaries   1 boundaries carry it
-PASS  700 Myr mixed-rate evolving planet (repeated births) per-lith volume ledger   max relative 5.81e-15
+PASS  absorbed shortening sits only on live inter-plate boundaries   2 boundaries carry it
+PASS  700 Myr mixed-rate evolving planet (repeated births) per-lith volume ledger   max relative 4.57e-15
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 2.24e-8  got 40030173.59204112  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 1.49e-8  got 40030173.59204116  want 40030173.59204114
 PASS  plate counts agree
-PASS  absorbed shortening sits only on live inter-plate boundaries   6 boundaries carry it
+PASS  absorbed shortening sits only on live inter-plate boundaries   5 boundaries carry it
 
 M2.3 age, damage, zDyn, flexure, collapse
 PASS  K5/K6 at zero geological time change nothing
@@ -307,37 +307,37 @@ PASS  a foundered host loses its deposit and the next bed keeps its deposit   ho
 PASS  a full-bed peel closes the consumed-mass ledger   rel 0.00e+0  got 1082546761.803997 m3  want 1082546761.803997
 PASS  at small dt the shed is kDelam x excess x dt to first order   rel 4.03e-1  got 89.59681433548394 m  want 90
 PASS  the bulk orogenic flow is dt-independent to first order   rel 3.11e+0  got 581.0276679841918 m  want 584.1377554348146
-PASS  local yield-limited flow matches its small-dt face flux   rel 6.00e-12  got 17.57188498401956 m  want 17.57188498402556
-PASS  local face flux raises the left shoulder by its volume share   rel 3.00e-12  got 8.78594249200978 m  want 8.78594249201278
-PASS  local face flux raises the right shoulder by its volume share   rel 3.00e-12  got 8.78594249200978 m  want 8.78594249201278
+PASS  local yield-limited flow matches its small-dt face flux   rel 6.64e-12  got 26.336791699926835 m  want 26.336791699920195
+PASS  local face flux raises the left shoulder by its volume share   rel 3.32e-12  got 13.168395849963417 m  want 13.168395849960097
+PASS  local face flux raises the right shoulder by its volume share   rel 3.32e-12  got 13.168395849963417 m  want 13.168395849960097
 PASS  local yield-limited belt flow per-lith volume ledger   max relative 0.00e+0
 PASS  large-dt local flow does not reverse either initial belt shoulder   left 40.50, peak 49.00, right 40.50 km
 PASS  large-dt local yield-limited belt flow per-lith volume ledger   max relative 0.00e+0
-PASS  local flow respects the receiver crust ceiling   receiver 73.540 km; ceiling 80.0 km
+PASS  local flow respects the receiver crust ceiling   receiver 72.590 km; ceiling 80.0 km
 PASS  K5/K6 never touch the lithology ledger
-PASS  the collided crust stands higher through isostasy alone   -2341 -> 270 m
+PASS  the collided crust stands higher through isostasy alone   -2341 -> 190 m
 PASS  a frame ends with the profile recomputed from the final state
-PASS  500 Myr trajectory respects the ordinary floor after every frame   minimum 0.1200 w0; stage minima K3/K4/event/finalFloor/K5 0.1199/0.1200/0.1200/0.1200/0.1200 w0 (event frame 1381, floor 2001, K5 1373; pair 476 was ordinary before K5, gap 0.1200 w0, minimum hFel pre-K5/after gravity+bulk/after local/after arc/after lip/after delam 0.00/0.00/0.00/0.00/0.00/0.00 km (C-C threshold 8.00 km; required > 0.1188 w0)
-PASS  500 Myr trajectory respects the closing C-C floor after every frame   minimum 0.0506 w0; required > 0.0495 w0
-PASS  500 Myr final topology respects both contact floors   ordinary 0.1200 w0 / 0.12, closing C-C 0.5130 w0 / 0.05; softest same-plate gap 0.1200 w0
+PASS  500 Myr trajectory respects the ordinary floor after every frame   minimum 0.1200 w0; stage minima K3/K4/event/finalFloor/K5 0.1200/0.1200/0.1200/0.1200/0.1200 w0 (event frame 1511, floor 611, K5 1506; pair 473 was ordinary before K5, gap 0.1200 w0, minimum hFel pre-K5/after gravity+bulk/after local/after arc/after lip/after delam 0.00/0.00/0.00/0.00/0.00/0.00 km (C-C threshold 8.00 km; required > 0.1188 w0)
+PASS  500 Myr trajectory respects the closing C-C floor after every frame   minimum 0.0500 w0; required > 0.0495 w0
+PASS  500 Myr final topology respects both contact floors   ordinary 0.1200 w0 / 0.12, closing C-C 0.2710 w0 / 0.05; softest same-plate gap 0.1200 w0
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 2.24e-8  got 40030173.59204112  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 0.00e+0  got 40030173.59204114  want 40030173.59204114
 PASS  plate counts agree
-PASS  absorbed shortening sits only on live inter-plate boundaries   2 boundaries carry it
-  500 Myr @100 kyr: n=550 plates=7 maxCrust=79 km maxRelief=4.3 km
-PASS  50 Myr trajectory respects both contact floors after every frame   min ordinary 0.1200 w0, closing C-C 0.0501 w0; stage minima K3/K4/event/finalFloor/K5 0.1200/0.1200/0.1200/Infinity/0.1200 w0; final 0.1200/0.7571 w0
+PASS  absorbed shortening sits only on live inter-plate boundaries   3 boundaries carry it
+  500 Myr @100 kyr: n=538 plates=8 maxCrust=80 km maxRelief=7.8 km
+PASS  50 Myr trajectory respects both contact floors after every frame   min ordinary 0.1200 w0, closing C-C 0.0501 w0; stage minima K3/K4/event/finalFloor/K5 0.1200/0.1200/0.1200/Infinity/0.1200 w0; final 0.1200/0.7672 w0
 PASS  all state buffers finite
 PASS  positions sorted, unique and wrapped
 PASS  stack caches agree
-PASS  widths cover the periodic domain   rel 9.69e-8  got 40030173.592041045  want 40030173.59204114
+PASS  widths cover the periodic domain   rel 7.45e-8  got 40030173.59204107  want 40030173.59204114
 PASS  plate counts agree
 PASS  absorbed shortening sits only on live inter-plate boundaries   3 boundaries carry it
 
 M2.1 determinism and finite state at every kernel boundary
 PASS  all buffers finite after every kernel (20 frames)
 PASS  same seed and dtGeo are bitwise deterministic (300 frames)
-PASS  sim frame (K0-K6) within the 4 ms budget   2.044 ms/frame, min of 7x20
+PASS  sim frame (K0-K6) within the 4 ms budget   1.332 ms/frame, min of 7x20
 
 ALL PASS (324 checks)

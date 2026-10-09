@@ -1,6 +1,6 @@
 
 M0.1 throughput: 16 vents, one frame (1800 s) each
-PASS  16 vents step >= 60 frames/s   113 frames/s, 8.82 ms per frame
+PASS  16 vents step >= 60 frames/s   179 frames/s, 5.59 ms per frame
 
 M0.2 effusive: a prescribed flux builds a repose cone that freezes
 INFO  effusive profile   H 10.06 cells, width 27 cells, max step 0.675 (tan repose 0.675)

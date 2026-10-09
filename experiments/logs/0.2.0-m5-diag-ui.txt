@@ -4,7 +4,7 @@ PASS  the planet bar carries seed, save and load controls
 PASS  the seed field shows the run seed at init   value 1
 PASS  Enter rebuilds the planet from the typed seed   seed 77
 PASS  the field keeps the canonical seed text
-PASS  the same seed replays the same world bitwise   hash 628528765
+PASS  the same seed replays the same world bitwise   hash 1238377304
 PASS  typing in the seed field cannot toggle page keys
 PASS  the global key handler ignores inputs
 PASS  the page key works on the body
@@ -15,7 +15,7 @@ PASS  the file is the one session codec with every array inside
 PASS  a save records the seed in its file name   session-seed7-t2.json
 PASS  the live run moved on from the save
 PASS  a slider move changes the clock widget
-PASS  load state restores the save bitwise   hash 734618088
+PASS  load state restores the save bitwise   hash 2552888880
 PASS  the seed field follows the restored world
 PASS  the two clock widgets re-read the restored sliders
 
@@ -40,9 +40,9 @@ PASS  the gap clears back to all-ok
 PASS  a rebuilt planet clears back to all-ok
 
 M4 UI.5 the done protocol through the page loop at two zooms
-PASS  the loop-level reload is bit-identical   hash 266858032
-PASS  120 redrawn frames at overview match the same run at default zoom   hash 1483221673
-PASS  and at crust x10   hash 1483221673
+PASS  the loop-level reload is bit-identical   hash 2055987656
+PASS  120 redrawn frames at overview match the same run at default zoom   hash 1610035451
+PASS  and at crust x10   hash 1610035451
 PASS  the invariants hold through the redrawn loop
 
 ALL PASS (36 checks)

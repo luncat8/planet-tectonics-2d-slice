@@ -11,18 +11,18 @@ PASS  save moment: airborne packets over a live, still-feeding vent   2 packets,
 PASS  save moment: mass is in transit in the toy   0.000 cells2 in transit
 
 M4.3 done protocol: 1000 frames bitwise at two zoom levels
-PASS  reload at def restores the save bit-identically   hash 269028939
+PASS  reload at def restores the save bit-identically   hash 3177421540
 PASS  the eruption is still mid-flight after reload at def
-PASS  1000 frames after reload at def match the live run bitwise   hash 3140064848
-PASS  zoom def: the live 1000 frames and the resumed 1000 frames agree   hash 3140064848
-PASS  reload at ovw restores the save bit-identically   hash 269028939
+PASS  1000 frames after reload at def match the live run bitwise   hash 1796684114
+PASS  zoom def: the live 1000 frames and the resumed 1000 frames agree   hash 1796684114
+PASS  reload at ovw restores the save bit-identically   hash 3177421540
 PASS  the eruption is still mid-flight after reload at ovw
-PASS  1000 frames after reload at ovw match the live run bitwise   hash 3140064848
-PASS  the two zoom levels resume to the same world   hash 3140064848
-PASS  reload at cru restores the save bit-identically   hash 269028939
+PASS  1000 frames after reload at ovw match the live run bitwise   hash 1796684114
+PASS  the two zoom levels resume to the same world   hash 1796684114
+PASS  reload at cru restores the save bit-identically   hash 3177421540
 PASS  the eruption is still mid-flight after reload at cru
-PASS  1000 frames after reload at cru match the live run bitwise   hash 3140064848
-PASS  a third zoom (crust x10) is equally bit-identical   hash 3140064848
+PASS  1000 frames after reload at cru match the live run bitwise   hash 1796684114
+PASS  a third zoom (crust x10) is equally bit-identical   hash 1796684114
 
 M4.4 checkpoint bytes and the K9 sweep over the done run
 PASS  the K9 sweep holds through the resumed 1000 frames
@@ -30,7 +30,7 @@ PASS  the whole checkpoint (clocks, RNG words, sliders, slab flag) is byte-ident
 
 M4.5 the paused-geology leg: eruptive clock only
 PASS  the eruptive clock is free and its vent is alive in the paused world   vent 0 at tErupt 1440000
-PASS  reload of the paused world restores bit-identically   hash 3619873142
-PASS  200 eruptive-only frames resume bitwise with geology paused   hash 3619873142
+PASS  reload of the paused world restores bit-identically   hash 4115912805
+PASS  200 eruptive-only frames resume bitwise with geology paused   hash 4115912805
 
 ALL PASS (24 checks)

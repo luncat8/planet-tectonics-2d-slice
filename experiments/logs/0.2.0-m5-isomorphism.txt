@@ -8,12 +8,10 @@ PASS  the shared file port/deposit-economics.js is byte-identical with the manif
 PASS  every shared-identical file matches its manifest sha256   3/3 files
 
 B. the live regeneration from the counterpart's own code
-PASS  the upstream file matches the sha256 the fixture records   6deb214ef094…
-PASS  the upstream tree is checked out at the pinned commit   d909476
-PASS  the fixture regenerates from the counterpart byte-identical   14708 bytes, sha256 ea89723e1d42…
+INFO  SKIP the live link: no upstream tree at /tmp/up (set $UPSTREAM or pass the path); the checked-in fixture is the pinned statement
 
 C. the local extraction reproduces the counterpart's numbers
 PASS  experiments/deposits.js replays the fixture through js/deposit-core.js   ALL PASS (76 checks)
 PASS  the replay has no failures   none
 
-ALL PASS (11 checks)
+ALL PASS (8 checks)

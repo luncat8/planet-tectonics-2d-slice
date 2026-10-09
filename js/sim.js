@@ -94,12 +94,12 @@ var SIM = {
 			PLT.classify(st, 0, !!SIM.kinematic);
 			PLT.trench(st);
 			COL.finalFloor(st, st.nCol);
-		} else {
-			// K5 may still redistribute crust on an otherwise topology-stable frame. Freeze
-			// the K4 contact kind before that redistribution so hFel depletion cannot revoke
-			// the floor classification already used for this frame's geometry.
-			COL.freezeFloorClass(st, st.nCol);
 		}
+		// A topology-stable frame takes no freeze of its own: K3's transport already took
+		// the snapshot this frame's geometry was settled under, and that is the reading the
+		// rest of the frame (K5's hFel redistribution above all) must not revoke. Freezing
+		// again here would replace it with the classifier's later verdict and leave the
+		// settled gap judged against a floor nothing ever solved for (0.2.0 M5).
 	}, CRU.k5, SURF.k6, MAG.k7, ORE.k8, null],
 	dG: 0,          // Myr per frame, from the plates slider
 	kinematic: null, // optional C3 K2 owner; returns true when it supplied plate velocities

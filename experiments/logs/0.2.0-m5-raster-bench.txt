@@ -30,22 +30,22 @@ PASS  and the sediment bed untouched
 PASS  removeTop past the bottom empties the stack   got 150
 
 C. body raster (design §7, budget 6 ms at 1280x560, min of 15 runs)
-  default window          3.686 ms  (median 3.767, max 4.206)
-PASS  default window body raster <= 6 ms   3.686 ms
-  overview (full depth)   4.047 ms  (median 4.106, max 4.686)
-PASS  overview (full depth) body raster <= 6 ms   4.047 ms
-  crust x10               3.019 ms  (median 3.161, max 3.976)
-PASS  crust x10 body raster <= 6 ms   3.019 ms
-  basin x40               3.028 ms  (median 3.178, max 4.552)
-PASS  basin x40 body raster <= 6 ms   3.028 ms
+  default window          5.717 ms  (median 6.019, max 6.202)
+PASS  default window body raster <= 6 ms   5.717 ms
+  overview (full depth)   4.714 ms  (median 6.066, max 6.466)
+PASS  overview (full depth) body raster <= 6 ms   4.714 ms
+  crust x10               3.911 ms  (median 4.124, max 4.218)
+PASS  crust x10 body raster <= 6 ms   3.911 ms
+  basin x40               3.345 ms  (median 3.684, max 3.887)
+PASS  basin x40 body raster <= 6 ms   3.345 ms
 PASS  every pixel is painted   716800/716800
 PASS  the eruptive raster fixture has 16 active vents with real write-back beds
-  default + 16 live vents 3.639 ms  (median 3.665, max 4.120)
-PASS  default + 16 live vents body raster <= 6 ms   3.639 ms
-  buildColLUT (512 cols, 1280 px)  0.0074 ms per frame
-  GEO.rebuild (both LUT sets)      0.0374 ms, view change only
-  sim.step with the M2 kernels     3848.37 us
-PASS  the body raster leaves headroom for the overlay   3.686 ms of a 6 ms budget
+  default + 16 live vents 4.879 ms  (median 5.992, max 6.331)
+PASS  default + 16 live vents body raster <= 6 ms   4.879 ms
+  buildColLUT (512 cols, 1280 px)  0.0048 ms per frame
+  GEO.rebuild (both LUT sets)      0.0251 ms, view change only
+  sim.step with the M2 kernels     2850.94 us
+PASS  the body raster leaves headroom for the overlay   5.717 ms of a 6 ms budget
 
 D. bilinear fan sampling (M2.3 optional)
 PASS  the mantle is on screen in a coarse ring   ring 41, 16 nodes, pitch 1067 px, 27 rows

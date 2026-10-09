@@ -32,10 +32,10 @@ PASS  the flow the mantle gives the plates is the one the cut carried (mean per 
 
 E. §4.3.4 what the clock costs on the first frame
 INFO  the control (the engine’s own default planet, same frame)   3377.0 m
-PASS  one frame at 10 kyr costs the seeded view no more than it costs a fresh planet   seeded first frame 74.6 m; the plan’s absolute bound would condemn both
+PASS  one frame at 10 kyr costs the seeded view no more than it costs a fresh planet   seeded first frame 90.4 m; the plan’s absolute bound would condemn both
 INFO  after 100 frames   t 121.500 Myr, nCol 512 → 512, seeded crust 988.673e9 m3/m (was 988.693e9)
 PASS  no column is consumed in the first Myr (100 frames at 10 kyr)   the topology stays shut while the cut is still the cut
-PASS  the identity is a frame-0 statement, and the clock is allowed to move the surface   frame 0 7.5e+1 m, then it evolves
+PASS  the identity is a frame-0 statement, and the clock is allowed to move the surface   frame 0 9.0e+1 m, then it evolves
 PASS  a seeded boundary has no history, so the topology stays shut for P.evAge Myr   nCol unchanged for 199 frames (evAge 2 Myr)
 INFO  the first Myr, boundaries   2 of 12 seams changed, every one to what the recomputed relN names (frame 1 changed none, §D)
 PASS  and the seams that do change within the first Myr are the plate solve, not the mapping   a seeded seam is re-signed only when the flow the section grows says so
@@ -60,6 +60,6 @@ PASS  as does the ledger   abs 3.66e-4  got 939501580474.3536 m3/m  want 9395015
 PASS  the coarse cut (64 samples over 512 columns) is the other end of the same rule   identity and ledger at 625 km cells
 PASS  a rejected measurement preserves the active mapping metadata
 
-  total 1.4 s
+  total 1.1 s
 
 ALL PASS (36 checks)

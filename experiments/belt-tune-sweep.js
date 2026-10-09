@@ -4,9 +4,11 @@
 // The sweep hook is contact-audit.js's KG environment override; the committed default
 // (params.js) is the first row, so the table reads as the base plus its candidates.
 //
-//   node experiments/belt-tune-sweep.js [candidates=8,12,16,24,32]
+//   node experiments/belt-tune-sweep.js [candidates=8,12,16,24,32] [tag]
 //
-// Every run's full log is kept in experiments/logs/0.2.0-m5-sweep-kg<value>-<f>-<s>-<k>.txt.
+// Every run's full log is kept in experiments/logs/0.2.0-m5-sweep-[<tag>-]kg<value>-<f>-<s>-<k>.txt.
+// The tag names the gate the table was measured against, so a table taken before a gate
+// change stays on the record beside the one taken after it.
 // Report only: nothing here edits params.js; the chosen value lands through a normal
 // edit and a full-suite re-acceptance.
 'use strict';
@@ -17,6 +19,7 @@ var path = require('path');
 var root = path.join(__dirname, '..');
 var LOGS = path.join(__dirname, 'logs');
 var CANDS = (process.argv[2] || '8,12,16,24,32').split(',').map(Number);
+var TAG = process.argv[3] ? process.argv[3] + '-' : '';
 // the strict matrix of 0.1.5 §4 / 0.1.9 §0: frames, seed, kyr per frame
 var LEGS = [[3000, 1, 50], [3000, 1, 100], [5000, 5, 50], [5000, 5, 100]];
 
@@ -30,7 +33,7 @@ function run(kg, leg) {
 		[path.join(__dirname, 'contact-audit.js'), String(leg[0]), String(leg[1]), String(leg[2]), '--strict'],
 		{ env: env, encoding: 'utf8', maxBuffer: 1 << 24 });
 	var out = (r.stdout || '') + (r.stderr || '');
-	var file = path.join(LOGS, '0.2.0-m5-sweep-kg' + kg + '-' + leg[0] + '-' + leg[1] + '-' + leg[2] + '.txt');
+	var file = path.join(LOGS, '0.2.0-m5-sweep-' + TAG + 'kg' + kg + '-' + leg[0] + '-' + leg[1] + '-' + leg[2] + '.txt');
 	fs.writeFileSync(file, out);
 	function grab(re) {
 		var m = re.exec(out);
