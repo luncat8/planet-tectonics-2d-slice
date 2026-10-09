@@ -134,8 +134,7 @@ var MAG = {
 			st.ledProd[P.LITH.maf] -= over;
 			st.ledProd[P.LITH.sill] += over;
 			st.meltSill += over;
-			st.oMaf[i] = st.oMaf[i] + over / P.chamberCap * 0.01;
-			if (st.oMaf[i] > 1) st.oMaf[i] = 1;
+			// Sills supply a host; the fertility / saturation factory advances once at K8.
 		}
 	},
 

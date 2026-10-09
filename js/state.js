@@ -60,7 +60,7 @@ var S = {
 	edgeShort: new Float64Array(P.colCap),
 	colLoad: new Float64Array(P.colCap),    // mobile sediment load, m (one-hop routing)
 	colLoadFel: new Float64Array(P.colCap), // felsic fraction of mobile load, m
-	colPla: new Float64Array(P.colCap),     // placer load riding colLoad, m
+	colPla: new Float64Array(P.colCap),     // cumulative deposited placer equivalent, m
 	colBevel: new Uint8Array(P.colCap),     // 1 if top beveled since last burial (unconformity)
 	colChamber: new Float64Array(P.colCap), // stored melt volume, m2 per unit depth
 	colMeltArc: new Float64Array(P.colCap), // arc melt supplied in the current frame, m2
@@ -84,6 +84,7 @@ var S = {
 	// age into formation time (t − age) instead of carrying a second unit into the stack.
 	layAg: new Float64Array(P.colCap * P.layerCap),
 	layFl: new Uint8Array(P.colCap * P.layerCap),     // P.FLAG bits
+	layOre: new Uint8Array(P.colCap * P.layerCap),    // classes already delineated, including exhausted ones
 
 	// plates (design §2.1); u in m/Myr (the HUD shows cm/yr)
 	nPl: 0,
@@ -173,7 +174,16 @@ var S = {
 	depCol: new Int32Array(P.depCap),
 	depLay: new Int32Array(P.depCap),
 	depCls: new Int8Array(P.depCap),        // OCLS enum
-	depGr: new Float32Array(P.depCap),
+	depGr: new Float32Array(P.depCap),      // frozen grade index, 0..1; not a commodity assay
+	depVol: new Float64Array(P.depCap),    // remaining resource envelope, m2; a subset of its bed
+	depPos: new Float64Array(P.depCap),    // centre as a fraction of the host bed from its base
+	depAg: new Float64Array(P.depCap),     // mineralization time, Myr; the host keeps its rock age
+	depId: new Uint32Array(P.depCap),      // stable identity across table compaction / column sorting
+	depNext: 0,
+	depBlocked: 0,                       // delineations deferred by the fixed table capacity
+	depProduced: new Float64Array(P.OCLS.n), // resource accounting, m2, not additional crust
+	depExtracted: new Float64Array(P.OCLS.n),
+	depRetired: new Float64Array(P.OCLS.n),  // known envelopes lost to erosion / retired horizons
 
 	// 0.4.1 M2: the assumption record of a reconstruction (0.4.1-plan.md §4.3.3). One named
 	// line per quantity a seeded column needed and the cut did not carry, plus the two
@@ -232,6 +242,7 @@ S.reset = function () {
 	this.waterIn = 0; this.waterReleased = 0; this.waterUsed = 0;
 	this.meltArc = 0; this.meltPlume = 0; this.meltSill = 0;
 	this.meltIdle = 0; this.venLost = 0;
+	this.depNext = 0; this.depBlocked = 0;
 	for (var k in this.recon) this.recon[k] = 0;
 	for (k in this) {
 		var v = this[k];

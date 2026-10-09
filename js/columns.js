@@ -10,7 +10,8 @@ var RNG = (typeof module !== 'undefined' && module.exports) ? require('./rng.js'
 var SURF = (typeof module !== 'undefined' && module.exports) ? require('./surface.js') : window.COLSURF;
 
 var COL = {
-	slab: null,
+	slab: null, ore: null,
+	insertedLayer: -1, insertedBase: 0,
 	// lith -> density class of the cached sums: 0 sed, 1 felsic, 2 mafic. Tephra is
 	// fragmental (sed density); lava and sill are crystalline (mafic density).
 	CLASS: new Uint8Array([0, 1, 2, 0, 2, 2]),
@@ -39,6 +40,7 @@ COL.push = function (c, thick, lith, age, flags) {
 	S.layLi[b + n] = lith;
 	S.layAg[b + n] = age;
 	S.layFl[b + n] = flags;
+	S.layOre[b + n] = 0;
 	S.colNL[c] = n + 1;
 	return thick;
 };
@@ -55,7 +57,8 @@ COL.push = function (c, thick, lith, age, flags) {
 // one it lands against is thickened instead of added, and at layerCap the stack is
 // consolidated first (thinnest adjacent pair of identical beds) so growth has somewhere
 // to go.
-COL.insertVol = function (st, c, lith, vol, age, flags, place) {
+COL.insertVol = function (st, c, lith, vol, age, flags, place, oreMask) {
+	this.insertedLayer = -1; this.insertedBase = 0;
 	if (!(vol > 0)) return 0;
 	var LC = P.layerCap, b = c * LC, RANK = P.LITH_RANK, r = RANK[lith], n = st.colNL[c], p = 0, k;
 	// The default lands after its rank and coalesces with the bed there. A reconcile event
@@ -81,11 +84,17 @@ COL.insertVol = function (st, c, lith, vol, age, flags, place) {
 	// (measured: 95 beds under 0.35 km on a column that had been at layerCap for 1605
 	// frames), because the surface's wetness flips from frame to frame.
 	if (!place && p > 0 && st.layLi[b + p - 1] === lith) {
+		this.insertedLayer = p - 1; this.insertedBase = st.layTh[b + p - 1];
+		if (this.ore) this.ore.grow(st, c, p - 1, this.insertedBase, vol);
 		st.layFl[b + p - 1] |= flags & ~P.FLAG.wet;
+		st.layOre[b + p - 1] |= oreMask || 0;
 		st.layTh[b + p - 1] += vol;
 		return vol;
 	}
 	if (!place && p < n && st.layLi[b + p] === lith) {
+		this.insertedLayer = p; this.insertedBase = st.layTh[b + p];
+		if (this.ore) this.ore.grow(st, c, p, this.insertedBase, vol);
+		st.layOre[b + p] |= oreMask || 0;
 		st.layTh[b + p] += vol;
 		if (age < st.layAg[b + p]) st.layAg[b + p] = age;
 		return vol;
@@ -99,6 +108,7 @@ COL.insertVol = function (st, c, lith, vol, age, flags, place) {
 		st.layLi[b + k + 1] = st.layLi[b + k];
 		st.layAg[b + k + 1] = st.layAg[b + k];
 		st.layFl[b + k + 1] = st.layFl[b + k];
+		st.layOre[b + k + 1] = st.layOre[b + k];
 	}
 	st.layTh[b + p] = vol;
 	st.layLi[b + p] = lith;
@@ -107,10 +117,12 @@ COL.insertVol = function (st, c, lith, vol, age, flags, place) {
 	// carries formed earlier than this one, and only the flag says so. Without it a
 	// reader cannot tell underplating from deposition and no age law can be stated.
 	st.layFl[b + p] = p < n ? flags | P.FLAG.intr : flags;
+	st.layOre[b + p] = oreMask || 0;
+	this.insertedLayer = p;
 	st.colNL[c] = n + 1;
-	for (k = 0; k < S.nDep; k++) {
-		if (S.depCol[k] !== c) continue;
-		if (S.depLay[k] >= p) S.depLay[k]++;
+	for (k = 0; k < st.nDep; k++) {
+		if (st.depCol[k] !== c) continue;
+		if (st.depLay[k] >= p) st.depLay[k]++;
 	}
 	return vol;
 };
@@ -158,6 +170,8 @@ COL.compact = function (c) {
 		S.ledMixOut[S.layLi[b + k0 + 1]] += volume;
 		S.ledMixIn[S.layLi[b + k0]] += volume;
 	}
+	if (this.ore) this.ore.mergeBeds(S, c, k0, S.layTh[b + k0], S.layTh[b + k0 + 1]);
+	S.layOre[b + k0] |= S.layOre[b + k0 + 1];
 	S.layTh[b + k0] += S.layTh[b + k0 + 1];
 	// the merged bed starts as old as its oldest member: ages are formation times, and
 	// the smaller one is the earlier rock (the same rule insertVol's coalescing uses)
@@ -168,6 +182,7 @@ COL.compact = function (c) {
 		S.layLi[b + j] = S.layLi[b + j + 1];
 		S.layAg[b + j] = S.layAg[b + j + 1];
 		S.layFl[b + j] = S.layFl[b + j + 1];
+		S.layOre[b + j] = S.layOre[b + j + 1];
 	}
 	S.colNL[c] = n - 1;
 	for (j = 0; j < S.nDep; j++) {
@@ -205,6 +220,7 @@ COL.removeTop = function (c, amount) {
 		rem[this.CLASS[S.layLi[b + k]]] += take;
 		remLi[S.layLi[b + k]] += take;
 		left -= take;
+		if (this.ore && t > 0) this.ore.cut(S, c, k, 1 - take / t);
 		if (take < t) { S.layTh[b + k] = t - take; break; }
 		// A depth-resolved deposit hosted by a removed top bed has no horizon
 		// after erosion. Do not leave it pointing one slot past the new top.
@@ -229,6 +245,7 @@ COL.removeClass = function (st, c, cls, amount) {
 		t = st.layTh[b + k];
 		take = t > left ? left : t;
 		left -= take;
+		if (this.ore && t > 0) this.ore.cut(st, c, k, 1 - take / t);
 		if (take < t) {
 			st.layTh[b + k] = t - take;
 			if (k + 1 < n) st.layFl[b + k + 1] |= P.FLAG.unconf;
@@ -245,6 +262,7 @@ COL.removeClass = function (st, c, cls, amount) {
 			st.layLi[b + j] = st.layLi[b + j + 1];
 			st.layAg[b + j] = st.layAg[b + j + 1];
 			st.layFl[b + j] = st.layFl[b + j + 1];
+			st.layOre[b + j] = st.layOre[b + j + 1];
 		}
 		n--;
 		st.colNL[c] = n;
@@ -262,6 +280,7 @@ COL.removeClass = function (st, c, cls, amount) {
 // fully foundered basal bed, COL.collapseMove a fully peeled felsic bed.
 COL.removeAt = function (st, c, k) {
 	var LC = P.layerCap, b = c * LC, n = st.colNL[c], j, d;
+	if (this.ore) this.ore.cut(st, c, k, 0);
 	for (d = 0; d < st.nDep; d++) {
 		if (st.depCol[d] !== c) continue;
 		if (st.depLay[d] === k) st.depLay[d] = -1;
@@ -272,6 +291,7 @@ COL.removeAt = function (st, c, k) {
 		st.layLi[b + j] = st.layLi[b + j + 1];
 		st.layAg[b + j] = st.layAg[b + j + 1];
 		st.layFl[b + j] = st.layFl[b + j + 1];
+		st.layOre[b + j] = st.layOre[b + j + 1];
 	}
 	st.colNL[c] = n - 1;
 	if (k < n - 1) st.layFl[b + k] |= P.FLAG.unconf;
@@ -290,7 +310,7 @@ COL.removeAt = function (st, c, k) {
 // and both caches are rebuilt.
 COL.collapseMove = function (from, to, volume) {
 	var LC = P.layerCap, bf = from * LC, bt = to * LC, k, n, t, take, moved = 0, age = 0;
-	var toLayer = -1;
+	var toLayer = -1, receiverBase = 0;
 	var peel = volume / S.colW[from], grow;
 	if (peel > S.hFel[from]) peel = S.hFel[from];
 	if (!(peel > 0)) return 0;
@@ -308,6 +328,8 @@ COL.collapseMove = function (from, to, volume) {
 	// that keeps receiving grows one bed, not one bed per frame.
 	if (S.colNL[to] > 0 && S.layLi[bt + S.colNL[to] - 1] === P.LITH.fel) {
 		k = S.colNL[to] - 1;
+		receiverBase = S.layTh[bt + k];
+		if (this.ore) this.ore.grow(S, to, k, receiverBase, grow);
 		S.layTh[bt + k] += grow;
 		if (S.layAg[bt + k] < age) S.layAg[bt + k] = age;
 		toLayer = k;
@@ -315,18 +337,18 @@ COL.collapseMove = function (from, to, volume) {
 		// insertVol rank-orders felsic beneath a higher-rank surface cap. Deposits that
 		// ride with this sheet must attach to the felsic bed, not blindly to the top slot.
 		this.insertVol(S, to, P.LITH.fel, grow, age, 0);
-		for (k = S.colNL[to] - 1; k >= 0; k--) {
-			if (S.layLi[bt + k] === P.LITH.fel) { toLayer = k; break; }
-		}
+		toLayer = this.insertedLayer; receiverBase = this.insertedBase;
 	}
 	for (k = n - 1; k >= 0 && moved < peel; k--) {
 		if (S.layLi[bf + k] !== P.LITH.fel) continue;
 		t = S.layTh[bf + k];
 		take = t > peel - moved ? peel - moved : t;
+		if (toLayer >= 0) S.layOre[bt + toLayer] |= S.layOre[bf + k];
+		this.moveDeposits(from, k, to, toLayer, take / t,
+			receiverBase + moved * S.colW[from] / S.colW[to], take * S.colW[from] / S.colW[to]);
 		moved += take;
 		S.layTh[bf + k] = t - take;
 		if (S.layTh[bf + k] > 0) break;
-		this.moveDeposits(from, k, to, toLayer);
 		this.removeAt(S, from, k);
 	}
 	this.sums(from);
@@ -595,13 +617,13 @@ COL.lidFan = function () {
 COL.fields = 'colX colW colPlate colU ext edgeRelN edgePol edgeRPlate trenchDist oldW colAge hFel hMaf hSed hTot syncFel syncMaf syncSed syncValid z slope wet noise damage zDyn fert oVms oMaf oArc oOro oBas oPla volc edge edgeAge edgeSlow colLoad colLoadFel colPla colBevel colChamber colMeltArc colMeltPlume colRecycle colGhost colNL'.split(' ');
 COL.oreFields = 'oVms oMaf oArc oOro oBas oPla'.split(' ');
 COL.scratch = COL.fields.map(function (key) { return new S[key].constructor(P.colCap); });
-COL.layerFields = ['layTh', 'layLi', 'layAg', 'layFl'];
+COL.layerFields = ['layTh', 'layLi', 'layAg', 'layFl', 'layOre'];
 COL.layerScratch = COL.layerFields.map(function (key) { return new S[key].constructor(P.colCap * P.layerCap); });
 COL.orderViews = new Array(P.colCap + 1);
-COL.layerViews = [[], [], [], []];
+COL.layerViews = COL.layerFields.map(function () { return []; });
 for (var size = 0; size <= P.colCap; size++) {
 	COL.orderViews[size] = S.sortOrder.subarray(0, size);
-	for (var field = 0; field < 4; field++)
+	for (var field = 0; field < COL.layerFields.length; field++)
 		COL.layerViews[field][size] = COL.layerScratch[field].subarray(0, size * P.layerCap);
 }
 COL.dead = new Uint8Array(P.colCap);
@@ -915,24 +937,29 @@ COL.intents = function () {
 // fixed by what its own width of new crust should be, and the material it inherits is
 // what is left over.
 COL.transfer = function (from, to, fraction, room) {
-	var b = from * P.layerCap, k, t, moved = 0;
+	var b = from * P.layerCap, k, t, old, moved = 0;
 	for (k = 0; k < S.colNL[from]; k++) {
 		t = S.layTh[b + k] * fraction;
 		if (t > room - moved) t = room - moved;
 		if (t <= 0) break;
+		old = S.layTh[b + k];
 		S.layTh[b + k] -= t;
 		// the receiver may be taking from two parents in one frame, and each parent's
 		// beds arrive deepest-first, so only a rank-ordered insert keeps the two
 		// sections from being stacked on top of each other
-		this.insertVol(S, to, S.layLi[b + k], t, S.layAg[b + k], S.layFl[b + k]);
+		this.insertVol(S, to, S.layLi[b + k], t, S.layAg[b + k], S.layFl[b + k], undefined, S.layOre[b + k]);
+		if (this.ore) this.ore.share(S, from, k, to, this.insertedLayer, t / old, this.insertedBase, t);
 		moved += t;
 	}
 	return moved;
 };
 
-COL.moveDeposits = function (from, layer, to, newLayer) {
+COL.moveDeposits = function (from, layer, to, newLayer, fraction, base, added) {
+	fraction = fraction === undefined ? 1 : fraction;
+	if (this.ore) this.ore.share(S, from, layer, to, newLayer, fraction, base || 0,
+		added === undefined && to >= 0 && newLayer >= 0 ? S.layTh[to * P.layerCap + newLayer] : added || 0);
 	for (var d = 0; d < S.nDep; d++) {
-		if (S.depCol[d] !== from || S.depLay[d] !== layer) continue;
+		if (S.depCol[d] !== from || S.depLay[d] !== layer || S.depVol[d] > 0) continue;
 		S.depCol[d] = to; S.depLay[d] = newLayer;
 	}
 };
@@ -969,8 +996,9 @@ COL.consume = function (i, j, crushLoser) {
 		lith = S.layLi[b + k]; t = S.layTh[b + k];
 		if (this.CLASS[lith] === 0) {
 			// half the sediment is scraped off into the prism on the margin
-			this.insertVol(S, winner, lith, t * 0.5, S.layAg[b + k], S.layFl[b + k]);
-			this.moveDeposits(loser, k, winner, S.colNL[winner] - 1);
+			this.insertVol(S, winner, lith, t * 0.5, S.layAg[b + k], S.layFl[b + k], undefined, S.layOre[b + k]);
+			this.moveDeposits(loser, k, winner, this.insertedLayer, 0.5, this.insertedBase, t * 0.5);
+			this.moveDeposits(loser, k, -1, -1);
 			if (!ribbon) S.ledCons[lith] += 0.5 * t * S.colW[loser];
 		} else {
 			this.moveDeposits(loser, k, -1, -1);
@@ -1123,8 +1151,8 @@ COL.rift = function (i, j, birth, Tm) {
 	// The newborn's final width is exactly half the gap (it sits at the midpoint), so a
 	// continental rift inherits the whole of it and an oceanic one is filled out to
 	// hMafNew(Tm) of new crust over that width, whatever the inherited sliver already
-	// provides (COL.inherit books the difference as the mantle source). VMS seeding at
-	// oceanic birth is M6 (design §4.7).
+	// provides (COL.inherit books the difference as the mantle source). Ore birth
+	// pulses follow that inheritance, so they cannot be overwritten by its mean.
 	// birthVol is the newborn's total crust in volume: the cap COL.inherit fills to. A
 	// rift column has no mantle source -- it is cut from the two margins -- so its cap is
 	// 0, meaning "the whole share the geometry gives you". A cap of 0 read as a literal
@@ -1149,7 +1177,7 @@ COL.preGap = function (st, count, q, dir) {
 // width-weighted mean of the two, exactly what the renderer interpolates between them —
 // so the profile stays continuous and mass stays inside the columns (no ledger entry).
 // Runs while colW is still the volume-mode 1, so it reads positions, not widths.
-COL.inherit = function (st, count) {
+COL.inherit = function (st, count, Tm) {
 	var i, im, ip, gL, gR, wL, wR, f, o, v, got, b, k, target, room;
 	if (count < 3) return;
 	for (i = 0; i < count; i++) {
@@ -1187,6 +1215,7 @@ COL.inherit = function (st, count) {
 			v = st[this.oreFields[o]];
 			v[i] = (v[im] * gL + v[ip] * gR) / (gL + gR);
 		}
+		if (this.ore) this.ore.birth(st, i, Tm === undefined ? P.Tm0 : Tm, st.colU[ip] - st.colU[im], target > 0);
 		this.ramp[this.rampN++] = i;
 		this.rampG[this.rampN - 1] = gL / (gL + gR);
 	}
@@ -1353,7 +1382,7 @@ COL.k4 = function (st, dt, t, Tm) {
 		self.isNew[k] = 1;
 		self.birthVol[k] = self.birthVol[self.birthSlot[i]];
 	}
-	self.inherit(st, count);
+	self.inherit(st, count, Tm);
 	st.widths();
 	for (i = 0; i < oldN; i++) {
 		k = self.map[i];

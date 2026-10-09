@@ -287,6 +287,8 @@ check.ok('k6 marks unconformity when bevel buried (wet 50% case)', hasUnconf2 ||
 check.section('M3.5 zero dt is no-op and finite state');
 
 check.planet(7);
+// Settle the new live-resource metadata once; this historical K6 gate measures pause.
+L.mods.ore.k8(S, 0, SIM.t, SIM.Tm);
 var hash0 = S.hash();
 SIM.setGeo(0);
 SIM.run(20);

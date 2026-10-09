@@ -66,8 +66,6 @@ CRU.arcGrowth = function (st, dt, t, Tm) {
 		ore = recycled > 0 ? P.FLAG.ore : 0;
 		this.addLayer(st, i, add, P.LITH.fel, t, ore);
 		st.ledProd[P.LITH.fel] += add * st.colW[i];
-		st.oArc[i] += P.kA * Math.min(2, speed / P.vRef) * dt * (1 + recycled);
-		if (st.oArc[i] > 1) st.oArc[i] = 1;
 		COL.sums(i);
 	}
 };
@@ -86,8 +84,6 @@ CRU.lipGrowth = function (st, dt, t) {
 		// massBy[] is measured per stored lithology, and a mafic credit here leaves
 		// the lava account with mass and no production entry
 		st.ledProd[P.LITH.lava] += add * st.colW[c];
-		st.oMaf[c] += 0.01 * add / 1e3;
-		if (st.oMaf[c] > 1) st.oMaf[c] = 1;
 		COL.sums(c);
 	}
 };
@@ -183,14 +179,17 @@ CRU.delaminate = function (st, dt) {
 		while (take > 0 && st.colNL[i] > 0) {
 			h = st.layTh[b];
 			if (!(h > 0)) {
-COL.removeAt(st, i, 0);
+				COL.removeAt(st, i, 0);
 				continue;
 			}
 			shed = take < h ? take : h;
 			st.ledCons[st.layLi[b]] += shed * w;
 			take -= shed;
 			if (shed === h) COL.removeAt(st, i, 0);
-			else st.layTh[b] = h - shed;
+			else {
+				if (COL.ore) COL.ore.cut(st, i, 0, 1 - shed / h);
+				st.layTh[b] = h - shed;
+			}
 			any = true;
 		}
 		COL.sums(i);

@@ -94,7 +94,7 @@ var moduleGlobals = {
 	'js/params.js': 'COLP', 'js/rng.js': 'COLRNG', 'js/geom.js': 'COLGEO',
 	'js/state.js': 'COLS', 'js/surface.js': 'COLSURF', 'js/columns.js': 'COLCOLUMNS',
 	'js/mantle.js': 'COLMANTLE', 'js/slab.js': 'COLSLAB', 'js/plates.js': 'COLPLATES',
-	'js/magma.js': 'COLMAGMA', 'js/crust.js': 'COLCRUST', 'js/perf.js': 'COLPERF',
+	'js/magma.js': 'COLMAGMA', 'js/crust.js': 'COLCRUST', 'js/ore.js': 'COLORE', 'js/perf.js': 'COLPERF',
 	'js/ui.js': 'COLUI', 'js/deposit-core.js': 'COLDEPOSITCORE', 'js/deposits.js': 'COLDEPOSITS',
 	'js/section-seed.js': 'COLSEED', 'js/checkpoint.js': 'COLCHECKPOINT',
 	'js/section-pack.js': 'COLSECTION', 'js/coupling.js': 'COLCOUPLING',
@@ -124,7 +124,7 @@ function load(t0) {
 		nodeType: 9,
 		getElementById: function (id) { return els[id] || null; },
 		querySelectorAll: function (sel) { return sel === '#presets button' ? btns : []; },
-		createElement: function (tag) { return { tag: tag, value: '', textContent: '', appendChild: function () {} }; },
+		createElement: function (tag) { return { tag: tag, value: '', textContent: '', appendChild: function () {}, setAttribute: function () {} }; },
 		body: { classList: { add: function () {}, remove: function () {} } }
 	};
 	doc.defaultView = sb;

@@ -5,6 +5,9 @@ var L = require('./lib.js'), check = L.check;
 var P = L.mods.params, S = L.mods.state, COL = L.mods.columns, SIM = L.mods.sim;
 var GEO = L.mods.geom, MNT = L.mods.mantle, PLT = L.mods.plates, E = P.EDGE;
 var SURF = L.mods.surface, CRU = L.mods.crust;
+// This historical topology / K0–K6 gate uses zero-budget slot markers, not live ore.
+// Isolate K8; 0.2.0 M3 lifecycle and full-pipeline mining are gated by ore-bench.js.
+var savedOre = SIM.k[8]; SIM.k[8] = null;
 
 function invariants() {
 	var finite = true, sorted = true, sums = true, counts = new Int32Array(P.plateCap), width = 0;
@@ -1532,4 +1535,5 @@ for (var run = 0; run < 7; run++) {
 	best = Math.min(best, Number(process.hrtime.bigint() - t0) / 1e6 / 20);
 }
 check.ok('sim frame (K0-K6) within the 4 ms budget', best <= 4, best.toFixed(3) + ' ms/frame, min of 7x20');
+SIM.k[8] = savedOre;
 check.done();

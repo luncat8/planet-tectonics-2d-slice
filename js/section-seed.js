@@ -391,6 +391,7 @@ var SEED = (function () {
 		SURF.profile(0);
 		SEED.model(pack, o);
 		SEED.ledger(pack);
+		if (COL.ore) COL.ore.scan(S, o.t);
 		return '';
 	};
 

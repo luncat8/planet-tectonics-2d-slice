@@ -875,3 +875,39 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   proves that the toy, not record scalars, controls them. Optional `edifice-visual` uses a
   real native Canvas2D to check below-profile leaks and make inspectable images in ignored
   `scratch/`; it adds no browser runtime dependency.
+
+
+## 0.2.0 M3 — live resources (archive/0.2.0-m3-worklog.md)
+
+- **A delineated envelope is part of its host, not another mass reservoir.** Keep resource
+  area accounting separate from `S.mass()`: live + extracted + retired = produced per
+  class. Mining removes actual area / width and credits the original lithology in
+  `ledCons`; erosion retires resource share without inventing another crust sink.
+  Quote slice tonnage as Mt/m and a grade index as an index, not a commodity assay.
+- **Bed history and table identity solve different problems.** Carry `layOre` through every
+  stack copy / compaction / split so unchanged potentials cannot refill an exhausted bed.
+  Address actions by stable `depId`, not a dense slot. A reset or restore may reuse ids
+  from another world, so clear the UI selection at that boundary, not merely at the next HUD.
+- **Partial transport needs a resource split, not the old whole-record redirect.** Fractional
+  host transfer conserves resource area; a new receiver gets a fresh id, an existing one a
+  volume-weighted merge. Use the insertion's actual receiver slot and base, not the top bed
+  under a sediment cap. Relative marker positions must be rebased on growth / compaction.
+  K4's volume-mode beds do not change the resource's stored section-area unit.
+- **A pulse before inheritance can be silently overwritten.** Seed newborn ore after the
+  parents' potential mean is applied. Exact saturation / decay gives a clock-independent
+  fixed-factory result. Remove old arc / LIP / sill additive writes when K8 becomes the
+  factory owner; actual birth and routed deposition remain separate material-event pulses.
+- **Blur ties can put placer uphill even with correct routing.** Require a raw potential as
+  well as a blurred maximum; among equal placer maxima prefer the lower ground before the
+  deterministic index tie-break. Gate it with actual K6 erosion / deposition, not a manually
+  painted potential on the intended sink.
+- **Paused metadata is not an advancing geological clock.** First K8 can record a new host
+  while dtGeo is zero; later calls must be idempotent and consume no RNG. A historical paused
+  hash fixture must settle that initial metadata, and zero-budget topology markers belong to
+  an explicitly isolated K0–K6 test. Keep full-pipeline mining and resource lifecycle gates
+  separate rather than disabling real reaping to preserve a stale fixture.
+- **UI tests need the page's actual classic-script branch and cadence.** CommonJS loading
+  alone misses browser globals, scoped host controls and listener cleanup. A recording DOM /
+  canvas harness checks the d toggle, real extraction, host-aligned symbols / probe and two
+  list rebuilds in a 60-frame second. It is still not a real-browser pixel or fps claim.
+  Raw / missing cuts must reject mining even if a prior reconstructed state is still stored.

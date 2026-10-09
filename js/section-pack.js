@@ -621,6 +621,9 @@ var SectionPack = (function () {
 			g.COLUI.setPressed('bRun', this.running);
 			if (this.runBtn) this.runBtn.disabled = !this.world || SEED.window;
 			if (this.rawBtn) this.rawBtn.disabled = !this.world;
+			var deposits = hostElement(this.host, 'bDeposits');
+			if (deposits) deposits.disabled = !this.world;
+			g.COLUI.updateOre();
 		},
 
 		toggleRaw: function () {
@@ -706,6 +709,7 @@ var SectionPack = (function () {
 			var g = page();
 			if (!g) return;
 			if (!this.view) { g.COLUI.init(this.host); g.COLRENDER.init(this.cvs); this.view = true; }
+			g.COLUI.clearOre();
 			g.COLGEO.setPreset('def');
 			g.COLGEO.lookAt(SEED.window ? SEED.nCut * P.w0 * 0.5 : 0);
 			g.COLUI.afterView();

@@ -424,7 +424,7 @@ var COUP = (function () {
 		var tf = tMyr - row.ageMyr;
 		for (k = 0; k < LC; k++) {
 			st.layTh[b + k] = 0; st.layLi[b + k] = 0;
-			st.layAg[b + k] = 0; st.layFl[b + k] = 0;
+			st.layAg[b + k] = 0; st.layFl[b + k] = 0; st.layOre[b + k] = 0;
 		}
 		for (k = 0; k < st.nDep; k++) {
 			if (st.depCol[k] === c) st.depLay[k] = -1;

@@ -239,11 +239,9 @@ var P = {
 	thermAgeCap: 80,
 	ciLo: 5e3,                   // continental-interpolation band of hFel, m
 	ciHi: 20e3,
-	// ores (design §4.7). Read by the 0.2.0-M3 ore kernel (js/ore.js, deposit potentials),
-	// not by this engine: today only kA (arc potential, js/crust.js) and kRec (recycled-arc
-	// enrichment) and kB (placer source, js/surface.js) have readers here. The values live in
-	// this table because the design fixes them in one place; do not delete them for having no
-	// reader in the column engine.
+	// ores (design §4.7): saturating, fertility-scaled factories on the geological clock.
+	// The finite live resources below are a game delineation in a one-metre-deep slice,
+	// not the 3D catalogue / grade-tonnage priors in port/deposit-models.js.
 	kV: 0.3,
 	kM: 0.2,
 	kM2: 0.15,
@@ -253,6 +251,12 @@ var P = {
 	kB: 2e-4,                    // /m
 	kB2: 0.002,                  // /Myr
 	kDecay: 1 / 500,             // 1/Myr (1 / 500 Myr)
+	placerPotPerM: 0.005,        // /m of deposited placer-bearing load
+	oreThreshold: [0.15, 0.2, 0.2, 0.2, 0.15, 0.1], // OCLS order, after the one-cell blur
+	oreShare: [0.04, 0.03, 0.02, 0.01, 0.1, 0.02], // maximum share of the host bed delineated
+	oreThMax: [50, 250, 300, 80, 200, 10], // m, upper bound on each resource envelope
+	oreArcMin: 3000, oreArcMax: 8000, // m below the solid surface at emplacement
+	oreListPerClass: 6,          // rows per class in the on-demand ranked list
 	// 0.1.5 contact contract (0.1.5-plan.md §1): thresholds of the measurement, not
 	// physics. contact-audit.js --strict gates on exactly these, so the gate, the plan
 	// and the tuning cannot quote different numbers

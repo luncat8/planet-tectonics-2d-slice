@@ -58,12 +58,12 @@ var rngAt = paramAt + 3 * 8;
 var threw = false;
 try { CP.load(saved.subarray(0, saved.length - 1)); } catch (e) { threw = true; }
 check.ok('refuses truncated data', threw && equal(saved, CP.save()));
-// M2 adds write-back queues, molten ash and edifice records; previous schemas are refused.
+// M3 adds live resource budgets and bed masks to M2 write-back; previous schemas are refused.
 var older = saved.slice();
 new Uint32Array(older.buffer)[1] = CP.VERSION - 1;
 threw = false;
-try { CP.load(older); } catch (e) { threw = e instanceof RangeError && /version 6/.test(e.message); }
-check.ok('refuses the previous checkpoint version atomically', CP.VERSION === 7 && threw && equal(saved, CP.save()));
+try { CP.load(older); } catch (e) { threw = e instanceof RangeError && /version 7/.test(e.message); }
+check.ok('refuses the previous checkpoint version atomically', CP.VERSION === 8 && threw && equal(saved, CP.save()));
 var shortAt = Math.min(5, S.nCol - 1), shortHash;
 S.edgeShort[shortAt] = 78125;
 shortHash = S.hash();

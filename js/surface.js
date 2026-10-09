@@ -297,6 +297,7 @@ SURF.k6 = function (st, dt, t) {
 			// the basin took the whole load: nothing to lay down, and a zero-thickness
 			// bed would be a slot and a draw call for nothing
 		} else if (nl > 0 && layLi[b2 + nl - 1] === LITH_SED && layTh[b2 + nl - 1] < 400) {
+			if (Cmod.ore) Cmod.ore.grow(st, j, nl - 1, layTh[b2 + nl - 1], th);
 			layTh[b2 + nl - 1] += th;
 			hSed[j] += th; hTot[j] += th;
 		} else {
@@ -305,6 +306,7 @@ SURF.k6 = function (st, dt, t) {
 				layLi[b2 + nl] = LITH_SED;
 				layAg[b2 + nl] = t;
 				layFl[b2 + nl] = fl;
+				st.layOre[b2 + nl] = 0;
 				colNL[j] = nl + 1;
 				hSed[j] += th; hTot[j] += th;
 			} else {
@@ -322,16 +324,14 @@ SURF.k6 = function (st, dt, t) {
 		var plaThDep = totP / wj;
 		colPla[j] += plaThDep;
 		if (plaThDep > 0) {
-			var add = plaThDep * 0.005;
-			var np = oPla[j] + add;
-			oPla[j] = np > 1 ? 1 : np;
+			var add = plaThDep * P.placerPotPerM * st.fert[j];
+			if (Cmod.ore) oPla[j] = Cmod.ore.pulse(oPla[j], add);
 		}
 		if (wet[j] && totF > 0) {
 			var felFrac = totF / totV;
 			var addBas = th * felFrac * kB;
 			if (addBas > 0) {
-				var nb = oBas[j] + addBas;
-				oBas[j] = nb > 1 ? 1 : nb;
+				if (Cmod.ore) oBas[j] = Cmod.ore.pulse(oBas[j], addBas * st.fert[j]);
 			}
 		}
 		colLoad[j] = 0; colLoadFel[j] = 0;

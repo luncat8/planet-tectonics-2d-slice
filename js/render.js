@@ -11,6 +11,7 @@ var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js
 var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.COLS;
 var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COLCOLUMNS;
 var node = typeof module !== 'undefined' && module.exports;
+var ORE = node ? require('./ore.js') : root.COLORE;
 
 function ui() { return node ? require('./ui.js') : root.COLUI; }
 
@@ -19,6 +20,7 @@ var RNDR = {
 	mohoY: null,
 	profY: null,          // profile altitude per screen column, rebuilt by body()
 	mesh: false,          // the M0 measuring-tool overlay, toggled from the UI
+	showDeposits: false, selectedDepId: 0,
 	showScale: true,      // the altitude / distance scale lines, toggled from the UI
 	probe: '',            // geology under the cursor, rebuilt on mousemove only
 	probeLines: [],       // the same text split once, so the overlay never allocates
@@ -206,6 +208,7 @@ RNDR.overlay = function () {
 	this.overlayM4();
 	if (this.mesh) this.overlayMesh();
 	this.overlayGrid();
+	if (this.showDeposits) this.overlayDeposits();
 	this.overlayCursor();
 };
 
@@ -499,6 +502,52 @@ RNDR.plateArrow = function (c, b) {
 	}
 };
 
+// Symbols use the same profile and layer stretch as the body raster, including at
+// the periodic seam. The overlay reads live records; it never evolves or ranks them.
+RNDR.depositGlyph = function (c, cls, x, y) {
+	if (cls === P.OCLS.vms) {
+		c.moveTo(x - 3, y - 3); c.lineTo(x + 3, y - 3); c.lineTo(x + 3, y + 3);
+		c.lineTo(x - 3, y + 3); c.closePath(); return;
+	}
+	if (cls === P.OCLS.maf) {
+		c.moveTo(x, y - 4); c.lineTo(x + 4, y); c.lineTo(x, y + 4); c.lineTo(x - 4, y); c.closePath(); return;
+	}
+	if (cls === P.OCLS.arc) {
+		c.moveTo(x - 4, y); c.lineTo(x + 4, y); c.moveTo(x, y - 4); c.lineTo(x, y + 4); return;
+	}
+	if (cls === P.OCLS.oro) {
+		c.moveTo(x, y - 4); c.lineTo(x + 4, y + 3); c.lineTo(x - 4, y + 3); c.closePath(); return;
+	}
+	if (cls === P.OCLS.bas) { c.moveTo(x + 3, y); c.arc(x, y, 3, 0, 6.283185307179586); return; }
+	c.moveTo(x - 4, y - 2); c.lineTo(x + 4, y - 2); c.moveTo(x - 4, y + 2); c.lineTo(x + 4, y + 2);
+};
+
+RNDR.overlayDeposits = function () {
+	var c = this.ctx, cls, d, col, next, gap, centre, sx, px, depth, stretch, sy;
+	var lap = P.wrap / GEO.kx;
+	c.lineWidth = 1.5;
+	for (cls = 0; cls < P.OCLS.n; cls++) {
+		c.beginPath();
+		for (d = 0; d < S.nDep; d++) {
+			if (S.depCls[d] !== cls || !ORE.valid(S, d)) continue;
+			col = S.depCol[d]; next = (col + 1) % S.nCol;
+			gap = next === col ? P.wrap : GEO.wrapX(S.colX[next] - S.colX[col]);
+			centre = this.screenX(GEO.wrapX(S.colX[col] + gap * 0.5));
+			depth = ORE.depth(S, d);
+			for (sx = centre - lap; sx < this.w + 4; sx += lap) {
+				if (sx < 0 || sx >= this.w) continue;
+				px = sx | 0;
+				stretch = S.hDraw[col] > 0 ? (this.profY[px] - this.mohoY[px]) / S.hDraw[col] : 1;
+				sy = GEO.sy(this.profY[px] - depth * stretch);
+				if (sy < -4 || sy > this.h + 4) continue;
+				this.depositGlyph(c, cls, sx, sy);
+				if (S.depId[d] === this.selectedDepId) { c.moveTo(sx + 7, sy); c.arc(sx, sy, 7, 0, 6.283185307179586); }
+			}
+		}
+		c.strokeStyle = ORE.COLOUR[cls]; c.stroke();
+	}
+};
+
 // the M0 measuring tool: graded rows, fan cell walls, column ticks, plate boundaries
 RNDR.overlayMesh = function () {
 	var c = this.ctx, i, b, s, px, n = S.nCol;
@@ -668,6 +717,14 @@ RNDR.updateProbe = function (mx, my) {
 	s += '\n' + S.layTh[b + k].toFixed(0) + ' m  formed ' + S.layAg[b + k].toFixed(0) + ' Myr  ' +
 		this.flagText(S.layFl[b + k]);
 	s += '\n' + (d / 1e3).toFixed(2) + ' km below surface';
+	var found = 0;
+	for (i = 0; i < S.nDep; i++) {
+		if (S.depCol[i] !== c || S.depLay[i] !== k || !ORE.valid(S, i)) continue;
+		if (found++ >= 3) continue;
+		s += '\n' + ORE.NAME[S.depCls[i]] + ' #' + S.depId[i] + ' · ' +
+			(ORE.tonnes(S, i) / 1e6).toFixed(2) + ' Mt/m · grade ' + S.depGr[i].toFixed(3);
+	}
+	if (found > 3) s += '\n+' + (found - 3) + ' other resources in this bed';
 	this.setProbe(s);
 };
 

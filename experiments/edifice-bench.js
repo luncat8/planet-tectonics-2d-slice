@@ -282,7 +282,7 @@ F.fresh(c); F.vent(c, v, 0.5); F.molten(v, 8, P.LITH.lava); F.packet(v, 2);
 MAG.add(S, c, P.VchM2, false); P.sl.erupt = 30;
 MAG.k7(S, 0, SIM.t, SIM.Tm); SIM.setGeo(0);
 var saved = CP.save();
-check.ok('the checkpoint includes hot ash / molten lava, airborne packets and edifice ownership', CP.VERSION === 7 && S.prN[v] > 0 && ERUPT.mass(v) > 0 && S.venEdCol[v] === c);
+check.ok('the checkpoint includes hot ash / molten lava, airborne packets and edifice ownership', CP.VERSION === 8 && S.prN[v] > 0 && ERUPT.mass(v) > 0 && S.venEdCol[v] === c);
 SIM.run(1000); var forward = CP.save();
 CP.load(saved); GEO.setPreset('cru'); SIM.run(1000);
 check.ok('active eruption resumes bitwise at a different zoom (1000 frames)', Buffer.from(forward).equals(Buffer.from(CP.save())));

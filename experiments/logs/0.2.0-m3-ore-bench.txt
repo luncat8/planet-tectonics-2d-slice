@@ -1,0 +1,92 @@
+
+M3.1 bounded factories and independent clocks
+PASS  the page pipeline registers the unbound K8 kernel
+PASS  continuous saturation / decay is geo-step independent   rel 1.11e-16  got 0.9887734318450906  want 0.9887734318450905
+PASS  quiet potentials decay on the 500 Myr clock   rel 0.00e+0  got 0.2943035529371539  want 0.2943035529371539
+PASS  large steps stay bounded without clipping a source
+PASS  birth pulses scale by fertility and spreading
+PASS  oceanic birth uses kV, Tm and the bounded opening proxy   rel 0.00e+0  got 0.38121660819385916  want 0.38121660819385916
+PASS  continental rift births seed the mafic factory   rel 0.00e+0  got 0.1392920235749422  want 0.1392920235749422
+PASS  paused K8 is idempotent after recording its hosts
+PASS  scanning, depths and ranking never consume geological RNG
+PASS  later potentials do not rewrite an existing bed resource snapshot
+PASS  an arrived plume advances the fertility-scaled mafic factory exactly once   rel 0.00e+0  got 0.5895377621304791  want 0.5895377621304791
+PASS  zero fertility allows only decay, not plume enrichment   rel 0.00e+0  got 0.586011126045852  want 0.586011126045852
+PASS  the collision factory uses belt shortening, damage and fertility   rel 0.00e+0  got 0.24564978945584737  want 0.24564978945584737
+PASS  quiet continental ground outside the collision belt cannot gain orogenic potential
+PASS  a thick wet basin advances kB2 with fertility and saturation   rel 0.00e+0  got 0.20548044608639687  want 0.20548044608639687
+PASS  the same dry basin decays rather than advancing its wet-sediment clock   rel 0.00e+0  got 0.20425125467169464  want 0.20425125467169464
+
+M3.2 all six hosts, blur maxima and formation snapshots
+PASS  every class produces a real host record
+PASS  delineation never creates crust or books a second reservoir
+PASS  VMS sits at the buried mafic seafloor horizon
+PASS  mafic resource uses the intrusive basement bed
+PASS  porphyry emplacement is 3–8 km under the volcanic section   7947.1 m
+PASS  orogenic veins occupy the collided felsic root
+PASS  basin resource sits in a wet sediment bed
+PASS  placer lag is at the sediment / unconformity contact
+PASS  resource accounting closes and all host positions are finite
+PASS  ranking groups classes, then descending remaining tonnage
+PASS  plateau ties resolve once; repeated scans cannot duplicate a bed
+PASS  an inherited wet seafloor remains eligible beneath later continental crust   the fixture retains an explicitly wet, non-intrusive inherited seafloor bed
+PASS  intrusive mafic rock is refused as a VMS seafloor horizon
+
+M3.3 arc factory location and real one-hop placer routing
+PASS  more than 60% of arc resource mass is under the prescribed arc factories   68.22% (7 resources including two inherited off-factory maxima)
+PASS  the fixed-source arc run keeps the geological and resource ledgers separate
+PASS  real K6 routing delineates placer downslope of its arc / orogenic source   col 99, source/sink 5309/-5063 m
+PASS  the placer host is actual routed sediment over an unconformity
+PASS  placer creation does not disturb the erosion / deposition ledger   crust 1.55e-14, resources 8.51e-16
+
+M3.4 erosion, compaction, transport and volcanic write-back
+PASS  partial host erosion retires only the removed resource share   rel 0.00e+0  got 2345517.983908667  want 2345517.983908667
+PASS  an eroded-away deposit disappears, not a wrong-bed pointer
+PASS  compaction keeps both hosted classes and exhausted-bed masks
+PASS  the lower resource stays at the same physical depth through compaction   rel 5.68e-14  got 349.99999999999994  want 350
+PASS  the upper resource stays at the same physical depth through compaction   rel 1.42e-14  got 90.00000000000001  want 90
+PASS  rank-ordered intrusion shifts the records with their sediment bed
+PASS  basal removal shifts both records and their history mask down
+PASS  a partially transported bed splits a resource into two valid hosts
+PASS  partial transport conserves delineated resource area   rel 0.00e+0  got 5003771.699005157  want 5003771.699005157
+PASS  complete transport merges into the true felsic host, not the sediment cap
+PASS  complete transport retains the original resource budget   rel 0.00e+0  got 5003771.699005157  want 5003771.699005157
+PASS  M2 freeze / write-back preserves the existing deposit bed and mask
+PASS  deposit-aware write-back still transfers mass exactly once
+PASS  mining a volcanic host trims its retained edifice through the existing callback   rel 4.66e-10  got 167040.15122931544  want 167040.15122931497
+PASS  volcanic extraction does not consume molten transit or create sediment
+
+M3.5 finite extraction, stable ids and capacity
+PASS  table reaping preserves selection identity rather than a stale slot
+PASS  partial extraction removes the requested finite resource area   rel 0.00e+0  got 781839.3279695557  want 781839.3279695557
+PASS  only that area / width leaves the real host bed   rel 0.00e+0  got 10  want 10
+PASS  hTot reflects exactly the mined host mass   rel 0.00e+0  got 10  want 10
+PASS  paused geology still gets the exact buoyancy decrement   rel 0.00e+0  got -2.727272727272066  want -2.727272727272066
+PASS  mining preserves the host age, grade and neighbouring ground
+PASS  per-lithology and resource ledgers both close after partial extraction
+PASS  stale ids, zero, negative, NaN and infinite requests are inert
+PASS  over-requesting is clamped to the remaining finite resource   rel 0.00e+0  got 2345517.983908667  want 2345517.983908667
+PASS  exhaustion removes the record but retains its bed delineation mask
+PASS  a mined bed cannot instantly regenerate from the unchanged potential
+PASS  a full table defers without marking a bed or inventing resources
+PASS  freed capacity retries the deferred delineation
+PASS  sill spill makes a real intrusive host without a duplicate mafic factory pulse
+PASS  paused K8 may delineate that sill but cannot advance mafic fertility
+
+M3.6 imported cuts, checkpoint v8 and deterministic mining
+PASS  a stopped cut delineates imported potentials at reconstruction, not by advancing geology
+PASS  the existing 3D snapshot catalogue API remains independent
+PASS  matched C4 growth preserves the original bed resource, grade and mineralization time   preserved
+PASS  C4 removal retires only the erased host while the surviving arc id remains valid
+PASS  an unmatched fresh C4 stack cannot inherit a retired deposit pointer or tombstone
+PASS  checkpoint v8 refuses a v7 header instead of a legacy reader
+PASS  checkpoint restore resumes resources and geological state bit-identically
+PASS  same seed, sliders and explicit mining events reproduce the complete hash   2241195690 / 2241195690
+PASS  new full-pipeline mining fixture keeps both ledgers and host invariants   crust 7.73e-16, resources 1.39e-15, 39 deposits
+PASS  100 kyr mining leg remains finite, depth-valid and mass-exact   crust 5.31e-15, resources 1.00e-15, 45 deposits
+
+M3.7 dedicated K8 cost (not a previous raster benchmark)
+INFO  K8   0.208 ms/step, 521 columns / 46 deposits
+PASS  K8 fits a 2 ms dedicated kernel budget
+
+ALL PASS (75 checks)

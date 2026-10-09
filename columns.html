@@ -29,6 +29,13 @@
 	#help { width: 1310px; box-sizing: border-box; padding: 4px 0 12px 28px; color: #55637d; font-size: 11px; }
 	#help a { color: #7f8ea8; text-decoration: none; }
 	#help a:hover { color: #dfe7f5; text-decoration: underline; }
+	#orePanel { width: 1282px; margin-left: 28px; box-sizing: border-box; padding: 10px; border: 1px solid #2a3550; background: #0a0f18; }
+	#orePanel[hidden] { display: none; }
+	#oreLegend { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 6px; }
+	#orePick { width: 600px; height: 140px; background: #121826; color: #dfe7f5; border: 1px solid #2a3550; font: 11px/1.6 monospace; }
+	#oreDetails { display: inline-block; vertical-align: top; margin: 0 0 0 14px; width: 620px; }
+	#oreInfo { white-space: pre-wrap; margin: 0 0 8px; color: #9fd6b8; }
+	#oreStatus { display: block; margin-top: 6px; color: #7f8ea8; }
 	/* section mode (?start=section): the engine bar is the cut's bar. #slice is hidden by
 	   the CSS, so the shipped markup is honest before any script runs */
 	#slice { display: none; }
@@ -57,6 +64,7 @@
 		<button data-v="bas" aria-pressed="false">basin x40</button>
 	</span>
 	<button id="bMesh" aria-pressed="false">mesh</button>
+	<button id="bDeposits" aria-pressed="false" aria-controls="orePanel" title="d: live bed-anchored deposits and ranked resources">deposits</button>
 	<!-- the Slice panel (0.4.1 M1): visible in section mode only. A paste or the button
 	     runs the load; a file and a bundled id go through the same bytes -->
 	<div id="slice">
@@ -89,7 +97,17 @@
 		<span id="vZoom"></span>
 	</div>
 </div>
-<div id="help">drag = pan &middot; wheel = zoom (cursor-anchored, both axes) &middot; left / bottom sliders = one axis at a time &middot; space = pause &middot; g = scale lines &middot; m = mesh (row edges, fan bands, column grid, plate boundaries) &middot; 1-4 = presets &middot; hover = geology probe &middot; in section mode: r = raw cut, o = overlay &middot; <a href="index.html">particle engine &rarr;</a></div>
+<section id="orePanel" hidden aria-label="Live deposits and extraction">
+	<div id="oreLegend"></div>
+	<select id="orePick" size="6" aria-label="Deposits ranked by class and remaining tonnage"></select>
+	<div id="oreDetails">
+		<pre id="oreInfo">Select a deposit. Mining is an explicit action, never automatic.</pre>
+		<button id="oreMine" disabled title="remove ten percent of the selected resource from its real host bed">extract 10%</button>
+		<button id="oreMineAll" disabled title="exhaust the selected resource; it cannot regenerate in the same bed">extract remainder</button>
+	</div>
+	<span id="oreStatus" role="status">Game envelopes in a one-metre-deep slice: tonnage is Mt/m, grade is a 0–1 index, not a commodity assay. The 3D snapshot catalogue is separate.</span>
+</section>
+<div id="help">drag = pan &middot; wheel = zoom (cursor-anchored, both axes) &middot; left / bottom sliders = one axis at a time &middot; space = pause &middot; g = scale lines &middot; m = mesh (row edges, fan bands, column grid, plate boundaries) &middot; 1-4 = presets &middot; hover = geology probe &middot; d = live deposits / ranked list / extraction &middot; in section mode: r = raw cut, o = overlay &middot; <a href="index.html">particle engine &rarr;</a></div>
 <script src="port/slice-format.js"></script>
 <script src="js/params.js"></script>
 <script src="js/rng.js"></script>
@@ -103,6 +121,7 @@
 <script src="js/magma.js"></script>
 <script src="js/erupt.js"></script>
 <script src="js/crust.js"></script>
+<script src="js/ore.js"></script>
 <script src="js/perf.js"></script>
 <script src="js/ui.js"></script>
 <script src="port/deposit-models.js"></script>

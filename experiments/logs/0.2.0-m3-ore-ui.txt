@@ -1,0 +1,51 @@
+
+M3 UI.1 file:// scripts, controls and ranked list
+PASS  the new module exports only COLORE in classic-script mode
+PASS  the page loads ore.js before its UI and frame pipeline
+PASS  deposits start hidden with an accessible page toggle
+PASS  legend and explicit extraction controls bind inside the page host
+PASS  d opens both live symbols and the ranked resource panel
+PASS  each class is present in the ranked list with honest slice tonnage
+PASS  within a class the highest remaining tonnage is first
+PASS  opening, ranking and HUD refresh do not alter model state
+PASS  typing controls and held keys cannot toggle deposits accidentally
+PASS  the button and key share the same renderer-owned state
+PASS  mining remains disabled until an explicit selection
+PASS  selection shows real host, mineralization, depth and frozen grade
+PASS  2 Hz HUD refresh preserves stable-id selection as the table grows
+PASS  all six classes have distinct finite overlay glyphs
+PASS  the actual 60-frame loop rebuilds the ranked list at 2 Hz, not every frame   2 refreshes
+PASS  the hidden list is not rebuilt even on the HUD cadence
+
+M3 UI.2 explicit extraction and stale selection
+PASS  extract 10% mines precisely the selected remaining budget   rel 0.00e+0  got 13369452.508279484  want 13369452.508279484
+PASS  the browser action books the same area as consumed sediment   rel 0.00e+0  got 1485494.7231421648  want 1485494.7231421648
+PASS  the displayed host is real rock, not a detached resource counter   rel 0.00e+0  got 19  want 19
+PASS  status explains the irreversible explicit action
+PASS  extract remainder removes the resource and clears selection
+PASS  exhausted ids disappear from the ranked list, not just the overlay
+PASS  an action on a retired selection cannot mine the next table slot
+
+M3 UI.3 actual overlay paths, stretch, wrap and probe
+PASS  a live bed resource draws its class glyph and stable-id selection ring
+PASS  deposit overlay paths are finite and leave state / camera untouched
+PASS  the glyph depth matches the body raster's actual column stretch   rel 0.00e+0  got 118.78222712772703  want 118.78222712772703
+PASS  hovering the glyph reads its host and current finite resource in the geology probe
+PASS  a fully mined resource vanishes from symbols and the live probe
+PASS  the wrapped last-column resource draws beside the seam without a false long segment
+PASS  zoom changes geometry but never resource state or depletion history
+PASS  restore returns budgets but requires a fresh explicit selection
+PASS  reset clears old selection before the new world can reuse ids
+
+M3 UI.4 reconstructed / raw cuts and lifecycle
+PASS  an empty raw section has no extraction domain
+PASS  a file:// bundled cut shares the same live resource UI after reconstruction
+PASS  raw-cut mode disables mining and cannot mutate a hidden reconstructed world
+PASS  returning from raw mode re-enables the same live ranked instrument
+PASS  an element host scopes new ore controls instead of the old document
+PASS  starting the same host twice does not duplicate mining handlers
+PASS  stop releases deposit, selection and extraction listeners
+PASS  a reused host disables deposits while an empty cut is waiting
+PASS  returning that same host to a planet re-enables its deposit button
+
+ALL PASS (41 checks)

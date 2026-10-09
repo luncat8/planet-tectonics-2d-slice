@@ -3,7 +3,7 @@
 // cadence); K1..K9 sit in slots and fill in across M2..M6:
 //   K1 mantle/plumes/fan T   K2 plate solve   K3 move columns + boundaries
 //   K4 contact (spawn/consume)   K5 column update   K6 surface   K7 vents (eruptive
-//   clock)   K8 reserved   K9 diag
+//   clock)   K8 deposits / resource bookkeeping   K9 diag
 // Geologic time is Myr here: the slider is yr/frame and is converted on entry, so no
 // kernel ever multiplies a Myr rate by a yr step (design §9 one unit system). K7 is the
 // one kernel with its own clock: it runs while dtGeo is 0 (lava time is free) and idles
@@ -19,6 +19,7 @@ var PLT = (typeof module !== 'undefined' && module.exports) ? require('./plates.
 var MAG = (typeof module !== 'undefined' && module.exports) ? require('./magma.js') : window.COLMAGMA;
 var CRU = (typeof module !== 'undefined' && module.exports) ? require('./crust.js') : window.COLCRUST;
 var SURF = (typeof module !== 'undefined' && module.exports) ? require('./surface.js') : window.COLSURF;
+var ORE = (typeof module !== 'undefined' && module.exports) ? require('./ore.js') : root.COLORE;
 var SEC = (typeof module !== 'undefined' && module.exports) ? require('./section-pack.js') : window.COLSECTION;
 var UI = (typeof module !== 'undefined' && module.exports) ? require('./ui.js') : root.COLUI;
 var RNDR = (typeof module !== 'undefined' && module.exports) ? require('./render.js') : root.COLRENDER;
@@ -77,7 +78,7 @@ function simK3(st, dt) {
 }
 
 var SIM = {
-	// kernel slots; each is (state, dtGeo Myr, t Myr, Tm) and must no-op at dtGeo = 0
+	// kernel slots: (state, dtGeo Myr, t Myr, Tm); only K7 and K8 bookkeeping run at dtGeo = 0
 	k: [null, simK1, simK2, simK3, function (st, dt, t, Tm) {
 		if (COL.k4(st, dt, t, Tm)) {
 			PLT.classify(st, 0, !!SIM.kinematic);
@@ -89,7 +90,7 @@ var SIM = {
 			// the floor classification already used for this frame's geometry.
 			COL.freezeFloorClass(st, st.nCol);
 		}
-	}, CRU.k5, SURF.k6, MAG.k7, null, null],
+	}, CRU.k5, SURF.k6, MAG.k7, ORE.k8, null],
 	dG: 0,          // Myr per frame, from the plates slider
 	kinematic: null, // optional C3 K2 owner; returns true when it supplied plate velocities
 	t: 0,           // Myr
@@ -149,11 +150,13 @@ var SIM = {
 		this.dG = P.sl.geo / 1e6;
 		this.cool();
 		COL.floorClassValid = false;
+		UI.clearOre();
 		S.reset();
 		MNT.init(P.seed);
 		SLAB.reset();
 		COL.makePlanet(this.Tm);
 		MNT.initPlumes(S, P.seed);
+		ORE.init(S, this.Tm);
 	},
 
 	cool: function () {

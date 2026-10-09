@@ -26,6 +26,7 @@ var Checkpoint = (function () {
 	function secSeed() { return node ? require('./section-seed.js') : window.COLSEED; }
 	function sliceFormat() { return node ? require('../port/slice-format.js') : window.SlicePack; }
 	function coreLog() { return node ? require('./core-log.js') : window.COLCORELOG; }
+	function ui() { return node ? require('./ui.js') : root.COLUI; }
 
 	function code(a) {
 		var i = dtypes.indexOf(a.constructor.name);
@@ -54,7 +55,7 @@ var Checkpoint = (function () {
 
 	return {
 		MAGIC: 0x31435450,
-		VERSION: 7, // M2: write-back, edifice records and the independent packet RNG
+		VERSION: 8, // M3: finite resources, bed delineation masks and stable deposit ids
 		SESSION_FORMAT: 'pgt-slice-session',
 		SESSION_VERSION: 1,
 		b64enc: b64enc,
@@ -132,6 +133,7 @@ var Checkpoint = (function () {
 			});
 			MNT.init(P.seed); MNT.setTime(runtime.t, runtime.Tm);
 			SLAB.reset();
+			ui().clearOre(); // a restored world requires a fresh explicit mining selection
 			return S;
 		},
 

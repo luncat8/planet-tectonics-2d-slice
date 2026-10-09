@@ -9,10 +9,12 @@ var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js
 var GEO = (typeof module !== 'undefined' && module.exports) ? require('./geom.js') : window.COLGEO;
 var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.COLS;
 var node = typeof module !== 'undefined' && module.exports;
+var ORE = node ? require('./ore.js') : root.COLORE;
 
 function sim() { return node ? require('./sim.js') : root.COLSIM; }
 function renderer() { return node ? require('./render.js') : root.COLRENDER; }
 function perf() { return node ? require('./perf.js') : root.COLPERF; }
+function section() { return node ? require('./section-pack.js') : root.COLSECTION; }
 function element(host, id) {
 	if (!host) return null;
 	if (host.getElementById) return host.getElementById(id);
@@ -34,6 +36,8 @@ var UI = {
 	cvs: null, hud: null, sGeo: null, sErupt: null, vGeo: null, vErupt: null,
 	sVZoom: null, sHZoom: null, vZoom: null, cScale: null,
 	bMesh: null, presets: null, presetName: 'def',
+	bDeposits: null, orePanel: null, orePick: null, oreInfo: null, oreStatus: null,
+	oreMine: null, oreMineAll: null, selectedDepId: 0, oreCounts: new Uint8Array(P.OCLS.n),
 
 	// log-feel slider maps (slider at 0 = pause)
 	sToGeo: function (s) { return s <= 0 ? 0 : P.geoMin * Math.pow(P.geoMax / P.geoMin, s); },
@@ -103,6 +107,32 @@ var UI = {
 		this.presets = pres;
 		this.bMesh = element(this.host, 'bMesh');
 		if (this.bMesh) listen(this.bMesh, 'click', function () { renderer().mesh = !renderer().mesh; self.syncToggles(); });
+		this.bDeposits = element(this.host, 'bDeposits');
+		if (this.bDeposits) this.bDeposits.disabled = !this.oreAvailable();
+		this.orePanel = element(this.host, 'orePanel');
+		this.orePick = element(this.host, 'orePick');
+		this.oreInfo = element(this.host, 'oreInfo');
+		this.oreStatus = element(this.host, 'oreStatus');
+		this.oreMine = element(this.host, 'oreMine');
+		this.oreMineAll = element(this.host, 'oreMineAll');
+		this.clearOre();
+		listen(this.bDeposits, 'click', function () { self.toggleDeposits(); });
+		listen(this.orePick, 'change', function () {
+			self.selectedDepId = Number(this.value); self.updateOre();
+		});
+		listen(this.oreMine, 'click', function () { self.mineOre(0.1); });
+		listen(this.oreMineAll, 'click', function () { self.mineOre(1); });
+		var legend = element(this.host, 'oreLegend');
+		if (legend) {
+			legend.textContent = '';
+			for (i = 0; i < P.OCLS.n; i++) {
+				var label = this.doc.createElement('span');
+				label.textContent = ORE.NAME[i];
+				label.setAttribute('style', 'color:' + ORE.COLOUR[i]);
+				legend.appendChild(label);
+			}
+		}
+		this.syncToggles();
 		listen(this.cvs, 'mousedown', function (e) { self.down(e); });
 		listen(this.cvs, 'mousemove', function (e) { self.move(e); });
 		listen(this.win, 'mouseup', function () { self.dragging = false; });
@@ -140,6 +170,8 @@ var UI = {
 	syncToggles: function () {
 		var i;
 		this.setPressed('bMesh', renderer().mesh);
+		this.setPressed('bDeposits', renderer().showDeposits);
+		if (this.orePanel) this.orePanel.hidden = !renderer().showDeposits;
 		this.cScale.checked = renderer().showScale;
 		if (!this.presets) return;
 		for (i = 0; i < this.presets.length; i++) {
@@ -221,6 +253,7 @@ var UI = {
 		var t = e.target, tag = t && t.tagName;
 		if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') return;
 		if (k === ' ') { this.togglePause(); e.preventDefault(); return; }
+		if (k === 'd' || k === 'D') { if (!e.repeat) this.toggleDeposits(); return; }
 		if (k === 'm') { renderer().mesh = !renderer().mesh; this.syncToggles(); return; }
 		if (k === 'g') { renderer().showScale = !renderer().showScale; this.syncToggles(); return; }
 		if (names[k]) this.preset(names[k]);
@@ -234,7 +267,73 @@ var UI = {
 		this.vGeo.textContent = this.fmtGeo(P.sl.geo);
 	},
 
-	// event-driven (mousemove / view change), never per frame
+	clearOre: function () {
+		this.selectedDepId = 0; renderer().selectedDepId = 0;
+		if (this.orePick) { this.orePick.textContent = ''; this.orePick.value = ''; }
+		if (this.oreMine) this.oreMine.disabled = true;
+		if (this.oreMineAll) this.oreMineAll.disabled = true;
+	},
+
+	toggleDeposits: function () {
+		renderer().showDeposits = !renderer().showDeposits;
+		this.syncToggles();
+		this.updateOre();
+	},
+
+	oreAvailable: function () {
+		var sec = section();
+		return !sec.mode || (sec.world && !sec.raw);
+	},
+
+	// Rebuilt on user actions and the existing 2 Hz HUD cadence, never in the raster.
+	updateOre: function () {
+		if (!this.orePick || !renderer().showDeposits) return;
+		var available = this.oreAvailable(), selected = this.selectedDepId;
+		var order = ORE.ranked(S), counts = this.oreCounts, i, d, cls, option;
+		counts.fill(0);
+		this.orePick.textContent = '';
+		if (available) for (i = 0; i < order.length; i++) {
+			d = order[i]; cls = S.depCls[d];
+			if (counts[cls] >= P.oreListPerClass && S.depId[d] !== selected) continue;
+			counts[cls]++;
+			option = this.doc.createElement('option');
+			option.value = String(S.depId[d]);
+			option.textContent = ORE.NAME[cls] + ' #' + S.depId[d] + ' · ' +
+				(ORE.tonnes(S, d) / 1e6).toFixed(2) + ' Mt/m · col ' + S.depCol[d];
+			this.orePick.appendChild(option);
+		}
+		d = available ? ORE.byId(S, selected) : -1;
+		if (d < 0) this.selectedDepId = 0;
+		renderer().selectedDepId = this.selectedDepId;
+		this.orePick.value = this.selectedDepId ? String(this.selectedDepId) : '';
+		this.orePick.disabled = !available;
+		this.oreMine.disabled = d < 0; this.oreMineAll.disabled = d < 0;
+		if (!available) { this.oreInfo.textContent = 'Live resources are available in the reconstructed view, not the raw cut.'; return; }
+		if (d < 0) {
+			this.oreInfo.textContent = order.length + ' live deposits · up to ' + P.oreListPerClass +
+				' per class, ranked by remaining tonnage.\nSelect a deposit; extraction removes its real host rock.\n' +
+				S.depBlocked + ' capacity deferrals · grade is a frozen 0–1 index.';
+			return;
+		}
+		var c = S.depCol[d], k = S.depLay[d], b = c * P.layerCap + k;
+		this.oreInfo.textContent = ORE.NAME[S.depCls[d]] + ' #' + S.depId[d] + ' · col ' + c + ' / layer ' + k +
+			' · ' + renderer().LITH_NAME[S.layLi[b]] + '\n' +
+			(ORE.depth(S, d) / 1000).toFixed(2) + ' km deep · host formed ' + S.layAg[b].toFixed(2) +
+			' Myr · mineralized ' + S.depAg[d].toFixed(2) + ' Myr\n' +
+			(ORE.tonnes(S, d) / 1e6).toFixed(3) + ' Mt/m remaining · grade index ' + S.depGr[d].toFixed(3);
+	},
+
+	mineOre: function (fraction) {
+		if (!this.oreAvailable()) return;
+		var d = ORE.byId(S, this.selectedDepId);
+		if (d < 0) { this.clearOre(); this.updateOre(); return; }
+		var id = S.depId[d], volume = ORE.extract(S, id, S.depVol[d] * fraction);
+		if (this.oreStatus) this.oreStatus.textContent = 'Extracted ' + Math.round(volume) +
+			' m2 from deposit #' + id + ' · booked as consumed host rock in ledCons; no automatic refill.';
+		this.updateOre(); this.updateCursor();
+	},
+
+	// event-driven (mousemove / view change / extraction), never per frame
 	updateCursor: function () {
 		if (this.mx < 0 || this.my < 0 || this.mx >= P.cw || this.my >= P.ch) {
 			this.cursor = '';
@@ -280,6 +379,7 @@ var UI = {
 			'   ribbons ' + S.nRib + '   plumes ' + S.nPlm + '   deposits ' + S.nDep + '   seed ' + P.seed;
 		s += '\n' + this.tectonics();
 		s += '   arc melt ' + Math.round(S.meltArc) + ' m2   plume melt ' + Math.round(S.meltPlume) + ' m2';
+		if (renderer().showDeposits) this.updateOre();
 		return s;
 	},
 
