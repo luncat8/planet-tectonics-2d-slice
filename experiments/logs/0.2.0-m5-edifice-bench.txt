@@ -1,0 +1,103 @@
+
+M2.1 freeze: exact transfer, lithology, z / hTot / Moho and repeat safety
+PASS  above Tsol nothing enters the stack
+PASS  mixed molten lithologies freeze into their own exact queues
+PASS  both lithologies use COL.insertVol on the owner alone
+PASS  lava mass equals the frozen lava, not the last-writer lithology   rel 9.31e-10  got 6960006.301221455  want 6960006.301221456
+PASS  tephra mass equals the frozen ash   rel 0.00e+0  got 2900002.62550894  want 2900002.62550894
+PASS  hTot gains exactly transferred volume / column width   rel 1.11e-12  got 126.1129822202347  want 126.11298222023359
+PASS  z gains only the transfer's buoyancy   rel 7.39e-13  got 19.55762825875354  want 19.5576282587528
+PASS  Moho changes only by rise minus the added thickness   rel 3.27e-12  got -106.55535396147752  want -106.55535396148079
+PASS  neighbour ground does not move
+PASS  K7 output queues empty; frozen heights are no longer melt
+PASS  freeze / write-back cannot book the same solid twice
+PASS  per-lithology mass identity closes after reclassification   rel 1.34e-16
+
+M2.2 landing and slump: written solids never turn back into melt
+PASS  landing retires the packet and queues its tephra once
+PASS  slump retains solid geometry without generating a second output
+PASS  only the landed mass belongs to the tephra bed   rel 2.33e-10  got 1740001.5753053639  want 1740001.575305364
+PASS  slump preserves the molten lava fraction through two-sided transfers   rel 2.66e-15  got 7.999999999999997  want 8
+PASS  slump preserves the molten ash fraction   rel 3.55e-15  got 4.0000000000000036  want 4
+PASS  mixed, slumped write-back keeps the per-lithology ledger   rel 1.15e-16
+
+M2.3 full K7 episodes: 10–30 px, exact mass and ordinary dated beds
+INFO  effusive   27.00 x 10.05 px, 175 metered K7 frames, worst ledger 1.09e-15
+PASS  effusive: 10–30 px edifice at the default window
+PASS  effusive: every K7 drains its output queues
+PASS  effusive: no pending mass after cooling / landing
+PASS  effusive: the stack owns the whole supplied mass   rel 7.66e-6  got 87000078.76527585  want 87000078.76526819
+PASS  effusive: the retained box geometry matches that same episode   rel 2.37e-11  got 150.00000000002373  want 150
+PASS  effusive: mass identity holds on every frame
+PASS  effusive: the intended lithology dominates the edifice
+PASS  effusive: volcanic bed carries the section formation time
+PASS  effusive: cone hover resolves its actual column and a dated volcanic bed   edifice shield  87000079 m2  last 42.00 Myr | layer 2/3  lava | 1113 m  formed 42 Myr  - | 0.00 km below surface
+PASS  effusive: filled box geometry is clipped to the profile
+INFO  explosive   27.00 x 10.05 px, 175 metered K7 frames, worst ledger 2.94e-15
+PASS  explosive: 10–30 px edifice at the default window
+PASS  explosive: every K7 drains its output queues
+PASS  explosive: no pending mass after cooling / landing
+PASS  explosive: the stack owns the whole supplied mass   rel 2.65e-6  got 87000078.76527084  want 87000078.76526819
+PASS  explosive: the retained box geometry matches that same episode   rel 1.44e-11  got 150.00000000001444  want 150
+PASS  explosive: mass identity holds on every frame
+PASS  explosive: the intended lithology dominates the edifice
+PASS  explosive: volcanic bed carries the section formation time
+PASS  explosive: cone hover resolves its actual column and a dated volcanic bed   edifice arc  87000079 m2  last 42.00 Myr | layer 5/6  lava | 0 m  formed 42 Myr  - | 0.00 km below surface
+PASS  explosive: filled box geometry is clipped to the profile
+
+M2.4 render reads the box, zooms honestly and leaves state untouched
+PASS  changing record dimensions does not synthesize a different cone
+PASS  changing the box itself changes the drawn cone
+PASS  overview keeps the default horizontal footprint   rel 0.00e+0  got 27  want 27
+PASS  overview compresses the vertical footprint rather than changing mass
+PASS  x10 camera multiplies the cone width by ten   rel 0.00e+0  got 270  want 270
+PASS  render and camera changes do not mutate the simulation
+
+M2.5 FX remain airborne even at the largest eruptive step
+PASS  the long tick keeps its newest ballistic packets in flight
+PASS  overlay draws FX from the live packet buffers
+PASS  long-step ballistic FX still owns only supplied mass
+
+M2.6 tauVent retirement, dormant geometry, sorting and slot reuse
+PASS  tauVent alone retires a paused, hot, airborne vent
+PASS  retirement leaves dated beds, a dormant edifice and the chamber dribble
+PASS  dormant geometry is not mistaken for orphan melt
+PASS  a dormant edifice follows its Lagrangian owner through wrap sorting
+PASS  a reused slot starts a clean box and record, never deleting the old beds
+
+M2.6b a new episode on the same column keeps its dormant edifice
+PASS  same-column rebirth reuses the existing shape and volume rather than erasing it
+
+M2.6c a redirected vent adopts only its destination's written geometry
+PASS  rehome does not drag already handed-over source rock to a new column
+PASS  adopting dormant geometry cannot copy or lose transit mass
+
+M2.7 consumed ownership: an occupied margin cannot resurrect an orphan
+PASS  K4 clears the consumed inverse owner before gather
+PASS  orphan loss is exactly the untransferred chamber / box / packet mass   rel 0.00e+0  got 1741001.575305364  want 1741001.575305364
+PASS  consumed ownership keeps the complete per-lithology ledger   rel 0.00e+0
+
+M2.8 rank / capacity discipline and deposit slots
+PASS  volcanic write-back honors rank ordering and shifts an existing deposit with its bed
+PASS  a full stack consolidates before accepting the real volume
+
+M2.8b K6 cuts and buries the edifice without a second mass ledger
+PASS  K6 erodes the summit before its lower flanks
+PASS  the remaining record volume is the volcanic rock still in the stack   rel 0.00e+0  got 85709088.7587529  want 85709088.7587529
+PASS  erosion moves no solid profile back to the melt account
+PASS  one-hop sediment burial lowers the exposed cone gradually
+PASS  buried volcanic rock stays in the stack and the volume record
+PASS  complete burial hides a dormant shape without deleting its written stock
+PASS  an invalid zero-height edifice clears stale stock without consuming it twice
+
+M2.9 periodic clipping and 16 active domains
+PASS  a cone straddling either canvas edge is still drawn with finite coordinates
+PASS  a view wider than one lap draws the periodic copies
+PASS  all 16 domains draw their own cones and packet FX
+
+M2.10 active write-back checkpoint and bitwise resume at two zooms
+PASS  the checkpoint includes hot ash / molten lava, airborne packets and edifice ownership
+PASS  active eruption resumes bitwise at a different zoom (1000 frames)
+PASS  same seed / feed / zoom reproduces the same full checkpoint
+
+ALL PASS (73 checks)

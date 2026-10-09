@@ -1,0 +1,46 @@
+
+A. the format: one date, one spelling, one checksum
+PASS  a seeded section logs every non-empty column   510 records, valid
+PASS  the log is a checksummed pgt-core-log naming its cut   log 2beaea490585ae74 for cut 5e6a558a
+PASS  a JSON round trip is the same log
+PASS  every number carries the pack's six digits
+PASS  the whole-section log stays a clipboard-sized document   48.8 KB at 510 columns
+INFO  the bed date is one reading: formation time on the section clock, rock age derived   seeded columns carry t0 − rock age = 120.5 − age; a record's t is 120.5
+PASS  the seeded beds' formation times are exactly the cut's implication   record bed = live bed, no drift between the two readings
+
+B. the globe's acceptance rules hold on evolved and reconciled states
+PASS  sixty frames of the section's own kernels keep every column's strata legal   all columns
+PASS  a C4 reconcile with 250 m of bottom growth applies   ok
+PASS  injected growth beds are flagged, and the age law reads across them, not around them   all columns after reconcile
+PASS  the intrusive-contact flag carries the inversions the growth made   630 flagged beds
+PASS  the log after the import passes the globe's own rule, record by record   2 records
+PASS  a record's divergence is the column's own residual, on every record
+PASS  a coarse table rebuilding unmatched stacks still logs clean   one law for seeded, grown and rebuilt columns
+
+C. the cadence: log exactly what moved past the threshold
+PASS  a quiet section has nothing to report right after a commit   512 were due, then none
+PASS  the next log carries exactly the columns whose divergence moved   78 of 512 columns, threshold 0.001
+PASS  a build that is never committed is still due at the next cadence
+PASS  the manual build re-logs the whole section regardless of the threshold
+
+D. refusals: the same discipline as the pack and the coupling
+PASS  refuses a malformed bed   record 0 bed 0 is not [lith, thM, formedMyr, flags]
+PASS  refuses a zero-thickness bed   record 0 bed 0 is not thicker than zero (0)
+PASS  refuses a lithology outside the table   record 0 bed 0 is not a lithology
+PASS  refuses a flag word wider than four bits   record 0 bed 0 flags are not four bits
+PASS  refuses thicknesses that do not sum   record 0 thicknesses do not sum: 16086 vs 7086
+PASS  refuses a negative divergence   record 0 diverged fraction is not a number
+PASS  refuses an unsorted arc   records are not in ascending arc order at 1
+PASS  refuses a record off the cut   record 0 is off the cut
+PASS  refuses an empty record set   a core log carries at least one record
+PASS  refuses an age inversion without an intrusive contact   record 0 ages are not monotone at bed 1
+PASS  the same inversion is legal once the lower bed says its top contact is an injection
+PASS  a foreign format string is named, not guessed
+PASS  an unsigned log never parses (a checksummed text is the only wire form)
+PASS  a stale checksum is a mismatch, whatever else the body says
+
+E. determinism, and the state an observation never touches
+PASS  the same cut and seed log the same checksum   2beaea490585ae74
+PASS  building, committing and resetting never touch the section state   the observation stays an observation (0.4.0-sync-plan.md §1.8): the state hash is unaffected
+
+ALL PASS (33 checks)

@@ -1,0 +1,43 @@
+
+M0.1 throughput: 16 vents, one frame (1800 s) each
+PASS  16 vents step >= 60 frames/s   113 frames/s, 8.82 ms per frame
+
+M0.2 effusive: a prescribed flux builds a repose cone that freezes
+INFO  effusive profile   H 10.06 cells, width 27 cells, max step 0.675 (tan repose 0.675)
+PASS  cone height in the 10-30 cell band   H 10.06
+PASS  cone width in the 10-30 cell band   width 27
+PASS  flanks settle at the repose slope (within 10%)   step 0.675
+PASS  the cooled pile is entirely solid   molten columns 0
+PASS  effusive pile is lava-lithology
+PASS  effusive mass is exact (rel < 1e-9 at every frame)   worst rel 0.00e+0
+
+M0.3 explosive: packets land as cold tephra, and the box drains
+INFO  explosive profile   H 10.02 cells, width 27 cells, packets in flight mid-eruption 11
+PASS  explosive packets are airborne while erupting   in flight 11
+PASS  all packets have landed after the eruption   in flight 0
+PASS  explosive pile is tephra-lithology and solid
+PASS  explosive mass is exact (rel < 1e-9 at every frame)   worst rel 6.49e-14
+PASS  explosive edifice has a 10-30 cell height and width   H 10.02, width 27
+
+M0.4 packet pool is bounded and overflow stays molten
+PASS  a full packet pool does not drop mass   rel 0.00e+0
+PASS  the pool never exceeds its capacity   n 512
+PASS  overflow molten mass cools to solid
+
+M0.5 slumping: mass-exact, downhill, settles to repose
+PASS  slumping keeps both geometry and untransferred mass exact   pending 12, pile 12.000000000000002
+PASS  no column ever goes negative
+PASS  slumping never raises the pile energy (sum of h^2)
+PASS  a steep spike relaxes to the repose slope   step 0.675
+
+M0.6 cooling uses seconds, not the secular Myr parameter
+PASS  900 s cools by exp(-900/1800), independently of tauCool   rel 0.00e+0  got 0.6065306597126334  want 0.6065306597126334
+PASS  geological tauCool stays 2500 Myr
+PASS  crossing Tsol freezes once and queues the exact lava mass
+PASS  an already frozen cell cannot freeze a second time
+
+M0.7 determinism and idle
+PASS  same flux, same box: bitwise-identical state   2357195226 2357195226
+PASS  zero flux, empty box: nothing changes
+
+ALL PASS (25 checks)

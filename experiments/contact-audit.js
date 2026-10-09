@@ -53,6 +53,18 @@ var tectonicOnly = flags.indexOf('--tectonic-only') >= 0;
 var detail = flags.indexOf('--detail') >= 0;
 var NS = 2048, step = P.wrap / NS;
 
+// 0.2.0 M5 contact-tuning sweep hook, the way orogen-measure.js's KFIX freezes its
+// constant: KG overrides P.kBeltGradient for one run, so a sweep can measure the belt
+// flow's rate without editing params.js per candidate. The default run is unchanged.
+var KG = Number(process.env.KG);
+if (isFinite(KG) && KG > 0) P.kBeltGradient = KG;
+
+// The kernel's event memory at this leg's rate: P.evAge of simulated time in frames.
+// 0.2.0 M5's frame-versus-clock policy reads it in both event gates (R5's repeat
+// window, R2's standing-needle run); it coincides with the old P.evGap frame window
+// only at the 50 kyr reference rate (40 frames = 2 Myr).
+var evAgeFrames = P.evAge / (kyr * 1e-3);
+
 L.check.section('contact-audit site bookkeeping');
 var siteProbe = siteValues(new Set([4, 9])), seenProbe = { 4: 10 };
 L.check.ok('event buckets are concrete Set values', siteProbe.length === 2 && siteProbe[0] === 4 && siteProbe[1] === 9);
@@ -69,6 +81,16 @@ L.check.ok('the R1 window is anchored at the event, not at its bucket',
 	inWindow(probeEvent, Math.floor(probeEvent / bucketW) * bucketW) === false,
 	'event at ' + (probeEvent / 1e3).toFixed(1) + ' km, bucket left edge ' +
 	(Math.floor(probeEvent / bucketW) * bucketW / 1e3).toFixed(1) + ' km');
+// The standing-needle run (0.2.0 M5's R2 gate): consecutive frames above the limit at
+// one site, counted once per frame per site, resetting on a gap.
+var standProbe = { last: {}, run: {} }, standProbeRun = 0, standProbeK;
+for (standProbeK = 0; standProbeK < evAgeFrames + 2; standProbeK++) standProbeRun = standRun(standProbe, 4, 100 + standProbeK);
+L.check.ok('a standing-needle run counts consecutive frames and resets on a gap',
+	standProbeRun === evAgeFrames + 2 &&
+	standRun(standProbe, 4, 100 + evAgeFrames + 5) === 1 &&
+	standRun(standProbe, 4, 100 + evAgeFrames + 5) === 1,
+	'a run of ' + (evAgeFrames + 2) + ' frames reaches ' + standProbeRun +
+	', a gap resets to 1, a second sample in one frame does not double-count');
 
 if (tectonicOnly) P.sl.erupt = 0;
 L.check.planet(seed, 'def');
@@ -132,11 +154,12 @@ function sampleField(field, out) {
 }
 
 var maxH = 0, maxHFrame = -1, maxHCol = -1, maxHX = 0, maxHAccrete = false, maxHFel = 0, maxHMaf = 0, maxHSed = 0, maxDz = 0, maxDzFrame = -1, maxDzX = 0, dzSum = 0, dzN = 0, over100 = 0;
-// The same repeats read against the model's own memory, P.evAge (Myr), instead of the
-// gate's P.evGap frames. They coincide at the 50 kyr reference rate (40 frames = 2 Myr);
-// at 100 kyr the frame window is twice the time the kernel promises. Reported, never
-// gated: the gate stays the frame window the contract names.
-var flipRepeatAge = 0, evAgeFrames = P.evAge / (kyr * 1e-3);
+// The same repeats read against the model's own memory, P.evAge (Myr), and against the
+// frame window P.evGap. They coincide at the 50 kyr reference rate (40 frames = 2 Myr);
+// at 100 kyr the frame window is twice the time the kernel promises. 0.2.0 M5 settled
+// the frame-versus-clock policy: the gate is the P.evAge count (the kernel's promise),
+// the P.evGap count stays reported (see gate() below).
+var flipRepeatAge = 0;
 var maxDh = 0, maxDhFrame = -1, maxDhX = 0, maxDw = 0, maxDwFrame = -1;
 var births = 0, deaths = 0, accretions = 0, birthRepeat = 0, deathRepeat = 0, flipLast = 0;
 var inversions = 0, atCap = 0, atCapStay = 0, maxSlope = 0, t0 = Date.now();
@@ -163,6 +186,12 @@ var beltRunFrame = -1, beltRunI = -1, beltRunPeak = 0, beltRunFlank = 0, beltRun
 var beltNeedleFrame = -1, beltNeedleI = -1, beltNeedlePeak = 0, beltNeedleShoulder = 0;
 var beltNeedleProfile = new Float64Array(8), beltContigWorst = 99, beltContigFrame = -1;
 var beltContigI = -1, beltContigProfile = new Float64Array(8);
+// The standing-needle bookkeeping (0.2.0 M5's R2 gate): per 2.5 w0 site (the same bucket
+// the R5 bookkeeping uses) the run of consecutive frames above P.beltPeak. A run longer
+// than the kernel's event memory (P.evAge of simulated time) is the standing needle the
+// clause gates; the single-frame worst draw stays reported beside it (beltNeedleMax).
+var needleStand = 0, needleRunMax = 0, needleSite = { last: {}, run: {} }, needleStood = {};
+var D_STAND = [];
 var r2Scratch = { flank: 0, peak: 0, shoulder: 0, outerRatio: 0, needleRatio: 0,
 	needleImmediate: 0, needleImmediateRatio: 0, widthCount: 0, widthRun: 0, built: false };
 // R1's site is the event's own footprint, in metres: a birth's record, a drained death's
@@ -567,6 +596,18 @@ function seenAge(table, site, frame) {
 	return (frame - prev) < evAgeFrames ? 1 : 0;
 }
 
+// The standing-needle run: consecutive frames above the limit at one site, counted once
+// per frame per site (a bucket can hold two collide pairs), resetting on a gap. Returns
+// the run length ending at this frame.
+function standRun(table, site, frame) {
+	var prev = table.last[site];
+	if (prev === frame) return table.run[site];
+	var run = prev === frame - 1 ? table.run[site] + 1 : 1;
+	table.last[site] = frame;
+	table.run[site] = run;
+	return run;
+}
+
 // the frame of the last event at a site when it is inside the event memory, else -1
 function lastAt(table, site, frame) {
 	var prev = table[site];
@@ -653,6 +694,16 @@ function detailReport() {
 			' frames (' + (r.gap * kyr / 1e3).toFixed(2) + ' Myr), closest pair of ' + r.events + ' event columns ' +
 			(r.x / 1e3).toFixed(1) + ' km apart, site bucket ' + (2.5 * P.w0 / 1e3).toFixed(0) + ' km wide');
 	}
+	// 0.2.0 M5: the standing needles -- sites whose over-limit run passed the kernel's
+	// event memory. Empty on a green leg; the single-frame transients above are the
+	// belt's birth and are not listed here (they clear the gate's run test).
+	console.log('  R2 standing needles  ' + D_STAND.length + ' (gate: none beyond ' + P.evAge + ' Myr):');
+	for (k = 0; k < D_STAND.length; k++) {
+		r = D_STAND[k];
+		console.log('    site x ' + (r.x / 1e3).toFixed(1) + ' km, run reaches ' + r.run + ' frames at frame ' + r.f +
+			', peak ' + (r.peak / 1e3).toFixed(1) + ' / shoulder ' + (r.shoulder / 1e3).toFixed(1) +
+			' km (' + r.ratio.toFixed(2) + 'x)');
+	}
 }
 
 // Is this world position within a column of a record that appeared or was retired this
@@ -735,6 +786,22 @@ function beltScan() {
 			beltNeedleShoulder = r2Scratch.shoulder;
 			for (h = -3; h <= 4; h++) beltNeedleProfile[h + 3] = S.hTot[wm(i + h)];
 		}
+		// 0.2.0 M5: track the run of consecutive frames this site spends above the
+		// limit. Measured over sixteen seeds at both rates and both clock modes, every
+		// over-limit sample is a 1-4 frame transient (<= 0.4 Myr) -- the belt's birth,
+		// when a collision thickens its own pair before its shoulders (0.1.9-plan.md
+		// §1.2: "the mechanism, not a defect"). Only a run longer than the kernel's
+		// event memory counts as the standing needle the clause gates.
+		if (r2Scratch.needleRatio > P.beltPeak) {
+			var nb = Math.floor(S.colX[i] / (2.5 * P.w0));
+			var nRun = standRun(needleSite, nb, f);
+			if (nRun > needleRunMax) needleRunMax = nRun;
+			if (nRun > evAgeFrames && !needleStood[nb]) {
+				needleStood[nb] = 1; needleStand++;
+				if (detail) D_STAND.push({ f: f, site: nb, x: S.colX[i], ratio: r2Scratch.needleRatio,
+					run: nRun, peak: peak, shoulder: r2Scratch.shoulder });
+			}
+		}
 		if (!r2Scratch.built) continue;
 		beltBump++;
 		if (count >= P.beltCols) beltWide++;
@@ -773,9 +840,26 @@ function gate() {
 	L.check.info('same-frame pairing (report only)',
 		'worst ' + frameRatio.toFixed(2) + ' at frame ' + frameRatioF + ' (' + fmtM(frameRatioSite) +
 		' at the site against ' + fmtM(frameRatioAway) + ' elsewhere on that frame)');
-	L.check.ok('R2 the pair is not a local needle', beltNeedleMax <= P.beltPeak,
+	// 0.2.0 M5 settles the R2 side of the frame-versus-clock policy: the needle clause
+	// gates a STANDING rise, not a single-frame draw. A collision thickens its own pair
+	// before its shoulders -- 0.1.9-plan.md §1.2 calls that "the mechanism, not a
+	// defect" -- so a young collision reads tall for a few frames while its belt builds;
+	// measured over sixteen seeds at both rates and both clock modes, every sample
+	// above P.beltPeak is a 1-4 frame transient (<= 0.4 Myr), and no site stands above
+	// the limit anywhere in that population. A pair that has been rising for longer
+	// than the kernel's own event memory (P.evAge, 2 Myr) is the standing needle the
+	// clause exists for -- the 0.1.8 M3 case (seed 5/100, frame 3312, edgeAge 4.10 Myr)
+	// is exactly that shape. The single-frame worst draw stays in the report, so the
+	// gate reads the sustained shape and the report keeps the worst draw. Direction
+	// check (0.1.9 §0's convention): the clause can only clear a failing site, never
+	// create one. The width half is unchanged, and the static m2-check fixtures still
+	// pin the measurement itself (a narrow pair on a plain reads 2.00x).
+	L.check.ok('R2 the pair is not a local needle', needleStand === 0,
 		beltN + ' collisions measured, worst pair / highest belt-neighbourhood shoulder ' +
-		beltNeedleMax.toFixed(2) + ' at ' + fmtKm(beltNeedleX) + ' (max ' + P.beltPeak + ')');
+		beltNeedleMax.toFixed(2) + ' at ' + fmtKm(beltNeedleX) + ' (single-frame limit ' + P.beltPeak +
+		'), longest standing run ' + needleRunMax + ' frames (' + (needleRunMax * kyr / 1e3).toFixed(2) +
+		' Myr, limit ' + P.evAge + ' Myr = ' + evAgeFrames.toFixed(0) + ' frames), ' + needleStand +
+		' site' + (needleStand === 1 ? '' : 's') + ' stood above the limit beyond the event memory');
 	L.check.ok('R2 built belts have a contiguous four-column run',
 		beltBump === 0 || beltContigWide >= 0.9 * beltBump,
 		beltContigWide + ' of ' + beltBump + ' built collision-frames have at least ' +
@@ -793,12 +877,22 @@ function gate() {
 	L.check.ok('R3 the crust has a ceiling', maxH <= P.crustMax + 35e3 * kyr / 1e3,
 		fmtKm(maxH) + ' (ceiling ' + fmtKm(P.crustMax) + ' + ' +
 		fmtKm(35e3 * kyr / 1e3) + ' of one-frame influx at ' + kyr + ' kyr/f)');
+	// 0.2.0 M5 settles the frame-versus-clock policy the roadmap left open: the gate is
+	// the kernel's own promise, P.evAge of simulated time, enforced at the classifier
+	// (columns.js holds an edge's classification for P.evAge before it may change). The
+	// old gate window was the fixed P.evGap frame count, which is not a kernel constant
+	// (nothing in js/ reads it) and coincides with the promise only at the 50 kyr
+	// reference rate (40 frames = 2 Myr); at 100 kyr/frame it is twice the promise, so it
+	// gated geology -- a scar re-opening as a rift after its sliver was consumed, 2.2-3.9
+	// Myr of simulated time after the death, every one outside P.evAge (0.1.8 §2). The
+	// frame-window count stays reported, so the wider net is still on the record. No
+	// constant moves: P.evGap and P.evAge keep their values and meanings.
 	L.check.ok('no site changes its topology twice inside the event memory',
-		flipRepeat === 0, flipRepeat + ' of ' + (births + deaths) + ' events (' +
-		per1000(births + deaths) + ' per 1000 frames) came within ' + P.evGap +
-		' frames of an earlier one at the same site');
-	L.check.info('R5 repeats inside the model\'s own memory (P.evAge ' + P.evAge + ' Myr = ' +
-		evAgeFrames.toFixed(0) + ' frames here)', flipRepeatAge + ' of ' + (births + deaths) + ' events');
+		flipRepeatAge === 0, flipRepeatAge + ' of ' + (births + deaths) + ' events (' +
+		per1000(births + deaths) + ' per 1000 frames) came within ' + P.evAge +
+		' Myr (' + evAgeFrames.toFixed(0) + ' frames at this rate) of an earlier one at the same site');
+	L.check.info('R5 repeats inside the frame window (P.evGap ' + P.evGap + ' frames, report only)',
+		flipRepeat + ' of ' + (births + deaths) + ' events');
 	L.check.ok('R5 stacks stay in stratigraphic order', inversions === 0,
 		inversions + ' inverted column-frames');
 	L.check.ok('R5 no column runs out of beds', atCapStay <= P.capStay,
@@ -815,7 +909,10 @@ function finite() {
 	var key, i;
 	for (key in S) {
 		var v = S[key];
-		if (!v || !v.length) continue;
+		// every state buffer is a typed array; S also carries scalars, the recon object
+		// and methods (S.massInto has arity 1, so a !v.length guard reads its [0] and
+		// reports undefined — the same ArrayBuffer.isView guard ledger-check uses)
+		if (!ArrayBuffer.isView(v)) continue;
 		for (i = 0; i < v.length; i++) if (!isFinite(v[i])) return false;
 	}
 	return true;

@@ -1,0 +1,167 @@
+
+A. the envelope derived from a verified cut
+PASS  a message derived from a cut validates   
+PASS  it names the geographic path it came from and matches no other
+PASS  the path identity is independent of sampled fields and source resolution
+PASS  its clock, epoch and sea are the pack's   t 120.5 Myr, epoch 0
+PASS  its crust table is the pack's own numbers, interval for interval   worst 0.00e+0
+PASS  its plate intervals split where plate, boundary or polarity changes   24 intervals over 198 samples
+PASS  every plate interval carries a mean motion and a boundary code
+PASS  trench coordinates name the crossing at each sample-span end   4 crossings
+PASS  its ledger is the cut's own crust volume per unit width   rel 1.05e+5  got 523726000000  want 523726104999.9996
+PASS  the mafic ledger is the cut's too   rel 1.79e+5  got 408763000000  want 408762820566.9999
+PASS  the sediment ledger is the cut's too   rel 1.61e+4  got 56204600000  want 56204616077.99996
+PASS  a message round-trips through JSON exactly
+PASS  quantising an already quantised message changes nothing
+INFO  message size   25845 chars: 198 crust and 24 plate intervals
+
+B. what a message may not be
+PASS  refuses a foreign format   not a pgt-coupling (pgt-pack)
+PASS  refuses a future version   message version 2, this build reads 1
+PASS  refuses a path checksum that is not 16 hex digits   pathChecksum must be 16 hex digits
+PASS  refuses a negative clock   tMyr out of range: -1
+PASS  refuses no sea   sea must carry a mode and a finite level
+PASS  refuses a plate interval that does not advance   plates 0 does not advance
+PASS  refuses a plate table with a gap   plates 1 leaves a gap at 3235.76
+PASS  refuses two tables that end at different arcs   the two tables end at different arcs: 40030.2 vs 40029.2
+PASS  refuses a crust interval with a negative thickness   crust 2 thickness is not finite and non-negative
+PASS  refuses a negative age   crust 2 age is not finite and non-negative
+PASS  refuses an infinite plate id   plate id 0 is not a whole number
+PASS  refuses an infinite crust thickness   crust 2 thickness is not finite and non-negative
+PASS  refuses an infinite crust age   crust 2 age is not finite and non-negative
+PASS  refuses damage above one   crust 2 fertility or damage out of range
+PASS  refuses a boundary code that is not one   plate 0 bnd out of range: 9
+PASS  refuses a polarity out of range   plate 0 pol out of range: 4
+PASS  refuses a fractional polarity code   plate 0 pol out of range: 0.5
+PASS  refuses no trench table   trenches must be an array
+PASS  refuses a trench past the end of the cut   trench 0 is off the cut
+PASS  refuses unsorted trenches   trenches are not sorted at 1
+PASS  refuses a negative ledger   ledger must carry three finite volumes
+PASS  refuses an edited body that keeps the old checksum   checksum mismatch
+PASS  a message for another cut is refused by the guard, not blended
+PASS  a wire message with no checksum at all is refused by parse
+
+C. the pack sequence: 20 messages at the plan cadence
+PASS  every message of the sequence validates   20 derived messages
+PASS  the sequence advances the globe's clock one cadence a step   from 120.5 to 220.5 Myr
+PASS  every message is its own cut
+PASS  re-deriving a message from the same pack and path is the same message   message 7
+INFO  message size over the sequence   65364 chars mean, 64112..66166
+
+D. the section's half: the join, the deltas and the import budget
+PASS  a message derived from the section itself books nothing but the format's own metre   max thickness delta 0.499 m over 512 columns
+PASS  every column joins the message interval that covers it   512 columns, 14732 thickness moves over 20 messages
+PASS  the section never runs ahead of the last message by more than the cadence   cadence 5 Myr, section clock 220.50 Myr
+PASS  the reconcile the sequence would book stays smaller than the crust it corrects   first message +445.9 / -412.4 Mm3/m, last +126442.0 / -139601.3 Mm3/m, 6856 age moves
+INFO  deltas per message (m, globe minus section)   max 80329, age max 281.470 Myr, 494 of 512 columns moved
+PASS  a message with spans wider than the join radius leaves those columns unjoined   129 of 512 columns joined, 383 left at a 78.2 km join spacing
+PASS  an open cut omits a false trench at its un-crossed terminal endpoint   3 interior crossings
+PASS  the geographic join does not wrap an open window across its endpoints   open -1, periodic 0
+PASS  a hard reset import keeps the ledger the message carried   seed 1045603271236 of cut 1045603271236 m3/m
+PASS  the import cost is finite and inside a frame budget at this resolution   mean 1.8 ms, worst 3.4 ms over 21 layout imports
+
+E. apply refusals are atomic and a matched reconcile edits beds
+PASS  an unsigned in-memory message is refused before state mutation   message refused: checksum mismatch
+PASS  a message for another path is refused before state mutation   message refused: pathChecksum does not match the active cut
+PASS  a checksummed message whose intervals stop short of the identified cut is refused atomically   message refused: interval tables do not span the active cut
+PASS  a table ending short of the cut is not treated as a path match
+PASS  a page with no reconstructed section cannot report an applied message   message refused: no reconstructed section is ready for coupling
+PASS  a checksummed message for the active path applies   ok
+PASS  an unrelated bed and its depth-resolved deposit survive matched growth   layer 2 -> 4, 0/-50.27854376141062/1 -> 0/-50.27854376141062/1, format adjustment -0.185 m
+PASS  matched growth is a dated reconcile bed, not cache or seed-bed inflation   fel growth dated at globe t 120.5 Myr
+PASS  a message older than the section clock floors its bed dates at the clock   every new bed of that import is dated at t 127.75, not 120.5
+PASS  a rebuilt column carries the import clock minus the cut's rock age   equal beds dated t − age at every rebuilt column, none missed
+PASS  a coarse table rebuilding unmatched stacks still logs clean   one law for seeded, grown and rebuilt columns
+PASS  the imported aggregate is derived from beds and survives COL.sums   crust 920578905868 m3/m, tagged 8434.000 m
+PASS  the apply ledger closes old + in - out = new to 1e-9   error 1.221e-4 over 9.206e+11
+PASS  a coarse valid table exercises the fresh/retired branch without refusal   128 matched, 384 fresh
+PASS  fresh and retired are volumes and close the same mass identity   fresh 690434179401, retired 690434179401, error 0.000e+0
+
+F. the real 20-import cycle: evolve, reconcile, retain
+PASS  message 1 applies cleanly   refused
+PASS  apply 1 leaves matched bed aggregates on their targets   max residual 0.00e+0 m
+PASS  message 2 applies cleanly   refused
+PASS  apply 2 leaves matched bed aggregates on their targets   max residual 3.69e-12 m
+PASS  message 3 applies cleanly   refused
+PASS  apply 3 leaves matched bed aggregates on their targets   max residual 3.64e-12 m
+PASS  message 4 applies cleanly   refused
+PASS  apply 4 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 5 applies cleanly   refused
+PASS  apply 5 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 6 applies cleanly   refused
+PASS  apply 6 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 7 applies cleanly   refused
+PASS  apply 7 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 8 applies cleanly   refused
+PASS  apply 8 leaves matched bed aggregates on their targets   max residual 1.46e-11 m
+PASS  message 9 applies cleanly   refused
+PASS  apply 9 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 10 applies cleanly   refused
+PASS  apply 10 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 11 applies cleanly   refused
+PASS  apply 11 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 12 applies cleanly   refused
+PASS  apply 12 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 13 applies cleanly   refused
+PASS  apply 13 leaves matched bed aggregates on their targets   max residual 3.64e-12 m
+PASS  message 14 applies cleanly   refused
+PASS  apply 14 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 15 applies cleanly   refused
+PASS  apply 15 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 16 applies cleanly   refused
+PASS  apply 16 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 17 applies cleanly   refused
+PASS  apply 17 leaves matched bed aggregates on their targets   max residual 3.64e-12 m
+PASS  message 18 applies cleanly   refused
+PASS  apply 18 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  message 19 applies cleanly   refused
+PASS  apply 19 leaves matched bed aggregates on their targets   max residual 1.46e-11 m
+PASS  message 20 applies cleanly   refused
+PASS  apply 20 leaves matched bed aggregates on their targets   max residual 7.28e-12 m
+PASS  all 20 mass identities close to 1e-9 relative   worst relative error 1.297e-15
+PASS  recomputing every aggregate from beds cannot undo an import   worst relative cache change 0.000e+0
+PASS  matched columns retain their bed identities through the sequence   worst import retained 98.9% of non-empty columns
+PASS  the cumulative reconcile ledger never resets between imports   reconciled 4226808201194, diverged 739992948560 m3/m
+PASS  twenty imports of evolution leave the strata of every column legal under the §8.5 rule   all columns
+PASS  fresh and retired are measured volumes and unmatched columns stay bounded   total matched 10674, fresh cols 0, retired cols 0, fresh volume 0
+
+G. C3 owns K2 while the live message is active
+PASS  the active coupling prescribes rigid plate and column velocities in K2   12 plates at 12345 m/Myr
+PASS  a zero clock leaves prescribed kinematics still
+PASS  deactivation returns K2 ownership to the standalone solver
+
+H. the accepted sea datum follows the globe snapshot
+PASS  a valid import applies its sea level without jumping the section surface   sea 2569 m, surface 2469 m
+PASS  wet flags follow the imported datum now and in later surface passes   column 44 at 2469.0 m, sea 2569 m
+
+I. boundary and polarity updates follow the globe snapshot
+PASS  a newly reported subduction edge and its polarity land on the matching section seam   edge 87, left plate 1, overriding plate 2, ribbon x 6841094.119733593, ribbons 1
+PASS  a stable reported crossing preserves its age and does not duplicate its ribbon   edge age 2.5 Myr, ribbons 1
+PASS  an import restarts the absorbed boundary shortening at zero
+PASS  a later boundary-type change is applied without deleting the historical ribbon   edge 2, polarity 0, ribbons 1
+PASS  a paused live frame defers edgeRelN refresh; active K3 refreshes it without reclassifying the globe boundary   paused refresh true, seam 87, type 3, polarity -1, active relN 0
+
+J. age changes rebuild the thermal lid at import
+PASS  changed crust ages reapply the lid once at import without erasing deeper thermal anomalies   512 columns aged; 6551 fan cells changed; lid calls 1
+PASS  the age-lid rebuild leaves section plume objects intact   6 plumes retained
+
+K. open-window imports respect both endpoints
+PASS  a snapshot reconciles the open path without joining across its start/end   158 columns, 158 joined, max 0.00e+0 m, terminal edge 0
+
+L. an active vent survives checkpoint restore and a C4 import
+PASS  a charged chamber births its vent on the column   vent 0
+PASS  import moment: airborne packets over a live, still-feeding vent   2 packets, 0.3 cells2 fed
+PASS  import moment: melt is in transit in the toy   0.000 cells2 in transit
+PASS  the per-lithology ledger closes from ledger zero to the import moment   max relative 5.43e-16 (sed)
+PASS  the checkpoint restores bit-identically with the eruption mid-flight   hash 2615240783, vent 0 at column 0
+PASS  the growth import applies cleanly over the live vent   applied
+PASS  the import books its identity exactly   relative 4.89e-16
+PASS  the import edits the vent's host column by the message's growth   hTot 7.819 -> 8.069 km at column 0 (growth 250 m within the message's metre quantization)
+PASS  the import leaves the vent's own bookkeeping untouched   chamber 0.000, queues 0.000000, packets 2
+PASS  the import moves no melt (the chamber supply is a move inside the crust)   chambers 0.000 -> 0.000e6 m2
+PASS  the continued eruption drains every vent's write-back queues   vent 0 queues 0.000000 cells2
+PASS  the edifice record stays a retained stock, never a source   venEdV 0 m2 of 160000 m2 placed
+PASS  the restored-and-imported section keeps every buffer finite
+PASS  the per-lithology ledger closes across the 400 frames after the import   max relative 5.47e-14 (fel)
+
+ALL PASS (138 checks)

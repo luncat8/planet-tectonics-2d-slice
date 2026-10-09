@@ -1,0 +1,38 @@
+
+contact-audit site bookkeeping
+PASS  event buckets are concrete Set values
+PASS  repeat spacing uses the current event frame
+PASS  the R1 window is anchored at the event, not at its bucket   event at 156.4 km, bucket left edge 0.0 km
+INFO  clock scope   combined clocks (K7 write-back included)
+contact audit — seed 5, 50 kyr/frame, 5000 frames (250 Myr), 2.72 ms/frame   [STRICT]
+  crust          max 80.7 km   thickest at a contact 80.1 km   collisions 4529 seen; legacy peak/flank 3.64x, legacy 4-of-6 98.6%, contiguous 4-of-6 98.6% of 3973 built samples   draining records 3 live holding 0.0% of the crust, widest run 0.0 columns (oldest 170.6 Myr)
+  R2 legacy peak frame 4997, edge 49, pair 67.7 km / outer flank 18.6 km (3.64x), mean immediate shoulders 48.3 km (1.40x), legacy count 4/6 above outer flank + 2.0 km: 14.9/14.9/17.2/38.6/67.7/79.4/79.9/30.2 km
+  R2 local needle frame 36, edge 184, pair 58.6 km / highest belt-neighbourhood shoulder 52.2 km (1.12x; max 1.5), local hTot (-3..+4) km: 42.0/45.2/49.8/56.2/58.6/52.2/47.6/47.1
+  R2 legacy width narrowest count 2/6 at frame 17, edge 184, pair/flank 1.09: 42.0/41.6/43.7/48.1/49.5/45.2/45.1/47.1 km
+  R2 contiguous width minimum 2/6 at frame 17, edge 184: 42.0/41.6/43.7/48.1/49.5/45.2/45.1/47.1 km
+  max column     frame 4928, record 50, x 3647.5 km   fel 65.1 km, maf 11.7 km, sed 4.0 km, on a C-C retirement frame: false
+  surface        worst single-frame move 5186 m at frame 4875 x 3674.6 km   mean 1.3 m, 7366 raster samples above 100 m
+  R1 event site  1366 m in an event footprint (birth, frame 2822 x 9792.5 km) against the quiet-frame yardstick 5186 m (frame 4875 x 3674.6 km), ratio 0.26 (max 1.25)
+                 event-frame background (report) 1028 m (frame 4714 x 5551.1 km), worst same-frame pairing (report) 11.81 at frame 4393 (298 m vs 25 m)
+                 quiet-frame drawn thickness 56.9 km and width 9.9%, 0 quiet records with no counterpart, 10646 re-partitioned)
+  columns        worst single-frame drawn-thickness change 56.9 km at frame 4922 x 3651.4 km   worst width change 9.9% at frame 261   worst local slope 131.1%
+  topology       62 births / 46 deaths (21.60 per 1000 frames, incl. 24 C-C retirements) at 3 repeated birth and 0 repeated death sites (529 columns, 8 plates)
+  stacks         0 column-frames with an inverted bed, 0 column-frames at layerCap
+
+contact contract (0.1.9-plan.md §2)
+PASS  R1 an event stays inside the section's own background   the birth footprint 1366 m at frame 2822 x 9792.5 km against the quiet-frame yardstick 5186 m (frame 4875 x 3674.6 km), ratio 0.26 (max 1.25)
+INFO  event-frame background (report only)   1028 m away from any event footprint, frame 4714 x 5551.1 km
+INFO  same-frame pairing (report only)   worst 11.81 at frame 4393 (298 m at the site against 25 m elsewhere on that frame)
+PASS  R2 the pair is not a local needle   4529 collisions measured, worst pair / highest belt-neighbourhood shoulder 1.12 at 14417.1 km (max 1.5)
+PASS  R2 built belts have a contiguous four-column run   3918 of 3973 built collision-frames have at least 4 contiguous columns above outer flank + 2.0 km (90% required); narrowest run 2 at frame 17
+INFO  legacy R2 outer-flank peak ratio   3.64x at 3615.9 km (historical limit 1.5)
+INFO  legacy R2 non-contiguous four-of-six width   3918 of 3973 built samples passed; narrowest count 2/6 at 14397.5 km
+PASS  R3 the crust has a ceiling   80.7 km (ceiling 80.0 km + 1.8 km of one-frame influx at 50 kyr/f)
+PASS  no site changes its topology twice inside the event memory   0 of 108 events (21.60 per 1000 frames) came within 2 Myr (40 frames at this rate) of an earlier one at the same site
+INFO  R5 repeats inside the frame window (P.evGap 40 frames, report only)   0 of 108 events
+PASS  R5 stacks stay in stratigraphic order   0 inverted column-frames
+PASS  R5 no column runs out of beds   0 column-frames touched layerCap, the longest stay 0 frames (max 3)
+PASS  a draining record holds no ground   0.0% of the crust in 3 draining records, widest run 0.0 columns (max 2.0%)
+PASS  every buffer is finite
+
+ALL PASS (12 checks)

@@ -1,0 +1,47 @@
+
+A. page load (index.html order, 9 scripts)
+PASS  particles.html stays in sync with the primary entry
+PASS  index.html loads every js/pt/*.js exactly once   js/perf.js js/pt/params.js js/pt/grid.js js/pt/state.js js/pt/fluid.js js/pt/solid.js js/pt/render.js js/pt/ui.js js/pt/sim.js
+PASS  the DOM stub found the bar   bar,sClock,vClock,bPause,bStep,bReset,bNew,bMark,bMelt,bCrust,bRelief,bRuler,bMesh,bLid,bDeep,bFull,wrap,c,hud,keys
+PASS  the page loaded and started the frame loop
+PASS  the engine built its mesh   256x24
+PASS  the markers are placed   n 23552/23808
+PASS  20 frames advanced the clock   t 1.00 Myr
+PASS  the HUD is built   "t 0.0 Myr   seed 1   50 kyr/f  0.00 Myr/s  fluid 0x"
+
+B. the switch bar: every button wired, every state lit
+PASS  index.html carries the lit rule
+PASS  every button in the bar is wired   bPause,bStep,bReset,bNew,bMark,bMelt,bCrust,bRelief,bRuler,bMesh,bLid,bDeep,bFull
+PASS  the markup ships the renderer defaults before ui.js runs   mark true mesh false
+PASS  at load the five overlays are lit and agree with the renderer
+PASS  the markers button puts the stipple out
+PASS  and the second click brings it back
+PASS  m flips the flag and the button together
+PASS  v/c/g each own a button
+
+C. quality, transport and the clock
+PASS  the quality button names the shipped level   "quality 1/3"
+PASS  cycling the quality button rebuilds the mesh at 512x48   512x48
+PASS  the quality button is lit and labelled at 2/3   "quality 2/3"
+PASS  key 3 selects the 1024x96 mesh
+PASS  key 1 returns to the light mesh and puts the button out
+PASS  pause lights the button and renames it to play
+PASS  a paused page does not advance   t 0.000
+PASS  step runs exactly one frame while paused   t 0.050 Myr
+PASS  space resumes and puts the pause button out
+PASS  the step key pauses too, and the button says so
+PASS  new planet draws the next seed and resets the clock   seed 2
+PASS  reset keeps the seed and the clock at zero
+PASS  the clock slider at zero is a pause
+PASS  and at the top it is the maximum rate   500 kyr/f
+
+D. the camera presets are a radio group
+PASS  mantle is lit at load, and only it
+PASS  the lid button lights and frames the lid   eB 3.4023
+PASS  the deep key lights deep
+PASS  the mantle key lights mantle again
+PASS  a wheel zoom puts the whole group out
+PASS  a drag leaves the preset too   cx 7250.0
+PASS  the probe reads the field under the cursor   "x 1750 km   y 2294 km   eta 4.742   T 1.000"
+
+ALL PASS (37 checks)

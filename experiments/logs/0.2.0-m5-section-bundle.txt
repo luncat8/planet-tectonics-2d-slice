@@ -1,0 +1,64 @@
+  section bundle: the Earth transects in js/data/ (tools/earth/bake_section.py)
+  (the bake walks the counterpart's baked Earth pack; the format is port/slice-format.js)
+
+
+A. the bundles, decoded through the paste's own verify path
+PASS  the disk carries exactly the pinned bundle set   earth-100Ma-gc0 earth-100Ma-gc1 earth-gc0
+PASS  the bundle wraps one canonical object under its own id   earth-100Ma-gc0
+PASS  the checksum is the pinned one (stable across bakes and machines)   e355a92a889b9c7d  want e355a92a889b9c7d
+PASS  the pack names its source, its commit and its epoch   earth-100Ma t 100 Myr @ d909476
+PASS  the license travels with the pack   CC-BY 4.0 - PALEOMAP-PaleoDEM 100Ma (Scotese & Wright 2018); sources: planet-geotectonics data/earth/SOURCES.md
+PASS  the transect is at least 5x smaller than the pack it replaces   43.0 KB < 105 KB
+PASS  the page script registers the same object under SECTION_PACKS
+PASS  the bundle wraps one canonical object under its own id   earth-100Ma-gc1
+PASS  the checksum is the pinned one (stable across bakes and machines)   665a7f23713c2b24  want 665a7f23713c2b24
+PASS  the pack names its source, its commit and its epoch   earth-100Ma t 100 Myr @ d909476
+PASS  the license travels with the pack   CC-BY 4.0 - PALEOMAP-PaleoDEM 100Ma (Scotese & Wright 2018); sources: planet-geotectonics data/earth/SOURCES.md
+PASS  the transect is at least 5x smaller than the pack it replaces   47.6 KB < 105 KB
+PASS  the page script registers the same object under SECTION_PACKS
+PASS  the bundle wraps one canonical object under its own id   earth-gc0
+PASS  the checksum is the pinned one (stable across bakes and machines)   00eb9fa91207522c  want 00eb9fa91207522c
+PASS  the pack names its source, its commit and its epoch   earth t 0 Myr @ d909476
+PASS  the license travels with the pack   CC-BY 4.0 - PALEOMAP-0Ma (Scotese & Wright 2018) + NNR-MORVEL56; sources: planet-geotectonics data/earth/SOURCES.md
+PASS  the transect is at least 5x smaller than the pack it replaces   39.2 KB < 105 KB
+PASS  the page script registers the same object under SECTION_PACKS
+
+B. the walk's invariants, self-contained
+PASS  earth-100Ma-gc0: sKm starts at 0, increases, and the last span is at most a cell   n=360 last span 111.20 km
+PASS  earth-100Ma-gc0: the arc is the whole circle at the format's own radius   40030.20 km
+PASS  earth-100Ma-gc0: wet is exactly z < 0 (the section's own datum)
+PASS  earth-100Ma-gc0: a boundary sits exactly where the plate changes   both 18, missing 0, phantom 0
+PASS  earth-100Ma-gc0: the polarity names a side only for a subduction   subduct 4 collide 3 bad 0
+PASS  earth-100Ma-gc0: ore potentials and damage are 0 (a static snapshot carries none)   non-zero 0
+PASS  earth-100Ma-gc0: the plate speeds are finite and within a real-Earth bound   max |vt| 1.78 cm/yr, vp 3.18 cm/yr
+PASS  earth-100Ma-gc0: the plates block covers the cut's plates and tiles the 360x180 raster   plates 108 of 15 crossed, cells 64800
+PASS  earth-100Ma-gc1: sKm starts at 0, increases, and the last span is at most a cell   n=437 last span 104.50 km
+PASS  earth-100Ma-gc1: the arc is the whole circle at the format's own radius   40030.20 km
+PASS  earth-100Ma-gc1: wet is exactly z < 0 (the section's own datum)
+PASS  earth-100Ma-gc1: a boundary sits exactly where the plate changes   both 24, missing 0, phantom 0
+PASS  earth-100Ma-gc1: the polarity names a side only for a subduction   subduct 9 collide 0 bad 0
+PASS  earth-100Ma-gc1: ore potentials and damage are 0 (a static snapshot carries none)   non-zero 0
+PASS  earth-100Ma-gc1: the plate speeds are finite and within a real-Earth bound   max |vt| 2.15 cm/yr, vp 3.49 cm/yr
+PASS  earth-100Ma-gc1: the plates block covers the cut's plates and tiles the 360x180 raster   plates 108 of 12 crossed, cells 64800
+PASS  earth-gc0: sKm starts at 0, increases, and the last span is at most a cell   n=360 last span 111.20 km
+PASS  earth-gc0: the arc is the whole circle at the format's own radius   40030.20 km
+PASS  earth-gc0: wet is exactly z < 0 (the section's own datum)
+PASS  earth-gc0: a boundary sits exactly where the plate changes   both 10, missing 0, phantom 0
+PASS  earth-gc0: the polarity names a side only for a subduction   subduct 4 collide 1 bad 0
+PASS  earth-gc0: ore potentials and damage are 0 (a static snapshot carries none)   non-zero 0
+PASS  earth-gc0: the plate speeds are finite and within a real-Earth bound   max |vt| 45.18 cm/yr, vp 21.36 cm/yr
+PASS  earth-gc0: the plates block covers the cut's plates and tiles the 360x180 raster   plates 25 of 10 crossed, cells 64800
+
+C. ?pack= opens a real transect
+PASS  the bundled id loads and reconstructs a world   loaded source L0 · 111 km cells → 512 columns · 78 km · 40 030 km circle · t 100 Myr · earth-100Ma · seed 7 · mapping 2 · checksum e355a92a889b9c7d
+PASS  the HUD says where the cut came from: both resolutions, the arc, the epoch   cut at t 100 Myr · plate clock off · the cut as it stands   earth-100Ma-gc0 | link: clipboard/file | source L0 · 111 km cells → 512 columns · 78 km · 40 030 km circle · t 100 Myr · earth-100Ma · seed 7 · mapping 2 · checksum e355a92a889b9c7d
+PASS  the HUD carries the cut's own checksum   checksum e355a92a889b9c7d
+PASS  the section holds the cut's crust: seeded mass is the cut's mass to the ledger   616369001496 of 616369001496 m3/m
+PASS  the Cut-from select lists every bundled pack   earth-100Ma-gc0,earth-100Ma-gc1,earth-gc0
+PASS  the same cut and seed lay the same section twice (one state, one hash)   424580610
+PASS  the second transect (Tethys, 437 samples) lays a different section   L 424580610 vs 2989288822
+PASS  the present-day transect opens the same way, at t 0   cut at t 0 Myr · plate clock off · the cut as it stands   earth-gc0 | link: clipboard/file
+PASS  an unknown id is a visible refusal on the real page too   no bundled pack 'not-a-bundle' — paste a cut, or open ?start=section&pack=<id>
+
+ALL PASS (52 checks)
+  (bundle gate in 2727 ms)

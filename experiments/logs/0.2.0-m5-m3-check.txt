@@ -1,0 +1,36 @@
+
+M3.0 cone shedding and basin fill
+PASS  mountain is high and basins low   mtn 3355 left -4897 right -4897 m
+PASS  cone shedding conserves total crust+mobile mass   rel 0.00e+0 before 4.83646e+11 after 4.83646e+11
+PASS  mountain shed sediment (hFel decreased or hSed decreased)   hTot mtn 54.0 km
+PASS  basin received sediment (hSed increased)   left 0.006 was 0.000 right 0.006 was 0.000
+PASS  deposited beds are sediment   left top lith 0
+PASS  placer shows downslope of source (basin oPla > 0)   left oPla 0.0127 colPla 1.63 right oPla 0.0128 colPla 1.63
+
+M3.1 erosion knee law
+PASS  knee law erosion amount matches formula   rel 0.00e+0  got 0.09566521730646299  want 0.09566521730646299
+PASS  erosion bevels the column
+PASS  higher crust gives higher elevation   high 1143 low -2200
+PASS  knee law is superlinear (high erodes much faster than low)   eHigh 0.046 eLow 0.000
+
+M3.2 mass ledger exactness over 50 Myr
+PASS  total crust+mobile mass constant to 1e-6 over 50 Myr (no births)   rel 7.06e-16 start 1.036721e+12 end 1.036721e+12
+PASS  per-frame total mass conserved to 1e-9 (no births)   max rel 6.62e-16
+
+M3.3 turbidite half-pass and wet flag
+PASS  low column is wet   z low -9897
+PASS  high column is dry   z high 582
+PASS  wet basin receives sediment   before 0.0 after 42.2
+PASS  deposited layers in wet basin include wet flag   layers 3 top flags 1
+
+M3.4 unconformity flag
+PASS  erosion removed some layers or thinned top   before 3 after 3
+PASS  removing a top bed invalidates its deposit horizon
+PASS  beveled top gets unconformity flag upon burial   flags: 0,4,1
+PASS  k6 marks unconformity when bevel buried (wet 50% case)   bevel 0 layers 3
+
+M3.5 zero dt is no-op and finite state
+PASS  zero geo time leaves state unchanged (M3)   1951596903 vs 1951596903
+PASS  all buffers finite after 20 frames with erosion
+
+ALL PASS (22 checks)

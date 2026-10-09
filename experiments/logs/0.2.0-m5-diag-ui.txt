@@ -1,0 +1,48 @@
+
+M4 UI.1 the seed field is the new-planet control
+PASS  the planet bar carries seed, save and load controls
+PASS  the seed field shows the run seed at init   value 1
+PASS  Enter rebuilds the planet from the typed seed   seed 77
+PASS  the field keeps the canonical seed text
+PASS  the same seed replays the same world bitwise   hash 628528765
+PASS  typing in the seed field cannot toggle page keys
+PASS  the global key handler ignores inputs
+PASS  the page key works on the body
+
+M4 UI.2 save state / load state through the buttons
+PASS  save state downloads a session JSON   2976000 chars
+PASS  the file is the one session codec with every array inside
+PASS  a save records the seed in its file name   session-seed7-t2.json
+PASS  the live run moved on from the save
+PASS  a slider move changes the clock widget
+PASS  load state restores the save bitwise   hash 734618088
+PASS  the seed field follows the restored world
+PASS  the two clock widgets re-read the restored sliders
+
+M4 UI.3 the diagnostic HUD at 2 Hz
+PASS  the HUD shows fps, sim ms and the toy step cost   fps 60.0   ms 0.74 (sim 0.37 + draw 0.37)   toy 0.00 ms
+PASS  the invariant line names every gate
+PASS  the per-lithology ledger line closes and shows the delam sink
+PASS  a HUD repaint is read-only against the model
+PASS  the real 60-frame loop runs the sweep at 2 Hz, not every frame   2 sweeps
+
+M4 UI.4 each invariant fires on its own fault
+PASS  a broken sort permutation is reported FAIL   t 4.500 Myr   Tm 1.598   frame 90
+PASS  the sort table clears back to all-ok
+PASS  a width table that no longer sums to the wrap is reported FAIL   t 4.500 Myr   Tm 1.598   frame 90
+PASS  the widths clears back to all-ok
+PASS  a plate census that disagrees with colPlate is reported FAIL   t 4.500 Myr   Tm 1.598   frame 90
+PASS  the plate counts clears back to all-ok
+PASS  a ledger line out of balance is reported FAIL   t 4.500 Myr   Tm 1.598   frame 90
+PASS  the ledger clears back to all-ok
+PASS  an inter-plate gap under the contact floor is reported FAIL   t 4.500 Myr   Tm 1.598   frame 90
+PASS  the gap clears back to all-ok
+PASS  a rebuilt planet clears back to all-ok
+
+M4 UI.5 the done protocol through the page loop at two zooms
+PASS  the loop-level reload is bit-identical   hash 266858032
+PASS  120 redrawn frames at overview match the same run at default zoom   hash 1483221673
+PASS  and at crust x10   hash 1483221673
+PASS  the invariants hold through the redrawn loop
+
+ALL PASS (36 checks)

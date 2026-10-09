@@ -1,0 +1,85 @@
+  slice cut: a line on the globe's map -> a section this project can load
+  (stand-in cell set; the real grid's counts are from planet-geotectonics @ d909476)
+
+
+A. the stand-in cell set (the counterpart's L4/L5/L6 density)
+PASS  L4: every cell has 6-14 neighbours   min 7 max 13 mean 8.19, spacing 446 km
+PASS  L5: every cell has 6-14 neighbours   min 7 max 13 mean 8.09, spacing 223 km
+PASS  L6: every cell has 6-14 neighbours   min 7 max 13 mean 8.35, spacing 112 km
+
+B. the cell walk along a drawn great circle
+PASS  n=2562 (100 cells): one sample per cell crossed, no cell twice in a row
+PASS  n=2562 (100 cells): cells crossed within 10 % of the real grid's 101   -1.0 %
+PASS  n=2562 (100 cells): the arc spent per cell stays in [0.3, 1.8] x mean   0.37..1.49 mean 400 km
+PASS  n=2562 (100 cells): the per-cell arcs sum to the circumference   rel 0.00e+0  got 40030.173592041145 km  want 40030.173592041145
+PASS  n=2562 (100 cells): consecutive cells are neighbours all the way round (no cell jumped)   0 gaps
+PASS  n=2562 (100 cells): the cut reads the same from either end (up to where it is cut)   rotation 1, 100 vs 100
+PASS  n=2562 (100 cells): the same cut yields the same cells twice
+PASS  n=10242 (200 cells): one sample per cell crossed, no cell twice in a row
+PASS  n=10242 (200 cells): cells crossed within 10 % of the real grid's 198   1.0 %
+PASS  n=10242 (200 cells): the arc spent per cell stays in [0.3, 1.8] x mean   0.37..1.49 mean 200 km
+PASS  n=10242 (200 cells): the per-cell arcs sum to the circumference   rel 0.00e+0  got 40030.173592041145 km  want 40030.173592041145
+PASS  n=10242 (200 cells): consecutive cells are neighbours all the way round (no cell jumped)   0 gaps
+PASS  n=10242 (200 cells): the cut reads the same from either end (up to where it is cut)   rotation 1, 200 vs 200
+PASS  n=10242 (200 cells): the same cut yields the same cells twice
+PASS  n=40962 (402 cells): one sample per cell crossed, no cell twice in a row
+PASS  n=40962 (402 cells): cells crossed within 10 % of the real grid's 400   0.5 %
+PASS  n=40962 (402 cells): the arc spent per cell stays in [0.3, 1.8] x mean   0.37..1.49 mean 100 km
+PASS  n=40962 (402 cells): the per-cell arcs sum to the circumference   rel 0.00e+0  got 40030.173592041145 km  want 40030.173592041145
+PASS  n=40962 (402 cells): consecutive cells are neighbours all the way round (no cell jumped)   0 gaps
+PASS  n=40962 (402 cells): the cut reads the same from either end (up to where it is cut)   rotation 1, 402 vs 402
+PASS  n=40962 (402 cells): the same cut yields the same cells twice
+
+C. the pack: size, checksum, round trip
+PASS  n=198: the pack validates and verifies   44.4 KB, checksum 8c5416043e24f38f
+PASS  n=198: every field is bit-exact through JSON   max |delta| 0
+PASS  n=400: the pack validates and verifies   90.8 KB, checksum bd224293b46d8870
+PASS  n=400: every field is bit-exact through JSON   max |delta| 0
+PASS  n=811: the pack validates and verifies   187.9 KB, checksum c0cac33347a8df1a
+PASS  n=811: every field is bit-exact through JSON   max |delta| 0
+INFO  pack size (JSON, six significant digits)   L5 (198) 44.4 KB · L6 (400) 90.8 KB · L7 (811) 187.9 KB
+INFO  bytes per sample   232 B
+PASS  a cut is at least 5 x smaller than the pack it came out of (536 KB)   90.8 KB vs 536 KB
+PASS  the usual cut (L5/L6) still fits a clipboard and a gist-sized file   44.4 / 90.8 KB
+
+D. the decoder refuses what it must
+PASS  rejects a foreign format tag   not a pgt-slice-pack (pgt-something-else)
+PASS  rejects a future version   pack version 2, this build reads 1
+PASS  rejects a pack with no license line   the pack carries no license line
+PASS  rejects an edited sample (the checksum catches it)   checksum mismatch: the pack was edited or truncated
+PASS  rejects a sample out of order   sKm is not increasing at 6
+PASS  rejects a field of the wrong length   field zM has 10 values for n = 64
+PASS  rejects a host code outside the table   host code 9 at 2
+PASS  rejects a negative thickness   a negative thickness at 4
+PASS  rejects a number that is not finite   field pot is not finite at 7
+PASS  rejects a boundary code the section does not have   boundary code 7 at 1
+PASS  rejects a polarity outside -1/0/+1   polarity 3 at 2
+PASS  rejects a path that is neither circle nor polyline   path.kind must be circle or polyline
+PASS  rejects a cut that does not reach its own arc length   the last sample is wider than a cell
+PASS  the checksum sees an edited world time (source.tMyr)   e1ab49e90e4ba922 vs ef76e0e9199b3efa
+PASS  the checksum sees an edited epoch (source.epochMa)   ac83fbf6c984839f vs ef76e0e9199b3efa
+PASS  the checksum sees an edited seed (source.gridSeed)   5c8118366132f491 vs ef76e0e9199b3efa
+PASS  the checksum sees an edited source commit   36037fec0b4783eb vs ef76e0e9199b3efa
+PASS  the checksum sees an edited license line   98a7a8f882ab4415 vs ef76e0e9199b3efa
+PASS  the checksum sees an edited arc length (path.arcKm)   252a8c88d10016e7 vs ef76e0e9199b3efa
+
+E. the fit into the section
+PASS  one column per crossed cell fits colCap 768 at L5 and L6   198 / 400 <= 768
+PASS  L7 (811 cells) does not fit and must be resampled onto columns   811 > 768
+PASS  plate runs survive the cut as intervals   29 runs over 811 cells
+PASS  the narrowest-run merge brings the runs under plateCap 32   29 runs after 0 merges
+PASS  the box filter onto 512 columns conserves the thickness integral   rel 1.19e-7  got 651465888.7919263 m*km  want 651465888.7919261
+PASS  the box filter onto 128 columns conserves the thickness integral   rel 7.15e-7  got 651465888.7919254 m*km  want 651465888.7919261
+PASS  the box filter onto 1024 columns conserves the thickness integral   rel 8.34e-7  got 651465888.7919253 m*km  want 651465888.7919261
+INFO  source resolution vs section columns   L6 402 cells at 100 km -> 512 columns at 78 km
+
+F. the path block (both sides label the cut from the same block)
+PASS  s = 0 is the point the user clicked   0.000000000, 0.000000000
+PASS  a quarter of a northbound circle is the pole   90.000000 deg
+PASS  the full circle comes back to the click   -0.000000, 0.000000
+PASS  an equatorial cut walks east the whole way round   0 backwards steps, 360.000000 deg of longitude
+PASS  a polyline cut runs vertex to vertex   60.0000, 90.0000
+
+  total 0.2 s
+
+ALL PASS (63 checks)

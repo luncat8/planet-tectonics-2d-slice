@@ -1,0 +1,65 @@
+  section seed: the cut, mapped onto the section (js/section-seed.js, mapping v2)
+  (packs from experiments/pack-fixture.js; the page half is experiments/section-pack.js)
+
+
+A. §4.3.4 the surface is the one the cut named
+PASS  the cut is laid without a refusal   
+PASS  every column of the pinned cut stands where the cut said (1e-3 m)   max 9.09e-13 m at column 2 of 512
+PASS  and that is the model reading its own stacks, not a number parked in z   profile(0) twice: identity 9.09e-13 m, hash stable
+PASS  no column of a closed cut is left to the model (0 ghosts, nothing outside)   ghosts in the cut, nCol 512
+PASS  the widths are the section’s own (nothing was stretched to the cut)   max |colW - w0|, w0 78.183933 km
+
+B. §4.3.5 the ledger closes: what the cut carries is what the columns hold
+PASS  seeded crust equals the cut’s crust, absolutely (closed cut: no tail)   abs 7.32e-4  got 988692889402.9845 m3/m  want 988692889402.9838
+PASS  map-equivalent is 1 for a closed cut, and it is the same statement, as a ratio   1.000000000000001
+PASS  the ledger is a measured pair, not a promise (both masses are on SEED)   988692889403 of 988692889403 m3/m
+INFO  why 512 columns and a box filter (§4.3.1): the cut’s cells are 202 km, a column is 78 km, so one column per crossed cell would leave   198 of 512 columns holding a sample and 314 carrying nothing, with w0 moving from 78 km to 202 km (every tuned constant carries w0)
+
+C. §4.3.3 the assumptions are counted, and counted outside the hash
+PASS  the mapping version travels with the capture   v2
+PASS  seed beds carry the cut's age as formation time, not a second unit   every bed = t0 − colAge at lay() with t = 120.5 Myr
+PASS  every named line is a finite non-negative number   sedimentAge subMohoThermal lithosphereDepth plumeDefault mobileAbsent overCollapse overCollapseVol shortPlateMerge clampedSpan discardedNormalVelocity seaDatumDisplay bndCollapsed bndLost edgeFallback gapColumns outsideCut tailArcKm tailVol reconciled diverged divergedAtImport fresh retired
+PASS  the lines the pack can be checked against are right   vp>vt 17 of the samples, mobile load 512, beds from t0 510
+PASS  nothing in the assumption record reaches the state hash   hash before and after writing S.recon
+PASS  the plate count is the pack’s runs after the cap, and the merges are booked   runs 12 → plates 12 (merged 0)
+PASS  plates are contiguous runs of one id, and every column belongs to one   12 plates, 12 starts
+
+D. §4.3.3 the kinematics the cut says, in the signs the model reads
+INFO  the seams, by type   6 divergent, 6 convergent, 0 whose sign contradicts the cut, 0 the cut left neutral
+PASS  a seeded boundary agrees with the velocity the cut carries (nothing to re-sign)   every edge was read out of the pack’s own vt, so classify has nothing to correct
+PASS  the classifier agrees one frame later (it is not fighting the seeding)   frame 1 classify: 0 of 12 edges changed type
+PASS  the flow the mantle gives the plates is the one the cut carried (mean per plate)   plate speeds are the cut’s, within a few per cent of the fastest
+
+E. §4.3.4 what the clock costs on the first frame
+INFO  the control (the engine’s own default planet, same frame)   3377.0 m
+PASS  one frame at 10 kyr costs the seeded view no more than it costs a fresh planet   seeded first frame 74.6 m; the plan’s absolute bound would condemn both
+INFO  after 100 frames   t 121.500 Myr, nCol 512 → 512, seeded crust 988.673e9 m3/m (was 988.693e9)
+PASS  no column is consumed in the first Myr (100 frames at 10 kyr)   the topology stays shut while the cut is still the cut
+PASS  the identity is a frame-0 statement, and the clock is allowed to move the surface   frame 0 7.5e+1 m, then it evolves
+PASS  a seeded boundary has no history, so the topology stays shut for P.evAge Myr   nCol unchanged for 199 frames (evAge 2 Myr)
+INFO  the first Myr, boundaries   2 of 12 seams changed, every one to what the recomputed relN names (frame 1 changed none, §D)
+PASS  and the seams that do change within the first Myr are the plate solve, not the mapping   a seeded seam is re-signed only when the flow the section grows says so
+
+F. §4.4 the two run modes, and a refusal that touches nothing
+PASS  a closed cut: 512 columns, no tail, the clock allowed   nCut 512 scale 0.999999340
+PASS  a window: whole columns from the start of the cut, the leftover arc booked as tail   nCut 158 tail 46.9 km, arcs not stretched: scale 1
+PASS  and the window’s ledger closes on the tail it booked   abs 6.10e-5  got 264789600000.00006 m3/m  want 264789600000
+PASS  the arc the window left outside its last column is a hole the model does not fill   354 columns outside the cut, all empty
+PASS  a cut longer than the wrap is refused before a single field is written   a window of 45000 km is longer than the section wrap of 40030 km, and only a closed cut may be scaled to it
+PASS  so is an arc too short to hold three columns, and a window may not be scaled   the cut covers 1 whole section columns; a section needs three to hold a boundary and a margin on each side of it
+
+G. the same cut, laid twice, and the seed’s one job
+PASS  the mapping is deterministic in the pack (same bytes, same state)   3077211745 twice
+PASS  the seed changes the noise and the mantle, not the crust the cut carried   hash differs, crust identical to a cubic metre
+INFO  a different clock start is a different world, not a different map   t 0 vs t 120.5: ages and lid differ
+
+H. a cut the section cannot represent at its own resolution
+PASS  L7 (811 samples, 39 runs): capped to plateCap, with the merges and the losers booked   runs 39 → 32 plates, 7 merges, 6 crossings inside one plate
+PASS  and the identity still holds, because the resample is the same rule at any density   max 9.09e-13 m
+PASS  as does the ledger   abs 3.66e-4  got 939501580474.3536 m3/m  want 939501580474.354
+PASS  the coarse cut (64 samples over 512 columns) is the other end of the same rule   identity and ledger at 625 km cells
+PASS  a rejected measurement preserves the active mapping metadata
+
+  total 1.4 s
+
+ALL PASS (36 checks)

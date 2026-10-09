@@ -1,0 +1,20 @@
+PASS  seed 1: continental quantile unchanged
+PASS  seed 1: coast has thinned felsic over mafic margin
+PASS  seed 2: continental quantile unchanged
+PASS  seed 2: coast has thinned felsic over mafic margin
+PASS  seed 19: continental quantile unchanged
+PASS  seed 19: coast has thinned felsic over mafic margin
+PASS  seed 12345: continental quantile unchanged
+PASS  seed 12345: coast has thinned felsic over mafic margin
+PASS  margin taper wraps at the seam
+PASS  def: Moho uses the same interpolation as surface   7.275957614183426e-12
+PASS  def: display interpolation never mutates beds or mass
+PASS  ovw: Moho uses the same interpolation as surface   7.275957614183426e-12
+PASS  ovw: display interpolation never mutates beds or mass
+PASS  cru: Moho uses the same interpolation as surface   1.4551915228366852e-11
+PASS  cru: display interpolation never mutates beds or mass
+PASS  bas: Moho uses the same interpolation as surface   1.4551915228366852e-11
+PASS  bas: display interpolation never mutates beds or mass
+PASS  the four preset keys select four distinct windows
+
+ALL PASS (18 checks)

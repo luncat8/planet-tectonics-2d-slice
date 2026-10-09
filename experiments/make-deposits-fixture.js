@@ -2,10 +2,12 @@
 // counterpart's own code. Run it only when the pinned upstream commit or the extraction
 // changes; the fixture is checked in so experiments/deposits.js needs no upstream tree.
 //
-//   node experiments/make-deposits-fixture.js [path-to-planet-geotectonics]
+//   node experiments/make-deposits-fixture.js [path-to-planet-geotectonics] [output.json]
 //
 // The path defaults to $UPSTREAM or /tmp/up; the tree must be checked out at the commit
-// port/PORT.json pins. The fixture records that commit and the sha256 of the upstream file,
+// port/PORT.json pins. The output defaults to the checked-in fixture; pass a temp path to
+// regenerate beside it without touching the committed file (experiments/isomorphism.js
+// does exactly that). The fixture records that commit and the sha256 of the upstream file,
 // so a replay that passes is a statement about a known byte sequence, not about "upstream".
 'use strict';
 var fs = require('fs');
@@ -120,7 +122,7 @@ fixture.host = [
 	return { hFel: t[0], hMaf: t[1], hSed: t[2], out: Extract.host(st, 0) };
 });
 
-var out = path.join(root, 'experiments', 'fixtures', 'deposits-draws.json');
+var out = process.argv[3] || path.join(root, 'experiments', 'fixtures', 'deposits-draws.json');
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, JSON.stringify(fixture, null, '\t') + '\n');
 console.log('wrote ' + out + ' from ' + file + ' @ ' + commit);

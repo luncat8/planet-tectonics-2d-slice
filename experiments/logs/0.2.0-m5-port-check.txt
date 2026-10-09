@@ -1,0 +1,23 @@
+
+A. the manifest
+PASS  the manifest pins the upstream commit the plan was read against   d909476
+PASS  the manifest lists at least the slice format   3 files
+
+B. the shared files
+PASS  port/slice-format.js: the sha256 is the manifest's (byte-identical, both sides)   941f2617265e7298eef78f274e19f9bc0ef06b1ad8aaf1d337612de121dd7118
+PASS  port/slice-format.js: LF endings (a CRLF byte is a drift byte)   17.1 KB
+PASS  port/slice-format.js: pure (no grid, page or DOM reference)   no DOM globals
+PASS  port/slice-format.js: loads under node and exports one namespace   FORMAT VERSION R_KM HOSTS EDGE GLOBE_EDGE HEAD TEXT
+PASS  port/deposit-models.js: the sha256 is the manifest's (byte-identical, both sides)   9f10887285891fb6cec86dcb47cf818d2fabea37152b3b2394934de5d31f74cb
+PASS  port/deposit-models.js: LF endings (a CRLF byte is a drift byte)   3.1 KB
+PASS  port/deposit-models.js: pure (no grid, page or DOM reference)   no DOM globals
+PASS  port/deposit-models.js: loads under node and exports one namespace   version tileN slots maxExtentM truncationSigma potentialFloor families
+PASS  port/deposit-economics.js: the sha256 is the manifest's (byte-identical, both sides)   97008fa9e8b6681d7ce98a1c5196e1d1b2e2d22c615e1e1565f2c3d919876140
+PASS  port/deposit-economics.js: LF endings (a CRLF byte is a drift byte)   3.1 KB
+PASS  port/deposit-economics.js: pure (no grid, page or DOM reference)   no DOM globals
+PASS  port/deposit-economics.js: loads under node and exports one namespace   version currency year prices recovery payability miningCostPerTonneOre processingCostPerTonneOre
+
+C. the directory is the manifest
+PASS  every shared file on disk is in the manifest (nothing unlisted, nothing stale)   port/deposit-economics.js port/deposit-models.js port/slice-format.js
+
+ALL PASS (15 checks)

@@ -14,6 +14,7 @@
 var lib = require('./lib.js'), M = lib.mods, check = lib.check;
 var COUP = M.coupling, SP = require('../port/slice-format.js');
 var S = M.state, P = M.params, SIM = M.sim, SEED = M['section-seed'], COL = M.columns, SURF = M.surface, GEO = M.geom;
+var MAG = M.magma, ERUPT = M.erupt, CP = M.checkpoint;
 var FIX = require('./pack-fixture.js');
 var CLOG = require('../js/core-log.js');
 var KM = 1000;
@@ -705,5 +706,128 @@ check.ok('a snapshot reconciles the open path without joining across its start/e
 	S.edge[openN - 1] === P.EDGE.none && S.edgeRPlate[openN - 1] === -1,
 	windowApplied || openN + ' columns, ' + windowDeltas.matched + ' joined, max ' +
 	windowDeltas.dMax.toExponential(2) + ' m, terminal edge ' + S.edge[openN - 1]);
+
+// ---------------------------------------------------------------- 0.2.0 M5: an active vent through restore and a C4 import
+// The M2/M4 worklogs left this open: a C4 import landing on a section whose vent is
+// mid-eruption, restored through a checkpoint first -- the same door the contact gate's
+// combined-clock runs use (real crust with K7 write-back queued). What must hold: the
+// restore is bit-identical with the eruption mid-flight, the import edits the vent's
+// host column without disturbing the vent's bookkeeping, the continued eruption drains
+// its queues into the edited column, and the per-lithology ledger -- melt in transit
+// included -- closes. The ledger identity is read two ways, because the import is an
+// external exchange the per-lithology ledger does not book (it is booked in S.recon):
+// absolutely from ledger zero (the layout) to the import moment, and as deltas across
+// the 400 frames after the import.
+check.section('L. an active vent survives checkpoint restore and a C4 import');
+laid = SEED.layout(pack0, { seed: P.seed, t: pack0.source.tMyr, Tm: P.Tm0 });
+if (laid) throw new Error(laid);
+var massZero = S.mass().slice();   // ledger zero: every led* line is 0 right after layout
+SIM.t = pack0.source.tMyr; SIM.cool();
+P.sl.geo = GLOBE_YR; P.sl.erupt = 14400;
+SIM.setGeo(GLOBE_YR);
+SIM.run(40);
+// the vent lifecycle, built through the real doors (save-bench.js's recipe): chamber
+// supply -> birth -> metered drain -> toy feed, packets airborne, write-back queued
+var vc = 0, vv = -1, vf = 0;
+while (vc < S.nCol && S.colGhost[vc]) vc++;
+MAG.add(S, vc, P.VbirthM2 * 1.6, false);
+while (S.volc[vc] < 0 && vf++ < 60) MAG.k7(S, 0.05, SIM.t, SIM.Tm);
+vv = S.volc[vc];
+check.ok('a charged chamber births its vent on the column', vv >= 0 && S.venCol[vv] === vc, 'vent ' + vv);
+S.venGas[vv] = 0.9;
+vf = 0;
+while (vf++ < 60 && !(S.prN[vv] > 0 && S.venCol[vv] >= 0 && ERUPT.mass(vv) > 0)) {
+	if (S.colChamber[vc] + S.venV[vv] < P.VbirthM2) MAG.add(S, vc, P.VbirthM2, false);
+	MAG.k7(S, 0.05, SIM.t, SIM.Tm);
+}
+check.ok('import moment: airborne packets over a live, still-feeding vent',
+	S.prN[vv] > 0 && S.venCol[vv] >= 0 && S.venToyIn[vv] > 0,
+	S.prN[vv] + ' packets, ' + S.venToyIn[vv].toFixed(1) + ' cells2 fed');
+check.ok('import moment: melt is in transit in the toy', ERUPT.mass(vv) > 0,
+	ERUPT.mass(vv).toFixed(3) + ' cells2 in transit');
+// the ledger closes absolutely from ledger zero to here: frames, the vent's birth,
+// production, write-back and the melt still in transit are all booked
+var worstAbs = 0, absName = '';
+var namesV = ['sed', 'fel', 'maf', 'teph', 'lava', 'sill'];
+for (vf = 0; vf < P.LITH.n; vf++) {
+	var lhsA = S.mass()[vf] + S.ledCons[vf] + S.ledDelam[vf] + S.ledMixOut[vf];
+	var rhsA = massZero[vf] + S.ledProd[vf] + S.ledMixIn[vf];
+	var errA = Math.abs(lhsA - rhsA) / Math.max(1, rhsA);
+	if (errA > worstAbs) { worstAbs = errA; absName = namesV[vf]; }
+}
+check.ok('the per-lithology ledger closes from ledger zero to the import moment',
+	worstAbs < 1e-12, 'max relative ' + worstAbs.toExponential(2) + (absName ? ' (' + absName + ')' : ''));
+var venCol0 = S.venCol[vv], hTot0 = S.hTot[venCol0];
+var venV0 = S.venV[vv], q0 = S.venLava[vv] + S.venTephra[vv], prN0 = S.prN[vv], toy0 = ERUPT.mass(vv);
+var chamberSum0 = 0, ci0;
+for (ci0 = 0; ci0 < S.nCol; ci0++) chamberSum0 += S.colChamber[ci0];
+var jsonV = JSON.stringify(CP.saveSession(), null, 1), hSaveV = S.hash();
+CP.loadSession(jsonV);
+check.ok('the checkpoint restores bit-identically with the eruption mid-flight',
+	S.hash() === hSaveV && S.prN[vv] > 0 && S.venCol[vv] === venCol0 && ERUPT.mass(vv) > 0,
+	'hash ' + S.hash() + ', vent ' + vv + ' at column ' + venCol0);
+// a growth message over the vent's own column: the import edits the host's beds while
+// the vent holds queues and packets against it
+var ventPack = SEED.exportSection({ pack: 'coupling-apply-vent' });
+var ventMsg = COUP.fromPack(ventPack, { pathChecksum: pathId });
+var ventGrow = copy(ventMsg), growV = 250, growVolV = 0;
+for (i = 0; i < ventGrow.crust.length; i++) {
+	ventGrow.crust[i].hFelM += growV;
+	growVolV += growV * (ventGrow.crust[i].s1Km - ventGrow.crust[i].s0Km) * KM;
+}
+ventGrow.ledger.fel = SP.round(ventGrow.ledger.fel + growVolV);
+ventGrow.checksum = COUP.checksum(ventGrow);
+var appliedV = COUP.apply(S, ventGrow, applyOpts(S.nCol));
+check.ok('the growth import applies cleanly over the live vent', appliedV === '',
+	appliedV === '' ? 'applied' : appliedV);
+check.ok('the import books its identity exactly',
+	Math.abs(COUP.last.identityError) / Math.max(1, COUP.last.after) < 1e-9,
+	'relative ' + (Math.abs(COUP.last.identityError) / Math.max(1, COUP.last.after)).toExponential(2));
+check.ok('the import edits the vent\'s host column by the message\'s growth',
+	S.venCol[vv] === venCol0 && Math.abs(S.hTot[venCol0] - hTot0 - growV) < 1,
+	'hTot ' + (hTot0 / 1e3).toFixed(3) + ' -> ' + (S.hTot[venCol0] / 1e3).toFixed(3) +
+	' km at column ' + venCol0 + ' (growth ' + growV + ' m within the message\'s metre quantization)');
+check.ok('the import leaves the vent\'s own bookkeeping untouched',
+	S.venV[vv] === venV0 && S.venLava[vv] + S.venTephra[vv] === q0 && S.prN[vv] === prN0 &&
+	ERUPT.mass(vv) === toy0,
+	'chamber ' + venV0.toFixed(3) + ', queues ' + q0.toFixed(6) + ', packets ' + prN0);
+var chamberSum1 = 0;
+for (ci0 = 0; ci0 < S.nCol; ci0++) chamberSum1 += S.colChamber[ci0];
+check.ok('the import moves no melt (the chamber supply is a move inside the crust)',
+	Math.abs(chamberSum1 - chamberSum0) < 1e-9,
+	'chambers ' + (chamberSum0 / 1e6).toFixed(3) + ' -> ' + (chamberSum1 / 1e6).toFixed(3) + 'e6 m2');
+// the eruption continues on the edited column: queues drain, the edifice stock stays a
+// retained stock, every buffer stays finite, and the ledger closes as deltas
+var snapMass = S.mass().slice();
+var snapCons = S.ledCons.slice(), snapDelam = S.ledDelam.slice(), snapMixOut = S.ledMixOut.slice();
+var snapProd = S.ledProd.slice(), snapMixIn = S.ledMixIn.slice();
+SIM.run(400);
+var drained = true, finiteV = true, stockOk = true, vKey;
+for (vKey = 0; vKey < S.nVen; vKey++) {
+	if (S.venLava[vKey] + S.venTephra[vKey] > 1e-9) drained = false;
+	if (S.venEdV[vKey] < 0 || S.venEdV[vKey] > S.venToyOut[vKey] * P.toyCellM2 * (1 + 1e-9)) stockOk = false;
+}
+for (vKey in S) {
+	var sv = S[vKey];
+	if (!ArrayBuffer.isView(sv)) continue;
+	for (i = 0; i < sv.length; i++) if (!Number.isFinite(sv[i])) { finiteV = false; break; }
+	if (!finiteV) break;
+}
+check.ok('the continued eruption drains every vent\'s write-back queues', drained,
+	'vent ' + vv + ' queues ' + (S.venLava[vv] + S.venTephra[vv]).toFixed(6) + ' cells2');
+check.ok('the edifice record stays a retained stock, never a source', stockOk,
+	'venEdV ' + S.venEdV[vv].toFixed(0) + ' m2 of ' + (S.venToyOut[vv] * P.toyCellM2).toFixed(0) + ' m2 placed');
+check.ok('the restored-and-imported section keeps every buffer finite', finiteV);
+var worstLed = 0, ledName = '';
+for (vKey = 0; vKey < P.LITH.n; vKey++) {
+	var dm = S.mass()[vKey] - snapMass[vKey];
+	var dl = (S.ledCons[vKey] - snapCons[vKey]) + (S.ledDelam[vKey] - snapDelam[vKey]) +
+		(S.ledMixOut[vKey] - snapMixOut[vKey]);
+	var dr = (S.ledProd[vKey] - snapProd[vKey]) + (S.ledMixIn[vKey] - snapMixIn[vKey]);
+	var err = Math.abs(dm + dl - dr) / Math.max(1, Math.abs(dr), Math.abs(dm));
+	if (err > worstLed) { worstLed = err; ledName = namesV[vKey]; }
+}
+check.ok('the per-lithology ledger closes across the 400 frames after the import',
+	worstLed < 1e-12, 'max relative ' + worstLed.toExponential(2) + (ledName ? ' (' + ledName + ')' : ''));
 
 check.done();
