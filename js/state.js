@@ -135,19 +135,28 @@ var S = {
 	// vents + the toy boxes (design §2.3, §5)
 	nVen: 0,
 	venX: new Float64Array(P.maxVents),
-	venW: new Float64Array(P.maxVents),
-	venH: new Float64Array(P.maxVents),
+	venW: new Float64Array(P.maxVents),     // edifice width at the one-cell contour, m
+	venH: new Float64Array(P.maxVents),     // edifice peak above its flank, m
 	venStyle: new Int8Array(P.maxVents),    // 0 strato, 1 shield, 2 fissure, 3 arc
 	venV: new Float64Array(P.maxVents),     // chamber volume, m2 per unit depth (design §9 km3 x P.venKm3M2)
 	venGas: new Float64Array(P.maxVents),
-	venCol: new Int32Array(P.maxVents),     // owning column or -1
+	venCol: new Int32Array(P.maxVents),     // active vent owner or -1
+	venEdCol: new Int32Array(P.maxVents),   // solid edifice owner; survives vent death until slot reuse
 	venIdle: new Float64Array(P.maxVents),  // Myr with an empty chamber
 	venFlux: new Float64Array(P.maxVents),  // toy cells^2 per eruptive s, set by the vent's schedule
 	venBlast: new Uint8Array(P.maxVents),   // this frame's feed: 1 gas blast, 0 effusive (MAG.k7's call)
-	venToyIn: new Float64Array(P.maxVents), // toy cells^2 supplied to the box, cumulative (ledger)
-	// per toy column: total height, solid (frozen) height, molten temperature, lithology
+	venToyIn: new Float64Array(P.maxVents), // toy cells^2 supplied to the box, cumulative
+	venToyOut: new Float64Array(P.maxVents), // toy cells^2 handed to the stack, cumulative
+	venLava: new Float64Array(P.maxVents),  // frozen lava awaiting K7 write-back, cells^2
+	venTephra: new Float64Array(P.maxVents), // landed / frozen ash awaiting K7 write-back, cells^2
+	venEdV: new Float64Array(P.maxVents),   // remaining edifice rock, m2; already owned by the stack
+	venLast: new Float64Array(P.maxVents),  // last feed on the section clock, Myr
+	venRng: new Uint32Array(P.maxVents),    // packet stream; never advances the geological RNG
+	// The solid part is geometry, not a second mass reservoir after write-back.
+	// per toy column: total height, solid height, molten ash, temperature, surface lithology
 	toyH: new Float64Array(P.maxVents * P.ventBoxW),
 	toyFz: new Float64Array(P.maxVents * P.ventBoxW),
+	toyAsh: new Float64Array(P.maxVents * P.ventBoxW), // tephra within the molten part, cells^2
 	toyLi: new Int8Array(P.maxVents * P.ventBoxW),
 	toyT: new Float64Array(P.maxVents * P.ventBoxW),
 	// ballistic packets: launch x and height, velocity, age (s), mass (cells^2)
@@ -231,6 +240,7 @@ S.reset = function () {
 	this.edgeRPlate.fill(-1);
 	this.volc.fill(-1);
 	this.venCol.fill(-1);
+	this.venEdCol.fill(-1);
 	sViews = null;
 	RNG.seed(P.seed);
 	this.layout();
@@ -301,13 +311,14 @@ S.mass = function () {
 		rn = this.ribNL[i];
 		for (k = 0; k < rn; k++) m[this.ribLLi[rb + k]] += this.ribLTh[rb + k];
 	}
-	// Vent chambers and toy boxes hold melt in transit to write-back (0.2.0 M2). The
-	// chamber is already m2; the box is toy cells^2 and crosses the one jacobian to be
-	// counted here, so the ledger identity holds across the schedule's drain.
+	// Only untransferred toy mass belongs to the melt account. Frozen pile heights
+	// remain as sub-column geometry; their mass is in the stack, never counted twice.
 	for (i = 0; i < this.nVen; i++) {
-		m[P.LITH.maf] += this.venV[i];
+		m[P.LITH.maf] += this.venV[i] + (this.venLava[i] + this.venTephra[i]) * P.toyCellM2;
 		rb = i * P.ventBoxW;
-		for (x = 0; x < P.ventBoxW; x++) m[P.LITH.maf] += this.toyH[rb + x] * P.toyCellM2;
+		for (x = 0; x < P.ventBoxW; x++) {
+			m[P.LITH.maf] += (this.toyH[rb + x] - this.toyFz[rb + x]) * P.toyCellM2;
+		}
 		rb = i * P.partCap;
 		for (x = 0; x < this.prN[i]; x++) m[P.LITH.maf] += this.prL[rb + x] * P.toyCellM2;
 	}

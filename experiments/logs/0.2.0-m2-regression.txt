@@ -1,0 +1,210 @@
+0.2.0 M2 regression summary
+All commands below returned exit 0.
+Extended contact verdicts (including reds) are in 0.2.0-m2-contact-audit.txt.
+
+node experiments/erupt-bench.js
+PASS  an already frozen cell cannot freeze a second time
+
+M0.7 determinism and idle
+PASS  same flux, same box: bitwise-identical state   381626202 381626202
+PASS  zero flux, empty box: nothing changes
+
+ALL PASS (25 checks)
+
+node experiments/vent-bench.js
+PASS  same setup, same feed: bitwise-identical state
+
+M1.11 live run: vents birth from real supply
+INFO  seed 1 after 200 Myr   vent slots 3, alive 0, idle ledger 0 m2, lost 0 m2
+PASS  at least one vent births from the engine's own supply   nVen 3
+
+ALL PASS (38 checks)
+
+node experiments/edifice-bench.js
+
+M2.10 active write-back checkpoint and bitwise resume at two zooms
+PASS  the checkpoint includes hot ash / molten lava, airborne packets and edifice ownership
+PASS  active eruption resumes bitwise at a different zoom (1000 frames)
+PASS  same seed / feed / zoom reproduces the same full checkpoint
+
+ALL PASS (73 checks)
+
+node experiments/checkpoint.js
+PASS  a quarter-column shift of the cut moves the reconstruction orders past the cap   7143 m vs the round-trip's 14.8 m
+PASS  forward simulation after self round-trip stays inside the spin-up bound   imported 6.58e-2 vs fresh section 6.57e-2 over 1000 frames
+PASS  a re-cut of the engine's own widened ring closes the mass identity to 1e-9   rel 1.19e-16
+PASS  the re-cut invents no crust: every column stays inside the ring's own range   worst outside by 0.000 m of 0.0..80.1 km
+INFO  the re-cut residual of the evolved ring   max thickness move 73181 m over 512 columns, ring 78.2 km nominal
+
+ALL PASS (52 checks)
+
+node experiments/core-log.js
+PASS  a stale checksum is a mismatch, whatever else the body says
+
+E. determinism, and the state an observation never touches
+PASS  the same cut and seed log the same checksum   cb2fcbc73ca50f06
+PASS  building, committing and resetting never touch the section state   the observation stays an observation (0.4.0-sync-plan.md §1.8): the state hash is unaffected
+
+ALL PASS (33 checks)
+
+node experiments/coupling.js
+PASS  changed crust ages reapply the lid once at import without erasing deeper thermal anomalies   512 columns aged; 6551 fan cells changed; lid calls 1
+PASS  the age-lid rebuild leaves section plume objects intact   6 plumes retained
+
+K. open-window imports respect both endpoints
+PASS  a snapshot reconciles the open path without joining across its start/end   158 columns, 158 joined, max 0.00e+0 m, terminal edge 0
+
+ALL PASS (124 checks)
+
+node experiments/coupling-link.js
+PASS  manual is a declared rung, not a send failure disguised as live
+PASS  stop removes both listeners and returns the channel to idle
+
+D. restricted file storage is a normal fallback
+PASS  a throwing localStorage getter selects the manual rung without throwing
+
+ALL PASS (11 checks)
+
+node experiments/section-pack.js
+PASS  the empty Cut-from option drops the cut, its world and its overlay   cut cleared
+PASS  and an id the bundle does not have is a message from the same control   no bundled pack 'no-such-pack' — paste a cut, or open ?start=section&pack=<id>
+PASS  and the next draw is the idle strip again
+
+  total 10.2 s
+
+ALL PASS (84 checks)
+
+node experiments/section-seed.js
+PASS  as does the ledger   abs 3.66e-4  got 939501580474.3536 m3/m  want 939501580474.354
+PASS  the coarse cut (64 samples over 512 columns) is the other end of the same rule   identity and ledger at 625 km cells
+PASS  a rejected measurement preserves the active mapping metadata
+
+  total 1.2 s
+
+ALL PASS (36 checks)
+
+node experiments/section-bundle.js
+PASS  the same cut and seed lay the same section twice (one state, one hash)   4159592834
+PASS  the second transect (Tethys, 437 samples) lays a different section   L 4159592834 vs 3530180598
+PASS  the present-day transect opens the same way, at t 0   cut at t 0 Myr · plate clock off · the cut as it stands   earth-gc0 | link: clipboard/file
+PASS  an unknown id is a visible refusal on the real page too   no bundled pack 'not-a-bundle' — paste a cut, or open ?start=section&pack=<id>
+
+ALL PASS (52 checks)
+  (bundle gate in 3081 ms)
+
+node experiments/deposits.js
+
+G. the economics scenario screens, it does not generate
+PASS  screening a body twice is the same answer   7 of 22 scenario-positive
+PASS  the scenario reports value, opex, capex and a reason
+PASS  the priors and the scenario are the shared versions
+
+ALL PASS (76 checks)
+
+node experiments/slice-cut.js
+PASS  the full circle comes back to the click   -0.000000, 0.000000
+PASS  an equatorial cut walks east the whole way round   0 backwards steps, 360.000000 deg of longitude
+PASS  a polyline cut runs vertex to vertex   60.0000, 90.0000
+
+  total 0.3 s
+
+ALL PASS (63 checks)
+
+node experiments/section-check.js
+PASS  cru: Moho uses the same interpolation as surface   1.4551915228366852e-11
+PASS  cru: display interpolation never mutates beds or mass
+PASS  bas: Moho uses the same interpolation as surface   1.4551915228366852e-11
+PASS  bas: display interpolation never mutates beds or mass
+PASS  the four preset keys select four distinct windows
+
+ALL PASS (18 checks)
+
+node experiments/scale-check.js
+PASS  cone 40 km wide = 17.1 px   rel 3.33e-2  got 17.066666666666666 px  want 17.1
+PASS  cone 4 km tall = 16.1 px   rel 3.70e-2  got 16.136959350438797 px  want 16.1
+PASS  50 m bed = 0.20 px at x1   rel 4.87e-4  got 0.20048699724362448 px  want 0.2
+PASS  overview 465 m/px at y = 0   abs 4.19e-1  got 465.41860485035653 m  want 465
+PASS  overview cone still 17.1 px wide   rel 3.33e-2  got 17.066666666666666 px  want 17.1
+
+ALL PASS (21 checks)
+
+node experiments/view-check.js
+PASS  window exactly one wrap wide   0/1280 wrong owners
+PASS  non-uniform perturbed columns   0/1280 wrong owners
+PASS  non-uniform perturbed columns x40   0/1280 wrong owners
+PASS  a single column   0/1280 wrong owners
+PASS  zero columns -> every pixel unowned
+
+ALL PASS (119 checks)
+
+node experiments/m2-check.js
+
+M2.1 determinism and finite state at every kernel boundary
+PASS  all buffers finite after every kernel (20 frames)
+PASS  same seed and dtGeo are bitwise deterministic (300 frames)
+PASS  sim frame (K0-K6) within the 4 ms budget   1.861 ms/frame, min of 7x20
+
+ALL PASS (324 checks)
+
+node experiments/m3-check.js
+PASS  k6 marks unconformity when bevel buried (wet 50% case)   bevel 0 layers 3
+
+M3.5 zero dt is no-op and finite state
+PASS  zero geo time leaves state unchanged (M3)   3042818418 vs 3042818418
+PASS  all buffers finite after 20 frames with erosion
+
+ALL PASS (22 checks)
+
+node experiments/smoke.js
+
+E. determinism
+PASS  two fresh 1000-frame runs are bit-identical   695726787|3778018669,3219501952,3788145402,3620133688 vs 695726787|3778018669,3219501952,3788145402,3620133688
+PASS  a different seed diverges   577240617|609912025,1928876461,1656449407,1884274477
+PASS  the state hash is not degenerate   695726787|3778018669,3219501952,3788145402,3620133688
+
+ALL PASS (75 checks)
+
+node experiments/ledger-check.js
+M4.4 full pipeline: transformation accounting
+PASS  the complete K0-K9 pipeline keeps the per-lithology ledger closed   worst rel 1.07e-15
+PASS  eroded rock is booked as a rock -> sediment transformation   out 0.58e6 m3 in 0.58e6 m3
+PASS  one erosion step stays inside the ledger   worst rel 2.42e-16
+PASS  a spilled chamber is booked as mafic -> sill   sill 0.040e9 m3, maf -0.040e9 m3, worst rel 3.47e-16
+
+ALL PASS (19 checks)
+
+node experiments/raster-bench.js
+PASS  a one-node anomaly renders as a smooth tent   max step 1 bins over 1279 pixel pairs
+PASS  the anomaly still reaches the hot bin   peak bin 7 of 7
+PASS  and spreads past the cell it belongs to   267 lit px between half and three quarters of a pitch
+PASS  the tent falls off monotonically with distance from the cell
+PASS  its hottest pixel is the one nearest the cell centre   peak bin 7 at 0.00 pitch from the centre
+
+ALL PASS (40 checks)
+
+node experiments/port-check.js
+PASS  port/deposit-economics.js: pure (no grid, page or DOM reference)   no DOM globals
+PASS  port/deposit-economics.js: loads under node and exports one namespace   version currency year prices recovery payability miningCostPerTonneOre processingCostPerTonneOre
+
+C. the directory is the manifest
+PASS  every shared file on disk is in the manifest (nothing unlisted, nothing stale)   port/deposit-economics.js port/deposit-models.js port/slice-format.js
+
+ALL PASS (15 checks)
+
+node experiments/pt-ui.js
+PASS  the deep key lights deep
+PASS  the mantle key lights mantle again
+PASS  a wheel zoom puts the whole group out
+PASS  a drag leaves the preset too   cx 7250.0
+PASS  the probe reads the field under the cursor   "x 1750 km   y 2294 km   eta 4.742   T 1.000"
+
+ALL PASS (37 checks)
+
+Optional native pixel diagnostic: node experiments/edifice-visual.js
+Actual Canvas2D overlay, 16 domains: best 1.808 ms; 1.998, 1.840, 4.442, 1.860, 1.808
+Overlay changed 3590 pixels; 0 changes more than 1 px below the profile.
+PASS  native Canvas2D paints the actual 16-domain overlay
+PASS  the clip prevents any changes more than 1 px below the profile
+PASS  native rendering cannot mutate the world
+
+ALL PASS (3 checks)

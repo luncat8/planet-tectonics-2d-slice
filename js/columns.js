@@ -93,7 +93,7 @@ COL.insertVol = function (st, c, lith, vol, age, flags, place) {
 	// Consolidated and still full: the bed has nowhere to go. It is not lost -- it is
 	// booked as consumed, so a stack that will not consolidate cannot quietly eat the
 	// ledger (measured: the crust simply stopped appearing at layerCap).
-	if (n >= LC) { S.ledCons[lith] += vol; return 0; }
+	if (n >= LC) { st.ledCons[lith] += vol * st.colW[c]; return 0; }
 	for (k = n - 1; k >= p; k--) {
 		st.layTh[b + k + 1] = st.layTh[b + k];
 		st.layLi[b + k + 1] = st.layLi[b + k];
@@ -654,8 +654,10 @@ COL.gather = function (n) {
 		src.set(this.layerViews[f][n]);
 	}
 	for (i = 0; i < S.nDep; i++) if (S.depCol[i] >= 0) S.depCol[i] = inv[S.depCol[i]];
-	for (i = 0; i < S.nVen; i++) if (S.venCol[i] >= 0) S.venCol[i] = inv[S.venCol[i]];
-	for (i = 0; i < n; i++) if (S.volc[i] >= 0) S.venCol[S.volc[i]] = i;
+	for (i = 0; i < S.nVen; i++) {
+		if (S.venCol[i] >= 0) S.venCol[i] = inv[S.venCol[i]];
+		if (S.venEdCol[i] >= 0) S.venEdCol[i] = inv[S.venEdCol[i]];
+	}
 };
 
 COL.plates = function () {
@@ -1298,11 +1300,17 @@ COL.k4 = function (st, dt, t, Tm) {
 		}
 	}
 	for (i = 0; i < st.nVen; i++) {
+		k = st.venEdCol[i];
+		if (k >= 0 && (self.dead[k] || st.colGhost[k])) st.venEdCol[i] = -1;
 		if (st.venCol[i] < 0) continue;
 		if (self.dead[st.venCol[i]] || st.colGhost[st.venCol[i]]) {
-			j = self.redirect[st.venCol[i]];
-			if (st.volc[j] < 0) { st.volc[j] = i; st.venCol[i] = j; }
-			else st.venCol[i] = -1;
+			k = st.venCol[i]; j = self.redirect[k];
+			if (st.volc[k] === i) st.volc[k] = -1;
+			if (j !== k && !self.dead[j] && !st.colGhost[j] && st.volc[j] < 0) {
+				var toy = (typeof module !== 'undefined' && module.exports) ? require('./erupt.js') : root.COLERUPT;
+				toy.rehome(i, j);
+				st.volc[j] = i; st.venCol[i] = j; st.venEdCol[i] = j;
+			} else st.venCol[i] = -1;
 		}
 	}
 	for (i = 0; i < n + appended; i++) if (self.dead[i] !== 1) st.sortOrder[count++] = i;

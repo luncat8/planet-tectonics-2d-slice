@@ -100,8 +100,8 @@ check.section('M0.4 packet pool is bounded and overflow stays molten');
 reset(0);
 S.venBlast[0] = 1;
 S.venFlux[0] = 0.5;
-S.prN[0] = P.partCap;                 // the pool is full before the feed
-ERUPT.step(60, 0);
+S.prN[0] = P.partCap;                 // exercise the feed before flight frees slots
+ERUPT.feed(0, 60);
 check.ok('a full packet pool does not drop mass', ledgerError(0) < 1e-9, 'rel ' + ledgerError(0).toExponential(2));
 check.ok('the pool never exceeds its capacity', S.prN[0] <= P.partCap, 'n ' + S.prN[0]);
 S.venFlux[0] = 0;
@@ -114,7 +114,7 @@ var b0 = ERUPT.at(0, 0), x, m0, sum2 = [];
 for (x = 0; x < W; x++) S.toyH[b0 + x] = 0;
 S.toyH[b0 + (W >> 1)] = 12;
 S.toyFz[b0 + (W >> 1)] = 12;
-S.venToyIn[0] = 12;
+S.venToyIn[0] = 12; S.venLava[0] = 12; // frozen, not yet written back
 m0 = ERUPT.mass(0);
 var neverNegative = true, sumDown = true, prev = 0, cur, h2 = 0;
 for (x = 0; x < W; x++) h2 += S.toyH[b0 + x] * S.toyH[b0 + x];
@@ -129,13 +129,30 @@ for (f = 0; f < 60; f++) {
 	if (h2 > prev + 1e-9) sumDown = false;
 	prev = h2;
 }
-check.ok('slumping keeps the mass exact', Math.abs(ERUPT.mass(0) - m0) < 1e-9 * m0, 'mass ' + ERUPT.mass(0));
+var pileM = 0;
+for (x = 0; x < W; x++) pileM += S.toyH[b0 + x];
+check.ok('slumping keeps both geometry and untransferred mass exact',
+	Math.abs(ERUPT.mass(0) - m0) < 1e-9 * m0 && Math.abs(pileM - m0) < 1e-9 * m0,
+	'pending ' + ERUPT.mass(0) + ', pile ' + pileM);
 check.ok('no column ever goes negative', neverNegative);
 check.ok('slumping never raises the pile energy (sum of h^2)', sumDown);
 var pr = profile(0);
 check.ok('a steep spike relaxes to the repose slope', pr.step <= tanR + 0.05, 'step ' + pr.step.toFixed(3));
 
-check.section('M0.6 determinism and idle');
+check.section('M0.6 cooling uses seconds, not the secular Myr parameter');
+reset(0);
+ERUPT.addMolten(ERUPT.at(0, W >> 1), 20, 1, P.LITH.lava);
+ERUPT.cool(0, 900);
+check.near('900 s cools by exp(-900/1800), independently of tauCool',
+	S.toyT[W >> 1], Math.exp(-0.5), 1e-12);
+check.ok('geological tauCool stays 2500 Myr', P.tauCool === 2500 && P.toyCoolSec === 1800);
+ERUPT.cool(0, 100);
+check.ok('crossing Tsol freezes once and queues the exact lava mass',
+	S.toyFz[W >> 1] === 20 && S.venLava[0] === 20 && ERUPT.mass(0) === 20);
+ERUPT.cool(0, 1000);
+check.ok('an already frozen cell cannot freeze a second time', S.venLava[0] === 20);
+
+check.section('M0.7 determinism and idle');
 function run() {
 	reset(0);
 	S.venBlast[0] = 1; S.venFlux[0] = 0.03;

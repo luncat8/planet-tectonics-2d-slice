@@ -23,6 +23,15 @@ SURF.elev = function (i) {
 	return P.zRef + buoy - therm + S.zDyn[i];
 };
 
+SURF.refreshSlope = function (i) {
+	var n = S.nCol;
+	if (n < 3) return;
+	var im = i > 0 ? i - 1 : n - 1, ip = i + 1 < n ? i + 1 : 0;
+	var dx = S.colX[ip] - S.colX[im];
+	if (dx <= 0) dx += P.wrap;
+	S.slope[i] = dx > 0 ? (S.z[ip] - S.z[im]) / dx : 0;
+};
+
 SURF.profile = function (dt) {
 	var n = S.nCol, i, im, ip, dx;
 	for (i = 0; i < n; i++) {
@@ -123,6 +132,7 @@ SURF.k6 = function (st, dt, t) {
 	var FLAG_WET = P.FLAG.wet, FLAG_UNCONF = P.FLAG.unconf;
 	var LITH_SED = P.LITH.sed;
 	var Cmod = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COLCOLUMNS;
+	var toy = st.nVen > 0 ? ((typeof module !== 'undefined' && module.exports) ? require('./erupt.js') : root.COLERUPT) : null;
 	var CLASS = Cmod.CLASS;
 	// local aliases
 	var colNL = st.colNL, layTh = st.layTh, layLi = st.layLi, layFl = st.layFl, layAg = st.layAg;
@@ -179,6 +189,7 @@ SURF.k6 = function (st, dt, t) {
 		// mass grows with no source entry and the per-lithology ledger breaks as soon as
 		// the surface kernel runs (measured: +110e9 m3 of sediment at 150 Myr).
 		var remLi = Cmod.removedLi, l;
+		if (toy) toy.erode(i, (remLi[P.LITH.lava] + remLi[P.LITH.tephra]) * w);
 		for (l = 0; l < P.LITH.n; l++) {
 			if (l === LITH_SED || remLi[l] === 0) continue;
 			var volM = remLi[l] * w;
@@ -307,6 +318,7 @@ SURF.k6 = function (st, dt, t) {
 			}
 		}
 		changed[j] = th > 0 ? 1 : 0;
+		if (toy && th > 0) toy.bury(j, th);
 		var plaThDep = totP / wj;
 		colPla[j] += plaThDep;
 		if (plaThDep > 0) {

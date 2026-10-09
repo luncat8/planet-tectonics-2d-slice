@@ -32,7 +32,9 @@
 //           felsic, volcanic, sediment) and an inversion is a bed whose rank falls
 //           against the one below it.
 //
-// Run: node experiments/contact-audit.js [frames=3000] [seed=1] [kyrPerFrame=50] [png] [--strict]
+// Run: node experiments/contact-audit.js [frames=3000] [seed=1] [kyrPerFrame=50] [png] [--strict] [--tectonic-only]
+// --tectonic-only pauses K7's eruptive clock for the 0.2.0 §0 surface-budget contract;
+// the default remains a combined-clock stress run, with the same unchanged gates.
 'use strict';
 var L = require('./lib.js');
 var P = L.mods.params, S = L.mods.state, GEO = L.mods.geom, SIM = L.mods.sim, COL = L.mods.columns, CRU = L.mods.crust;
@@ -43,6 +45,7 @@ for (var a = 0; a < arg.length; a++) (arg[a].charAt(0) === '-' ? flags : pos).pu
 var frames = +(pos[0] || 3000), seed = +(pos[1] || 1);
 var kyr = +(pos[2] || 50), png = pos[3] && pos[3].charAt(0) !== '-' ? pos[3] : null;
 var strict = flags.indexOf('--strict') >= 0;
+var tectonicOnly = flags.indexOf('--tectonic-only') >= 0;
 // --detail names the failures a strict run reports: which R2 samples fail and what they
 // are (a pair beside a draining record, a narrow belt, a belt broken by a hole), the
 // stage chain that takes a column over the R3 ceiling, and both ends of each R5 repeat
@@ -67,7 +70,9 @@ L.check.ok('the R1 window is anchored at the event, not at its bucket',
 	'event at ' + (probeEvent / 1e3).toFixed(1) + ' km, bucket left edge ' +
 	(Math.floor(probeEvent / bucketW) * bucketW / 1e3).toFixed(1) + ' km');
 
+if (tectonicOnly) P.sl.erupt = 0;
 L.check.planet(seed, 'def');
+L.check.info('clock scope', tectonicOnly ? 'tectonic only (eruptive slider paused)' : 'combined clocks (K7 write-back included)');
 SIM.setGeo(kyr * 1e3);
 
 var RANK = P.LITH_RANK;

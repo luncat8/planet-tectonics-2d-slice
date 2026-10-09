@@ -9,6 +9,7 @@ var L = require('./lib.js');
 var check = L.check;
 var P = L.mods.params, GEO = L.mods.geom, S = L.mods.state;
 var COL = L.mods.columns, RNDR = L.mods.render, SIM = L.mods.sim;
+var ERUPT_FIX = require('./erupt-fixture.js');
 
 check.section('A. layer stacks (design §2.2)');
 SIM.reset();
@@ -116,9 +117,11 @@ function median(xs) {
 // by an unpredictable factor (measured here: the same code at 3.9 ms and at 6.5 ms
 // minutes apart, with no change in between). The minimum is the least-contended sample,
 // which is what "does this code fit the budget" means. The median is printed too.
-function bench(name, preset) {
+function bench(name, preset, cx) {
 	GEO.setPreset(preset);
+	if (cx !== undefined) GEO.lookAt(cx);
 	GEO.sync();
+	GEO.buildColLUT(S);
 	var i, t, ms = [];
 	for (i = 0; i < 30; i++) RNDR.body(px, w, h);
 	for (var r = 0; r < 15; r++) {
@@ -145,6 +148,14 @@ RNDR.body(px, w, h);
 var painted = 0;
 for (var q = 0; q < px.length; q++) if (px[q] !== 0) painted++;
 check.ok('every pixel is painted', painted === px.length, painted + '/' + px.length);
+
+var benchGeo = P.sl.geo;
+ERUPT_FIX.active16();
+check.ok('the eruptive raster fixture has 16 active vents with real write-back beds',
+	S.nVen === P.maxVents && S.venCol.subarray(0, S.nVen).every(function (col) { return col >= 0; }) &&
+	S.venEdV.subarray(0, S.nVen).every(function (volume) { return volume > 0; }));
+bench('default + 16 live vents', 'def', S.colX[115]);
+P.sl.geo = benchGeo; SIM.setGeo(benchGeo);
 
 var t = process.hrtime.bigint();
 for (var n = 0; n < 2000; n++) GEO.buildColLUT(S);

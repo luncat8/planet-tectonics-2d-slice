@@ -15,13 +15,17 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | 0.1.8 | collision arrest: the absorbed-shortening brake (`S.edgeShort`, checkpoint v4) closes R4; R1/R2/R5 left open only as measurement definitions on one 100 kyr leg | `archive/0.1.8-plan.md`, `archive/0.1.8-worklog.md` | 0.1.7 flow laws and corrected audit |
 | 0.1.9 | the two contact measurements: R1's site window anchored at the event and its background taken from the quiet-frame yardstick, R2's needle shoulder read over the belt's own neighbourhood | `0.1.9-plan.md`, `archive/0.1.9-worklog.md` | 0.1.8's M3 matrix |
 | 0.2.x | column engine: eruptives, deposits, extraction; page chrome (pause/step/reset) uses E1/E3 | `0.2.0-plan.md` | — |
-
-0.2.0 status: M0 (the toy box, headless, `js/erupt.js`) and M1 (the vent lifecycle and the
-second clock, `MAG.k7`) landed, `archive/0.2.0-m0-worklog.md`, `archive/0.2.0-m1-worklog.md`.
 | 0.3.x | particle engine P3+ (melt, eruptions, contact) | `0.3.0-plan.md`, `0.3.0-p3-plan.md` | — |
 | 0.4.0 | sync/exchange: provenance, deposits core, water, checkpoint, section pack | `0.4.0-sync-plan.md` | — |
 | 0.4.1 | the cut: draw a line on the globe, copy/save, paste/load, reconstruct a section | `0.4.1-plan.md` | 0.4.0's format (`port/slice-format.js`, M0 done) |
 | 0.9.0 | globe page hosts the section as a library; live sync is C3+C4 | `0.9.0-draft-sync.md`, `0.4.1-plan.md` §8 | 0.4.1 M1–M2; C1 on the column engine |
+
+0.2.0 status: M0 (the headless toy box), M1 (vent lifecycle / second clock) and M2
+(stack write-back / visible edifice) implemented; worklogs are
+`archive/0.2.0-m0-worklog.md`, `archive/0.2.0-m1-worklog.md`,
+`archive/0.2.0-m2-worklog.md`. M2's dedicated acceptance and raster budget pass; the
+whole-series regression is not all-green: long 100 kyr contact legs retain R2/R5 reds,
+with original-HEAD comparisons in the M2 log. Next feature: M3 deposits / extraction.
 
 A release may pull a milestone out of 0.2 or 0.3 when it is the piece that makes a page usable;
 it never re-specifies a kernel.

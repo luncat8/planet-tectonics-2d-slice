@@ -850,3 +850,28 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   the kernel boundary (`venKm3M2`) with the constant chosen from a measured supply probe
   (chamber plateau 5e5 m2 in 500 Myr) keeps the design's table intact and the lifecycle live;
   the strict 1e9 reading would never birth a vent in a run.
+
+
+## 0.2.0 M2 — write-back and the edifice (archive/0.2.0-m2-worklog.md)
+
+- **A retained shape is not a second reservoir.** Keep `toyFz` for drawing, but count only
+  molten height, packets and unwritten outputs as melt. Freeze / landing enqueues once;
+  write-back reclassifies the original mafic production into lava / tephra. Slump must
+  transport the solid fraction and molten ash separately or it will re-freeze written rock.
+- **Do not share names or random draws across clocks.** `toyCoolSec` is seconds;
+  `tauCool` stays Myr. Packet velocities use a checkpointed per-vent RNG, not the plate /
+  plume stream: changing an FX timestep must not consume a future geological draw.
+- **Consumed ownership is bidirectional.** Clear the old `volc` inverse before redirecting
+  `venCol`; do not reconstruct it from a stale inverse after sorting. Remap dormant
+  `venEdCol` too. A redirected vent carries transit, not its source column's written rock.
+- **Retirement must not wait for the other slider.** Fill before testing `Vdie`, then use
+  `tauVent` alone. Settle / write the residual, return the chamber dribble, and retain the
+  cold shape; an invalid orphan books only its still-untransferred melt as consumed.
+- **Do not hide a red by changing its scope.** Contact-audit's default still runs both
+  clocks and uses unchanged gates. `--tectonic-only` explicitly pauses eruptions; compare
+  both modes and reproduce the original HEAD before naming a regression. The 40-frame R5
+  gate is not the same interval as `P.evAge` at 100 kyr/frame.
+- **An overlay recording test is not a pixel test.** `edifice-bench` captures paths and
+  proves that the toy, not record scalars, controls them. Optional `edifice-visual` uses a
+  real native Canvas2D to check below-profile leaks and make inspectable images in ignored
+  `scratch/`; it adds no browser runtime dependency.

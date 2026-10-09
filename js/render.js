@@ -201,6 +201,7 @@ RNDR.present = function () { this.ctx.putImageData(this.img, 0, 0); };
 
 RNDR.overlay = function () {
 	this.overlayProfile();
+	this.overlayVents();
 	this.overlayPlates();
 	this.overlayM4();
 	if (this.mesh) this.overlayMesh();
@@ -297,14 +298,136 @@ RNDR.overlayM4 = function () {
 			c.stroke();
 		}
 	}
-	// A small warm marker keeps a supplied arc column readable before M5 creates vents.
+	// Supplied arc columns without a vent still get a warm supply marker.
 	for (i = 0; i < S.nCol; i++) {
-		if (!(S.colMeltArc[i] > 0)) continue;
+		if (!(S.colMeltArc[i] > 0) || S.volc[i] >= 0) continue;
 		x = this.screenX(S.colX[i]);
 		y = GEO.sy(S.z[i]);
 		c.beginPath(); c.arc(x, y, 3, 0, 6.283185307179586);
 		c.fillStyle = 'rgba(255,150,65,0.9)'; c.fill();
 	}
+};
+
+// --- eruptive geometry: the box is the only shape source -------------------------
+RNDR.VENT_FILL = ['rgba(160,145,126,0.98)', 'rgba(137,65,49,0.98)'];
+RNDR.VENT_STYLE = ['strato', 'shield', 'fissure', 'arc'];
+
+RNDR.profileAt = function (sx) {
+	var x = Math.max(0, Math.min(this.profY.length - 1, sx - 0.5)), i = x | 0;
+	var next = i + 1 < this.profY.length ? i + 1 : i;
+	return this.profY[i] + (this.profY[next] - this.profY[i]) * (x - i);
+};
+
+RNDR.pileAt = function (v, x) {
+	var W = P.ventBoxW, b = v * W, i, f;
+	if (x <= -0.5 || x >= W - 0.5) return 0;
+	if (x < 0) return S.toyH[b] * (x + 0.5) * 2;
+	if (x > W - 1) return S.toyH[b + W - 1] * (W - 0.5 - x) * 2;
+	i = x | 0; f = x - i;
+	return S.toyH[b + i] + (S.toyH[b + Math.min(W - 1, i + 1)] - S.toyH[b + i]) * f;
+};
+
+// A cell's two half-faces interpolate the same height map as pileAt(). Batching
+// all faces of one lithology avoids a draw call per cell and a second cone model.
+RNDR.ventFace = function (v, x, sx, glow) {
+	var c = this.ctx, W = P.ventBoxW, b = v * W, k = b + x;
+	var scale = P.toyCellX / GEO.kx, mid = sx + (x - (W >> 1)) * scale;
+	var left = mid - scale * 0.5, right = mid + scale * 0.5;
+	var h = S.toyH[k], hl = x > 0 ? (S.toyH[k - 1] + h) * 0.5 : 0;
+	var hr = x + 1 < W ? (h + S.toyH[k + 1]) * 0.5 : 0;
+	var fl = glow && x > 0 ? (S.toyFz[k - 1] + S.toyFz[k]) * 0.5 : 0;
+	var fr = glow && x + 1 < W ? (S.toyFz[k] + S.toyFz[k + 1]) * 0.5 : 0;
+	var zl = this.profileAt(left), zm = this.profileAt(mid), zr = this.profileAt(right);
+	c.moveTo(left, GEO.sy(zl + hl * P.toyCellY));
+	c.lineTo(mid, GEO.sy(zm + h * P.toyCellY));
+	c.lineTo(right, GEO.sy(zr + hr * P.toyCellY));
+	c.lineTo(right, GEO.sy(zr + fr * P.toyCellY));
+	c.lineTo(mid, GEO.sy(zm + (glow ? S.toyFz[k] : 0) * P.toyCellY));
+	c.lineTo(left, GEO.sy(zl + fl * P.toyCellY));
+	c.closePath();
+};
+
+RNDR.ventPile = function (v, sx) {
+	var c = this.ctx, b = v * P.ventBoxW, x, li, lith, any;
+	for (li = 0; li < 2; li++) {
+		lith = li === 0 ? P.LITH.tephra : P.LITH.lava;
+		c.beginPath(); any = false;
+		for (x = 0; x < P.ventBoxW; x++) {
+			if (!(S.toyH[b + x] > 0) || S.toyLi[b + x] !== lith) continue;
+			this.ventFace(v, x, sx, false); any = true;
+		}
+		if (any) { c.fillStyle = this.VENT_FILL[li]; c.fill(); }
+	}
+	c.beginPath(); any = false;
+	for (x = 0; x < P.ventBoxW; x++) {
+		if (!(S.toyH[b + x] > S.toyFz[b + x]) || S.toyT[b + x] < P.Tsol) continue;
+		this.ventFace(v, x, sx, true); any = true;
+	}
+	if (any) { c.fillStyle = 'rgba(255,135,45,0.7)'; c.fill(); }
+};
+
+RNDR.ventPackets = function (v, sx) {
+	var c = this.ctx, b = v * P.partCap, base = this.profileAt(sx);
+	var scale = P.toyCellX / GEO.kx, conduit = (P.ventBoxW >> 1) + 0.5;
+	var i, k, t, prev, x, y;
+	if (S.prN[v] === 0) return;
+	c.beginPath();
+	for (i = 0; i < S.prN[v]; i++) {
+		k = b + i; t = S.prT[k]; prev = Math.max(0, t - 2);
+		x = sx + (S.prX[k] + S.prVX[k] * prev - conduit) * scale;
+		y = S.prY[k] + S.prVY[k] * prev - 0.5 * P.toyG * prev * prev;
+		c.moveTo(x, GEO.sy(base + y * P.toyCellY));
+		x = sx + (S.prX[k] + S.prVX[k] * t - conduit) * scale;
+		y = S.prY[k] + S.prVY[k] * t - 0.5 * P.toyG * t * t;
+		c.lineTo(x, GEO.sy(base + y * P.toyCellY));
+	}
+	c.lineWidth = 1.5; c.strokeStyle = 'rgba(255,190,100,0.95)'; c.stroke();
+	// Ash halos use those same packet positions, not a separately animated plume.
+	c.beginPath();
+	for (i = 0; i < S.prN[v]; i++) {
+		k = b + i; t = S.prT[k];
+		x = sx + (S.prX[k] + S.prVX[k] * t - conduit) * scale;
+		y = S.prY[k] + S.prVY[k] * t - 0.5 * P.toyG * t * t;
+		y = GEO.sy(base + y * P.toyCellY);
+		c.moveTo(x + 3, y); c.arc(x, y, 3, 0, 6.283185307179586);
+	}
+	c.fillStyle = 'rgba(195,180,160,0.1)'; c.fill();
+};
+
+RNDR.overlayVents = function () {
+	if (S.nVen === 0 || S.nCol === 0) return;
+	var c = this.ctx, v, px, sx, centre, col;
+	var lap = P.wrap / GEO.kx, half = P.ventBoxW * P.toyCellX / GEO.kx * 0.5;
+	c.save(); c.beginPath();
+	c.moveTo(0, 0); c.lineTo(this.w, 0);
+	for (px = this.w - 1; px >= 0; px--) c.lineTo(px + 0.5, GEO.sy(this.profY[px]));
+	c.lineTo(0, GEO.sy(this.profY[0])); c.closePath(); c.clip();
+	for (v = 0; v < S.nVen; v++) {
+		col = S.venEdCol[v];
+		if (col < 0 || S.colGhost[col]) continue;
+		centre = this.screenX(S.venX[v]);
+		for (sx = centre - lap; sx - half < this.w; sx += lap) {
+			if (sx + half <= 0) continue;
+			this.ventPile(v, sx); this.ventPackets(v, sx);
+		}
+	}
+	c.restore();
+};
+
+// The cone may reach left of its owning column's LUT interval. Probe its actual
+// owner and ordinary volcanic bed rather than calling this visible solid "air".
+RNDR.probeVent = function (wx, y, top) {
+	var v, c, dx, x, h, best = -1, high = 0;
+	if (y <= top) return -1;
+	for (v = 0; v < S.nVen; v++) {
+		c = S.venEdCol[v];
+		if (c < 0 || S.colGhost[c]) continue;
+		dx = GEO.wrapX(wx - S.venX[v] + P.wrap * 0.5) - P.wrap * 0.5;
+		x = dx / P.toyCellX + (P.ventBoxW >> 1); h = this.pileAt(v, x) * P.toyCellY;
+		if (y > top + h || h <= high) continue;
+		best = v; high = h;
+	}
+	return best;
 };
 
 // Plate boundaries (design §7): one glyph per classified edge on the profile — ridge
@@ -502,6 +625,16 @@ RNDR.updateProbe = function (mx, my) {
 	top += relief * (S.noise[c] + (S.noise[next] - S.noise[c]) * f);
 	var height = S.hDraw[c] + (S.hDraw[next] - S.hDraw[c]) * f;
 	var stretch = S.hDraw[c] > 0 ? height / S.hDraw[c] : 1;
+	var vent = this.probeVent(GEO.lutX[mx | 0], y, top), vk = -1, vi, vb, dx, vx, lith;
+	if (vent >= 0) {
+		c = S.venEdCol[vent]; vb = c * P.layerCap;
+		dx = GEO.wrapX(GEO.lutX[mx | 0] - S.venX[vent] + P.wrap * 0.5) - P.wrap * 0.5;
+		vx = Math.max(0, Math.min(P.ventBoxW - 1, Math.round(dx / P.toyCellX + (P.ventBoxW >> 1))));
+		lith = S.toyLi[vent * P.ventBoxW + vx];
+		for (vi = S.colNL[c] - 1; vi >= 0; vi--) {
+			if (S.layLi[vb + vi] === lith) { vk = vi; break; }
+		}
+	}
 	var s = 'col ' + c + '  plate ' + S.colPlate[c] + '  age ' + S.colAge[c].toFixed(1) + ' Myr';
 	s += '\nu ' + (S.colU[c] / 1e4).toFixed(2) + ' cm/yr  ext ' + S.ext[c].toFixed(3) + '/Myr' + this.edgeText(c);
 	s += '\nz ' + (top / 1e3).toFixed(2) + ' km  hTot ' + (S.hTot[c] / 1e3).toFixed(1) + ' km';
@@ -510,12 +643,18 @@ RNDR.updateProbe = function (mx, my) {
 	s += '\nload ' + S.colLoad[c].toFixed(1) + ' m  pla ' + S.colPla[c].toFixed(1) + ' m  oPla ' + S.oPla[c].toFixed(3);
 	s += '  oBas ' + S.oBas[c].toFixed(3) + (S.colBevel[c] ? '  [beveled]' : '');
 	s += '\nchamber ' + S.colChamber[c].toFixed(0) + ' m2  recycle ' + S.colRecycle[c].toFixed(0) + ' m2';
-	if (y > top) {
+	if (vent >= 0) {
+		s += '\nedifice ' + this.VENT_STYLE[S.venStyle[vent]] + (S.venCol[vent] < 0 ? ' dormant' : '') +
+			'  ' + S.venEdV[vent].toFixed(0) +
+			' m2  last ' + S.venLast[vent].toFixed(2) + ' Myr';
+		if (vk < 0) { this.setProbe(s + '\n' + this.LITH_NAME[lith] + ' in transit'); return; }
+	}
+	if (vent < 0 && y > top) {
 		s += '\n' + (y > 0 ? 'air' : 'water') + '  ' + ((y - top) | 0) + ' m above surface';
 		this.setProbe(s);
 		return;
 	}
-	var k = COL.layerAt(c, (top - y) / stretch);
+	var k = vent >= 0 ? vk : COL.layerAt(c, (top - y) / stretch);
 	if (k < 0) {
 		var r = GEO.rowOf(y);
 		var cell = r < 0 ? 0 : GEO.cellOf(r, GEO.lutX[mx | 0]);

@@ -58,13 +58,12 @@ var rngAt = paramAt + 3 * 8;
 var threw = false;
 try { CP.load(saved.subarray(0, saved.length - 1)); } catch (e) { threw = true; }
 check.ok('refuses truncated data', threw && equal(saved, CP.save()));
-// VERSION 6 added the vent schedule fields (0.2.0 M1): a version-5 file has no record for
-// them and is refused by its version word before any table or length check can be misread.
+// M2 adds write-back queues, molten ash and edifice records; previous schemas are refused.
 var older = saved.slice();
 new Uint32Array(older.buffer)[1] = CP.VERSION - 1;
 threw = false;
-try { CP.load(older); } catch (e) { threw = e instanceof RangeError && /version 5/.test(e.message); }
-check.ok('refuses the previous checkpoint version atomically', CP.VERSION === 6 && threw && equal(saved, CP.save()));
+try { CP.load(older); } catch (e) { threw = e instanceof RangeError && /version 6/.test(e.message); }
+check.ok('refuses the previous checkpoint version atomically', CP.VERSION === 7 && threw && equal(saved, CP.save()));
 var shortAt = Math.min(5, S.nCol - 1), shortHash;
 S.edgeShort[shortAt] = 78125;
 shortHash = S.hash();

@@ -18,7 +18,7 @@ function fresh() {
 // a vent on column c in slot v, as the birth would leave it (chamber still on the column)
 function giveVent(c, v) {
 	S.volc[c] = v;
-	S.venCol[v] = c;
+	S.venCol[v] = c; S.venEdCol[v] = c;
 	S.venX[v] = S.colX[c];
 	S.venW[v] = 0;
 	S.venH[v] = 0;
@@ -36,17 +36,19 @@ function boxM2(v) { return ERUPT.mass(v) * P.toyCellM2; }
 
 // every melt reservoir the vent system owns, in m2: column chambers, vent chambers, boxes
 function meltM2() {
-	var m = 0, i, b, x;
+	var m = 0, i;
 	for (i = 0; i < S.nCol; i++) m += S.colChamber[i];
-	for (i = 0; i < S.nVen; i++) {
-		m += S.venV[i];
-		b = i * P.ventBoxW;
-		for (x = 0; x < P.ventBoxW; x++) m += S.toyH[b + x] * P.toyCellM2;
-		b = i * P.partCap;
-		for (x = 0; x < S.prN[i]; x++) m += S.prL[b + x] * P.toyCellM2;
-	}
+	for (i = 0; i < S.nVen; i++) m += S.venV[i] + boxM2(i);
 	return m;
 }
+
+function storedM2() {
+	var m = meltM2();
+	for (var i = 0; i < S.nVen; i++) m += S.venEdV[i];
+	return m;
+}
+
+function supplied(v) { return ERUPT.mass(v) + S.venToyOut[v]; }
 
 function alive() {
 	var n = 0, v;
@@ -101,10 +103,10 @@ S.venGas[0] = 0.1;
 S.venV[0] = P.VchM2;
 var m0 = meltM2(), f, honest = true, started = false, frames = 0, pv, pb, drain, got;
 for (f = 0; f < 10; f++) {
-	pv = S.venV[0]; pb = ERUPT.mass(0);
+	pv = S.venV[0]; pb = supplied(0);
 	MAG.k7(S, 0.05, 0, 1);
 	drain = pv - S.venV[0];
-	got = ERUPT.mass(0) - pb;
+	got = supplied(0) - pb;
 	if (f === 0 && S.venFlux[0] > 0) started = true;
 	if (S.venFlux[0] > 0) frames++;
 	if (Math.abs(drain - got * P.toyCellM2) > 1e-9 * Math.max(1, drain)) honest = false;
@@ -113,12 +115,12 @@ check.ok('the eruption starts on the first frame', started);
 check.ok('the eruption stops once the chamber is empty', S.venFlux[0] === 0 && S.venV[0] === 0,
 	'flux ' + S.venFlux[0] + ' venV ' + S.venV[0]);
 check.ok('chamber out = toy in on every frame (rel <= 1e-9)', honest);
-check.ok('chamber + box is conserved over the episode (rel <= 1e-12)',
-	Math.abs(meltM2() - m0) / m0 < 1e-12, 'rel ' + (Math.abs(meltM2() - m0) / m0).toExponential(2));
-check.ok('S.mass() sees chamber, vent and box melt alike',
+check.ok('chamber + toy + written stack is conserved over the episode (rel <= 1e-12)',
+	Math.abs(storedM2() - m0) / m0 < 1e-12, 'rel ' + (Math.abs(storedM2() - m0) / m0).toExponential(2));
+check.ok('S.mass() counts only untransferred melt, not the solid profile twice',
 	Math.abs(S.mass()[P.LITH.maf] - meltM2()) / m0 < 1e-12);
 check.info('full-chamber drain', frames + ' frames of ' + P.sl.erupt + ' s = ' +
-	(frames * P.sl.erupt / 3600).toFixed(2) + ' h eruptive, box holds ' + boxM2(0).toExponential(3) + ' m2');
+	(frames * P.sl.erupt / 3600).toFixed(2) + ' h eruptive, stack holds ' + S.venEdV[0].toExponential(3) + ' m2');
 
 check.section('M1.4 an empty chamber idles the toy');
 fresh();
@@ -156,7 +158,7 @@ check.ok('gas below gasBlast is effusive at any pressure',
 check.near('the blast drains by gas and the effusive drain by (1-gas)',
 	blast.drain / effusive.drain, 0.5 / 0.9, 0.01);
 
-check.section('M1.6 death: tauVent of an empty chamber, and the pile guard');
+check.section('M1.6 death: tauVent alone, even with a paused hot pile');
 fresh();
 P.sl.erupt = 0;
 giveVent(100, 0);
@@ -173,10 +175,11 @@ check.ok('the dead slot is reused by the next birth', S.venCol[0] === 100 && S.n
 fresh();
 P.sl.erupt = 0;
 giveVent(100, 0);
-S.toyH[24] = 3; // a pile still waiting for write-back (0.2.0 M2)
+S.toyH[24] = 3; S.toyT[24] = 1; S.toyLi[24] = P.LITH.lava;
 for (f = 0; f < 60; f++) MAG.k7(S, 0.05, 0, 1);
-check.ok('a vent with an unwritten-back pile stays alive (a dead vent may leak no state)',
-	S.venCol[0] === 100, 'after 3 Myr');
+check.ok('tauVent retires the vent without a pile guard and writes its residual first',
+	S.venCol[0] === -1 && S.volc[100] === -1 && ERUPT.mass(0) === 0 &&
+	Math.abs(S.mass()[P.LITH.lava] - 3 * P.toyCellM2) < 1e-9 * P.toyCellM2, 'after 3 Myr');
 
 check.section('M1.7 a consumed vent books its residual');
 fresh();
@@ -236,15 +239,41 @@ S.venGas[0] = 0.5;
 var honest2 = true, gave, mGive;
 for (f = 0; f < 60; f++) {
 	S.colChamber[100] += 2e4; // fast geology feeding while the toy drains on its own clock
-	var chB = S.colChamber[100], vB = S.venV[0], bB = ERUPT.mass(0);
+	var chB = S.colChamber[100], vB = S.venV[0], bB = supplied(0);
 	MAG.k7(S, 0.2, 0, 1);
 	gave = (vB - S.venV[0]) + (chB - S.colChamber[100]);
-	mGive = (ERUPT.mass(0) - bB) * P.toyCellM2;
+	mGive = (supplied(0) - bB) * P.toyCellM2;
 	if (mGive < -1e-9 || Math.abs(gave - mGive) > 1e-9 * Math.max(1, mGive)) honest2 = false;
 }
 check.ok('no frame gives the toy mass the chamber system did not (60 mixed-clock frames)', honest2);
 
-check.section('M1.9 determinism');
+check.section('M1.9 fresh supply and orphan cleanup do not wait on clock state');
+fresh();
+P.sl.erupt = 0;
+giveVent(100, 0);
+S.venIdle[0] = P.tauVent - 0.025;
+S.colChamber[100] = P.VbirthM2;
+MAG.k7(S, 0.05, 12, 1);
+check.ok('fresh supply resets idle before the death test',
+	S.venCol[0] === 100 && S.venIdle[0] === 0 && S.venV[0] === P.VbirthM2);
+S.venCol[0] = -1; S.volc[100] = -1;
+MAG.k7(S, 0, 12, 1);
+check.ok('an orphan is reaped even with both clocks paused',
+	S.venV[0] === 0 && S.venLost === P.VbirthM2 && S.ledCons[P.LITH.maf] === P.VbirthM2);
+fresh();
+P.sl.erupt = 0;
+S.nPlm = 1; S.plmArrive[0] = 1; S.plmStr[0] = 1; S.plmX[0] = S.colX[20]; S.plmR[0] = 300e3;
+S.colChamber[21] = P.VbirthM2;
+MAG.k7(S, 0.05, 12, 1);
+check.ok('the neighbouring province column is a fissure, not a second plume head', S.venStyle[0] === 2);
+
+fresh(); giveVent(100, 0); S.venGas[0] = 0.5; S.venV[0] = P.VchM2;
+var geoRng = geoRngState();
+MAG.k7(S, 0, 12, 1);
+check.ok('ballistic FX cannot perturb the geological RNG stream', geoRngState() === geoRng && S.prN[0] > 0);
+function geoRngState() { return L.mods.rng.state().join(',') + ',' + L.mods.rng.gs + ',' + L.mods.rng.gh; }
+
+check.section('M1.10 determinism');
 function run() {
 	fresh();
 	P.sl.erupt = 1800;
@@ -259,7 +288,7 @@ function run() {
 }
 check.ok('same setup, same feed: bitwise-identical state', run() === run());
 
-check.section('M1.10 live run: vents birth from real supply');
+check.section('M1.11 live run: vents birth from real supply');
 check.planet(1, 'def');
 P.sl.erupt = 1800;
 SIM.setGeo(50e3);

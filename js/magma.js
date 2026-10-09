@@ -170,21 +170,22 @@ var MAG = {
 		return -1;
 	},
 
-	// Style fixed at birth (design §5.2): arc at the arc factory; a plume's own column
-	// builds a shield (plume-head), its province vents as a LIP fissure field; anything
+	// Style fixed at birth: arc at the arc factory; the plume's actual owner builds
+	// a shield, its province vents as a LIP fissure field; anything
 	// else that somehow holds a charged chamber is strato.
 	ventStyle: function (st, c) {
-		var p, d;
+		var p;
 		if (st.trenchDist[c] >= 1 && st.trenchDist[c] <= 3 && st.colRecycle[c] > 0) return 3;
 		p = this.plumeAt(st, c);
 		if (p < 0) return 0;
-		d = Math.abs(this.dx(st.colX[c], st.plmX[p]));
-		return d <= P.w0 ? 1 : 2;
+		return c === this.plumeColumn(st, st.plmX[p]) ? 1 : 2;
 	},
 
-	// a dead slot to reuse, else the next fresh one; nVen is the slot high-water mark
-	venSlot: function (st) {
-		for (var v = 0; v < st.nVen; v++) if (st.venCol[v] < 0) return v;
+	// Prefer the column's dormant edifice, then a dead slot, then a fresh one.
+	venSlot: function (st, c) {
+		var v;
+		for (v = 0; v < st.nVen; v++) if (st.venCol[v] < 0 && st.venEdCol[v] === c) return v;
+		for (v = 0; v < st.nVen; v++) if (st.venCol[v] < 0) return v;
 		return st.nVen < P.maxVents ? st.nVen : -1;
 	},
 
@@ -192,52 +193,59 @@ var MAG = {
 	// the vent list full the magma idles in its chamber — never dropped — and the wait
 	// is counted so a stalled planet is visible in the ledger.
 	venBirth: function (st) {
-		var n = st.nCol, c, v, style;
+		var n = st.nCol, c, v, style, sameEdifice;
 		for (c = 0; c < n; c++) {
 			if (st.colGhost[c] || st.volc[c] >= 0) continue;
 			if (!(st.colChamber[c] >= P.VbirthM2)) continue;
-			v = this.venSlot(st);
+			v = this.venSlot(st, c);
 			if (v < 0) {
 				st.meltIdle += st.colMeltArc[c] + st.colMeltPlume[c];
 				continue;
 			}
 			if (v === st.nVen) st.nVen = v + 1;
 			style = this.ventStyle(st, c);
+			sameEdifice = st.venEdCol[v] === c;
+			if (!sameEdifice) erupt().reset(v);
 			st.volc[c] = v;
-			st.venCol[v] = c;
+			st.venCol[v] = c; st.venEdCol[v] = c;
 			st.venX[v] = st.colX[c];
-			st.venW[v] = 0;
-			st.venH[v] = 0;
 			st.venStyle[v] = style;
 			st.venGas[v] = P.venGas0[style];
 			st.venV[v] = 0;
 			st.venIdle[v] = 0;
 			st.venFlux[v] = 0;
 			st.venBlast[v] = 0;
-			erupt().reset(v);
 		}
 	},
 
-	// Death (design §5.2): V stays below Vdie for tauVent Myr and, until write-back
-	// empties the box each K7 (M2), only while the box holds nothing — a dead vent must
-	// not leak the pile its slot still owns.
-	venTick: function (st, dt) {
-		var v, c;
+	// Fill before testing Vdie: fresh supply resets the geological idle interval.
+	// Reaping an orphan is bookkeeping and runs even while the plate clock is paused.
+	venTick: function (st, dt, t) {
+		var v, c, box = erupt();
 		for (v = 0; v < st.nVen; v++) {
 			c = st.venCol[v];
+			if (c >= 0 && st.colGhost[c]) {
+				if (st.volc[c] === v) st.volc[c] = -1;
+				st.venCol[v] = c = -1;
+			}
 			if (c < 0) {
-				if (st.venV[v] > 0 || erupt().mass(v) > 0) this.venReap(st, v);
+				if (st.venV[v] > 0 || box.mass(v) > 0) this.venReap(st, v);
+				else if (st.venEdCol[v] < 0 && (st.venH[v] > 0 || st.venEdV[v] > 0)) this.venClear(st, v);
 				continue;
 			}
+			this.venFill(st, v);
+			if (!(dt > 0)) continue;
 			if (st.venV[v] < P.VdieM2) st.venIdle[v] += dt; else st.venIdle[v] = 0;
-			if (st.venIdle[v] >= P.tauVent && !(erupt().mass(v) > 0)) this.venDeath(st, v);
+			if (st.venIdle[v] >= P.tauVent) this.venDeath(st, v, t);
 		}
 	},
 
-	venDeath: function (st, v) {
+	venDeath: function (st, v, t) {
 		var c = st.venCol[v];
-		st.colChamber[c] += st.venV[v]; // the last dribble goes home; nothing is dropped
-		this.venClear(st, v);
+		erupt().finish(v, t);
+		erupt().record(v);
+		st.colChamber[c] += st.venV[v];
+		this.venClear(st, v, true);
 		if (st.volc[c] === v) st.volc[c] = -1;
 	},
 
@@ -252,12 +260,14 @@ var MAG = {
 		this.venClear(st, v);
 	},
 
-	venClear: function (st, v) {
+	venClear: function (st, v, keepEdifice) {
 		st.venV[v] = 0;
 		st.venIdle[v] = 0;
 		st.venFlux[v] = 0;
 		st.venBlast[v] = 0;
 		st.venCol[v] = -1;
+		if (keepEdifice) return;
+		st.venEdCol[v] = -1;
 		erupt().reset(v);
 	},
 
@@ -289,24 +299,22 @@ var MAG = {
 		st.venFlux[v] = drain / (dtSec * P.toyCellM2);
 	},
 
-	// K7 (design §3): birth and death are geological (they tick with dtGeo); the drain
-	// and the toy run on the eruptive slider. A vent keeps its column until it dies or
-	// the column is consumed (columns.js redirects or orphans it). The slot is invoked
-	// unbound, so this kernel addresses MAG, not this.
+	// K7: geological birth / death; eruptive drain, box and write-back. Column
+	// ownership is settled by K4 before this unbound kernel runs.
 	k7: function (st, dt, t, Tm) {
-		var dtSec = P.sl.erupt, v;
-		if (dt > 0) {
-			MAG.venTick(st, dt);
-			MAG.venBirth(st);
-		}
+		var dtSec = P.sl.erupt, v, box = erupt();
+		MAG.venTick(st, dt, t);
+		if (dt > 0) MAG.venBirth(st);
 		for (v = 0; v < st.nVen; v++) {
+			if (st.venEdCol[v] >= 0) st.venX[v] = st.colX[st.venEdCol[v]];
 			if (st.venCol[v] < 0) continue;
-			st.venX[v] = st.colX[st.venCol[v]];
 			MAG.venFill(st, v);
 			MAG.venSchedule(st, v, dtSec);
-			erupt().step(dtSec, v);
+			if (st.venFlux[v] > 0) st.venLast[v] = t;
+			box.step(dtSec, v);
+			box.writeBack(v, t);
+			box.record(v);
 		}
-		void t;
 		void Tm;
 	}
 };

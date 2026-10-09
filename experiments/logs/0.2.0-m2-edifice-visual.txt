@@ -1,0 +1,7 @@
+Actual Canvas2D overlay, 16 domains: best 1.808 ms; 1.998, 1.840, 4.442, 1.860, 1.808
+Overlay changed 3590 pixels; 0 changes more than 1 px below the profile.
+PASS  native Canvas2D paints the actual 16-domain overlay
+PASS  the clip prevents any changes more than 1 px below the profile
+PASS  native rendering cannot mutate the world
+
+ALL PASS (3 checks)

@@ -83,7 +83,7 @@ var P = {
 	toyVx: 0.5,                  // lateral ejection speed, cells/s; 1 spreads a 150-cell^2 ash fan to 6 x 33 cells
 	toyVy: 3.5,                  // vertical ejection speed, cells/s
 	toyPackets: 8,               // ballistic packets per tick of an explosive feed
-	tauCool: 1800,               // s, e-folding of the molten part's temperature
+	toyCoolSec: 1800,            // eruptive s, independent of secular tauCool (Myr)
 	toyPasses: 2,                // slump passes per tick (design §5.1)
 	// time (design §1.6)
 	tauOmega: 0.5,               // Myr, plate velocity relaxation
@@ -289,8 +289,10 @@ P.crushFloor = P.crushGap * P.w0;
 P.VchM2 = P.Vch * P.venKm3M2;
 P.VbirthM2 = P.Vbirth * P.venKm3M2;
 P.VdieM2 = P.Vdie * P.venKm3M2;
-P.toyCellM2 = (P.winW / P.cw) * P.yLin *
+P.toyCellX = P.winW / P.cw;
+P.toyCellY = P.yLin *
 	(Math.asinh(P.winTop / P.yLin) - Math.asinh(P.winBot / P.yLin)) / P.ch;
+P.toyCellM2 = P.toyCellX * P.toyCellY;
 // design §5.2 rate law dV/dt = -kErupt * sqrt(V/Vbirth): this k empties a gas-free full
 // chamber in tDrain seconds of eruptive time (integrate 2*sqrt(Vch*Vbirth)/tDrain)
 P.kErupt = 2 * Math.sqrt(P.VchM2 * P.VbirthM2) / P.tDrain;
