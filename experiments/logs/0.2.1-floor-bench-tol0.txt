@@ -1,0 +1,19 @@
+
+COL.floor settles inside its pass budget on every frame
+INFO  configuration   floorTol 0, floorPass 16 (the pre-fix engine: this leg is expected to fail)
+INFO  seed 1 at 100 kyr/frame: passes used by the frame's last settle   1: 9.8%, 2: 19.2%, 3-4: 0.0%, 9-16: 70.9% (5000 frames, cap 16, 2.365 ms/frame incl. the diag sweep)
+FAIL  seed 1 at 100 kyr/frame: no settle ran out of passes   3547 of 5000 frames hit the cap; worst 16 passes
+FAIL  seed 1 at 100 kyr/frame: every ordinary contact holds its floor   worst gap 9.1560 km against the floor 9.3821 km, tolerance 9.3821
+FAIL  seed 1 at 100 kyr/frame: the K9 invariants hold on every frame   3547 red frames, first at 59
+INFO  seed 4 at 100 kyr/frame: passes used by the frame's last settle   1: 12.7%, 2: 19.2%, 9-16: 68.1% (5000 frames, cap 16, 2.363 ms/frame incl. the diag sweep)
+FAIL  seed 4 at 100 kyr/frame: no settle ran out of passes   3403 of 5000 frames hit the cap; worst 16 passes
+FAIL  seed 4 at 100 kyr/frame: every ordinary contact holds its floor   worst gap 9.3543 km against the floor 9.3821 km, tolerance 9.3821
+FAIL  seed 4 at 100 kyr/frame: the K9 invariants hold on every frame   3403 red frames, first at 58
+INFO  seed 1 at 50 kyr/frame: passes used by the frame's last settle   1: 4.2%, 2: 17.1%, 9-16: 78.7% (5000 frames, cap 16, 2.268 ms/frame incl. the diag sweep)
+FAIL  seed 1 at 50 kyr/frame: no settle ran out of passes   3933 of 5000 frames hit the cap; worst 16 passes
+FAIL  seed 1 at 50 kyr/frame: every ordinary contact holds its floor   worst gap 9.3295 km against the floor 9.3821 km, tolerance 9.3821
+FAIL  seed 1 at 50 kyr/frame: the K9 invariants hold on every frame   3933 red frames, first at 77
+FAIL  the pass budget has margin over the worst settle measured   worst 16 passes against a cap of 16
+FAIL  no leg recorded a red frame or an exhausted settle   10883 red frames, 10883 exhausted settles over 15000 frames
+
+11 / 11 FAILURES

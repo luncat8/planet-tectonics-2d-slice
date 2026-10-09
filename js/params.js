@@ -123,7 +123,10 @@ var P = {
 	rContact: 0.6,
 	gFloor: 0.12,                 // separation floor for ordinary inter-plate contacts
 	crushGap: 0.05,               // C-C conveyor floor: 3.91 km, above 30 mm/yr at 100 kyr/frame
-	floorPass: 16,                 // bound on COL.floor's settle passes; it stops early when settled
+	floorPass: 64,                 // bound on COL.floor's settle passes; it stops early when settled
+	                             // (measured: 22% of calls settle in one pass, 38% in two, and
+	                             // the worst of 11 024 calls took 22, so the cap costs nothing
+	                             // and 16 truncated the 0.24% that a squeezed plate ring needs)
 	floorTol: 0.01,                // x gFloor a ring of contacts may leave uncorrected (see COL.floor)
 	K: 3,                        // rift donors
 	minPlateCells: 24,
@@ -225,7 +228,17 @@ var P = {
 	slabDipMax: 60 * Math.PI / 180,
 	slabDissolve: 660e3,
 	slabNodeGap: 25e3,
-	kPlumeMelt: 2e4,              // m2/Myr at a normalized plume head
+	kPlumeMelt: 2e6,              // m2/Myr at a normalized plume head (20 km3/Myr at the
+	                             // committed venKm3M2, still ~1e3x below a modest real head).
+	                             // 0.2.1 melt sweep (experiments/melt-tune-sweep.js, two live
+	                             // legs at 150/300 Myr): 2e4 fed one column 2.7e5-1.4e6 m2,
+	                             // 0.5-2.5 toy cells2, so no live vent built anything (one cell
+	                             // is toyCellM2 5.8e5 m2). This rate is erupt-bench's reference
+	                             // cone, a touch smaller: pile 7.8/10.9 px tall by 21/29 px wide
+	                             // against the prescribed 10.06 x 27, edifice stock 5.2e7/1.54e8
+	                             // m2, at 0.155/0.277% of all mafic production. Half of it builds
+	                             // 17/13 px and 6x it builds 39/45 px at 13-20% of the box, so
+	                             // this is the design's 10-30 px band, not a round number.
 	plumeStart: -2e6,
 	plumeRise: 5e4,               // m/Myr at Tm0 (about 5 cm/yr)
 	plumeLifeMin: 50,

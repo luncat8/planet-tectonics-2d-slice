@@ -1001,3 +1001,34 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   cells of melt per 150 Myr against the ~50–450 cells² a design-scale cone needs), so no
   value of `Vch`/`Vbirth`/`Vdie` can reach it. Record the table, name the constant that
   *would* (`kMelt`/`kPlumeMelt`), and defer it to the release that owns the crust budget.
+
+## 0.2.1 melt supply (archive/0.2.1-melt-supply-worklog.md)
+
+- **A solver and its checker must share one tolerance.** `COL.floor` settled on exact
+  equality (`d >= min`) while `SIM.diag` judged the result against `min × (1 − floorTol)` —
+  the constant's own comment even said "see COL.floor", but only the diagnostic read it. So
+  the solver spun on a residual no reader cared about (69.9% of 10 954 calls burned a lifted
+  1024-pass cap with nothing left to fix) and, because that spin ate the budget, a genuine
+  squeeze ran out of passes inside its own floor for 90–118 frames at a time. One comparison
+  fixed both halves and made the step faster.
+- **Before blaming the constant you just changed, reproduce the red without it.** The
+  acceptance red appeared the moment `kPlumeMelt` moved, and it was not the melt: the same
+  `gap` red reproduces at the old value on a different seed (90 frames, same 9.15 km
+  signature). Changing a constant changes a trajectory, and a trajectory can walk into a
+  defect that was always there. Two legs at the old value on other seeds settled it in a
+  minute; reasoning about mass budgets would not have.
+- **Measure an iteration's pass requirement; do not guess its cap.** A max-push Jacobi
+  sweep over plates converges geometrically (ratio ~0.87 per pass here), so the cap is a
+  statement about the worst ring, not a safety margin. Have the kernel report its own pass
+  count (`COL.floorPasses`) and gate it (`floor-bench.js`: worst 27, cap 64, no call
+  exhausted) — then raising or lowering the cap is arithmetic, not judgement.
+- **A probe that patches a kernel and then calls the original measures neither.** The first
+  pass-count probe ran its own instrumented solve *and* `orig` afterwards, so every frame did
+  double work on a trajectory the engine never takes, and reported "70% of calls need 129+
+  passes" with a residual of exactly zero in the same line. Replace the kernel or wrap it —
+  never both — and check that the two numbers in a report can be true at the same time.
+- **The toy box is drained every frame, so it measures a rate, not a monument.** `writeBack`
+  moves solidified material into the column each K7, so the pile a viewer sees is what is
+  still molten; an explosive vent (tephra lands solid) shows almost none. Any edifice-size
+  gate that drives `ERUPT.step` without `writeBack` — `erupt-bench.js` does — is measuring
+  the box alone, and the two must not be quoted as the same number.

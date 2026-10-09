@@ -36,6 +36,14 @@ provably geometry-neutral. One item is measured and deferred: a design-scale 10�
 edifice needs ~50× this section's melt production, which is a `kMelt`/`kPlumeMelt`
 (crust-budget) decision, not a chamber constant.
 
+0.2.1 (`archive/0.2.1-melt-supply-worklog.md`) took the one item 0.2.0 M5 measured and
+deferred: `P.kPlumeMelt` 2e4 → 2e6, so a live plume shield reaches the design's 10–30 px
+band instead of building nothing, with melt still under half a percent of the section's
+mafic production. `P.kMelt` stayed put on a measurement — no value of it gives an arc vent
+topography, because explosive tephra is written back into the column every frame — and the
+landing exposed a latent `COL.floor` defect (a settle test with no tolerance, and a pass
+budget sized for the spin) that is now fixed and gated by `experiments/floor-bench.js`.
+
 A release may pull a milestone out of 0.2 or 0.3 when it is the piece that makes a page usable;
 it never re-specifies a kernel.
 

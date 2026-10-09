@@ -808,7 +808,14 @@ COL.floor = function (st, n) {
 			if (crossed) d = P.wrap - d;
 			min = (this.floorClassValid ? this.floorClass[i] === 1 : this.isClosingCC(st, i, j)) ?
 				P.crushFloor : P.gFloor * P.w0;
-			if (!crossed && d >= min) continue;
+			// Settle on the tolerance the rest of the engine already reads (SIM.diag), not on
+			// exact equality: the correction is a max-push Jacobi sweep, so on a ring of
+			// squeezed plates it converges geometrically (~0.87 per pass, measured) and then
+			// spins on a residual below any tolerance a reader applies. Without this the loop
+			// spent its whole pass budget on contact rings that were already legal, and a real
+			// squeeze ran out of passes inside its own floor (9.15 km against 9.38, standing
+			// for 90-118 frames).
+			if (!crossed && d >= min * (1 - P.floorTol)) continue;
 			// settled when no pair is inside the floor, not when no plate moved: a plate
 			// held between two equal overlaps has nothing to move and two pairs to fix
 			any = true;
@@ -823,6 +830,8 @@ COL.floor = function (st, n) {
 			for (i = 0; i < n; i++) if (st.colPlate[i] === p) st.colX[i] = wrapX(st.colX[i] + disp);
 		}
 	}
+	// what the settle cost, for floor-bench: P.floorPass means it never settled
+	this.floorPasses = pass < P.floorPass ? pass + 1 : P.floorPass;
 };
 
 // K4 can add a newborn or retire an accreted record *after* K3's plate-floor solve. Apply

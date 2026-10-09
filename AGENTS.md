@@ -70,6 +70,9 @@ checks belong here and not in a page harness.
 experiments/isomorphism.js and experiments/upstream-drift.js read the counterpart tree
 ($UPSTREAM or a path argument) and report SKIP without one; the drift harness measures
 against the counterpart's branch tip, never against whatever its checkout sits on.
+experiments/melt-tune-sweep.js (the two melt sources against the crust budget) and
+experiments/floor-bench.js (the contact floor's settle: pass budget used, worst gap left)
+join the same rule.
 experiments/belt-tune-sweep.js and experiments/vent-tune-sweep.js are tuning tables: report
 only, they never edit params.js — a chosen value lands through a normal edit and a
 full-suite re-acceptance, and a table keeps a tag naming the gate it was measured against.
