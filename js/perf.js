@@ -3,7 +3,7 @@
 'use strict';
 
 var PERF = {
-	fps: 0, msSim: 0, msDraw: 0,
+	fps: 0, msSim: 0, msDraw: 0, msToy: 0,
 	last: 0, hudAt: 0,
 
 	// ema toward the sample; the first sample wins

@@ -1,0 +1,36 @@
+
+M4.1 the session JSON covers every typed array and scalar
+PASS  the envelope is JSON with the runtime payload inside   2231616 bytes
+PASS  every typed array of the state is a checkpoint record   136 records for 136 arrays
+PASS  every scalar, reconstruction line and clock has a value slot   59 slots
+PASS  the JSON string round-trips through parse without loss
+
+M4.2 an active eruption at save time
+PASS  a charged chamber births its vent on the column   vent 0
+PASS  save moment: airborne packets over a live, still-feeding vent   2 packets, 0.3 cells2 fed
+PASS  save moment: mass is in transit in the toy   0.000 cells2 in transit
+
+M4.3 done protocol: 1000 frames bitwise at two zoom levels
+PASS  reload at def restores the save bit-identically   hash 269028939
+PASS  the eruption is still mid-flight after reload at def
+PASS  1000 frames after reload at def match the live run bitwise   hash 3140064848
+PASS  zoom def: the live 1000 frames and the resumed 1000 frames agree   hash 3140064848
+PASS  reload at ovw restores the save bit-identically   hash 269028939
+PASS  the eruption is still mid-flight after reload at ovw
+PASS  1000 frames after reload at ovw match the live run bitwise   hash 3140064848
+PASS  the two zoom levels resume to the same world   hash 3140064848
+PASS  reload at cru restores the save bit-identically   hash 269028939
+PASS  the eruption is still mid-flight after reload at cru
+PASS  1000 frames after reload at cru match the live run bitwise   hash 3140064848
+PASS  a third zoom (crust x10) is equally bit-identical   hash 3140064848
+
+M4.4 checkpoint bytes and the K9 sweep over the done run
+PASS  the K9 sweep holds through the resumed 1000 frames
+PASS  the whole checkpoint (clocks, RNG words, sliders, slab flag) is byte-identical to the live run
+
+M4.5 the paused-geology leg: eruptive clock only
+PASS  the eruptive clock is free and its vent is alive in the paused world   vent 0 at tErupt 1440000
+PASS  reload of the paused world restores bit-identically   hash 3619873142
+PASS  200 eruptive-only frames resume bitwise with geology paused   hash 3619873142
+
+ALL PASS (24 checks)

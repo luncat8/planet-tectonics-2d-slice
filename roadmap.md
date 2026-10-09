@@ -21,16 +21,23 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | 0.9.0 | globe page hosts the section as a library; live sync is C3+C4 | `0.9.0-draft-sync.md`, `0.4.1-plan.md` §8 | 0.4.1 M1–M2; C1 on the column engine |
 
 0.2.0 status: M0 (the headless toy box), M1 (vent lifecycle / second clock), M2
-(stack write-back / visible edifice) and M3 (bed-anchored deposits / finite extraction)
-implemented; worklogs are `archive/0.2.0-m0-worklog.md`, `archive/0.2.0-m1-worklog.md`,
-`archive/0.2.0-m2-worklog.md` and `archive/0.2.0-m3-worklog.md`. M3's new runtime / UI
-harnesses pass 75 / 41 checks. Live slice resources are separate from the immutable
-3D catalogue and its shared priors. M2 was reviewed without rerunning its previously
-passed suites; its dedicated acceptance and raster evidence remain in its log.
-The whole-series regression is not all-green: long 100 kyr contact legs retain R2/R5
-reds, with original-HEAD comparisons in the M2 log. Contact tuning / frame-versus-clock
-policy and active-vent C4 import coverage stay open for M5. Next feature: M4 save/load
-and diagnostics under the plan's E1/E3 page ownership.
+(stack write-back / visible edifice), M3 (bed-anchored deposits / finite extraction) and
+M4 (save/load and diagnostics under the plan's E1/E3 page ownership: the bar's seed field
+and save/load buttons over checkpoint v9's session JSON, K9's 2 Hz invariant sweep with
+the named `ledDelam` sink line, and the toy step cost on the HUD) implemented; worklogs
+are `archive/0.2.0-m0-worklog.md`, `archive/0.2.0-m1-worklog.md`,
+`archive/0.2.0-m2-worklog.md`, `archive/0.2.0-m3-worklog.md` and
+`archive/0.2.0-m4-worklog.md`. M4's done protocol (save -> reload -> 1000 frames bitwise
+at three zoom levels with an active eruption at save time) passes in
+`experiments/save-bench.js` (24 checks) and its page harness in `experiments/diag-ui.js`
+(36 checks). Live slice resources are separate from the immutable 3D catalogue and its
+shared priors. M2 was reviewed without rerunning its previously passed suites; the review
+found and fixed two pre-existing reds at HEAD (the m2-check accretion marker fixture —
+324/324 again — and the section-pack DOM stub — 84/84). The whole-series regression is
+not all-green: long 100 kyr contact legs retain R2/R5 reds, with original-HEAD
+comparisons in the M2 log. Contact tuning / frame-versus-clock policy and active-vent C4
+import coverage stay open for M5. Next: M5, the numerical isomorphism and the regression
+pass that closes those open items.
 
 A release may pull a milestone out of 0.2 or 0.3 when it is the piece that makes a page usable;
 it never re-specifies a kernel.

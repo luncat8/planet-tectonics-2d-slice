@@ -8,10 +8,16 @@ var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js
 var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.COLS;
 var MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.COLMANTLE;
 var COL = (typeof module !== 'undefined' && module.exports) ? require('./columns.js') : window.COLCOLUMNS;
-// erupt.js is loaded after this file (columns.html order), so the toy box is resolved
-// at call time, as js/checkpoint.js does for its own late dependencies
+// erupt.js and perf.js are loaded after this file (columns.html order), so both are
+// resolved at call time, as js/checkpoint.js does for its own late dependencies
 function erupt() {
 	return (typeof module !== 'undefined' && module.exports) ? require('./erupt.js') : root.COLERUPT;
+}
+function perf() {
+	return (typeof module !== 'undefined' && module.exports) ? require('./perf.js') : root.COLPERF;
+}
+function now() {
+	return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
 }
 
 var MAG = {
@@ -301,7 +307,7 @@ var MAG = {
 	// K7: geological birth / death; eruptive drain, box and write-back. Column
 	// ownership is settled by K4 before this unbound kernel runs.
 	k7: function (st, dt, t, Tm) {
-		var dtSec = P.sl.erupt, v, box = erupt();
+		var dtSec = P.sl.erupt, v, box = erupt(), t0, toyMs = 0;
 		MAG.venTick(st, dt, t);
 		if (dt > 0) MAG.venBirth(st);
 		for (v = 0; v < st.nVen; v++) {
@@ -310,10 +316,14 @@ var MAG = {
 			MAG.venFill(st, v);
 			MAG.venSchedule(st, v, dtSec);
 			if (st.venFlux[v] > 0) st.venLast[v] = t;
+			// the toy step cost (design §6's per-vent budget) is the HUD's third number
+			t0 = now();
 			box.step(dtSec, v);
+			toyMs += now() - t0;
 			box.writeBack(v, t);
 			box.record(v);
 		}
+		perf().msToy = perf().f(perf().msToy, toyMs);
 		void Tm;
 	}
 };

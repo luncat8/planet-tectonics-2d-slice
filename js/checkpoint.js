@@ -9,6 +9,7 @@ var Checkpoint = (function () {
 	var RNG = node ? require('./rng.js') : window.COLRNG;
 	var MNT = node ? require('./mantle.js') : window.COLMANTLE;
 	var SLAB = node ? require('./slab.js') : window.COLSLAB;
+	var COL = node ? require('./columns.js') : window.COLCOLUMNS;
 	var arrays = [], scalars = [], recon = Object.keys(S.recon);
 	var clocks = 'dG t tErupt Tm frame evT event'.split(' ');
 	var dtypes = 'Float64Array Float32Array Int32Array Uint32Array Uint16Array Uint8Array Int8Array'.split(' ');
@@ -16,7 +17,7 @@ var Checkpoint = (function () {
 		if (ArrayBuffer.isView(S[k])) arrays.push(k);
 		else if (typeof S[k] === 'number') scalars.push(k);
 	});
-	var count = scalars.length + recon.length + clocks.length + 9;
+	var count = scalars.length + recon.length + clocks.length + 10;
 	var table = 64 + count * 8, data = table + arrays.length * 16;
 	var total = data;
 	arrays.forEach(function (k) { total += pad(S[k].byteLength); });
@@ -37,7 +38,7 @@ var Checkpoint = (function () {
 		var v = scalars.map(function (k) { return S[k]; });
 		recon.forEach(function (k) { v.push(S.recon[k]); });
 		clocks.forEach(function (k) { v.push(runtime[k]); });
-		return v.concat([P.seed, P.sl.geo, P.sl.erupt], RNG.state(), [RNG.gs, +RNG.gh]);
+		return v.concat([P.seed, P.sl.geo, P.sl.erupt], RNG.state(), [RNG.gs, +RNG.gh, SLAB.ready ? 1 : 0]);
 	}
 
 	function b64enc(bytes) {
@@ -55,7 +56,7 @@ var Checkpoint = (function () {
 
 	return {
 		MAGIC: 0x31435450,
-		VERSION: 8, // M3: finite resources, bed delineation masks and stable deposit ids
+		VERSION: 9, // M4: the named delamination sink line (ledDelam) joins the ledger
 		SESSION_FORMAT: 'pgt-slice-session',
 		SESSION_VERSION: 1,
 		b64enc: b64enc,
@@ -111,6 +112,7 @@ var Checkpoint = (function () {
 			}
 			if (!(v[rngAt] || v[rngAt + 1] || v[rngAt + 2] || v[rngAt + 3])) throw new RangeError('checkpoint RNG state');
 			if (v[rngAt + 5] !== 0 && v[rngAt + 5] !== 1) throw new RangeError('checkpoint RNG spare flag');
+			if (v[rngAt + 6] !== 0 && v[rngAt + 6] !== 1) throw new RangeError('checkpoint slab flag');
 			var counts = [['nCol', P.colCap], ['nPl', P.plateCap], ['nRib', P.ribCap],
 				['nPlm', P.plumeCap], ['nVen', P.maxVents], ['nDep', P.depCap]];
 			for (j = 0; j < counts.length; j++) {
@@ -126,6 +128,7 @@ var Checkpoint = (function () {
 			P.seed = v[i++]; P.sl.geo = v[i++]; P.sl.erupt = v[i++];
 			RNG.setState(v.subarray(i, i + 4)); i += 4;
 			RNG.gs = v[i++]; RNG.gh = !!v[i++];
+			var slabReady = !!v[i++];
 			arrays.forEach(function (k) {
 				var a = S[k];
 				new Uint8Array(a.buffer, a.byteOffset, a.byteLength).set(new Uint8Array(b, at, a.byteLength));
@@ -133,6 +136,13 @@ var Checkpoint = (function () {
 			});
 			MNT.init(P.seed); MNT.setTime(runtime.t, runtime.Tm);
 			SLAB.reset();
+			// the ribbon machinery's own run state, restored after the scratch reset:
+			// K4's consume branch reads it, so a restored world must take the same one
+			SLAB.ready = slabReady;
+			// the settled C-C classification is a pure function of the restored state;
+			// recompute it lazily rather than inheriting the live run's last frame
+			COL.floorClassValid = false;
+			sim().diagReset(); // the restored world re-bases the ledger diagnostic
 			ui().clearOre(); // a restored world requires a fresh explicit mining selection
 			return S;
 		},

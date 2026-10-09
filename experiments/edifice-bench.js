@@ -8,12 +8,13 @@ var px = new Uint32Array(P.cw * P.ch), W = P.ventBoxW, c = 100, v = 0, k, f;
 
 function ledger() {
 	return { mass: S.mass().slice(), prod: S.ledProd.slice(), cons: S.ledCons.slice(),
-		inM: S.ledMixIn.slice(), outM: S.ledMixOut.slice() };
+		delam: S.ledDelam.slice(), inM: S.ledMixIn.slice(), outM: S.ledMixOut.slice() };
 }
 function error(start) {
 	var mass = S.mass(), worst = 0, l, lhs, rhs;
 	for (l = 0; l < P.LITH.n; l++) {
-		lhs = mass[l] + S.ledCons[l] - start.cons[l] + S.ledMixOut[l] - start.outM[l];
+		lhs = mass[l] + S.ledCons[l] - start.cons[l] + S.ledDelam[l] - start.delam[l] +
+			S.ledMixOut[l] - start.outM[l];
 		rhs = start.mass[l] + S.ledProd[l] - start.prod[l] + S.ledMixIn[l] - start.inM[l];
 		worst = Math.max(worst, Math.abs(lhs - rhs) / Math.max(1, start.mass[l], Math.abs(rhs)));
 	}
@@ -282,7 +283,7 @@ F.fresh(c); F.vent(c, v, 0.5); F.molten(v, 8, P.LITH.lava); F.packet(v, 2);
 MAG.add(S, c, P.VchM2, false); P.sl.erupt = 30;
 MAG.k7(S, 0, SIM.t, SIM.Tm); SIM.setGeo(0);
 var saved = CP.save();
-check.ok('the checkpoint includes hot ash / molten lava, airborne packets and edifice ownership', CP.VERSION === 8 && S.prN[v] > 0 && ERUPT.mass(v) > 0 && S.venEdCol[v] === c);
+check.ok('the checkpoint includes hot ash / molten lava, airborne packets and edifice ownership', CP.VERSION === 9 && S.prN[v] > 0 && ERUPT.mass(v) > 0 && S.venEdCol[v] === c);
 SIM.run(1000); var forward = CP.save();
 CP.load(saved); GEO.setPreset('cru'); SIM.run(1000);
 check.ok('active eruption resumes bitwise at a different zoom (1000 frames)', Buffer.from(forward).equals(Buffer.from(CP.save())));

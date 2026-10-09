@@ -222,6 +222,11 @@ var S = {
 	// mass ledger (design §6): produced / consumed volume per LITH, m3
 	ledProd: new Float64Array(P.LITH.n),
 	ledCons: new Float64Array(P.LITH.n),
+	// The named delamination sink (foundering into the mantle, CRU.delaminate): one
+	// account per sink mechanism, so the HUD can show the ceiling's shed on its own
+	// line. The per-lithology balance is active + ledCons + ledDelam + ledMixOut =
+	// initial + ledProd + ledMixIn.
+	ledDelam: new Float64Array(P.LITH.n),
 	ledMixIn: new Float64Array(P.LITH.n),
 	ledMixOut: new Float64Array(P.LITH.n),
 	ledMix: 0,                              // cross-lithology merges and rock -> sediment conversions
@@ -265,6 +270,9 @@ S.layout = function () {
 	var n = P.nCols, np = P.plates0, i, k, b0, b1, first;
 	this.nCol = n;
 	for (i = 0; i < n; i++) this.colX[i] = i * P.w0;
+	// A fresh layout is already x-sorted, so the sort tables start as the identity
+	// permutation they describe; all-zero tables would not be a permutation at all.
+	for (i = 0; i < n; i++) { this.sortOrder[i] = i; this.sortInverse[i] = i; }
 	this.nPl = np;
 	b0 = first = RNG.i(P.plateJitter + 1);
 	for (k = 0; k < np; k++) {
@@ -304,9 +312,11 @@ S.widths = function () {
 
 // measured crust mass per lithology, m3 (unit depth into the page)
 // includes mobile sediment load as sediment so total crust+mobile is conserved
-// through an erosion->routing->deposition frame (M3)
-S.mass = function () {
-	var m = this.massBy, i, k, b, n, rb, rn, x;
+// through an erosion->routing->deposition frame (M3). massInto fills the caller's
+// buffer so a read-only diagnostic can measure without touching the hashed state;
+// mass() is the historical name for the state's own scratch.
+S.massInto = function (m) {
+	var i, k, b, n, rb, rn, x;
 	m.fill(0);
 	for (i = 0; i < this.nCol; i++) {
 		b = i * P.layerCap;
@@ -335,6 +345,8 @@ S.mass = function () {
 	}
 	return m;
 };
+
+S.mass = function () { return this.massInto(this.massBy); };
 
 S.massStack = function () {
 	var m = this.massBy, i, k, b, n;

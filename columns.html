@@ -39,7 +39,7 @@
 	/* section mode (?start=section): the engine bar is the cut's bar. #slice is hidden by
 	   the CSS, so the shipped markup is honest before any script runs */
 	#slice { display: none; }
-	.section-mode #bar > label, .section-mode #presets, .section-mode #bMesh { display: none; }
+	.section-mode #bar > label, .section-mode #presets, .section-mode #bMesh, .section-mode #bSave { display: none; }
 	.section-mode #slice { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; width: 100%; box-sizing: border-box; }
 	#slice label { white-space: nowrap; }
 	#slice textarea { width: 660px; height: 42px; background: #0a0f18; color: #9aa7bd; border: 1px solid #2a3550; font: 10px/1.4 monospace; padding: 3px 4px; resize: vertical; }
@@ -65,6 +65,11 @@
 	</span>
 	<button id="bMesh" aria-pressed="false">mesh</button>
 	<button id="bDeposits" aria-pressed="false" aria-controls="orePanel" title="d: live bed-anchored deposits and ranked resources">deposits</button>
+	<!-- E1/E3 chrome on the planet bar (0.2.0 M4): the seed field is the new-planet
+	     control; save / load move the one session codec over a JSON file -->
+	<label>seed <input id="sSeed" type="text" size="9" spellcheck="false" title="run seed; Enter rebuilds the planet from it"></label>
+	<button id="bSave" title="save the runtime state — every typed array and scalar — as a session JSON file">save state</button>
+	<label>load state <input id="bLoad" type="file" accept=".json,application/json"></label>
 	<!-- the Slice panel (0.4.1 M1): visible in section mode only. A paste or the button
 	     runs the load; a file and a bundled id go through the same bytes -->
 	<div id="slice">
@@ -107,7 +112,7 @@
 	</div>
 	<span id="oreStatus" role="status">Game envelopes in a one-metre-deep slice: tonnage is Mt/m, grade is a 0–1 index, not a commodity assay. The 3D snapshot catalogue is separate.</span>
 </section>
-<div id="help">drag = pan &middot; wheel = zoom (cursor-anchored, both axes) &middot; left / bottom sliders = one axis at a time &middot; space = pause &middot; g = scale lines &middot; m = mesh (row edges, fan bands, column grid, plate boundaries) &middot; 1-4 = presets &middot; hover = geology probe &middot; d = live deposits / ranked list / extraction &middot; in section mode: r = raw cut, o = overlay &middot; <a href="index.html">particle engine &rarr;</a></div>
+<div id="help">drag = pan &middot; wheel = zoom (cursor-anchored, both axes) &middot; left / bottom sliders = one axis at a time &middot; space = pause &middot; g = scale lines &middot; m = mesh (row edges, fan bands, column grid, plate boundaries) &middot; 1-4 = presets &middot; hover = geology probe &middot; d = live deposits / ranked list / extraction &middot; seed field + Enter = new planet from that seed &middot; save / load state = session JSON round trip &middot; in section mode: r = raw cut, o = overlay &middot; <a href="index.html">particle engine &rarr;</a></div>
 <script src="port/slice-format.js"></script>
 <script src="js/params.js"></script>
 <script src="js/rng.js"></script>

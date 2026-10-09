@@ -62,8 +62,8 @@ check.ok('refuses truncated data', threw && equal(saved, CP.save()));
 var older = saved.slice();
 new Uint32Array(older.buffer)[1] = CP.VERSION - 1;
 threw = false;
-try { CP.load(older); } catch (e) { threw = e instanceof RangeError && /version 7/.test(e.message); }
-check.ok('refuses the previous checkpoint version atomically', CP.VERSION === 8 && threw && equal(saved, CP.save()));
+try { CP.load(older); } catch (e) { threw = e instanceof RangeError && /version 8/.test(e.message); }
+check.ok('refuses the previous checkpoint version atomically', CP.VERSION === 9 && threw && equal(saved, CP.save()));
 var shortAt = Math.min(5, S.nCol - 1), shortHash;
 S.edgeShort[shortAt] = 78125;
 shortHash = S.hash();

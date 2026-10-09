@@ -113,7 +113,7 @@ SIM.setGeo(50e3);
 SIM.run(1200);
 var now = S.mass(), worst = 0, l, lhs, rhs, err;
 for (l = 0; l < P.LITH.n; l++) {
-	lhs = now[l] + S.ledCons[l] + S.ledMixOut[l];
+	lhs = now[l] + S.ledCons[l] + S.ledDelam[l] + S.ledMixOut[l];
 	rhs = initial[l] + S.ledProd[l] + S.ledMixIn[l];
 	err = Math.abs(lhs - rhs) / Math.max(1, rhs);
 	if (err > worst) worst = err;
@@ -151,7 +151,7 @@ SIM.setGeo(50e3);
 SIM.run(800);
 var fullNow = S.mass(), fullWorst = 0, fl, lhsF, rhsF, errF;
 for (fl = 0; fl < P.LITH.n; fl++) {
-	lhsF = fullNow[fl] + S.ledCons[fl] + S.ledMixOut[fl];
+	lhsF = fullNow[fl] + S.ledCons[fl] + S.ledDelam[fl] + S.ledMixOut[fl];
 	rhsF = fullMass[fl] + S.ledProd[fl] + S.ledMixIn[fl];
 	errF = Math.abs(lhsF - rhsF) / Math.max(1, rhsF);
 	if (errF > fullWorst) fullWorst = errF;
@@ -176,7 +176,7 @@ check.ok('eroded rock is booked as a rock -> sediment transformation',
 	((S.ledMixIn[P.LITH.sed] - mixIn0) / 1e6).toFixed(2) + 'e6 m3');
 var eroNow = S.mass(), eroWorst = 0, el;
 for (el = 0; el < P.LITH.n; el++) {
-	lhsF = eroNow[el] + S.ledCons[el] + S.ledMixOut[el];
+	lhsF = eroNow[el] + S.ledCons[el] + S.ledDelam[el] + S.ledMixOut[el];
 	rhsF = eroMass[el] + S.ledProd[el] + S.ledMixIn[el];
 	errF = Math.abs(lhsF - rhsF) / Math.max(1, rhsF);
 	if (errF > eroWorst) eroWorst = errF;
@@ -193,7 +193,7 @@ SIM.setGeo(50e3);
 SIM.step();
 var sillNow = S.mass(), sillWorst = 0, sl;
 for (sl = 0; sl < P.LITH.n; sl++) {
-	lhsF = sillNow[sl] + S.ledCons[sl] + S.ledMixOut[sl];
+	lhsF = sillNow[sl] + S.ledCons[sl] + S.ledDelam[sl] + S.ledMixOut[sl];
 	rhsF = sillMass[sl] + S.ledProd[sl] + S.ledMixIn[sl];
 	errF = Math.abs(lhsF - rhsF) / Math.max(1, rhsF);
 	if (errF > sillWorst) sillWorst = errF;

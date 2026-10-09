@@ -20,6 +20,9 @@ var SectionPack = (function () {
 	var node = typeof module !== 'undefined' && module.exports;
 
 	function page() { return node || !root.document ? null : root; }
+	// sim.js loads after this file, so the pipeline is resolved at call time (the
+	// checkpoint's own lazy pattern)
+	function sim() { return node ? require('./sim.js') : root.COLSIM; }
 	function hostDocument(host) {
 		if (!host) return root.document || null;
 		if (host.nodeType === 9) return host;
@@ -294,6 +297,7 @@ var SectionPack = (function () {
 			var Tm = g ? P.Tfloor + (P.Tm0 - P.Tfloor) * Math.exp(-t0 / P.tauCool) : P.Tm0;
 			var bad = SEED.layout(p, { seed: P.seed, t: t0, Tm: Tm });
 			if (bad) { this.refuse(bad); return bad; }
+			sim().diagReset(); // a laid cut is a new world: the ledger diagnostic re-bases
 			if (g) {
 				g.COLSIM.t = t0;
 				g.COLSIM.cool();

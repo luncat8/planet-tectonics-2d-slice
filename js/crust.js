@@ -160,8 +160,8 @@ CRU.zDyn = function (st, dt) {
 //
 // The rate is proportional to the excess over the ceiling, so a column at the ceiling
 // stops thickening and a column far over it sheds quickly, and the volume is peeled off
-// the *base* (the mafic and intrusive beds) and booked as consumed, so the ledger says
-// where the rock went instead of losing it quietly.
+// the *base* (the mafic and intrusive beds) and booked on the ledger's named `ledDelam`
+// sink line, so the ledger says where the rock went instead of losing it quietly.
 CRU.delaminate = function (st, dt) {
 	var n = st.nCol, i, b, over, take, w, h, shed, any = false;
 	for (i = 0; i < n; i++) {
@@ -183,7 +183,7 @@ CRU.delaminate = function (st, dt) {
 				continue;
 			}
 			shed = take < h ? take : h;
-			st.ledCons[st.layLi[b]] += shed * w;
+			st.ledDelam[st.layLi[b]] += shed * w;
 			take -= shed;
 			if (shed === h) COL.removeAt(st, i, 0);
 			else {

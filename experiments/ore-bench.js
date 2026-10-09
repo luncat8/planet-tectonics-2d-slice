@@ -42,12 +42,13 @@ function resourceBalance() {
 }
 function ledger() {
 	return { mass: S.mass().slice(), prod: S.ledProd.slice(), cons: S.ledCons.slice(),
-		mixIn: S.ledMixIn.slice(), mixOut: S.ledMixOut.slice() };
+		delam: S.ledDelam.slice(), mixIn: S.ledMixIn.slice(), mixOut: S.ledMixOut.slice() };
 }
 function massError(start) {
 	var mass = S.mass(), worst = 0;
 	for (var li = 0; li < LI.n; li++) {
-		var lhs = mass[li] + S.ledCons[li] - start.cons[li] + S.ledMixOut[li] - start.mixOut[li];
+		var lhs = mass[li] + S.ledCons[li] - start.cons[li] + S.ledDelam[li] - start.delam[li] +
+			S.ledMixOut[li] - start.mixOut[li];
 		var rhs = start.mass[li] + S.ledProd[li] - start.prod[li] + S.ledMixIn[li] - start.mixIn[li];
 		worst = Math.max(worst, Math.abs(lhs - rhs) / Math.max(1, start.mass[li], Math.abs(rhs)));
 	}
@@ -264,7 +265,7 @@ ORE.k8(S, 0, 20, 1.6);
 check.ok('paused K8 may delineate that sill but cannot advance mafic fertility',
 	S.oMaf[c] === maficPotential && find(C.maf, c) >= 0);
 
-check.section('M3.6 imported cuts, checkpoint v8 and deterministic mining');
+check.section('M3.6 imported cuts, the checkpoint and deterministic mining');
 fresh(); S.oArc[c] = 0.9; ORE.scan(S, 20); var catBefore = DEP.snapshotSection(S).checksum;
 var formation = S.depAg[0], originalId = S.depId[0];
 var pack = M['section-seed'].exportSection({ tMyr: 20, level: 5 });
@@ -301,7 +302,7 @@ var cp = CP.save(), savedHash = S.hash(), oldVersion = new Uint8Array(cp);
 new Uint32Array(oldVersion.buffer)[1] = 7;
 var refused = false;
 try { CP.load(oldVersion); } catch (e) { refused = /version/.test(e.message); }
-check.ok('checkpoint v8 refuses a v7 header instead of a legacy reader', CP.VERSION === 8 && refused && S.hash() === savedHash);
+check.ok('the checkpoint refuses an older header instead of a legacy reader', CP.VERSION === 9 && refused && S.hash() === savedHash);
 P.sl.geo = 0.05 * 1e6; P.sl.erupt = 1800; SIM.setGeo(P.sl.geo);
 cp = CP.save(); SIM.run(120); var restoredRun = S.hash();
 CP.load(cp); SIM.run(120);

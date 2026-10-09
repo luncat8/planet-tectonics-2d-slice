@@ -911,3 +911,27 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   canvas harness checks the d toggle, real extraction, host-aligned symbols / probe and two
   list rebuilds in a 60-frame second. It is still not a real-browser pixel or fps claim.
   Raw / missing cuts must reject mining even if a prior reconstructed state is still stored.
+
+## 0.2.0 M4 (save/load and diagnostics)
+
+- **Triage a failing gate before blaming the diff: `git stash`, run, `git stash pop`.**
+  The M2 review found m2-check at 323/324 and section-pack in a load crash *at HEAD* —
+  both M3-era drift hidden by a milestone that never invoked previous harnesses. A red
+  that reproduces on the clean tree is a review finding, not a regression; fix it and say
+  which it was.
+- **Deposits markers are two kinds after 0.2.0 M3, and fixtures must pick deliberately.**
+  `depVol > 0` keeps the horizon on its own bed through every peel (`moveDeposits`: "only
+  the volume moves"); `depVol == 0` is a tombstone that rides the moved rock and will
+  leave a retiring record before the retirement witness runs. A fixture asserting the
+  retirement redirect needs the first kind; a fixture asserting resource split needs the
+  second.
+- **Bitwise resume claims die on module-level run state.** The checkpoint enumerates
+  `S`, the clocks, the RNG and the sliders — anything else a kernel branches on
+  (`SLAB.ready`, `COL.floorClassValid`) must be restored, invalidated to a pure function
+  of `S`, or proven unreachable by the kernel order. Include a paused-geology leg in any
+  save/load done protocol: the eruptive-clock-only continuation is where such state
+  surfaces (and the plan's own eruption-watching use case).
+- **A diagnostic that writes the hashed state is not a diagnostic.** The HUD repaint must
+  be `S.hash()`-neutral (ore-ui gates it). Give the measurer its own buffer
+  (`S.massInto`) instead of the state's scratch (`S.mass`), and keep the 2 Hz sweep
+  read-only down to `isClosingCC`'s cache.

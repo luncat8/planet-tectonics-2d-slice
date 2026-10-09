@@ -59,7 +59,7 @@ COL.compact(0);
 COL.sums(0);
 var mass = S.mass();
 for (var l = 0; l < P.LITH.n; l++) {
-	check.near('mixed merge ledger lith ' + l, mass[l] + S.ledCons[l] + S.ledMixOut[l],
+	check.near('mixed merge ledger lith ' + l, mass[l] + S.ledCons[l] + S.ledDelam[l] + S.ledMixOut[l],
 		initial[l] + S.ledProd[l] + S.ledMixIn[l], 1e-12);
 }
 check.ok('mixed merge records one event', S.ledMix === 1);
@@ -324,7 +324,7 @@ check.section('M2.2 transport and contact fixtures');
 function ledger(start, name) {
 	var now = S.mass(), valid = true, worst = 0, worstOf = [];
 	for (var l = 0; l < P.LITH.n; l++) {
-		var lhs = now[l] + S.ledCons[l] + S.ledMixOut[l];
+		var lhs = now[l] + S.ledCons[l] + S.ledDelam[l] + S.ledMixOut[l];
 		var rhs = start[l] + S.ledProd[l] + S.ledMixIn[l];
 		var err = Math.abs(lhs - rhs) / Math.max(1, rhs);
 		worstOf[l] = err;
@@ -657,7 +657,10 @@ check.ok('the prescribed C-C fixture excludes unrelated plume and trench sources
 bi = (S.nCol >> 1) - 1;
 COL.push(bi, 120, P.LITH.sed, 100, 0);
 COL.sums(bi);
-S.nDep = 1; S.depCol[0] = bi + 1; S.depLay[0] = 0; // the thinner mate is retired at the first K4
+S.nDep = 1; S.depCol[0] = bi + 1; S.depLay[0] = 0; S.depVol[0] = 1;
+// The marker must hold its horizon through the collapse peels to reach the retirement
+// it is here to witness: M3's moveDeposits keeps a depVol > 0 horizon on its own bed
+// and only a zero-budget marker rides the moved rock away from the retiring record.
 var conveyorMass = S.mass().slice(), conveyorBasal = PLT.basal;
 var conveyorV = P.vColl, conveyorD = P.kDam, conveyorFrame = -1, conveyorEvents = 0, conveyorPush = 15e3;
 P.vColl = 0; P.kDam = 0;
@@ -704,7 +707,8 @@ check.ok('a deposit on the retired stack follows the accretion without a false h
 check.ok('accretion keeps every Voronoi width positive', conveyorWidths);
 ledger(conveyorMass, 'C-C conveyor');
 check.ok('the C-C retirement is an in-crust move, not a consumed sink',
-	S.ledCons.every(function (v) { return v === 0; }));
+	S.ledCons.every(function (v) { return v === 0; }) &&
+	S.ledDelam.every(function (v) { return v === 0; }));
 invariants();
 
 bi = boundary();
@@ -1135,13 +1139,13 @@ function delamFixture() {
 	COL.sums(50);
 }
 delamFixture();
-var cons7 = S.ledCons[P.LITH.fel];
+var cons7 = S.ledDelam[P.LITH.fel];
 CRU.delaminate(S, 0.01);
 var shed7 = 20e3 * P.kDelam * 0.01 / (1 + P.kDelam * 0.01);
 check.near('the shed is the backward-Euler relaxation of the excess',
 	P.crustMax + 20e3 - S.hTot[50], shed7, 1e-9, 'm');
-check.near('and books the foundered volume as consumed',
-	S.ledCons[P.LITH.fel] - cons7, shed7 * S.colW[50], 1e-9, 'm3');
+check.near('and books the foundered volume on the ledDelam sink',
+	S.ledDelam[P.LITH.fel] - cons7, shed7 * S.colW[50], 1e-9, 'm3');
 CRU.delaminate(S, 10);
 check.ok('no frame takes all of it, and none drops the column under the ceiling',
 	S.hTot[50] > P.crustMax && S.hTot[50] < P.crustMax + (20e3 - shed7) / 2,
@@ -1163,7 +1167,7 @@ COL.push(50, 5e3, P.LITH.sed, 60, 0);
 COL.sums(50);
 var capFel0 = S.hFel[50], capMaf0 = S.hMaf[50], capSed0 = S.hSed[50];
 var capBase0 = S.layTh[50 * P.layerCap], capLava0 = S.layTh[50 * P.layerCap + 1];
-var capSedBed0 = S.layTh[50 * P.layerCap + 2], capCons0 = S.ledCons[P.LITH.fel];
+var capSedBed0 = S.layTh[50 * P.layerCap + 2], capCons0 = S.ledDelam[P.LITH.fel];
 var capShed0 = (S.hTot[50] - P.crustMax) * P.kDelam * 0.05 / (1 + P.kDelam * 0.05);
 CRU.delaminate(S, 0.05);
 check.near('foundering peels the basal felsic bed beneath lava', capFel0 - S.hFel[50], capShed0, 1e-9, 'm');
@@ -1171,7 +1175,7 @@ check.ok('the overlying lava and sediment beds remain unchanged',
 	S.layTh[50 * P.layerCap + 1] === capLava0 &&
 	S.layTh[50 * P.layerCap + 2] === capSedBed0 && S.hMaf[50] === capMaf0 && S.hSed[50] === capSed0);
 check.near('basal felsic foundering closes its lithology ledger',
-	S.ledCons[P.LITH.fel] - capCons0, capShed0 * S.colW[50], 1e-9, 'm3');
+	S.ledDelam[P.LITH.fel] - capCons0, capShed0 * S.colW[50], 1e-9, 'm3');
 check.near('the basal bed is reduced by exactly the felsic loss',
 	S.layTh[50 * P.layerCap], capBase0 - capShed0, 1e-9, 'm');
 
@@ -1189,7 +1193,7 @@ COL.sums(50);
 S.nDep = 2;
 S.depCol[0] = 50; S.depLay[0] = 0;
 S.depCol[1] = 50; S.depLay[1] = 1;
-var stack0 = S.hTot[50], consMaf7 = S.ledCons[P.LITH.maf];
+var stack0 = S.hTot[50], consMaf7 = S.ledDelam[P.LITH.maf];
 CRU.delaminate(S, 0.05);
 var activeBeds7 = true;
 for (dk7 = 0; dk7 < S.colNL[50]; dk7++) activeBeds7 = activeBeds7 && S.layTh[50 * P.layerCap + dk7] > 0;
@@ -1203,7 +1207,7 @@ check.ok('a foundered host loses its deposit and the next bed keeps its deposit'
 	S.depLay[0] === -1 && S.depLay[1] === 0,
 	'hosted ' + S.depLay[0] + ', surviving ' + S.depLay[1]);
 check.near('a full-bed peel closes the consumed-mass ledger',
-	S.ledCons[P.LITH.maf] - consMaf7, stackShed7 * S.colW[50], 1e-9, 'm3');
+	S.ledDelam[P.LITH.maf] - consMaf7, stackShed7 * S.colW[50], 1e-9, 'm3');
 
 // the shed is linear in the frame at small dt (a rate, not a step), and bounded at
 // enormous dt (a relaxation, not a divergence): both halves of "no dt hidden in the
@@ -1281,14 +1285,15 @@ bi = boundary();
 COL.push(bi, 20e3, P.LITH.fel, 100, 0);
 COL.push(bi + 1, 40e3, P.LITH.fel, 100, 0);
 COL.sums(bi); COL.sums(bi + 1);
-var prod0 = S.ledProd.slice(), cons0 = S.ledCons.slice();
+var prod0 = S.ledProd.slice(), cons0 = S.ledCons.slice(), delam0 = S.ledDelam.slice();
 contact(bi, 0.5, -5e4);
 var win = S.hTot[bi - 1] > S.hTot[bi] ? bi - 1 : bi, zWin = S.z[win];
 CRU.k5(S, 0.1, 0, 1.6);
 SURF.k6(S, 0.1);
 var ledgerQuiet = true;
 for (var li = 0; li < P.LITH.n; li++) {
-	ledgerQuiet = ledgerQuiet && S.ledProd[li] === prod0[li] && S.ledCons[li] === cons0[li];
+	ledgerQuiet = ledgerQuiet && S.ledProd[li] === prod0[li] &&
+		S.ledCons[li] === cons0[li] && S.ledDelam[li] === delam0[li];
 }
 check.ok('K5/K6 never touch the lithology ledger', ledgerQuiet);
 check.ok('the collided crust stands higher through isostasy alone', S.z[win] !== zWin &&

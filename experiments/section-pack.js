@@ -96,7 +96,14 @@ function load(search, extra) {
 		nodeType: 9,
 		getElementById: function (id) { return els[id] || null; },
 		querySelectorAll: function (sel) { return sel === '#presets button' ? btns : []; },
-		createElement: function (tag) { return { tag: tag, value: '', textContent: '', appendChild: function () {} }; },
+		// created nodes (legend spans, the save link) carry the same attribute surface
+		// as page elements: M3's legend styles them and M4's save link downloads
+		createElement: function (tag) {
+			return { tag: tag, value: '', textContent: '', attrs: {},
+				setAttribute: function (n, v) { this.attrs[n] = String(v); },
+				getAttribute: function (n) { return n in this.attrs ? this.attrs[n] : null; },
+				click: function () {}, appendChild: function () {} };
+		},
 		body: { classList: { add: function (c) { (sb.__classes = sb.__classes || []).push(c); }, remove: function () {} } }
 	};
 	sb.document.defaultView = sb;

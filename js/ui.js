@@ -15,6 +15,7 @@ function sim() { return node ? require('./sim.js') : root.COLSIM; }
 function renderer() { return node ? require('./render.js') : root.COLRENDER; }
 function perf() { return node ? require('./perf.js') : root.COLPERF; }
 function section() { return node ? require('./section-pack.js') : root.COLSECTION; }
+function checkpoint() { return node ? require('./checkpoint.js') : root.COLCHECKPOINT; }
 function element(host, id) {
 	if (!host) return null;
 	if (host.getElementById) return host.getElementById(id);
@@ -36,6 +37,7 @@ var UI = {
 	cvs: null, hud: null, sGeo: null, sErupt: null, vGeo: null, vErupt: null,
 	sVZoom: null, sHZoom: null, vZoom: null, cScale: null,
 	bMesh: null, presets: null, presetName: 'def',
+	sSeed: null, bSave: null, bLoad: null,
 	bDeposits: null, orePanel: null, orePick: null, oreInfo: null, oreStatus: null,
 	oreMine: null, oreMineAll: null, selectedDepId: 0, oreCounts: new Uint8Array(P.OCLS.n),
 
@@ -122,6 +124,17 @@ var UI = {
 		});
 		listen(this.oreMine, 'click', function () { self.mineOre(0.1); });
 		listen(this.oreMineAll, 'click', function () { self.mineOre(1); });
+		this.sSeed = element(this.host, 'sSeed');
+		this.bSave = element(this.host, 'bSave');
+		this.bLoad = element(this.host, 'bLoad');
+		if (this.sSeed) {
+			this.sSeed.value = String(P.seed);
+			listen(this.sSeed, 'keydown', function (e) {
+				if (e.key === 'Enter') { self.applySeed(this.value); e.preventDefault(); }
+			});
+		}
+		if (this.bSave) listen(this.bSave, 'click', function () { self.saveState(); });
+		if (this.bLoad) listen(this.bLoad, 'change', function () { self.loadState(this.files && this.files[0]); });
 		var legend = element(this.host, 'oreLegend');
 		if (legend) {
 			legend.textContent = '';
@@ -267,6 +280,53 @@ var UI = {
 		this.vGeo.textContent = this.fmtGeo(P.sl.geo);
 	},
 
+	// The seed field is the page's new-planet control: Enter rebuilds the run from the
+	// typed seed; the sliders and the camera stay where they are.
+	applySeed: function (text) {
+		var v = parseInt(text, 10);
+		if (isFinite(v)) P.seed = v;
+		this.sSeed.value = String(P.seed);
+		sim().reset();
+		this.updateHud();
+		this.updateCursor();
+	},
+
+	// E3's one codec, the JSON session envelope, on the planet bar: save writes the file
+	// the section panel's save session writes; load reads either one back.
+	saveState: function () {
+		var json = JSON.stringify(checkpoint().saveSession(), null, 1);
+		var BlobType = this.win.Blob, URLApi = this.win.URL;
+		if (this.doc.createElement && BlobType && URLApi && URLApi.createObjectURL) {
+			var link = this.doc.createElement('a');
+			link.href = URLApi.createObjectURL(new BlobType([json], { type: 'application/json' }));
+			link.download = 'session-seed' + P.seed + '-t' + Math.round(sim().t) + '.json';
+			link.click();
+		}
+	},
+
+	loadState: function (file) {
+		if (!file) return;
+		var self = this, Reader = this.win.FileReader;
+		if (!Reader) return;
+		var reader = new Reader();
+		reader.onload = function () {
+			checkpoint().loadSession(reader.result);
+			self.syncClocks();
+			self.sSeed.value = String(P.seed);
+			self.updateHud();
+			self.updateCursor();
+		};
+		reader.readAsText(file);
+	},
+
+	// the checkpoint restores the two sliders with the world; the widgets re-read them
+	syncClocks: function () {
+		this.sGeo.value = Math.round(1000 * this.gToS(P.sl.geo));
+		this.sErupt.value = Math.round(1000 * this.eToS(P.sl.erupt));
+		this.vGeo.textContent = this.fmtGeo(P.sl.geo);
+		this.vErupt.textContent = this.fmtErupt(P.sl.erupt);
+	},
+
 	clearOre: function () {
 		this.selectedDepId = 0; renderer().selectedDepId = 0;
 		if (this.orePick) { this.orePick.textContent = ''; this.orePick.value = ''; }
@@ -374,11 +434,13 @@ var UI = {
 		for (vi = 0; vi < S.nVen; vi++) if (S.venCol[vi] >= 0) vents++;
 		s += '\nplates ' + this.fmtGeo(P.sl.geo) + '   lava ' + this.fmtErupt(P.sl.erupt);
 		s += '\nfps ' + perf().fps.toFixed(1) + '   ms ' + (perf().msSim + perf().msDraw).toFixed(2) +
-			' (sim ' + perf().msSim.toFixed(2) + ' + draw ' + perf().msDraw.toFixed(2) + ')';
+			' (sim ' + perf().msSim.toFixed(2) + ' + draw ' + perf().msDraw.toFixed(2) + ')' +
+			'   toy ' + perf().msToy.toFixed(2) + ' ms';
 		s += '\ncols ' + S.nCol + '/' + P.colCap + '   plates ' + S.nPl + '   vents ' + vents +
 			'   ribbons ' + S.nRib + '   plumes ' + S.nPlm + '   deposits ' + S.nDep + '   seed ' + P.seed;
 		s += '\n' + this.tectonics();
 		s += '   arc melt ' + Math.round(S.meltArc) + ' m2   plume melt ' + Math.round(S.meltPlume) + ' m2';
+		s += '\n' + sim().diagText();
 		if (renderer().showDeposits) this.updateOre();
 		return s;
 	},
