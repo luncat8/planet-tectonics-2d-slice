@@ -706,12 +706,14 @@ COL.transport = function (st, dt) {
 };
 
 // A converging continental pair may compress to the conveyor floor; other boundaries keep
-// the ordinary separation floor. Use the current pair velocities, not its old edge class:
-// sorting can hand the edge slot to a different pair in the same frame.
+// the ordinary separation floor. A held pair keeps the floor while its classified state is
+// collide for the same plate pair (0.1.11-plan.md §3).
 COL.isClosingCC = function (st, i, j) {
 	if (this.floorClassValid) return this.floorClass[i] === 1;
-	return st.colPlate[i] !== st.colPlate[j] && !st.colGhost[i] && !st.colGhost[j] &&
-		st.colU[i] > st.colU[j] && st.hFel[i] >= P.hOceanic && st.hFel[j] >= P.hOceanic;
+	if (st.colPlate[i] === st.colPlate[j] || st.colGhost[i] || st.colGhost[j]) return false;
+	var held = st.edge[i] === P.EDGE.collide && st.edgeRPlate[i] === st.colPlate[j];
+	if (!(st.colU[i] > st.colU[j] || held)) return false;
+	return st.hFel[i] >= P.hOceanic && st.hFel[j] >= P.hOceanic;
 };
 
 // Two records of different plates may not interpenetrate. Widths come from spacing, so
@@ -743,7 +745,7 @@ COL.freezeFloorClass = function (st, n) {
 };
 
 COL.floor = function (st, n) {
-	var min, i, j, d, p, q, a, pass, disp, any;
+	var min, i, j, d, p, q, a, pass, disp, any, crossed;
 	for (pass = 0; pass < P.floorPass; pass++) {
 		for (i = 0; i < P.plateCap; i++) { this.corrL[i] = 0; this.corrR[i] = 0; }
 		any = false;
@@ -753,19 +755,17 @@ COL.floor = function (st, n) {
 			if (p === q) continue;
 			d = st.colX[j] - st.colX[i];
 			if (d < 0) d += P.wrap;
-			// Two records are always nearer the short way round the circle. Without this a
-			// pair that crossed inside the frame reads as a full wrap apart, the floor
-			// never fires, and the sort hands the overtaken record a few hundred metres of
-			// territory whose volume-conserving stack spikes past the ceiling in one frame
-			// (measured: an 80 km record at 136 km, R3, 100 kyr/frame).
-			if (d > P.wrap * 0.5) d = P.wrap - d;
+			// A pair that crossed inside the frame has d near P.wrap (overlap < 2 w0).
+			// They must be pushed back across each other to clear the floor.
+			crossed = d > P.wrap - 2 * P.w0;
+			if (crossed) d = P.wrap - d;
 			min = (this.floorClassValid ? this.floorClass[i] === 1 : this.isClosingCC(st, i, j)) ?
 				P.crushFloor : P.gFloor * P.w0;
-			if (d >= min) continue;
+			if (!crossed && d >= min) continue;
 			// settled when no pair is inside the floor, not when no plate moved: a plate
 			// held between two equal overlaps has nothing to move and two pairs to fix
 			any = true;
-			a = 0.5 * (min - d);
+			a = 0.5 * (crossed ? min + d : min - d);
 			if (a > this.corrL[p]) this.corrL[p] = a;
 			if (a > this.corrR[q]) this.corrR[q] = a;
 		}

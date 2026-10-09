@@ -807,3 +807,22 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   swapped order with its neighbour went from 2.70 to 0.32 w0 in one transport step, and K4's
   `oldW / colW` multiplied its 60 km stack by 8.4. Any width change that comes from a reorder,
   not from a topology event, can do this. Check the width history of a spike before the stack.
+
+## 0.1.11 landing: closing-kind hysteresis and transport floor crossing resolution
+
+- **A wrap distance check without direction mistakes crossing for clearance.** In `COL.floor`,
+  when two columns cross during transport (relative advance exceeds the gap), the forward
+  distance wrapped around the circle is `wrap - overlap`. Converting this via `wrap - d` yields
+  a positive scalar `overlap`. If `overlap >= min` (e.g. 9.6 km >= 3.91 km), `COL.floor` skipped
+  the pair, mistaking the crossing for valid separation, allowing `sort` to swap their order and
+  K4 volume conservation to spike thickness (the 126.1 km breach). If `overlap < min`, moving by
+  `0.5 * (min - d)` moved them by less than `min`, leaving them still crossed.
+- **Pushing crossed pairs back across each other restores proper floor separation.** Detecting
+  crossed pairs (`d > wrap - 2 * w0`) and applying `a = 0.5 * (min + overlap)` pushes plate `p`
+  left and plate `q` right across each other by `min + overlap`, restoring them to the proper
+  ordering separated by `+min`.
+- **Bound crossing detection to physical advance limits, not `wrap * 0.5`.** Sparse fixtures
+  (e.g. 12 columns in a 512-column wrap) legitimately have empty gaps `> wrap * 0.5` across the
+  seam that must not be treated as crossed pairs. Bounding the crossing overlap to physical
+  advance limits (`2 * w0`, far exceeding `2 * vMax * dt = 40..80 km`) protects sparse fixtures
+  while catching every real transport crossing.
