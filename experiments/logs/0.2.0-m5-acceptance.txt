@@ -55,7 +55,7 @@ PASS  pt-ui.js   ALL PASS (37 checks)
 PASS  r4-check.js   ALL PASS (8 checks)
 PASS  section-bundle.js   ALL PASS (52 checks)
 PASS  raster-bench.js — the body raster inside the 6 ms budget   ALL PASS (40 checks)
-PASS  §2.5 the body raster is inside 6 ms at every preset   5 presets timed: 2.837 / 3.041 / 2.180 / 2.133 / 2.837 ms
+PASS  §2.5 the body raster is inside 6 ms at every preset   5 presets timed: 2.787 / 3.081 / 2.198 / 2.168 / 2.899 ms
 PASS  contact-audit.js — 3000 frames, seed 1, 50 kyr/frame   ALL PASS (13 checks)
 PASS  contact-audit.js — 3000 frames, seed 1, 100 kyr/frame   ALL PASS (13 checks)
 PASS  contact-audit.js — 5000 frames, seed 5, 50 kyr/frame   ALL PASS (13 checks)

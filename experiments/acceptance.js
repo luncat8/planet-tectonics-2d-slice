@@ -13,6 +13,7 @@
 // in experiments/logs/0.2.0-m5-<suite>.txt.
 'use strict';
 var cp = require('child_process');
+var os = require('os');
 var path = require('path');
 var L = require('./lib.js');
 var check = L.check, M = L.mods;
@@ -127,7 +128,11 @@ check.section('§2.3 deposits: arc mass under arc columns, placer downslope, VMS
 if (FAST) check.info('SKIP (--fast)', 'ore-bench, isomorphism');
 else {
 	suite('ore-bench.js', [], '> 60% of arc resource mass under the arc factories; placer routing; finite extraction');
-	suite('isomorphism.js', [], 'the deposit core is the counterpart\'s own numbers (the shared priors and the draw replay)');
+	// pinned to the fixture leg (argv beats $UPSTREAM, and a path that does not exist is
+	// the same leg everywhere): the acceptance pass must not change with an optional
+	// upstream checkout. The live leg is its own harness, log 0.2.0-m5-isomorphism-live.txt.
+	suite('isomorphism.js', [path.join(os.tmpdir(), 'acceptance-no-upstream')],
+		'the deposit core is the counterpart\'s own numbers (the shared priors and the draw replay)');
 }
 
 // ---------------------------------------------------------------- §2.4 save/load and the HUD

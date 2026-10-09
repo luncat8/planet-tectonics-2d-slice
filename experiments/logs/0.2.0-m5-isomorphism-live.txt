@@ -1,0 +1,19 @@
+
+A. the fixture is pinned to the manifest's upstream
+PASS  the fixture names the counterpart file and the pinned commit   js/deposits.js @ d909476 (manifest luncat8/planet-geotectonics @ d909476)
+PASS  the manifest pins the same commit for the shared files   d909476
+PASS  the shared file port/slice-format.js is byte-identical with the manifest hash
+PASS  the shared file port/deposit-models.js is byte-identical with the manifest hash
+PASS  the shared file port/deposit-economics.js is byte-identical with the manifest hash
+PASS  every shared-identical file matches its manifest sha256   3/3 files
+
+B. the live regeneration from the counterpart's own code
+PASS  the upstream file matches the sha256 the fixture records   6deb214ef094…
+PASS  the upstream tree is checked out at the pinned commit   d909476
+PASS  the fixture regenerates from the counterpart byte-identical   14708 bytes, sha256 ea89723e1d42…
+
+C. the local extraction reproduces the counterpart's numbers
+PASS  experiments/deposits.js replays the fixture through js/deposit-core.js   ALL PASS (76 checks)
+PASS  the replay has no failures   none
+
+ALL PASS (11 checks)

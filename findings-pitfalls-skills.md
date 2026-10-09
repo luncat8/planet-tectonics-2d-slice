@@ -976,6 +976,21 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   and paired with a non-chaotic gate (the K9 invariants over the same 1000 frames). Also
   check which world a harness left in the state: D2 was measuring the previous check's
   shifted cut, not the round-trip it was named for.
+- **`e3b0c44298fc…` is the sha256 of nothing at all.** A `git show <commit>:<path>` that
+  fails prints an error and nothing on stdout, so piping it into `sha256sum` hashes the
+  empty string and reports a *hash* for a file that does not exist — which reads as
+  "drifted" instead of "absent". Two of three shared files looked drifted that way. Make
+  the absent case a distinct value (`null`) and let the report say which it was.
+- **Measure a checkout against the branch tip, not against `HEAD`.** The drift harness first
+  reported "0 commits behind, everything byte-identical" because the upstream clone was
+  still sitting on the pinned commit it had just checked out for the isomorphism leg — the
+  comparison was the pin against itself. Resolve `origin/HEAD` (then `origin/main`,
+  `origin/master`, then `HEAD` for a tarball) and name the ref in the output.
+- **A SKIP is a state, not a verdict — and it may be closable.** `isomorphism.js` link 2
+  reported SKIP for a whole milestone because no upstream tree was present; cloning the
+  counterpart and checking out the pinned commit closed it in one command and immediately
+  produced the drift measurement 0.4.0 needs. Before recording a SKIP as an open item,
+  check whether the thing it waits for can be fetched.
 - **When one harness quotes another's total, read the owner's *last* summary line.**
   `acceptance.js` delegates §2.3 to `isomorphism.js`, which itself spawns `deposits.js`; a
   first-match `/ALL PASS \((\d+) checks\)/` quoted the child's 76 as the owner's own 8.

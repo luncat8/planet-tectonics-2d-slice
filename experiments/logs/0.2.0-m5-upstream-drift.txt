@@ -1,0 +1,14 @@
+
+A. the pin still holds against the counterpart's own history
+PASS  the pinned commit is in the counterpart's history   d909476 in luncat8/planet-geotectonics
+INFO  port/slice-format.js is authored here (pgt-slice-pack v1: the field table, quantisation, checksum, …)   no upstreamPath: the counterpart has not adopted it yet
+PASS  port/deposit-models.js is byte-identical with js/data/deposit-models.js at d909476   9f1088728589… vs manifest 9f1088728589…
+PASS  port/deposit-economics.js is byte-identical with js/data/deposit-economics.js at d909476   97008fa9e8b6… vs manifest 97008fa9e8b6…
+
+B. what the counterpart has done since the pin
+INFO  the pin is 12 commits behind the counterpart's tip (origin/HEAD)   luncat8/planet-geotectonics d909476 → 198cc98
+INFO  port/deposit-models.js → js/data/deposit-models.js: ABSENT at the tip   js/data/deposit-models.js @ 198cc98
+INFO  port/deposit-economics.js → js/data/deposit-economics.js: DRIFTED 6ea62830e8a2…   js/data/deposit-economics.js @ 198cc98
+INFO  js/deposit-core.js was extracted from js/deposits.js @ d909476: DRIFTED 76f2e72abe96… at the tip   the fixture and its replay stay pinned to d909476; re-extracting is 0.4.0's decision
+
+ALL PASS (3 checks)

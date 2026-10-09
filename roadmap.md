@@ -103,6 +103,18 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   the four strict legs read **ALL PASS (12 checks) / ALL PASS / ALL PASS / 1 of 12**, the
   single red being R5's documented frame-window repeat on `5000/5/100` (0 of 211 inside
   `P.evAge`). No engine kernel, constant, checkpoint or slice-format change.)
+- **The shared files have drifted upstream (measured in 0.2.0 M5,
+  `archive/0.2.0-m5-worklog.md` §9, `experiments/upstream-drift.js`).** `port/PORT.json`
+  pins `luncat8/planet-geotectonics` @ `d909476` and the pin holds — at that commit both
+  shared data files are byte-identical and `experiments/isomorphism.js` regenerates the
+  deposit fixture from the counterpart's own code. But the counterpart's tip is 12 commits
+  on (`198cc98`), where `js/data/deposit-models.js` no longer exists, `js/data/deposit-economics.js`
+  has been rewritten (+193/−42: units named in `pricePer`/`gradeUnitTo`, and `screen` refuses
+  a unit mismatch) and so has the `js/deposits.js` that `js/deposit-core.js` is an extraction
+  of. `0.4.0-sync-plan.md` §2.5.2 cites both files, so 0.4.0 decides between re-extracting
+  at a new pin and versioning the exchange token; until then the pin is the contract and
+  nothing here re-extracts. `port/slice-format.js` is authored here (no `upstreamPath`):
+  the counterpart has not adopted it.
 - **K5 closing-kind hysteresis (0.1.11, `0.1.11-plan.md`): landed.**
   `archive/0.1.10-narrow-hold-worklog.md`: the narrow variant was not adopted. `0.1.11-plan.md`,
   `archive/0.1.11-hysteresis-worklog.md` and `archive/0.1.11-worklog.md`: candidate V1 removes
