@@ -32,19 +32,16 @@ SIM.setGeo(50e3);
 var maxPile = 0, maxHpx = 0, maxWpx = 0, maxToyIn = 0, alive = 0, feeding = 0;
 var f, v, c, x, pile, hpx;
 
-// The rule is tephra-only: K7 writes lava every frame, tephra waits for the vent's death.
-// venEdV is not the measure of it — it also grows from the lava writes the rule still
-// allows (63.8 cells2 of lava placed live against 0 of tephra at kMelt 20) and from a slot
-// a later birth reuses, whose edifice is inherited rather than written. So what counts is
-// what ERUPT.place actually puts in the stack while the vent is alive, read the way
-// contact-audit wraps COL.k4.
+// The pile-before-death rule (0.2.2 tephra, 0.2.5 lava): K7 writes nothing while the
+// vent lives; finish() drains both lithologies at death. venEdV is not the measure of
+// it — it also grows from a slot a later birth reuses, whose edifice is inherited
+// rather than written. So what counts is what ERUPT.place actually puts in the stack
+// while the vent is alive, read the way contact-audit wraps COL.k4.
 var ERUPT = L.mods.erupt, oPlace = ERUPT.place, oFinish = ERUPT.finish;
-var tephraLive = 0, tephraDeath = 0, inFinish = 0;
+var live = new Float64Array(P.LITH.n), death = new Float64Array(P.LITH.n), inFinish = 0;
 ERUPT.place = function (v, lith, cells, t) {
-	if (lith === P.LITH.tephra) {
-		if (inFinish) tephraDeath += cells;
-		else if (S.venCol[v] >= 0) tephraLive += cells;
-	}
+	if (inFinish) death[lith] += cells;
+	else if (S.venCol[v] >= 0) live[lith] += cells;
 	return oPlace.apply(this, arguments);
 };
 ERUPT.finish = function (v, t) { inFinish++; var r = oFinish.apply(this, arguments); inFinish--; return r; };
@@ -90,19 +87,22 @@ for (i = 0; i < S.nCol; i++) {
 	}
 }
 
-check.section('0.2.2 live arc tephra piles until death');
+check.section('pile before death: a live vent holds lava and tephra, death writes one batch');
 check.info('arc cone', maxWpx.toFixed(2) + ' x ' + maxHpx.toFixed(2) + ' px, pile ' +
 	maxPile.toFixed(1) + ' cells2, toyIn ' + maxToyIn.toFixed(1) + ', tephra beds ' +
 	tephra.toExponential(2) + ' m2, alive/feed frames ' + alive + '/' + feeding +
-	', tephra placed ' + tephraDeath.toFixed(1) + ' cells2 at death / ' +
-	tephraLive.toFixed(3) + ' live');
+	', placed at death ' + (death[P.LITH.lava] + death[P.LITH.tephra]).toFixed(1) +
+	' cells2 (lava ' + death[P.LITH.lava].toFixed(1) + ' / tephra ' +
+	death[P.LITH.tephra].toFixed(1) + ') / live ' +
+	(live[P.LITH.lava] + live[P.LITH.tephra]).toFixed(3));
 check.ok('at least one arc vent is born from water-released melt', alive > 0);
 check.ok('the live arc cone is in the design 10–30 px band on width', maxWpx >= 10 && maxWpx <= 30);
 check.ok('the live arc cone reaches a watchable height (>= 8 px; erupt-bench 10 px at 150 cells2)',
 	maxHpx >= 8, maxHpx.toFixed(2) + ' px at ' + maxPile.toFixed(1) + ' cells2');
-check.ok('a live arc vent does not write tephra into the stack', tephraLive === 0,
-	tephraLive.toFixed(3) + ' cells2 placed live, ' + tephraDeath.toFixed(1) + ' at death');
-check.ok('death writes tephra beds', tephra > 0);
+check.ok('a live vent writes nothing into the stack (pile before death)',
+	live[P.LITH.lava] + live[P.LITH.tephra] === 0,
+	(live[P.LITH.lava] + live[P.LITH.tephra]).toFixed(3) + ' cells2 placed live');
+check.ok('death writes the beds', tephra > 0);
 check.ok('the per-lithology ledger closes', ledgerErr() < 1e-10, 'rel ' + ledgerErr().toExponential(2));
 
 P.kPlumeMelt = holdPlume;

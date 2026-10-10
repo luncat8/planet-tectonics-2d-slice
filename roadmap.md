@@ -75,6 +75,16 @@ pile-before-write-back rule would free (0.3.0-P3's toy physics) is measured and 
 §7; `Vdie` / `tDrain` are the remaining lifecycle constants if the trickle hover must stop
 counting as an eruption.
 
+0.2.5 (`archive/0.2.5-pile-before-death-worklog.md`) lands the write-back rule 0.2.4 §7
+named: K7 no longer writes lava every frame — `ERUPT.writeBack` runs only at the vent's
+death, so both lithologies reach the stack in one batch. At the committed row the arc
+cone gains what lava held back (27.00 × 8.42 → **27.00 × 9.18 px**, `tephra-pile.js` 6/6
+with its live-write gate now covering both lithologies) and the four strict contact legs
+stay 4/4. `P.Vbirth` stays 4: the batching region the rule frees measures worse, not
+better — no `(16, ·)` row is landable (cone 7.61 px at best against the 8 px gate, 3 of
+12 legs red, duty means 73.7–78.0% still outside 0.2.1's 57–69%) — and stays 0.3.0-P3's
+measurement to spend. Acceptance 49/49, `experiments/logs/0.2.5-acceptance.txt`.
+
 A release may pull a milestone out of 0.2 or 0.3 when it is the piece that makes a page usable;
 it never re-specifies a kernel.
 

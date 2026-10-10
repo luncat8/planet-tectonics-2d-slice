@@ -44,7 +44,7 @@ else {
 	suite('edifice-bench.js', [], 'one effusive and one explosive episode each build a 10–30 px edifice with conserved mass');
 	suite('vent-bench.js', [], 'an empty chamber idles the toy; an over-full one builds sills, not a 17th vent');
 	suite('erupt-bench.js', [], 'the toy box: repose cone, mass-exact freeze, packets land as tephra');
-	suite('tephra-pile.js', [], 'a live arc vent piles tephra until death, then writeBack');
+	suite('tephra-pile.js', [], 'a live vent piles lava and tephra until death, then writeBack');
 }
 
 // ---------------------------------------------------------------- §2.2 the two clocks

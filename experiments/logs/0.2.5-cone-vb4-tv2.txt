@@ -1,0 +1,11 @@
+
+pile before death: a live vent holds lava and tephra, death writes one batch
+INFO  arc cone   27.00 x 9.18 px, pile 126.2 cells2, toyIn 139.0, tephra beds 2.67e+6 m2, alive/feed frames 7635/5468, placed at death 550.7 cells2 (lava 151.2 / tephra 399.5) / live 0.000
+PASS  at least one arc vent is born from water-released melt
+PASS  the live arc cone is in the design 10–30 px band on width
+PASS  the live arc cone reaches a watchable height (>= 8 px; erupt-bench 10 px at 150 cells2)   9.18 px at 126.2 cells2
+PASS  a live vent writes nothing into the stack (pile before death)   0.000 cells2 placed live
+PASS  death writes the beds
+PASS  the per-lithology ledger closes   rel 2.70e-14
+
+ALL PASS (6 checks)

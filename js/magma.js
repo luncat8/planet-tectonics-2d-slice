@@ -321,7 +321,6 @@ var MAG = {
 			t0 = now();
 			box.step(dtSec, v);
 			toyMs += now() - t0;
-			// box.writeBack(v, t, P.LITH.lava); // "pile before death" rule
 			box.record(v);
 		}
 		perf().msToy = perf().f(perf().msToy, toyMs);

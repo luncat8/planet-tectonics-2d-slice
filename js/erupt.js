@@ -1,8 +1,9 @@
 (function (root) {
 // erupt.js — square-cell pile geometry and ballistic packets on the eruptive clock.
-// Freeze / landing queue lava / tephra. K7 writeBack drains lava; tephra waits for
-// vent death (finish) so a live explosive pile is box mass, not a K6 surface bed.
-// After transfer the solid profile stays for drawing and owns no mass.
+// Freeze / landing queue. Nothing writes back while the vent lives: lava and tephra
+// both wait for vent death (finish), so a live pile — effusive or explosive — is box
+// mass, not a K6 surface bed (0.2.2 tephra, 0.2.5 lava). After transfer the solid
+// profile stays for drawing and owns no mass.
 'use strict';
 var node = typeof module !== 'undefined' && module.exports;
 var P = node ? require('./params.js') : window.COLP;
