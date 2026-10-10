@@ -216,11 +216,18 @@ var P = {
 	tauCool: 2500,               // Myr
 	Tfloor: 0.35,
 	kDehy: 0.02,                 // /Myr, slab water release between 50 and 200 km
-	kMelt: 2e-3,                  // melt per released water, × the wedge temperature factor.
-	                             // 0.2.2: 20 (0.63 melt/water) builds a 27 × 9 px live arc
-	                             // cone once tephra waits for death. Not committed: a trial
-	                             // that also delayed lava nicked R2/R3. tephra-pile.js
-	                             // measures 20 without writing params.
+	kMelt: 20,                    // melt per released water, × the wedge temperature factor
+	                             // (yield 0.63 melt/water, 0.2.1 §3's petrological decade).
+	                             // 0.2.3, landed from the contact table and not the toy:
+	                             // experiments/melt-contact-sweep.js ran the four strict
+	                             // contact legs at 2e-3 / 6 / 10 / 20 with 0.2.2's
+	                             // tephra-only rule; all four pass at 20 with the base's
+	                             // margins (worst R2 width 92.7% against 92.5%, R3 80.4 km
+	                             // against 80.1, ceiling + influx 81.8). Only 20 builds a
+	                             // visible arc cone (27.00 × 8.24 px, 113.7 cells2): 6 and
+	                             // 10 reach 1.43 and 4.03 px. 0.2.2's "not landed" was
+	                             // measured with lava delayed too (2438/2724 and 81.9 km
+	                             // reproduce under that variant, not under this rule).
 	Tc: 0.2,                     // anomaly threshold above the wedge reference
 	wedgeT0: 0.7,                // adiabat reference at the wedge (Tf stores the anomaly)
 	chamberCap: 2e7,              // m2 per unit depth before a sill / underplate spill

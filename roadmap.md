@@ -50,6 +50,18 @@ for vent death, so a live explosive pile is box mass rather than a K6 surface be
 27 × 10, but it nicks R2/R3 on two strict legs, so it is measured in
 `experiments/tephra-pile.js` and not committed.
 
+0.2.3 (`archive/0.2.3-melt-contact-worklog.md`) re-measures that constant the way 0.2.2 §6
+asked, on the four strict contact legs at 2e-3 / 6 / 10 / 20 with the tephra-only rule
+(`experiments/melt-contact-sweep.js`): **all sixteen legs pass**, and 20's worst margin is
+the old base's own (R2 width 92.7% against 92.5%, R3 80.4 km against 80.1), so
+`P.kMelt` 2e-3 → **20** lands and the arc gets its cone — the design's second visible
+eruption style. Two corrections fell out: 0.2.2's two reds reproduce exactly only under a
+trial that delayed lava as well as tephra, which is not the rule in the tree, and
+`tephra-pile.js`'s live-write gate was counting `venEdV` growth (which the permitted lava
+writes also cause) instead of tephra cells placed live. Melt stays under half a percent of
+mafic production; the visible cost is the duty cycle (93–98% of frames feeding), whose knob
+is `Vbirth` / `tauVent`.
+
 A release may pull a milestone out of 0.2 or 0.3 when it is the piece that makes a page usable;
 it never re-specifies a kernel.
 

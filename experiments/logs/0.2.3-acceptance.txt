@@ -1,0 +1,65 @@
+
+§2.1 eruptions: 10–30 px edifices, conserved mass, readable beds, honest idling
+PASS  edifice-bench.js — one effusive and one explosive episode each build a 10–30 px edifice with conserved mass   ALL PASS (78 checks)
+PASS  vent-bench.js — an empty chamber idles the toy; an over-full one builds sills, not a 17th vent   ALL PASS (38 checks)
+PASS  erupt-bench.js — the toy box: repose cone, mass-exact freeze, packets land as tephra   ALL PASS (25 checks)
+PASS  tephra-pile.js — a live arc vent piles tephra until death, then writeBack   ALL PASS (6 checks)
+
+§2.2 two clocks: an eruption is visible at 10 kyr/frame and never teleports at 100 kyr/frame
+PASS  §2.2a a visible eruption at 10 kyr/frame beside 30 min/frame   12 packets airborne at once, pile 0.02 cells, 0.28 cells2 in flight
+PASS  §2.2a the crust away from the vent does not move because of the lava clock   erupting background 12.2693 px vs 12.2693 px with the lava clock paused (worst at 2450.7 km)
+PASS  §2.2b the edifice stays on its own column at 100 kyr/frame   venX followed colX on all 400 frames
+PASS  §2.2b the eruption moves no faster than the crust under it   worst vent move 1.82 km/frame, plate ceiling 20.0 km/frame at 100 kyr
+
+§2.3 deposits: arc mass under arc columns, placer downslope, VMS on buried seafloor
+PASS  ore-bench.js — > 60% of arc resource mass under the arc factories; placer routing; finite extraction   ALL PASS (75 checks)
+PASS  isomorphism.js — the deposit core is the counterpart's own numbers (the shared priors and the draw replay)   ALL PASS (8 checks)
+
+§2.4 save/load resumes bitwise and the diagnostic invariants hold at 2 Hz
+PASS  save-bench.js — save -> reload -> 1000 frames bitwise at three zooms with an eruption in flight   ALL PASS (24 checks)
+PASS  diag-ui.js — each of the five invariants fires on its own injected fault and heals   ALL PASS (36 checks)
+
+§2.6 determinism: same seed and same sliders give a bitwise-identical 1000-frame hash
+PASS  §2.6 seed 1, 50 kyr/frame, 1800 s/frame, def: two independent 1000-frame runs agree bitwise   hash 4102782353
+PASS  §2.6 seed 1, 100 kyr/frame, 14400 s/frame, def: two independent 1000-frame runs agree bitwise   hash 2002792710
+PASS  §2.6 seed 5, 10 kyr/frame, 30 s/frame, ovw: two independent 1000-frame runs agree bitwise   hash 4131910798
+PASS  §2.6 the hash is not vacuous: a different seed diverges   seed 1 4102782353 vs seed 2 4047622460
+
+§2.7 stability: 500 Myr at 10 kyr/frame and at 100 kyr/frame, finite and balanced
+PASS  §2.7 10 kyr/frame: every buffer stays finite   50000 frames (500 Myr), sampled every 25 frames
+PASS  §2.7 10 kyr/frame: the per-lithology ledger stays inside 0.1%   worst 1.60e-13 on lava (the K9 sweep holds 1e-9)
+PASS  §2.7 10 kyr/frame: the K9 invariants hold on every frame   0 red frames
+PASS  §2.7 100 kyr/frame: every buffer stays finite   5000 frames (500 Myr), sampled every 25 frames
+PASS  §2.7 100 kyr/frame: the per-lithology ledger stays inside 0.1%   worst 1.89e-14 on sed (the K9 sweep holds 1e-9)
+PASS  §2.7 100 kyr/frame: the K9 invariants hold on every frame   0 red frames
+PASS  §2.4 the invariants hold at 2 Hz over a long combined-clock run   3000 frames (150 Myr) at 50 kyr/frame with the lava clock at its maximum, 0 red frames, worst ledger 1.42e-14
+
+§2.5 regression: the 0.1.5 harness set stays green and the body raster fits 6 ms
+PASS  m2-check.js   ALL PASS (324 checks)
+PASS  m3-check.js   ALL PASS (22 checks)
+PASS  ledger-check.js   ALL PASS (19 checks)
+PASS  smoke.js   ALL PASS (75 checks)
+PASS  scale-check.js   ALL PASS (21 checks)
+PASS  view-check.js   ALL PASS (119 checks)
+PASS  section-check.js   ALL PASS (18 checks)
+PASS  checkpoint.js   ALL PASS (53 checks)
+PASS  section-pack.js   ALL PASS (84 checks)
+PASS  section-seed.js   ALL PASS (36 checks)
+PASS  slice-cut.js   ALL PASS (63 checks)
+PASS  coupling.js   ALL PASS (138 checks)
+PASS  coupling-link.js   ALL PASS (11 checks)
+PASS  core-log.js   ALL PASS (33 checks)
+PASS  deposits.js   ALL PASS (76 checks)
+PASS  port-check.js   ALL PASS (15 checks)
+PASS  ore-ui.js   ALL PASS (41 checks)
+PASS  pt-ui.js   ALL PASS (37 checks)
+PASS  r4-check.js   ALL PASS (8 checks)
+PASS  section-bundle.js   ALL PASS (52 checks)
+PASS  raster-bench.js — the body raster inside the 6 ms budget   ALL PASS (40 checks)
+PASS  §2.5 the body raster is inside 6 ms at every preset   5 presets timed: 2.752 / 2.836 / 3.209 / 3.162 / 2.760 ms
+PASS  contact-audit.js — 3000 frames, seed 1, 50 kyr/frame   ALL PASS (13 checks)
+PASS  contact-audit.js — 3000 frames, seed 1, 100 kyr/frame   ALL PASS (13 checks)
+PASS  contact-audit.js — 5000 frames, seed 5, 50 kyr/frame   ALL PASS (13 checks)
+PASS  contact-audit.js — 5000 frames, seed 5, 100 kyr/frame   ALL PASS (13 checks)
+
+ALL PASS (49 checks)

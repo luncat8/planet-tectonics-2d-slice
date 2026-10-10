@@ -58,6 +58,11 @@ var NS = 2048, step = P.wrap / NS;
 // flow's rate without editing params.js per candidate. The default run is unchanged.
 var KG = Number(process.env.KG);
 if (isFinite(KG) && KG > 0) P.kBeltGradient = KG;
+// The same hook for the arc melt rate (0.2.3): KM overrides P.kMelt for one run, so the
+// kMelt calibration can read the four strict contact legs at a candidate without editing
+// params.js per candidate. The default run is unchanged.
+var KM = Number(process.env.KM);
+if (isFinite(KM) && KM >= 0) P.kMelt = KM;
 
 // The kernel's event memory at this leg's rate: P.evAge of simulated time in frames.
 // 0.2.0 M5's frame-versus-clock policy reads it in both event gates (R5's repeat

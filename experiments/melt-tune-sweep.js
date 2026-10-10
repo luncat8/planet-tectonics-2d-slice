@@ -20,6 +20,8 @@
 //   node experiments/melt-tune-sweep.js [candidates=1,3,10,30,100,300,1000,3000] [frames=3000]
 //
 // Candidates are multipliers of the committed constants, so the first row is the base.
+// That base moved at 0.2.3 (`kMelt` 2e-3 -> 20, landed from the contact legs), so arc
+// rows before it are not comparable with rows after; the plume base is unchanged.
 // Report only: nothing here edits params.js. A chosen value lands through a normal edit,
 // the four strict contact legs and a full acceptance re-run.
 'use strict';

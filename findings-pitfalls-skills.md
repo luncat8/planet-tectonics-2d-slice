@@ -1037,3 +1037,29 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   apron was 144 cells² of `erode` + 43 of `bury` per 800 frames, not a missing melt
   multiplier. Write-back now waits for `venDeath`; `erupt-bench` is still the box alone
   and `tephra-pile.js` is the live arc with geology running.
+
+## 0.2.3 melt contact (archive/0.2.3-melt-contact-worklog.md)
+
+- **A committed verdict may have been measured against a rule that is not in the tree.**
+  0.2.2 declined `kMelt` 20 on two contact numbers (R2 2438/2724, R3 81.9 km). Both
+  reproduce to the frame once `writeBack` is suppressed outside death — lava delayed as
+  well as tephra, which is what the params comment called "a trial that also delayed
+  lava" — and neither exists under the rule that landed (3590/3814, 80.4 km). Before
+  inheriting a "this is red" note, spend the two minutes reproducing it, and reproduce
+  the *number*, not just the colour: a match says the variant is the difference.
+- **A volume counter is not a lithology.** `venEdV` is the edifice's written volume, so a
+  "no live write-back" gate read off it also sees the lava writes the rule still allows
+  (measured 63.8 cells² of lava placed live against 0.000 of tephra) and a slot a later
+  birth reuses inheriting its predecessor's edifice. Wrap the kernel call that performs
+  the named action — `ERUPT.place`, the way contact-audit wraps `COL.k4` — and count the
+  named thing. A counter that aggregates several causes cannot falsify a claim about one.
+- **When the safety gate is flat across a sweep, say so and let the design number
+  decide.** The four strict contact legs passed at 2e-3, 6, 10 and 20 with worst margins
+  0.2% apart. That is the gate doing its job — it bounds the blast radius — but it
+  cannot pick the value; the cone column (1.43 / 4.03 / 8.24 px) did. Print both columns
+  side by side so the next reader sees which one the decision came from.
+- **Tuning-table candidates should be absolute values when the base is what moves.** A
+  multiplier sweep silently redefines its own base the moment the constant lands, so the
+  control row disappears. `melt-contact-sweep.js` takes absolute `kMelt` values; the
+  multiplier sweeps (`melt-tune-sweep.js`) stay comparable only within one base, which is
+  why its header now says the arc base moved at 0.2.3.
