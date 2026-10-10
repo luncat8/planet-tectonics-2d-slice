@@ -304,8 +304,9 @@ var MAG = {
 		st.venFlux[v] = drain / (dtSec * P.toyCellM2);
 	},
 
-	// K7: geological birth / death; eruptive drain, box and write-back. Column
-	// ownership is settled by K4 before this unbound kernel runs.
+	// K7: geological birth / death; eruptive drain, box, lava write-back. Tephra
+	// stays in the box until venDeath -> finish, so a live explosive pile is not a
+	// surface bed for K6 to shave (0.2.1 §8). Column ownership is settled by K4.
 	k7: function (st, dt, t, Tm) {
 		var dtSec = P.sl.erupt, v, box = erupt(), t0, toyMs = 0;
 		MAG.venTick(st, dt, t);
@@ -320,7 +321,7 @@ var MAG = {
 			t0 = now();
 			box.step(dtSec, v);
 			toyMs += now() - t0;
-			box.writeBack(v, t);
+			box.writeBack(v, t, P.LITH.lava);
 			box.record(v);
 		}
 		perf().msToy = perf().f(perf().msToy, toyMs);

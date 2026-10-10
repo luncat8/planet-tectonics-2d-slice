@@ -96,13 +96,14 @@ check.ok('mixed, slumped write-back keeps the per-lithology ledger', error(start
 check.section('M2.3 full K7 episodes: 10–30 px, exact mass and ordinary dated beds');
 function episode(gas, name) {
 	F.fresh(c); F.vent(c, v, gas);
-	var initial = ledger(), cells = 150, worst = 0, queues = true, frames = 0;
+	var initial = ledger(), cells = 150, worst = 0, liveHeld = true, frames = 0, blast = gas > P.gasBlast;
 	MAG.add(S, c, cells * P.toyCellM2, false);
 	P.sl.erupt = P.eruptMax;
 	while (S.colChamber[c] + S.venV[v] > 0 && frames < 1000) {
 		MAG.k7(S, 0, 42, SIM.Tm); frames++;
 		worst = Math.max(worst, error(initial));
-		queues = queues && S.venLava[v] === 0 && S.venTephra[v] === 0;
+		if (blast) liveHeld = liveHeld && rock(c, P.LITH.tephra) === 0;
+		else liveHeld = liveHeld && S.venLava[v] === 0 && S.venTephra[v] === 0;
 	}
 	P.sl.erupt = 1800;
 	for (var j = 0; j < 4; j++) { MAG.k7(S, 0, 42, SIM.Tm); worst = Math.max(worst, error(initial)); }
@@ -110,11 +111,21 @@ function episode(gas, name) {
 	var width = S.venW[v] / GEO.kx, tall = GEO.sy(S.z[c]) - GEO.sy(S.z[c] + S.venH[v]);
 	check.info(name, width.toFixed(2) + ' x ' + tall.toFixed(2) + ' px, ' + frames + ' metered K7 frames, worst ledger ' + worst.toExponential(2));
 	check.ok(name + ': 10–30 px edifice at the default window', width >= 10 && width <= 30 && tall >= 10 && tall <= 30);
-	check.ok(name + ': every K7 drains its output queues', queues && S.venLava[v] === 0 && S.venTephra[v] === 0);
-	check.ok(name + ': no pending mass after cooling / landing', ERUPT.mass(v) === 0 && S.venV[v] === 0 && S.colChamber[c] === 0);
+	if (blast) {
+		check.ok(name + ': a live blast keeps tephra in the box, not the stack',
+			liveHeld && rock(c, P.LITH.tephra) === 0 && S.venTephra[v] > 0 && S.venV[v] === 0 && S.colChamber[c] === 0);
+		check.near(name + ': the retained box geometry matches that same episode', pile(v), cells, 1e-10);
+		check.ok(name + ': mass identity holds on every frame', worst < 1e-10);
+		MAG.venDeath(S, v, 42);
+		check.ok(name + ': death drains the queues and leaves no pending melt',
+			S.venLava[v] === 0 && S.venTephra[v] === 0 && ERUPT.mass(v) === 0);
+	} else {
+		check.ok(name + ': every K7 drains lava queues', liveHeld && S.venLava[v] === 0 && S.venTephra[v] === 0);
+		check.ok(name + ': no pending mass after cooling / landing', ERUPT.mass(v) === 0 && S.venV[v] === 0 && S.colChamber[c] === 0);
+		check.near(name + ': the retained box geometry matches that same episode', pile(v), cells, 1e-10);
+		check.ok(name + ': mass identity holds on every frame', worst < 1e-10);
+	}
 	check.near(name + ': the stack owns the whole supplied mass', S.venEdV[v], cells * P.toyCellM2, 1e-10);
-	check.near(name + ': the retained box geometry matches that same episode', pile(v), cells, 1e-10);
-	check.ok(name + ': mass identity holds on every frame', worst < 1e-10);
 	var lith = gas > P.gasBlast ? P.LITH.tephra : P.LITH.lava;
 	check.ok(name + ': the intended lithology dominates the edifice', rock(c, lith) > 0.99 * S.venEdV[v]);
 	var b = c * P.layerCap, bed = -1;
@@ -289,5 +300,23 @@ CP.load(saved); GEO.setPreset('cru'); SIM.run(1000);
 check.ok('active eruption resumes bitwise at a different zoom (1000 frames)', Buffer.from(forward).equals(Buffer.from(CP.save())));
 CP.load(saved); GEO.setPreset('def'); SIM.run(1000);
 check.ok('same seed / feed / zoom reproduces the same full checkpoint', Buffer.from(forward).equals(Buffer.from(CP.save())));
+
+check.section('M2.3b a live tephra pile survives K6 until death writes it back');
+F.fresh(c); F.vent(c, v, 0.5);
+MAG.add(S, c, 80 * P.toyCellM2, false);
+P.sl.erupt = P.eruptMax;
+for (f = 0; f < 40; f++) MAG.k7(S, 0, 42, SIM.Tm);
+P.sl.erupt = 1800;
+for (f = 0; f < 4; f++) MAG.k7(S, 0, 42, SIM.Tm);
+var livePile = pile(v), liveH = S.venH[v], pending = ERUPT.mass(v);
+start = ledger();
+S.zDyn[c] += 8000;
+M.surface.k6(S, 0.05, 44);
+check.ok('K6 does not shave a live unwritten pile', pile(v) === livePile && S.venH[v] === liveH && S.venEdV[v] === 0);
+check.ok('the unwritten pile is still melt in the ledger', pending > 0 && error(start) < 1e-12);
+MAG.venDeath(S, v, 44);
+check.near('death is the write-back: the stack then owns that pile', S.venEdV[v], pending * P.toyCellM2, 1e-9);
+check.ok('queues empty after death', S.venLava[v] === 0 && S.venTephra[v] === 0 && ERUPT.mass(v) === 0);
+check.ok('the dormant shape remains', S.venEdCol[v] === c && S.venCol[v] === -1 && S.venH[v] > 0.9 * liveH);
 
 check.done();

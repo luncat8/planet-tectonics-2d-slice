@@ -44,6 +44,12 @@ topography, because explosive tephra is written back into the column every frame
 landing exposed a latent `COL.floor` defect (a settle test with no tolerance, and a pass
 budget sized for the spin) that is now fixed and gated by `experiments/floor-bench.js`.
 
+0.2.2 (`archive/0.2.2-tephra-pile-worklog.md`) takes that tephra question: write-back waits
+for vent death, so a live explosive pile is box mass rather than a K6 surface bed.
+`P.kMelt` 20 (0.63 melt/water) builds a 27 × 9 px live arc cone against erupt-bench's
+27 × 10, but it nicks R2/R3 on two strict legs, so it is measured in
+`experiments/tephra-pile.js` and not committed.
+
 A release may pull a milestone out of 0.2 or 0.3 when it is the piece that makes a page usable;
 it never re-specifies a kernel.
 

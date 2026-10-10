@@ -54,7 +54,8 @@ mirror of it, so a descriptive URL cannot go stale. experiments/pt-ui.js gates t
 The pages cross-link each other; keep the mirror in sync when editing index.html.
 
 harnesses (node, no runner script): experiments/pt-ui.js (page wiring, particle),
-experiments/smoke.js + view-check.js (column engine), plus the per-milestone pt-*.js checks,
+experiments/smoke.js + view-check.js (column engine), experiments/tephra-pile.js (live arc
+cone vs death write-back), plus the per-milestone pt-*.js checks,
 and the cut in three: experiments/slice-cut.js (the walk, the pack, the resample),
 section-pack.js (the section page: transports, refusals, switches, HUD), section-seed.js (the
 mapping: the z identity, the ledger, the quiet start, the two run modes), checkpoint.js (the

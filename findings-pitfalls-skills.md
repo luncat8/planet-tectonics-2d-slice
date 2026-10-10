@@ -1032,3 +1032,8 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   still molten; an explosive vent (tephra lands solid) shows almost none. Any edifice-size
   gate that drives `ERUPT.step` without `writeBack` — `erupt-bench.js` does — is measuring
   the box alone, and the two must not be quoted as the same number.
+- **If K6 can see a volcanic top, it will shave the drawing.** 0.2.2: hook `erode`/`bury`/
+  `reset`/`rehome` on a live arc (kPlumeMelt = 0) before changing a constant. The 1.2 px
+  apron was 144 cells² of `erode` + 43 of `bury` per 800 frames, not a missing melt
+  multiplier. Write-back now waits for `venDeath`; `erupt-bench` is still the box alone
+  and `tephra-pile.js` is the live arc with geology running.

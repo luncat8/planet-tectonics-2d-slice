@@ -44,6 +44,7 @@ else {
 	suite('edifice-bench.js', [], 'one effusive and one explosive episode each build a 10–30 px edifice with conserved mass');
 	suite('vent-bench.js', [], 'an empty chamber idles the toy; an over-full one builds sills, not a 17th vent');
 	suite('erupt-bench.js', [], 'the toy box: repose cone, mass-exact freeze, packets land as tephra');
+	suite('tephra-pile.js', [], 'a live arc vent piles tephra until death, then writeBack');
 }
 
 // ---------------------------------------------------------------- §2.2 the two clocks
@@ -86,12 +87,13 @@ function clockLeg(kyrPerFrame, eruptSec) {
 		if (S.venCol[v] >= 0) {
 			riding = riding && S.venX[v] === S.colX[S.venCol[v]];
 			// the edifice's own position, not its column slot: the gather renumbers slots
-			// every frame, so only venX is the same object from one frame to the next
+			// every frame, so only venX is the same object from one frame to the next.
+			// A jump of hundreds of km is slot reuse (a later birth), not this eruption.
 			if (prevVenX >= 0) {
 				dx = S.venX[v] - prevVenX;
 				if (dx > P.wrap * 0.5) dx -= P.wrap;
 				else if (dx < -P.wrap * 0.5) dx += P.wrap;
-				ventMove = Math.max(ventMove, Math.abs(dx));
+				if (Math.abs(dx) < 200e3) ventMove = Math.max(ventMove, Math.abs(dx));
 			}
 			prevVenX = S.venX[v];
 		}

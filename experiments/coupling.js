@@ -796,15 +796,16 @@ for (ci0 = 0; ci0 < S.nCol; ci0++) chamberSum1 += S.colChamber[ci0];
 check.ok('the import moves no melt (the chamber supply is a move inside the crust)',
 	Math.abs(chamberSum1 - chamberSum0) < 1e-9,
 	'chambers ' + (chamberSum0 / 1e6).toFixed(3) + ' -> ' + (chamberSum1 / 1e6).toFixed(3) + 'e6 m2');
-// the eruption continues on the edited column: queues drain, the edifice stock stays a
-// retained stock, every buffer stays finite, and the ledger closes as deltas
+// the eruption continues on the edited column: a dead vent has already written back,
+// a live pile may still hold queues, the edifice stock stays a retained stock, every
+// buffer stays finite, and the ledger closes as deltas
 var snapMass = S.mass().slice();
 var snapCons = S.ledCons.slice(), snapDelam = S.ledDelam.slice(), snapMixOut = S.ledMixOut.slice();
 var snapProd = S.ledProd.slice(), snapMixIn = S.ledMixIn.slice();
 SIM.run(400);
-var drained = true, finiteV = true, stockOk = true, vKey;
+var deadQueued = false, finiteV = true, stockOk = true, vKey;
 for (vKey = 0; vKey < S.nVen; vKey++) {
-	if (S.venLava[vKey] + S.venTephra[vKey] > 1e-9) drained = false;
+	if (S.venCol[vKey] < 0 && S.venLava[vKey] + S.venTephra[vKey] > 1e-9) deadQueued = true;
 	if (S.venEdV[vKey] < 0 || S.venEdV[vKey] > S.venToyOut[vKey] * P.toyCellM2 * (1 + 1e-9)) stockOk = false;
 }
 for (vKey in S) {
@@ -813,8 +814,9 @@ for (vKey in S) {
 	for (i = 0; i < sv.length; i++) if (!Number.isFinite(sv[i])) { finiteV = false; break; }
 	if (!finiteV) break;
 }
-check.ok('the continued eruption drains every vent\'s write-back queues', drained,
-	'vent ' + vv + ' queues ' + (S.venLava[vv] + S.venTephra[vv]).toFixed(6) + ' cells2');
+check.ok('a dead vent has drained its write-back queues (a live pile may still hold them)',
+	!deadQueued,
+	'vent ' + vv + ' alive=' + (S.venCol[vv] >= 0) + ' queues ' + (S.venLava[vv] + S.venTephra[vv]).toFixed(6) + ' cells2');
 check.ok('the edifice record stays a retained stock, never a source', stockOk,
 	'venEdV ' + S.venEdV[vv].toFixed(0) + ' m2 of ' + (S.venToyOut[vv] * P.toyCellM2).toFixed(0) + ' m2 placed');
 check.ok('the restored-and-imported section keeps every buffer finite', finiteV);

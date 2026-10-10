@@ -1,7 +1,8 @@
 (function (root) {
 // erupt.js — square-cell pile geometry and ballistic packets on the eruptive clock.
-// Freeze / landing queues lava / tephra for K7 write-back. The solid profile stays in
-// this box for drawing; after transfer it owns no mass apart from the column's stack.
+// Freeze / landing queue lava / tephra. K7 writeBack drains lava; tephra waits for
+// vent death (finish) so a live explosive pile is box mass, not a K6 surface bed.
+// After transfer the solid profile stays for drawing and owns no mass.
 'use strict';
 var node = typeof module !== 'undefined' && module.exports;
 var P = node ? require('./params.js') : window.COLP;
@@ -198,12 +199,19 @@ var ERUPT = {
 		return placed;
 	},
 
-	writeBack: function (v, t) {
-		var c = S.venCol[v], lava = S.venLava[v], ash = S.venTephra[v], z0, placed;
-		if (c < 0 || S.colGhost[c] || !(lava + ash > 0)) return;
+	// lith omitted: both (death). Lava can write every K7 — a shield still freezes
+	// into the stack as it cools. Tephra waits for death so K6 cannot shave a live
+	// explosive pile (0.2.2).
+	writeBack: function (v, t, lith) {
+		var c = S.venCol[v], lava = 0, ash = 0, z0, placed;
+		if (c < 0 || S.colGhost[c]) return;
+		if (lith === undefined || lith === P.LITH.lava) lava = S.venLava[v];
+		if (lith === undefined || lith === P.LITH.tephra) ash = S.venTephra[v];
+		if (!(lava + ash > 0)) return;
 		z0 = SURF.elev(c);
 		placed = this.place(v, P.LITH.lava, lava, t) + this.place(v, P.LITH.tephra, ash, t);
-		S.venLava[v] = 0; S.venTephra[v] = 0;
+		if (lith === undefined || lith === P.LITH.lava) S.venLava[v] = 0;
+		if (lith === undefined || lith === P.LITH.tephra) S.venTephra[v] = 0;
 		if (!(placed > 0)) return;
 		COL.sums(c);
 		// K6 has already run. Apply only the buoyancy change of this transfer, so
@@ -249,11 +257,13 @@ var ERUPT = {
 	},
 
 	// Burial hides solid relief but does not remove its rock from the column.
+	// An unwritten live pile is still box mass (writeBack waits for death), so
+	// sediment on the column is not covering stack-owned edifice rock.
 	bury: function (c, thick) {
 		var v, b, x, mol, next, lower = thick / P.toyCellY;
 		if (!(lower > 0)) return;
 		for (v = 0; v < S.nVen; v++) {
-			if (S.venEdCol[v] !== c) continue;
+			if (S.venEdCol[v] !== c || !(S.venEdV[v] > 0)) continue;
 			b = v * W;
 			for (x = 0; x < W; x++) {
 				mol = S.toyH[b + x] - S.toyFz[b + x];
@@ -298,8 +308,8 @@ var ERUPT = {
 		this.writeBack(v, t);
 	},
 
-	// Only mass still in transit; the frozen profile is already in the stack once
-	// its two output queues have been drained by writeBack().
+	// Transit mass: queues, molten, packets. After finish() drains the queues the
+	// frozen profile is stack rock and is not counted again.
 	mass: function (v) {
 		var b = v * W, x, m = S.venLava[v] + S.venTephra[v];
 		for (x = 0; x < W; x++) m += S.toyH[b + x] - S.toyFz[b + x];

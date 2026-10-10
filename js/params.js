@@ -216,7 +216,11 @@ var P = {
 	tauCool: 2500,               // Myr
 	Tfloor: 0.35,
 	kDehy: 0.02,                 // /Myr, slab water release between 50 and 200 km
-	kMelt: 2e-3,                  // fraction of released water converted to arc melt
+	kMelt: 2e-3,                  // melt per released water, × the wedge temperature factor.
+	                             // 0.2.2: 20 (0.63 melt/water) builds a 27 × 9 px live arc
+	                             // cone once tephra waits for death. Not committed: a trial
+	                             // that also delayed lava nicked R2/R3. tephra-pile.js
+	                             // measures 20 without writing params.
 	Tc: 0.2,                     // anomaly threshold above the wedge reference
 	wedgeT0: 0.7,                // adiabat reference at the wedge (Tf stores the anomaly)
 	chamberCap: 2e7,              // m2 per unit depth before a sill / underplate spill
