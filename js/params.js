@@ -64,9 +64,29 @@ var P = {
 	Tsol: 0.6,                   // solidify threshold, toy T units
 	gasBlast: 0.4,               // explosive gas fraction
 	Vch: 5,                      // chamber capacity, km3
-	Vbirth: 1,                   // vent birth threshold, km3
+	Vbirth: 4,                   // vent birth threshold, km3
+	                             // 0.2.4, landed from the cadence table
+	                             // (experiments/vent-contact-sweep.js, Vbirth 1/4/8/16/32 x
+	                             // tauVent 0.25/0.5/2 on the four strict contact legs):
+	                             // 4 is the best duty/repose the arc cone survives. It banks
+	                             // one chamberful per episode (batches 125-305 cells2, births
+	                             // -20-40%, repose medGap 2.05-5.00 Myr against the base's
+	                             // 0.90-2.80, duty 82.0% mean against 88.7%, visDuty 64.5%
+	                             // inside 0.2.1's 57-69%) and keeps the 0.2.3 arc cone in the
+	                             // design band (27.00 x 8.42 px against 27.00 x 8.24). The
+	                             // rows above it lose the cone: at Vbirth >= 8 a life batches
+	                             // several chamberfuls, tephra waits for death and slumps past
+	                             // the band (21 x 5.4 at 16), and tauVent <= 0.5 flattens every
+	                             // candidate's pile while only buying 4-6 duty points. Vbirth
+	                             // stays under Vch so the birth fills the vent chamber in one
+	                             // transfer (vent-bench M1.1's ladder).
 	Vdie: 0.1,                   // vent death threshold, km3
 	tauVent: 2,                  // Myr of empty chamber before a vent dies
+	                             // Measured flat-to-costly in the 0.2.4 table: the design
+	                             // absolute (2 Myr) is where the cone holds; 0.25/0.5 fire the
+	                             // death rule sooner and buy section duty (up to 69.4% mean at
+	                             // 32/0.5, which nicks R1) but every one of them flattens the
+	                             // arc cone below the watchable height.
 	// The design's chamber km3 convert to the engine's section m2 at the magma.js
 	// boundary (1 km3 := venKm3M2 m2). Calibrated so Vbirth/Vch/Vdie all sit inside the
 	// measured supply range (plume-column chambers plateau near 5e5 m2 in 500 Myr);

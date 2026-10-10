@@ -62,6 +62,19 @@ writes also cause) instead of tephra cells placed live. Melt stays under half a 
 mafic production; the visible cost is the duty cycle (93–98% of frames feeding), whose knob
 is `Vbirth` / `tauVent`.
 
+0.2.4 (`archive/0.2.4-vent-cadence-worklog.md`) takes that duty item as its own contact-leg
+table (`experiments/vent-contact-sweep.js`: `Vbirth` 1/4/8/16/32 × `tauVent` 0.25/0.5/2 on
+the same four legs, with `experiments/vent-cadence.js` as the decision column): **`P.Vbirth`
+1 → 4** lands and `tauVent` stays the design's 2 Myr. Each edifice now erupts in
+design-scale batches (mean episode 11.7–18.8 cells², largest 126–305) with 2.05–5.00 Myr
+per-edifice repose (2–4× the base), duty 88.7% → 82.0% mean and visDuty 71.9% → 64.5%
+(inside 0.2.1's 57–69%), at the cone 0.2.3 landed kept intact (27.00 × 8.42 px against
+27.00 × 8.24). The cone is the ceiling: `(16, 2)` measures the reference duty number
+(69.1% mean) but flattens the arc cone to 5.43 px, so the batching region a
+pile-before-write-back rule would free (0.3.0-P3's toy physics) is measured and named in
+§7; `Vdie` / `tDrain` are the remaining lifecycle constants if the trickle hover must stop
+counting as an eruption.
+
 A release may pull a milestone out of 0.2 or 0.3 when it is the piece that makes a page usable;
 it never re-specifies a kernel.
 

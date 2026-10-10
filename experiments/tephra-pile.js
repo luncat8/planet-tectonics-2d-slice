@@ -11,10 +11,19 @@ var P = L.mods.params, S = L.mods.state, SIM = L.mods.sim, GEO = L.mods.geom;
 var frames = +(process.argv[2] || 3000);
 // KM overrides the arc melt rate for one run (the contact-audit KG pattern), so the 0.2.3
 // calibration can size the live arc cone at a candidate. Default: the committed P.kMelt.
-var KM = Number(process.env.KM);
+// VB / TV override the vent lifecycle the same way (0.2.4), so the cadence table reads
+// the cone at each (Vbirth, tauVent) candidate; VbirthM2 and kErupt follow as params.js
+// derives them. Default: the committed values.
+var KM = Number(process.env.KM), VB = Number(process.env.VB), TV = Number(process.env.TV);
 var holdPlume = P.kPlumeMelt, holdMelt = P.kMelt;
 P.kPlumeMelt = 0;
 if (isFinite(KM) && KM >= 0) P.kMelt = KM;
+if (isFinite(VB) && VB > 0) {
+	P.Vbirth = VB;
+	P.VbirthM2 = P.Vbirth * P.venKm3M2;
+	P.kErupt = 2 * Math.sqrt(P.VchM2 * P.VbirthM2) / P.tDrain;
+}
+if (isFinite(TV) && TV > 0) P.tauVent = TV;
 P.sl.geo = 50e3;
 P.sl.erupt = 1800;
 check.planet(1, 'def');

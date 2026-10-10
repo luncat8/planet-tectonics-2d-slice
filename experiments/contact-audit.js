@@ -63,6 +63,16 @@ if (isFinite(KG) && KG > 0) P.kBeltGradient = KG;
 // params.js per candidate. The default run is unchanged.
 var KM = Number(process.env.KM);
 if (isFinite(KM) && KM >= 0) P.kMelt = KM;
+// And for the vent lifecycle (0.2.4): VB overrides P.Vbirth (km3) and TV P.tauVent (Myr),
+// re-deriving VbirthM2 and kErupt the way params.js does, so the Vbirth/tauVent cadence
+// table can gate every candidate on the same four legs. The default run is unchanged.
+var VB = Number(process.env.VB), TV = Number(process.env.TV);
+if (isFinite(VB) && VB > 0) {
+	P.Vbirth = VB;
+	P.VbirthM2 = P.Vbirth * P.venKm3M2;
+	P.kErupt = 2 * Math.sqrt(P.VchM2 * P.VbirthM2) / P.tDrain;
+}
+if (isFinite(TV) && TV > 0) P.tauVent = TV;
 
 // The kernel's event memory at this leg's rate: P.evAge of simulated time in frames.
 // 0.2.0 M5's frame-versus-clock policy reads it in both event gates (R5's repeat

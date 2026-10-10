@@ -21,6 +21,9 @@
 //   node experiments/vent-tune-sweep.js [candidates=0.25,0.5,1,2,4,8] [frames=3000] [seed=1] [kyr=50]
 //
 // Candidates are multipliers of the committed P.venKm3M2, so the first row is the base.
+// That scale carries the vent-chamber figures, which moved at 0.2.4 (`Vbirth` 1 -> 4,
+// landed from the cadence contact table), so rows before that landing are not comparable
+// with rows after.
 // Report only: nothing here edits params.js; the chosen scale lands through a normal edit
 // and a full-suite re-acceptance.
 'use strict';

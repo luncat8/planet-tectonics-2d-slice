@@ -1,0 +1,11 @@
+
+0.2.2 live arc tephra piles until death
+INFO  arc cone   17.00 x 3.01 px, pile 21.5 cells2, toyIn 113.0, tephra beds 3.36e+6 m2, alive/feed frames 5887/5247, tephra placed 385.3 cells2 at death / 0.000 live
+PASS  at least one arc vent is born from water-released melt
+PASS  the live arc cone is in the design 10–30 px band on width
+FAIL  the live arc cone reaches a watchable height (>= 8 px; erupt-bench 10 px at 150 cells2)   3.01 px at 21.5 cells2
+PASS  a live arc vent does not write tephra into the stack   0.000 cells2 placed live, 385.3 at death
+PASS  death writes tephra beds
+PASS  the per-lithology ledger closes   rel 1.93e-14
+
+1 / 6 FAILURES
