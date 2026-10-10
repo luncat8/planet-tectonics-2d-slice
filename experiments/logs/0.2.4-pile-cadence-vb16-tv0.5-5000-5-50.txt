@@ -1,0 +1,7 @@
+f	seed	kyr	Vbirth	tauVent	Vdie	births	deaths	arcBirths	plumeBirths	duty%	visDuty%	arcDuty%	plumeDuty%	starved%	maxIdle Myr	feedRuns	maxFeed f	maxQuiet f	maxQuiet Myr	maxQuietArc Myr	maxQuietPlume Myr	lives	medLife f	medLifeDuty%	medGap Myr	epMax cells2	epMean cells2	toyIn cells2	edW px	edH px	pile cells2	sill m2	idle m2	lost m2	K9 red	ledgerErr	hash
+5000	5	50	16	0.5	0.1	57	54	31	26	81.8	60.9	52.0	57.3	5.5	0.50	14	1969	449	22.45	98.30	41.85	57	62	94	1.40	223.9	22.5	1282	33.0	12.2	224	0.00e+0	0.00e+0	0.00e+0	0	8.58e-15	3801477202
+leg: 5000 frames (250 Myr), seed 5, 50 kyr/frame, eruptive 1800 s/frame (30 min); Vbirth 16 km3, tauVent 0.5 Myr, Vdie 0.1 km3 (overridden)
+supply 30.5 km3/Myr (arc 8.3, plume 22.3); deaths bank episodes, the last open ones are banked at the end of the run
+duty is frames with any feeding vent; visDuty needs >= 0.1 cells2 into the box that frame; the style splits count frames where that style feeds
+starved% is the share of alive vent-frames whose venIdle counter is running (the post-fill chamber below Vdie); maxIdle Myr is the furthest any counter got
+lives are slot birth->death intervals (open ones banked at the run end): medLife is the median life length in frames, medLifeDuty the median share of those frames feeding, medGap the median same-slot repose between death and the next birth

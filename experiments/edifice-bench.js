@@ -102,8 +102,7 @@ function episode(gas, name) {
 	while (S.colChamber[c] + S.venV[v] > 0 && frames < 1000) {
 		MAG.k7(S, 0, 42, SIM.Tm); frames++;
 		worst = Math.max(worst, error(initial));
-		if (blast) liveHeld = liveHeld && rock(c, P.LITH.tephra) === 0;
-		else liveHeld = liveHeld && S.venLava[v] === 0 && S.venTephra[v] === 0;
+		if (true) liveHeld = liveHeld && rock(c, P.LITH.lava) === 0 && rock(c, P.LITH.tephra) === 0;
 	}
 	P.sl.erupt = 1800;
 	for (var j = 0; j < 4; j++) { MAG.k7(S, 0, 42, SIM.Tm); worst = Math.max(worst, error(initial)); }
@@ -111,19 +110,14 @@ function episode(gas, name) {
 	var width = S.venW[v] / GEO.kx, tall = GEO.sy(S.z[c]) - GEO.sy(S.z[c] + S.venH[v]);
 	check.info(name, width.toFixed(2) + ' x ' + tall.toFixed(2) + ' px, ' + frames + ' metered K7 frames, worst ledger ' + worst.toExponential(2));
 	check.ok(name + ': 10–30 px edifice at the default window', width >= 10 && width <= 30 && tall >= 10 && tall <= 30);
-	if (blast) {
-		check.ok(name + ': a live blast keeps tephra in the box, not the stack',
-			liveHeld && rock(c, P.LITH.tephra) === 0 && S.venTephra[v] > 0 && S.venV[v] === 0 && S.colChamber[c] === 0);
+	if (true) {
+		check.ok(name + ': a live pile keeps rock in the box, not the stack',
+			liveHeld && rock(c, P.LITH.lava) === 0 && rock(c, P.LITH.tephra) === 0 && (S.venTephra[v] > 0 || S.venLava[v] > 0) && S.venV[v] === 0 && S.colChamber[c] === 0);
 		check.near(name + ': the retained box geometry matches that same episode', pile(v), cells, 1e-10);
 		check.ok(name + ': mass identity holds on every frame', worst < 1e-10);
 		MAG.venDeath(S, v, 42);
 		check.ok(name + ': death drains the queues and leaves no pending melt',
 			S.venLava[v] === 0 && S.venTephra[v] === 0 && ERUPT.mass(v) === 0);
-	} else {
-		check.ok(name + ': every K7 drains lava queues', liveHeld && S.venLava[v] === 0 && S.venTephra[v] === 0);
-		check.ok(name + ': no pending mass after cooling / landing', ERUPT.mass(v) === 0 && S.venV[v] === 0 && S.colChamber[c] === 0);
-		check.near(name + ': the retained box geometry matches that same episode', pile(v), cells, 1e-10);
-		check.ok(name + ': mass identity holds on every frame', worst < 1e-10);
 	}
 	check.near(name + ': the stack owns the whole supplied mass', S.venEdV[v], cells * P.toyCellM2, 1e-10);
 	var lith = gas > P.gasBlast ? P.LITH.tephra : P.LITH.lava;
