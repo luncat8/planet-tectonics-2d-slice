@@ -1,0 +1,94 @@
+
+1. the roof opens at its lithostatic load plus its tensile strength
+PASS  the threshold is the depth plus tensile times the roof strength   threshold 64.150000   expected 64.150000 km
+PASS  with no strength the threshold is exactly the lithostatic load   threshold 64
+PASS  a strong roof holds more head: 64.2 km opens it at mug 0.5 (threshold 64.15)   head 64.2 vs 64.150
+PASS  and holds it shut at mug 1 (threshold 64.3)   head 64.2 vs 64.300
+
+2. a closed conduit and a blocked one do not drain
+PASS  at the threshold the conduit stays closed and the chamber keeps all of it   state 0   chM 25600   vM 0
+PASS  an overpressured conduit with a full schedule is blocked and does not drain   state 2   chM 28000   vM 4000
+PASS  the block is counted, one event per attempt   block 1
+
+3. effusive and explosive schedules drain at the rate law
+PASS  the effusive drain is kVent times the excess times the footprint times dt   drained 60.000000   expected 60.000000 km2
+PASS  a dry chamber is effusive   style 0   state 1
+PASS  a wet chamber is explosive, and drains at kBlast   style 1   drained 240.000000   expected 240.000000
+PASS  at the same excess, explosive over effusive is kBlast over kVent   rel 0.00e+0  got 4  want 4
+PASS  the style is fixed when the conduit opens: drying the chamber does not re-style it   style 1
+
+4. the drain stops at the threshold and the rest stays stored
+PASS  a long step cannot drain past the overpressure: the conduit seals   state 0
+PASS  the vent takes exactly the overpressure, 2.5 km of head over the footprint   rel 0.00e+0  got 1000 km2  want 1000
+PASS  the chamber keeps the threshold head: the intrusive remainder   rel 0.00e+0  got 200 km2  want 200
+PASS  and nothing was made: chamber plus vent equal the start   rel 0.00e+0  got 1200 km2  want 1200
+PASS  a short step drains only what the rate allows, and stays open   state 1   drained 25.00
+
+5. the transfer splits every extensive field exactly
+PASS  mass is debited and credited exactly   rel 0.00e+0  got 28000 km2  want 28000
+PASS  enthalpy is debited and credited exactly   rel 0.00e+0  got 35000 km2*H  want 35000
+PASS  melt is debited and credited exactly   rel 0.00e+0  got 28000 km2  want 28000
+PASS  felsic is debited and credited exactly   rel 0.00e+0  got 2800 km2  want 2800
+PASS  water is debited and credited exactly   rel 0.00e+0  got 840 km2  want 840
+PASS  the chamber keeps its enthalpy per unit mass   rel 0.00e+0  got 1.25  want 1.25
+PASS  and its melt per unit mass   rel 0.00e+0  got 1  want 1
+PASS  and its felsic per unit mass   rel 0.00e+0  got 0.1  want 0.1
+PASS  and its water per unit mass   rel 0.00e+0  got 0.03  want 0.03
+PASS  the vent takes the same enthalpy per unit mass   rel 0.00e+0  got 1.25  want 1.25
+PASS  and the same melt, felsic and water per unit mass   rel 0.00e+0  got 1.1300000000000001  want 1.1300000000000001
+
+6. a full schedule caps the drain, then blocks the conduit
+PASS  the drain takes exactly the 10 km2 left, and fills the vent to its capacity   rel 0.00e+0  got 4000 km2  want 4000
+PASS  and the conduit is still open at that step   state 1
+PASS  the next step finds the schedule full and blocks   state 2   chM 23990
+
+7. vent stock is inventory once, throughput is matched and apart
+PASS  the pool inventory closes over vent drains (mass)   rel 0.00e+0  got 41749646.7024328 km2  want 41749646.7024328
+PASS  and enthalpy   rel 0.00e+0  got 40500146.59167913 km2*H  want 40500146.59167913
+PASS  and melt   rel 0.00e+0  got 491937.85072922654 km2  want 491937.85072922654
+PASS  and felsic   rel 0.00e+0  got 6120 km2  want 6120
+PASS  and water   rel 0.00e+0  got 572 km2  want 572
+PASS  the latent identity does not move: melt in a vent is melt in the book   identity -1.530e+4 vs -1.530e+4
+PASS  the vent stock is counted in its own line   rel 0.00e+0  got 7348.609465239627 km2  want 7348.609465239627
+PASS  and its melt in the inventory melt   rel 0.00e+0  got 7348.609465239627 km2  want 7348.609465239627
+PASS  the drained mass is the vent stock, since no schedule has given any back   rel 2.48e-16  got 7348.609465239629 km2  want 7348.609465239627
+PASS  throughput debit and credit match exactly   debit 7348.609465239629   credit 7348.609465239629
+PASS  the total is the particles plus the chambers plus the vents   rel 7.28e-14  got 41749646.7024328 km2  want 41749646.70242976
+PASS  zero geological time changes nothing   hash 5455767930881967
+
+8. 100 Myr of the shipped pipeline (footprint 400 km)
+PASS  no NaN over 2000 frames   0 sightings
+PASS  the pool and the store close: mass   rel 0.00e+0  got 41688446.7024328 km2  want 41688446.7024328
+PASS  the global enthalpy residual is round-off   residual -1.11e-16
+PASS  the latent identity still holds   identity 4.948e-9
+PASS  the melt book closes over the shipped run: segregated plus whole, less freeze, is intruded plus in flight   rel 3.83e-16  got 227774.03183324015 km2  want 227774.03183324024
+PASS  the shipped run opens no conduit   max open 0   vent drains 0
+INFO  the margin at the shipped footprint   largest head 40.5 km against a threshold of 78.4 km (chamber 12, margin -37.9 km of head)
+INFO  the footprint that would open that chamber now   chSpan* = chM / threshold = 206 km (shipped 400 km)
+
+9. 100 Myr with the footprint at 100 km: the whole eruption path runs live
+PASS  no NaN over 2000 frames   0 sightings
+PASS  conduits open on the overpressure the intrusions built   first at 3.35 Myr   drain events 927
+PASS  the pool and the store close with vents in the inventory: mass   rel 0.00e+0  got 41688446.7024328 km2  want 41688446.7024328
+PASS  the seed is felsic and wet   parcels 7753   felsic 9.589e+5   water 5.114e+3
+PASS  felsic closes with the vents in the inventory   rel 1.21e-16  got 958886.8440157974 km2  want 958886.8440157975
+PASS  and water   rel 0.00e+0  got 5114.063168084253 km2  want 5114.063168084253
+PASS  the global enthalpy residual is round-off   residual -5.04e-17
+PASS  the latent identity holds across the eruptions   identity 5.763e-9
+PASS  the drained mass is the vent stock, once   rel 4.04e-16  got 107999.99999999996 km2  want 108000
+PASS  the melt book closes over the seeded run, with the eruptions beside it   rel 2.00e-15  got 871024.7682130157 km2  want 871024.7682130175
+PASS  a schedule that fills blocks its conduit and the chamber keeps the rest   blocked events 51086   blocked now 27
+PASS  nothing was dropped: refusals stay at the pool's own count   refuse 0
+INFO  the eruption census   open 0   blocked 27   closed 0   vent stock 0.259% of mass   drained 108000 km2   explosive conduits 0
+INFO  the throughputs, apart from stock   segregated 871025   intruded 871025   drained 108000 km2  (never added to the inventory)
+
+10. a crystallised intrusion is stock once, with no melt
+PASS  a crystal-only record adds its mass to the inventory once   rel 0.00e+0  got 16000 km2  want 16000
+PASS  and its enthalpy once   rel 0.00e+0  got 20000 km2*H  want 20000
+PASS  and its felsic and water once   rel 0.00e+0  got 1920 km2  want 1920
+PASS  and adds no melt, since none is held   melt with 4.307e+5 without 4.307e+5
+PASS  the chamber total counts the record in its own line, once   invChM 16000.000 vs record 16000.000
+
+  total 60.0 s
+
+ALL PASS (66 checks)

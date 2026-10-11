@@ -46,7 +46,8 @@ check.near = function (name, got, want, tol, unit) {
 	var d = Math.abs(got - want);
 	var rel = want === 0 ? d : d / Math.abs(want);
 	var pass = tol === 0 ? got === want : (tol < 1 ? rel < tol : d <= tol);
-	this.ok(name, pass && isFinite(got), (tol < 1 ? 'rel ' : 'abs ') + d.toExponential(2) +
+	var shown = tol < 1 ? rel : d;
+	this.ok(name, pass && isFinite(got), (tol < 1 ? 'rel ' : 'abs ') + shown.toExponential(2) +
 		'  got ' + got + (unit ? ' ' + unit : '') + '  want ' + want);
 };
 

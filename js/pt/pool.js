@@ -45,6 +45,11 @@
 
 	function fin(o) { return ACC[o] + ACC[o + 1]; }
 
+	// one reservoir record's stock (a chamber or a vent), compensated, into the totals
+	function stock(m, h, f, w, l) {
+		cadd(A_M, m); cadd(A_H, h); cadd(A_F, f); cadd(A_W, w); cadd(A_L, l);
+	}
+
 	var POOL = {
 		// every per-parcel field, in one order: the list remove() permutes and the list
 		// pt-p3-pool.js holds state.js against. Workspace arrays that are *sized* with the
@@ -156,6 +161,7 @@
 			PHASE.byH(S.H[q], S.y[q], S.cF[q], S.cW[q]);
 			S.T[q] = PHASE.out.t; S.melt[q] = PHASE.out.melt;
 			S.tx.split++;
+			S.thr.seg += S.m[q];
 			return q;
 		},
 
@@ -192,6 +198,7 @@
 			S.chW[best] += m * S.cW[p];
 			this.remove(S, p);
 			S.tx.intrude++;
+			S.thr.intrDr += m; S.thr.intrCr += m;
 			return best;
 		},
 
@@ -249,13 +256,14 @@
 			}
 			// the chambers are stock too (P3 plan §1.2): reservoir mass sums into the same
 			// totals exactly once, or an intrusion would read as a leak
-			var cm = 0, cl = 0;
+			// a record's stock is its chamber's and its vent's: both are reservoirs, both count once
+			var cm = 0, cl = 0, vm = 0, vl = 0;
 			for (p = 0; p < S.chN; p++) {
-				cm += S.chM[p]; cl += S.chL[p];
-				tm += S.chM[p]; th += S.chH[p];
-				tf += S.chF[p]; tw += S.chW[p]; tl += S.chL[p];
+				cm += S.chM[p]; cl += S.chL[p]; vm += S.vM[p]; vl += S.vL[p];
+				tm += S.chM[p] + S.vM[p]; th += S.chH[p] + S.vH[p];
+				tf += S.chF[p] + S.vF[p]; tw += S.chW[p] + S.vW[p]; tl += S.chL[p] + S.vL[p];
 			}
-			S.invChM = cm; S.invChL = cl;
+			S.invChM = cm; S.invChL = cl; S.invVM = vm; S.invVL = vl;
 			S.invMTot = tm; S.invHTot = th;
 			S.invFTot = tf; S.invWTot = tw; S.invLTot = tl;
 		},
@@ -277,13 +285,14 @@
 				cadd(A_F, m * S.cF[p]); cadd(A_W, m * S.cW[p]); cadd(A_L, m * S.melt[p]);
 				tm += m; th += m * S.H[p];
 			}
+			S.invChM = 0; S.invChL = 0; S.invVM = 0; S.invVL = 0;
 			for (p = 0; p < S.chN; p++) {
-				cadd(A_M, S.chM[p]); cadd(A_H, S.chH[p]);
-				cadd(A_F, S.chF[p]); cadd(A_W, S.chW[p]); cadd(A_L, S.chL[p]);
-				tm += S.chM[p]; th += S.chH[p];
+				stock(S.chM[p], S.chH[p], S.chF[p], S.chW[p], S.chL[p]);
+				stock(S.vM[p], S.vH[p], S.vF[p], S.vW[p], S.vL[p]);
+				tm += S.chM[p] + S.vM[p]; th += S.chH[p] + S.vH[p];
+				S.invChM += S.chM[p]; S.invChL += S.chL[p];
+				S.invVM += S.vM[p]; S.invVL += S.vL[p];
 			}
-			S.invChM = 0; S.invChL = 0;
-			for (p = 0; p < S.chN; p++) { S.invChM += S.chM[p]; S.invChL += S.chL[p]; }
 			for (ph = 0; ph < P.PH_N; ph++) {
 				invM[ph] = fin(A_PH + 2 * ph);
 				invH[ph] = fin(A_PH + 2 * ph + 2 * P.PH_N);

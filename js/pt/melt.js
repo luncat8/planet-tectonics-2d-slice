@@ -45,6 +45,7 @@
 					// parcel that is not solid carries no bond state at all (§1.3)
 					ph[p] = P.PH.melt;
 					S.age[p] = 0; S.mu[p] = 0; S.dmg[p] = 0; S.pLoad[p] = 0; S.pCnt[p] = 0;
+					S.tx.whole++; S.thr.whole += S.m[p];
 				} else if (xi >= hold) POOL.separate(S, p);
 			}
 		},
@@ -57,7 +58,7 @@
 			var y = S.y, e = S.e, x = S.x, p, dy, ym;
 			for (p = 0; p < S.n;) {
 				if (ph[p] !== mPh) { p++; continue; }
-				if (S.melt[p] < hold) { ph[p] = sPh; p++; continue; }
+				if (S.melt[p] < hold) { ph[p] = sPh; S.tx.freeze++; S.thr.freeze += S.m[p]; p++; continue; }
 				if (y[p] <= P.yCham) {
 					// intrude returns -1 only on a full record set: the melt then waits at
 					// the chamber depth instead of climbing through it or being dropped

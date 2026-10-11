@@ -495,6 +495,17 @@ G.velAt = function (M, psi, x, e, y) {
 	G.vyAt = -((1 - fy) * (b - a) + fy * (d - c)) / M.dx;
 };
 
+// a node field (Tg, mug, ...) sampled bilinearly at a point: the vent's roof strength reads it.
+// One cell interpolant (cellOf) serves every point read, the way velAt serves the flow.
+G.sampleAt = function (M, field, x, e) {
+	var nx = M.nx, base, i0, i1, fx, fy, a, b, c, d;
+	cellOf(M, x, e, 0, 0, 0, M.ny - 1);
+	base = _j0 * nx; i0 = _i0; i1 = _i1; fx = _fx; fy = _fy;
+	a = field[base + i0]; b = field[base + i1];
+	c = field[base + nx + i0]; d = field[base + nx + i1];
+	return (1 - fy) * ((1 - fx) * a + fx * b) + fy * ((1 - fx) * c + fx * d);
+};
+
 G.gatherVel = function (M, S, psi) {
 	var p, adv = P.PH_ADV, ph = S.ph;
 	for (p = 0; p < S.n; p++) {

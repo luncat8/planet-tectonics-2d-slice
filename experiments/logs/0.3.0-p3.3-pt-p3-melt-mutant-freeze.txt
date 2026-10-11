@@ -1,0 +1,97 @@
+  melt: 256x24, 4 markers/node, Ra 1e+6, dt 0.050 Myr/frame   hold 0.1, vMelt 60 km/Myr, yCham 80 km, chJoin 400 km, chCap 64
+
+
+1. a split moves material and does not melt it
+PASS  the split was admitted   child slot 23552
+PASS  the host keeps its id and the child is fresh   id 5/23552
+PASS  the host keeps exactly its unmelted mass   rel 0.00e+0  got 900 km2  want 900
+PASS  and the child takes exactly the melt mass   rel 0.00e+0  got 300 km2  want 300
+PASS  the host sits at its solidus, exactly solid   T 0.9183124631546346 = Ts 0.9183124631546346
+PASS  the child sits at its liquidus, molten   xi 1.0000000000000000   T 1.068312   Tl 1.068312
+PASS  the child carries no bond state   age 0   dmg 0
+PASS  intensive identity is shared where the plan says so   x/y/e/cF/cW shared
+PASS  mass closes over the split   rel 0.00e+0  got 41689514.30223485 km2  want 41689514.30223485
+PASS  enthalpy closes over the split   rel 0.00e+0  got 40424855.433840446 km2*H  want 40424855.433840446
+PASS  melt mass closes over the split   rel 0.00e+0  got 431037.85072922654 km2  want 431037.85072922654
+PASS  composition closes over the split   rel 0.00e+0  got 120 km2  want 120
+PASS  the sensible book does not move (a split does not melt)   ledger 0   hLedger 0
+PASS  and the P3.1 identity survives it untouched   identity -7.500e+1
+PASS  the residue is bitwise-quiet under the next equilibrium pass   read T 0.9183124631546346   xi 0
+PASS  and so is the melt child   read T 1.0683124631546346   xi 1
+PASS  a pure parcel has nothing to separate   refuse 0
+
+2. meltHold decides what leaves and what dies
+PASS  trapped melt stays in its source parcel   xi 0.09000000000000001   m 1200
+PASS  melt at the threshold separates   n 5
+PASS  a wholly molten parcel is one phase change to melt   ph 1
+PASS  and drops its bond state with its phase   age 0   dmg 0
+PASS  the whole-parcel change is counted once   whole 1
+PASS  and its mass enters the melt book as the whole-parcel term   rel 0.00e+0  got 1200 km2  want 1200
+PASS  detach is source-side only: transit melt keeps its state   ph 1   xi 0.5
+
+3. a full pool defers and the phase fraction stays home
+PASS  the pool is at its capacity   n 28263 of 28263
+PASS  separate refuses and counts   refuse 2
+PASS  and the phase fraction is exactly where it was   m 1200   xi 0.25
+
+4. hot melt rises, cold material does not
+PASS  hot melt rises at vMelt per geological step   rel 0.00e+0  got 397 km  want 397
+PASS  cold melt stops being melt and stops rising   ph 0   y 400
+PASS  and the freeze-back is counted once   freeze 1
+FAIL  and its mass leaves the melt phase as the freeze term of the book   rel 1.00e+0  got 0 km2  want 1200
+PASS  mantle is left to the flow map   y 400
+PASS  zero geological time moves nothing   hash 7844999612475413
+
+5. rising melt wraps the periodic seam
+PASS  the parcel crossed the seam and landed inside [0, wrap)   x 15990.0 -> 0.0 km
+
+6. intrusion is a transfer into the chamber records
+PASS  an intrusion fills a fresh record   chN 1
+PASS  its mass moved into the record   rel 0.00e+0  got 1200 km2  want 1200
+PASS  its enthalpy moved with it   rel 0.00e+0  got 1488.9492894850398 km2*H  want 1488.9492894850398
+PASS  and its melt stock   rel 0.00e+0  got 1200 km2  want 1200
+PASS  the transfer closes the global mass   rel 0.00e+0  got 3600 km2  want 3600
+PASS  and the global enthalpy   rel 0.00e+0  got 4466.847868455119 km2*H  want 4466.847868455119
+PASS  a second intrusion within chJoin joins the record   chN 1   chM 2400.0
+PASS  a third site opens its own record   chN 2
+PASS  the joined transfers still close the global mass   rel 0.00e+0  got 3600 km2  want 3600
+PASS  two sites fill the set   chN 2
+PASS  the third site's transfer defers and counts   n 1   refuse 1
+PASS  and the melt waits at the chamber depth instead of being dropped   y 50   n 1
+PASS  the deferred transfer changed nothing globally   rel 0.00e+0  got 3600 km2  want 3600
+PASS  melt from above the chamber depth reaches the store on its own   n 0   chN 1
+
+7. 100 Myr of the shipped pipeline
+PASS  no NaN over 2000 frames   0 sightings
+PASS  coverage held through the segregation   worst 0 of 5888 nodes
+PASS  the pool has no source and no sink: mass closes   rel 0.00e+0  got 41688446.7024328 km2  want 41688446.7024328
+PASS  composition closes with it   rel 0.00e+0  got 0 km2  want 0
+PASS  the global enthalpy residual is round-off against the booked intake   residual -1.11e-16
+PASS  and the P3.1 latent identity still holds across all of it   identity 4.948e-9
+PASS  the burst separated real melt and the store received it   burst 1389 splits   intrusions 1511   chambers 23
+PASS  the melt book closes over the shipped run: segregated plus whole, less freeze, is intruded plus in flight   rel 3.83e-16  got 227774.03183324015 km2  want 227774.03183324024
+PASS  and nothing was dropped at capacity   refuse 0   peak n 24948 of 28263
+INFO  the two gaps, reported separately   marker/grid heat gap 5.85e-3 (quadrature)   global enthalpy residual -1.11e-16 (closure)
+INFO  the census   splits 1518   intrusions 1511   moved 1505   chambers 23   store mass 0.544% of the planet
+INFO  the melt after 100 Myr   stock 0.965% of mass (parcels + store)   store melt 0.544%   in flight 7 parcels
+
+7b. felsic and water are carried through the segregation, not only the mass
+PASS  the seed is felsic and wet   parcels 7753   felsic 9.589e+5   water 1.279e+4
+PASS  melt in flight carries the felsic it left with   393905 parcel-frames of melt with felsic
+PASS  the store received felsic and water   chambers 28   felsic 1.69e+5   water 2.25e+3
+PASS  mass closes over the seeded run   rel 0.00e+0  got 41688446.7024328 km2  want 41688446.7024328
+PASS  felsic closes over the seeded run   rel 1.21e-16  got 958886.8440157974 km2  want 958886.8440157975
+PASS  water closes over the seeded run   rel 0.00e+0  got 12785.157920210633 km2  want 12785.157920210633
+PASS  the melt book closes over the seeded run: segregated plus whole, less freeze, is intruded plus in flight   rel 1.90e-16  got 1226078.2333936105 km2  want 1226078.2333936107
+
+8. what this run says about the three open knobs (report only)
+INFO  the split criterion at t = 0   xi>=0.02 >= 0.05 >= 0.1 >= 0.15: 4134 3042 1389 203 of 23552 parcels   (meltHold 0.1 released 1389 splits on the first frame)
+INFO  the reserve, shipped run   peak pool 24948 of 28263 (30% of the reserve), refusals 0
+INFO  the reserve, felsic-seeded run (7b)   peak pool 28263 of 28263 (100% of the reserve), refusals 12606: the wetter seed saturates the reserve and every deferral is counted, mass stays in its host
+INFO  the phase changes, shipped run   whole-parcel melts 0   freeze-backs 0   (a freeze-back is the transit melt that cools back below meltHold)
+INFO  the chamber radius   chJoin 400 km left 28 records of 64 holding 1125273 km2
+INFO  the transit   first chamber at t = 3.1 Myr (the burst starts at t = 0.05 Myr)
+
+  total 35.9 s
+
+1 / 64 FAILURES

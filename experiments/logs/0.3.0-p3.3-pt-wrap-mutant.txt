@@ -1,0 +1,43 @@
+  wrap: shift equivariance of the whole pipeline, 256x24, wrap 16000 km, shift 97 cells (6062.5 km)
+
+  spin-up to 200.0 Myr: plates 2, lid 12%, 62.2 s
+
+the shifted twin, shifted back, is the same run
+PASS  every marker ends at the same x (folded)   max 5.47e-9 km
+PASS  every marker ends at the same depth   max d(eta) 2.25e-12
+PASS  every marker carries the same T   max 4.69e-13
+PASS  every marker has the same strength   max 4.73e-10
+PASS  every marker has the same damage   max 4.73e-10
+
+the diagnostics do not see the shift
+PASS  same Nusselt number   rel 4.04e-15  got 24.59813403172815  want 24.59813403172805
+PASS  same peak speed   rel 4.22e-16  got 2.1050659823378886  want 2.1050659823378894
+PASS  same field heat   rel 3.77e-16  got 39533022.84521178  want 39533022.84521177
+PASS  same cluster count   A 23  B 23
+PASS  same plate count   A 3  B 3
+PASS  same lid fraction   rel 0.00e+0  got 0.11005434782608696  want 0.11005434782608696
+PASS  same heat ledger   rel 4.31e-16  got -811153.3862546489  want -811153.3862546486
+PASS  same surface profile   max d(zh) 3.64e-11 km
+
+the intrusive store and the conduits are the same in the twin
+INFO  the store at the end of the run   24 chambers, 0 conduits not closed, 2015 intrusions, 0 vent drains
+FAIL  the same number of chamber records   A 24  B 30
+FAIL  every chamber sits at the same folded site   max d(x) 2.31e+1 km
+FAIL  the same chamber stock and vent stock   max relative 3.21e-1
+PASS  the same conduit states and styles
+PASS  the same transaction and throughput counters
+
+a plate across the seam is one plate
+INFO  biggest plate   1275 markers, centred at 15797 km, moved by 3 cells
+PASS  the seam cuts through it (plate markers on both sides of x = 0)   left 85  right 73
+PASS  and the markers at the seam carry one cluster id   1 ids
+PASS  the biggest plate is still whole after sitting on the seam   before 1275  on the seam 1278
+
+the view wraps: a camera centred on the seam draws both sides
+PASS  markers are drawn left and right of the seam   left 9542  right 11070
+PASS  panning round the planet keeps the camera in [0, wrap)   cx 0.000 km
+PASS  zooming out stops at one period across   16000 km across
+
+  total 65.3 s
+
+3 / 24 FAILURES

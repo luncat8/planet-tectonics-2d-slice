@@ -4,7 +4,8 @@
 //   G1 markers -> grid      G2 buoyancy + Stokes      G3 conduction + advection
 //   G4 phase equilibrium + solid   G5 segregation   G6 eruptions   G7 surface   G8 diag
 // G4 is P3.1's equilibrium mapping (phase.js) followed by P2.1's crust law: age, strength,
-// plate clusters and the rigid projection (solid.js). G5 is P3.2's segregation (melt.js).
+// plate clusters and the rigid projection (solid.js). G5 is P3.2's segregation (melt.js), G6 is
+// P3.3's conduits and metered eruption supply (vent.js).
 // Every kernel no-ops at dtGeo = 0: a paused frame reports, it does not change the state.
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
@@ -14,6 +15,7 @@ var F = (typeof module !== 'undefined' && module.exports) ? require('./fluid.js'
 var SC = (typeof module !== 'undefined' && module.exports) ? require('./solid.js') : window.PTSC;
 var PHASE = (typeof module !== 'undefined' && module.exports) ? require('./phase.js') : window.PTPHASE;
 var MT = (typeof module !== 'undefined' && module.exports) ? require('./melt.js') : window.PTMELT;
+var VENT = (typeof module !== 'undefined' && module.exports) ? require('./vent.js') : window.PTVENT;
 var PERF = (typeof module !== 'undefined' && module.exports) ? require('../perf.js') : window.COLPERF;
 
 var SIM = {
@@ -110,6 +112,9 @@ SIM.k[4] = function (M, S, dt) {
 // needs the equilibrium fraction G4 just read; the rise and the intrusion need the flow
 // map G2 solved, which is why the plan puts this at the end of the substep.
 SIM.k[5] = function (M, S, dt) { MT.run(M, S, dt); };
+// G6: conduits open on the overpressure the intrusions just built, and meter the chamber's
+// melt into the vent schedules (vent.js). It reads the strength G4 left and the stock G5 left.
+SIM.k[6] = function (M, S, dt) { VENT.run(M, S, dt); };
 // G7 runs after G4 because it reads the welded strength and damage the crust pass leaves
 // behind (plan §5)
 SIM.k[7] = function (M, S, dt) { F.surface(M, S, dt); };

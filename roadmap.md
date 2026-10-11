@@ -15,7 +15,7 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | 0.1.8 | collision arrest: the absorbed-shortening brake (`S.edgeShort`, checkpoint v4) closes R4; R1/R2/R5 left open only as measurement definitions on one 100 kyr leg | `archive/0.1.8-plan.md`, `archive/0.1.8-worklog.md` | 0.1.7 flow laws and corrected audit |
 | 0.1.9 | the two contact measurements: R1's site window anchored at the event and its background taken from the quiet-frame yardstick, R2's needle shoulder read over the belt's own neighbourhood | `0.1.9-plan.md`, `archive/0.1.9-worklog.md` | 0.1.8's M3 matrix |
 | 0.2.x | column engine: eruptives, deposits, extraction; page chrome (pause/step/reset) uses E1/E3 — **closed at M5** | `archive/0.2.0-plan.md` | — |
-| 0.3.x | particle engine P3+ (melt, eruptions, contact). P3.0-P3.2 landed: the conserved pool and phase routing, the phase law and the enthalpy ledger, melt segregation and the intrusive store (reserve not yet frozen) — `archive/0.3.0-p3.2-report.md` | `0.3.0-plan.md`, `0.3.0-p3-plan.md` | — |
+| 0.3.x | particle engine P3+ (melt, eruptions, contact). P3.0-P3.3 landed: the conserved pool and phase routing, the phase law and the enthalpy ledger, melt segregation and the intrusive store (reserve not yet frozen), conduits and vent schedules (vent stock waits for P3.4's flight) — `archive/0.3.0-p3.3-report.md` | `0.3.0-plan.md`, `0.3.0-p3-plan.md` | — |
 | 0.4.0 | sync/exchange: provenance, deposits core, water, checkpoint, section pack | `0.4.0-sync-plan.md` | — |
 | 0.4.1 | the cut: draw a line on the globe, copy/save, paste/load, reconstruct a section | `0.4.1-plan.md` | 0.4.0's format (`port/slice-format.js`, M0 done) |
 | 0.9.0 | globe page hosts the section as a library; live sync is C3+C4 | `0.9.0-draft-sync.md`, `0.4.1-plan.md` §8 | 0.4.1 M1–M2; C1 on the column engine |
@@ -104,8 +104,16 @@ melt fraction `xi` as per-particle material state, `S.hLedger` as the heat invar
 `js/pt/melt.js` (`PTMELT`, G5), the equilibrium melt split (`PTPOOL.separate`) whose children
 sit exactly on the law's solidus/liquidus so the P3.1 identity survives it, the buoyant rise
 on the flow map plus `vMelt`, and fixed-capacity chamber records (`PTPOOL.intrude`) whose
-stock is inventory. The melt-side reserve is measured (1389-slot burst, 30% of the shared
-reserve, zero defers over 100 Myr); the freeze still waits for P3.4's airborne populations.
+stock is inventory. The melt-side reserve is measured for the shipped composition (1389-slot burst, 30% of the
+shared reserve, zero defers over 100 Myr); a felsic-seeded composition saturates it, and the
+freeze still waits for P3.4's airborne populations (`archive/0.3.0-p3.2-review-worklog.md`).
+
+0.3.0 P3.3 (`archive/0.3.0-p3.3-report.md`) lands conduits, vents and eruption scheduling:
+`js/pt/vent.js` (`PTVENT`, G6). A conduit opens when the chamber's head exceeds the roof's
+lithostatic load plus its tensile strength; an open schedule meters the chamber's melt at a
+rate set by the overpressure and seals at the threshold, leaving the rest as intrusive storage.
+Vent stock is inventory once, and throughput is reported apart. Eruptions are capped by vent
+capacity until P3.4's flight consumes the stock; the shipped settings open no conduit.
 
 A release may pull a milestone out of 0.2 or 0.3 when it is the piece that makes a page usable;
 it never re-specifies a kernel.

@@ -171,6 +171,17 @@ var storeLine = /store ([\d.]+)% in (\d+) chambers/.exec(L.els.hud.textContent);
 check.ok('the melt line names the intrusive store apart', storeLine !== null
 	&& +storeLine[2] === TS.chN, storeLine ? 'store ' + storeLine[1] + '% in ' + storeLine[2]
 	+ ' chambers' : 'no store token in the HUD');
+// P3.3's conduits sit on their own line, apart from the store: the open and blocked counts
+// and the drained total are read back from the same vent records the engine keeps
+var conduitLine = /conduits (\d+) open  (\d+) blocked   vent stock ([\d.]+)% of mass   drained ([\d.e+-]+)/
+	.exec(L.els.hud.textContent);
+var openNow = L.sb.PTVENT.count(TS, L.sb.PTVENT.OPEN), blockedNow = L.sb.PTVENT.count(TS, L.sb.PTVENT.BLOCKED);
+check.ok('the HUD conduit line counts the vent records', conduitLine !== null
+	&& +conduitLine[1] === openNow && +conduitLine[2] === blockedNow,
+	conduitLine ? 'open ' + conduitLine[1] + ' blocked ' + conduitLine[2] : 'no conduit line in the HUD');
+check.ok('and it reports the drained total the transfer book holds, to the printed digits',
+	conduitLine !== null && Math.abs(+conduitLine[4] - TS.thr.ventCr) <= Math.abs(TS.thr.ventCr) * 0.005 + 1e-9,
+	conduitLine ? 'printed ' + conduitLine[4] + ' vs book ' + TS.thr.ventCr.toFixed(1) : 'no conduit line in the HUD');
 
 // --- B. the switch bar -----------------------------------------------------------
 

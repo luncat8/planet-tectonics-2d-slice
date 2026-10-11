@@ -90,7 +90,12 @@ var PTS = {
 	// pool transaction counters (pool.js): what was admitted, split, merged, moved, intruded
 	// and refused since reset. A refused transaction is a capacity event and is never silent,
 	// so the block exists from load and reset zeroes it
-	tx: { admit: 0, split: 0, merge: 0, move: 0, intrude: 0, refuse: 0 },
+	tx: { admit: 0, split: 0, merge: 0, move: 0, intrude: 0, refuse: 0,
+		whole: 0, freeze: 0, vent: 0, block: 0 },
+	// gross throughput, mass (km2) since reset: segregated melt, the two phase changes that
+	// move mass into and out of the melt phase (whole, freeze), intrusions and vent drains.
+	// Each has a debit and a credit side that must match. Throughput is never inventory
+	thr: { seg: 0, whole: 0, freeze: 0, intrDr: 0, intrCr: 0, ventDr: 0, ventCr: 0 },
 	invN: null, invM: null,         // the stock inventory by phase: parcels, mass, m*H
 	invH: null,
 	invMTot: 0, invHTot: 0,         // and the totals, with composition and melt as mass: the
@@ -98,6 +103,7 @@ var PTS = {
 	invLTot: 0, invErr: 0,
 	invChM: 0, invChL: 0,           // the chamber stock's mass and melt, split out of the
 	                                // totals so the HUD can show the intrusive store apart
+	invVM: 0, invVL: 0,             // the vent schedules' stock, split out the same way
 	invL0: 0,                       // invLTot right after the last reset: the latent heat a run
 	                                // has stored so far is meltLat * (invLTot - invL0)
 	// the intrusive store (P3.2, 0.3.0-p3-plan.md §1.2): fixed-capacity chamber records,
@@ -108,6 +114,10 @@ var PTS = {
 	// chamber has eaten; P3.3's conduit reads that as its emplacement site.
 	chN: 0,                         // chamber records in use (a record with mass > 0)
 	chX: null, chY: null, chM: null, chH: null, chL: null, chF: null, chW: null,
+	// the conduit of chamber k (P3.3, vent.js): its state, its style fixed at opening, and the
+	// extensive stock waiting in its schedule. Vent k exists exactly while chamber k does
+	vState: null, vStyle: null,     // conduit: VENT.CLOSED / OPEN / BLOCKED; style: EFFUSIVE / EXPLOSIVE
+	vM: null, vH: null, vL: null, vF: null, vW: null,
 	moved: 0, redeals: 0,           // markers the last repair moved; lattice re-deals since reset
 	nSolid: 0,                      // parcels the crust pass may bond this frame (PH_SOLID):
 	                                // the lid fraction's denominator, so airborne material
@@ -169,6 +179,10 @@ var PTS = {
 			this.chM = new Float64Array(P.chCap); this.chH = new Float64Array(P.chCap);
 			this.chL = new Float64Array(P.chCap); this.chF = new Float64Array(P.chCap);
 			this.chW = new Float64Array(P.chCap);
+			this.vState = new Uint8Array(P.chCap); this.vStyle = new Uint8Array(P.chCap);
+			this.vM = new Float64Array(P.chCap); this.vH = new Float64Array(P.chCap);
+			this.vL = new Float64Array(P.chCap); this.vF = new Float64Array(P.chCap);
+			this.vW = new Float64Array(P.chCap);
 		}
 		if (!this.Tg || this.Tg.length !== M.n) {
 			this.Tg = new Float64Array(M.n);
@@ -242,9 +256,14 @@ var PTS = {
 		this.empty = 0; this.clamp = 0; this.ledger = 0; this.wall = 0; this.hLedger = 0;
 		this.moved = 0; this.redeals = 0; this.csN = 0; this.nSolid = 0;
 		tx.admit = 0; tx.split = 0; tx.merge = 0; tx.move = 0; tx.intrude = 0; tx.refuse = 0;
+		tx.whole = 0; tx.freeze = 0; tx.vent = 0; tx.block = 0;
+		this.thr.seg = 0; this.thr.whole = 0; this.thr.freeze = 0;
+		this.thr.intrDr = 0; this.thr.intrCr = 0; this.thr.ventDr = 0; this.thr.ventCr = 0;
 		this.chN = 0;
 		this.chX.fill(0); this.chY.fill(0); this.chM.fill(0); this.chH.fill(0);
 		this.chL.fill(0); this.chF.fill(0); this.chW.fill(0);
+		this.vState.fill(0); this.vStyle.fill(0);
+		this.vM.fill(0); this.vH.fill(0); this.vL.fill(0); this.vF.fill(0); this.vW.fill(0);
 		this.Tg.fill(0); this.mug.fill(0); this.Mg.fill(0);
 		this.age.fill(0); this.mu.fill(0); this.dmg.fill(0); this.cl.fill(-1);
 		this.pLoad.fill(0); this.pCnt.fill(0);
@@ -364,6 +383,17 @@ var PTS = {
 		a = mixHash(a, tx.move, HASH_PRIME_A); b = mixHash(b, tx.move, HASH_PRIME_B);
 		a = mixHash(a, tx.intrude, HASH_PRIME_A); b = mixHash(b, tx.intrude, HASH_PRIME_B);
 		a = mixHash(a, tx.refuse, HASH_PRIME_A); b = mixHash(b, tx.refuse, HASH_PRIME_B);
+		a = mixHash(a, tx.whole, HASH_PRIME_A); b = mixHash(b, tx.whole, HASH_PRIME_B);
+		a = mixHash(a, tx.freeze, HASH_PRIME_A); b = mixHash(b, tx.freeze, HASH_PRIME_B);
+		a = mixHash(a, tx.vent, HASH_PRIME_A); b = mixHash(b, tx.vent, HASH_PRIME_B);
+		a = mixHash(a, tx.block, HASH_PRIME_A); b = mixHash(b, tx.block, HASH_PRIME_B);
+		a = mixHash(a, this.thr.seg, HASH_PRIME_A); b = mixHash(b, this.thr.seg, HASH_PRIME_B);
+		a = mixHash(a, this.thr.whole, HASH_PRIME_A); b = mixHash(b, this.thr.whole, HASH_PRIME_B);
+		a = mixHash(a, this.thr.freeze, HASH_PRIME_A); b = mixHash(b, this.thr.freeze, HASH_PRIME_B);
+		a = mixHash(a, this.thr.intrDr, HASH_PRIME_A); b = mixHash(b, this.thr.intrDr, HASH_PRIME_B);
+		a = mixHash(a, this.thr.intrCr, HASH_PRIME_A); b = mixHash(b, this.thr.intrCr, HASH_PRIME_B);
+		a = mixHash(a, this.thr.ventDr, HASH_PRIME_A); b = mixHash(b, this.thr.ventDr, HASH_PRIME_B);
+		a = mixHash(a, this.thr.ventCr, HASH_PRIME_A); b = mixHash(b, this.thr.ventCr, HASH_PRIME_B);
 		// the intrusive store is state: a run that reached the same parcels by a different
 		// chamber history is not the same run (P3.2)
 		a = mixHash(a, this.chN, HASH_PRIME_A); b = mixHash(b, this.chN, HASH_PRIME_B);
@@ -375,6 +405,13 @@ var PTS = {
 			a = mixHash(a, this.chL[i], HASH_PRIME_A); b = mixHash(b, this.chL[i], HASH_PRIME_B);
 			a = mixHash(a, this.chF[i], HASH_PRIME_A); b = mixHash(b, this.chF[i], HASH_PRIME_B);
 			a = mixHash(a, this.chW[i], HASH_PRIME_A); b = mixHash(b, this.chW[i], HASH_PRIME_B);
+			a = mixHash(a, this.vState[i], HASH_PRIME_A); b = mixHash(b, this.vState[i], HASH_PRIME_B);
+			a = mixHash(a, this.vStyle[i], HASH_PRIME_A); b = mixHash(b, this.vStyle[i], HASH_PRIME_B);
+			a = mixHash(a, this.vM[i], HASH_PRIME_A); b = mixHash(b, this.vM[i], HASH_PRIME_B);
+			a = mixHash(a, this.vH[i], HASH_PRIME_A); b = mixHash(b, this.vH[i], HASH_PRIME_B);
+			a = mixHash(a, this.vL[i], HASH_PRIME_A); b = mixHash(b, this.vL[i], HASH_PRIME_B);
+			a = mixHash(a, this.vF[i], HASH_PRIME_A); b = mixHash(b, this.vF[i], HASH_PRIME_B);
+			a = mixHash(a, this.vW[i], HASH_PRIME_A); b = mixHash(b, this.vW[i], HASH_PRIME_B);
 		}
 		return a * 2097152 + (b & 0x1fffff);
 	}

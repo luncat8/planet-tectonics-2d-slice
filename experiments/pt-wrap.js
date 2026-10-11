@@ -52,15 +52,18 @@ console.log('  spin-up to ' + SIM.t.toFixed(1) + ' Myr: plates ' + S.d.plates + 
 // intrusions, and the chamber records are stock the twin must not inherit from its sibling.
 var MK = ['x', 'y', 'e', 'T', 'm', 'vx', 'vy', 'age', 'mu', 'dmg', 'H', 'melt', 'cF', 'cW', 'ph', 'id'];
 var GR = ['Tg', 'mug', 'Mg', 'zh'];      // zh is the P2.3 surface profile: a node field
+// the chamber records and their conduits (P3.3): chX is the only field translate() moves
 var CH = ['chX', 'chY', 'chM', 'chH', 'chL', 'chF', 'chW'];
+var VN = ['vState', 'vStyle', 'vM', 'vH', 'vL', 'vF', 'vW'];
 function save() {
 	var o = { n: S.n, t: SIM.t, frame: SIM.frame, ledger: S.ledger, wall: S.wall,
-		hLedger: S.hLedger, invL0: S.invL0, nextId: S.nextId, chN: S.chN,
-		tx: { admit: S.tx.admit, split: S.tx.split, merge: S.tx.merge, move: S.tx.move,
-			intrude: S.tx.intrude, refuse: S.tx.refuse } }, k;
+		hLedger: S.hLedger, invL0: S.invL0, nextId: S.nextId, chN: S.chN, tx: {}, thr: {} }, k;
+	for (k in S.tx) o.tx[k] = S.tx[k];
+	for (k in S.thr) o.thr[k] = S.thr[k];
 	for (k = 0; k < MK.length; k++) o[MK[k]] = S[MK[k]].slice(0, S.n);
 	for (k = 0; k < GR.length; k++) o[GR[k]] = S[GR[k]].slice();
 	for (k = 0; k < CH.length; k++) o[CH[k]] = S[CH[k]].slice();
+	for (k = 0; k < VN.length; k++) o[VN[k]] = S[VN[k]].slice();
 	return o;
 }
 function load(o) {
@@ -68,16 +71,23 @@ function load(o) {
 	S.n = o.n; SIM.t = o.t; SIM.frame = o.frame; S.ledger = o.ledger; S.wall = o.wall;
 	S.hLedger = o.hLedger; S.invL0 = o.invL0; S.nextId = o.nextId; S.chN = o.chN;
 	for (k in o.tx) S.tx[k] = o.tx[k];
+	for (k in o.thr) S.thr[k] = o.thr[k];
 	for (k = 0; k < MK.length; k++) S[MK[k]].set(o[MK[k]]);
 	for (k = 0; k < GR.length; k++) S[GR[k]].set(o[GR[k]]);
 	for (k = 0; k < CH.length; k++) S[CH[k]].set(o[CH[k]]);
+	for (k = 0; k < VN.length; k++) S[VN[k]].set(o[VN[k]]);
 }
-// translate the live state by `cells` columns: markers move, node rows roll
+// translate the live state by `cells` columns: markers move, chamber records move with them
+// (their x is what intrude and the conduit's roof read), node rows roll
 function translate(cells) {
 	var d = cells * M.dx, p, k, j, i, a, tmp = new Float64Array(nx), s = ((cells % nx) + nx) % nx;
 	for (p = 0; p < S.n; p++) {
 		S.x[p] += d;
 		S.x[p] -= Math.floor(S.x[p] / W) * W;
+	}
+	for (p = 0; p < S.chN; p++) {
+		S.chX[p] += d;
+		S.chX[p] -= Math.floor(S.chX[p] / W) * W;
 	}
 	for (k = 0; k < GR.length; k++) {
 		a = S[GR[k]];
@@ -143,6 +153,25 @@ check.near('same heat ledger', Bs.ledger, A.ledger, 1e-9);
 var zq, zhMax = 0;
 for (zq = 0; zq < nx; zq++) { v = Math.abs(A.zh[zq] - Bs.zh[zq]); if (v > zhMax) zhMax = v; }
 check.ok('same surface profile', zhMax < 1e-6, 'max d(zh) ' + zhMax.toExponential(2) + ' km');
+
+// the intrusive store and the conduits are state too: the twin's chambers must be the same
+// records at the same folded sites, or its intrusions joined different chambers
+check.section('the intrusive store and the conduits are the same in the twin');
+var chDX = 0, chRel = 0, chCount = A.chN === Bs.chN, vOK = true, q;
+for (q = 0; q < A.chN; q++) {
+	v = Math.abs(dxWrap(A.chX[q], Bs.chX[q])); if (v > chDX) chDX = v;
+	v = Math.abs(A.chM[q] - Bs.chM[q]) / Math.max(A.chM[q], 1); if (v > chRel) chRel = v;
+	v = Math.abs(A.vM[q] - Bs.vM[q]) / Math.max(A.vM[q], 1); if (v > chRel) chRel = v;
+	if (A.vState[q] !== Bs.vState[q] || A.vStyle[q] !== Bs.vStyle[q]) vOK = false;
+}
+check.info('the store at the end of the run', A.chN + ' chambers, ' + (A.vState.filter(function (x) { return x; }).length)
+	+ ' conduits not closed, ' + A.tx.intrude + ' intrusions, ' + A.tx.vent + ' vent drains');
+check.ok('the same number of chamber records', chCount, 'A ' + A.chN + '  B ' + Bs.chN);
+check.ok('every chamber sits at the same folded site', chDX < 1e-6, 'max d(x) ' + chDX.toExponential(2) + ' km');
+check.ok('the same chamber stock and vent stock', chRel < 1e-9, 'max relative ' + chRel.toExponential(2));
+check.ok('the same conduit states and styles', vOK);
+check.ok('the same transaction and throughput counters', JSON.stringify(A.tx) === JSON.stringify(Bs.tx)
+	&& JSON.stringify(A.thr) === JSON.stringify(Bs.thr));
 
 // ---------------------------------------------------------------- 2. a plate across the seam
 // Find the shift that puts the seam through the middle of the biggest plate, run a frame, and

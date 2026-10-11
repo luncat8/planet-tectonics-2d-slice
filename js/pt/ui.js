@@ -12,6 +12,7 @@
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
 var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.PTS;
 var PERF = (typeof module !== 'undefined' && module.exports) ? require('../perf.js') : window.COLPERF;
+var VENT = (typeof module !== 'undefined' && module.exports) ? require('./vent.js') : window.PTVENT;
 
 var PTUI = {
 	paused: false, stepOnce: false, quality: 0,
@@ -228,6 +229,9 @@ var PTUI = {
 			+ '   max ' + d.melt.toFixed(3) + '   depth ' + d.meltY.toFixed(0) + ' km'
 			+ '   store ' + (S.invMTot > 0 ? (S.invChL / S.invMTot * 100).toFixed(2) : '0.00') + '%'
 			+ ' in ' + S.chN + ' chambers'
+			+ '\nconduits ' + VENT.count(S, VENT.OPEN) + ' open  ' + VENT.count(S, VENT.BLOCKED) + ' blocked'
+			+ '   vent stock ' + (S.invMTot > 0 ? (S.invVM / S.invMTot * 100).toFixed(2) : '0.00') + '% of mass'
+			+ '   drained ' + fmt(S.thr.ventCr)
 			+ '\nsim ' + PERF.msSim.toFixed(1) + ' ms   draw ' + PERF.msDraw.toFixed(1) + ' ms   fps ' + PERF.fps.toFixed(0);
 		if (this.probeOn) out += '\n' + this.probe;
 		this.hud.textContent = out;

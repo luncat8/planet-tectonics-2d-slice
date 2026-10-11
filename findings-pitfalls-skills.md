@@ -1063,3 +1063,25 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   control row disappears. `melt-contact-sweep.js` takes absolute `kMelt` values; the
   multiplier sweeps (`melt-tune-sweep.js`) stay comparable only within one base, which is
   why its header now says the arc base moved at 0.2.3.
+
+## 0.3.0 P3.2 review and P3.3 (archive/0.3.0-p3.2-review-worklog.md, archive/0.3.0-p3.3-worklog.md)
+
+- A closure over a state that is zero in the shipped run is `0 = 0`. Seed the state the claim is
+  about (a band of parcels with the composition in question) and gate the closure there. The
+  P3.2 composition gate was vacuous until the seed.
+- A gate that multiplies by zero (`x * 0`) is a tautology. Check the per-unit-mass ratio of each
+  field instead.
+- A book that closes only because a transition never fires proves nothing about that transition.
+  Give each phase change its own mass term in the book, and gate the term on a fixture that fires
+  it, since the live run may not.
+- A decaying overpressure never reaches its threshold. Cap the drain at the spent overpressure
+  explicitly, or the conduit never seals and the reservoir drains without limit.
+- A check label must name what is printed. `check.near` printed an absolute difference under a
+  `rel` label across the suite; fix the helper, then regenerate the logs.
+- A report line that prints two runs' numbers side by side misleads. Print each run under its
+  own label.
+- A harness copied to /tmp for a mutant must copy the whole tree (harnesses read root files such
+  as `columns.html`). Copy with `tar --exclude=.git`, not only `js/` and `experiments/`.
+- A frame-time gate on a shared 2-core host is a host measurement. Before blaming the change,
+  time the base commit (`git archive <commit>`) and the tree interleaved on the same host
+  (`experiments/pt-p3-frame-ab.js`).

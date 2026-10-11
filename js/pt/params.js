@@ -108,6 +108,20 @@ var PTP = {
 	yCham: 80,                   // km, intrusion depth: melt reaching this level joins a chamber and stops rising
 	chJoin: 400,                 // km, the merge radius: intrusions within it share one chamber record
 	chCap: 64,                   // chamber records, allocated once; a full chamber set defers the transfer
+	// P3.3, conduits and eruption scheduling (0.3.0-p3-plan.md §4 P3.3). Pressures are km of
+	// rock head: density is uniform (P1), so a melt column of thickness h pushes with h, and the
+	// lithostatic load at depth y is y. A chamber's column is its stock over its footprint,
+	// chM / chSpan; its roof is at chY. A conduit opens when that head exceeds the roof's
+	// lithostatic load plus its tensile strength, and drains at a rate set by the excess. The
+	// schedule meters melt the chamber already holds; nothing here creates it.
+	chSpan: 400,                 // km, lateral footprint of one chamber record
+	tensile: 0.3,                // km of rock head at full strength: ~10 MPa at rho g ~ 33 MPa/km
+	kVent: 0.5,                  // 1/Myr, effusive drain: flux = kVent * excess * chSpan (km2/Myr)
+	kBlast: 2,                   // 1/Myr, explosive drain at the same excess
+	wBlast: 0.01,                // water mass fraction above which a new conduit is explosive
+	vCap: 4000,                  // km2, a vent schedule's capacity: full, its conduit blocks. Only
+	                             // P3.4's flight takes mass out of a schedule, so this is the
+	                             // room the vent has until then
 	// crust (plan §4.2, reduced to the kinematic core for P2.1): a marker's strength is
 	//   heat(T)  = smoothstep(muLo, muHi, T)          hot rock is soft
 	//   mu(T,a)  = (0.05 + 0.95 * (1 - heat)) * (1 - exp(-age / tauWeld))
@@ -207,10 +221,12 @@ var PTP = {
 	                             // own measure (cw ~ 1), so the conduction intake is delivered
 	                             // where the operator charged it, and a fold has to remove four
 	                             // markers from a node before it becomes a hole.
-	// The reserve, as fractions of the base population, one line per phase that is admitted
-	// above it. experiments/pt-p3-budget.js measures the frame cost of each rung with the
-	// reserve filled and sets these; sim.js turns them into partCap (a save records partCap
-	// and a load refuses a different one rather than reinterpreting a pool, §6 of the P3 plan).
+	// The reserve, as fractions of the base population. pool.js enforces only their sum, one
+	// shared cap above the base: a phase may take the whole reserve. The three fractions are
+	// the per-phase budget that experiments/pt-p3-budget.js and pt-p3-melt.js measure; per-phase
+	// lines are not enforced until P3.5 freezes them. sim.js turns the sum into partCap (a save
+	// records partCap and a load refuses a different one rather than reinterpreting a pool, §6
+	// of the P3 plan).
 	resMelt: 0.05,               // mobile melt waiting to rise, to intrude or to be erupted
 	resAir: 0.03,                // clasts in flight: a fountain is presentation, but it is mass
 	resDep: 0.12,                // landed deposits before they merge and weld into the crust

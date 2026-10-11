@@ -54,6 +54,8 @@ function configure(frames) {
 function inv() { PTPOOL.inventoryComp(S); return { m: S.invMTot, h: S.invHTot, f: S.invFTot, w: S.invWTot, l: S.invLTot }; }
 function rel(a, b) { return Math.abs(a - b) / Math.max(Math.abs(a), Math.abs(b), 1); }
 function identity() { return (S.hLedger - S.ledger) - P.meltLat * (S.invLTot - S.invL0); }
+// the melt-phase mass in flight: the other side of the melt book (see pt-p3-erupt.js)
+function meltInFlightM() { var k, m = 0; for (k = 0; k < S.n; k++) if (S.ph[k] === P.PH.melt) m += S.m[k]; return m; }
 
 // one parcel at a chosen melt fraction, on the law at its own depth and composition
 function mush(p, y, xi, cF, cW) {
@@ -127,7 +129,7 @@ S.ph[2] = P.PH.mantle;
 S.age[2] = 5 * P.tauWeld; S.dmg[2] = 0.5; S.mu[2] = 0.9;
 mush(3, 400, 0.5, 0, 0);                        // melt-phase mushy transit: detach leaves it
 S.ph[3] = P.PH.melt;
-var nA = S.n, mTrap = S.m[0], hTrap = S.H[0];
+var nA = S.n, mTrap = S.m[0], hTrap = S.H[0], mWhole = S.m[2];
 MT.detach(S);
 check.ok('trapped melt stays in its source parcel',
 	S.m[0] === mTrap && S.H[0] === hTrap && S.melt[0] === P.meltHold - 0.01,
@@ -137,6 +139,8 @@ check.ok('a wholly molten parcel is one phase change to melt',
 	S.ph[2] === P.PH.melt && S.melt[2] === 1 && S.n === nA + 1, 'ph ' + S.ph[2]);
 check.ok('and drops its bond state with its phase',
 	S.age[2] === 0 && S.dmg[2] === 0 && S.mu[2] === 0, 'age ' + S.age[2] + '   dmg ' + S.dmg[2]);
+check.ok('the whole-parcel change is counted once', S.tx.whole === 1, 'whole ' + S.tx.whole);
+check.near('and its mass enters the melt book as the whole-parcel term', S.thr.whole, mWhole, 1e-14, 'km2');
 check.ok('detach is source-side only: transit melt keeps its state',
 	S.ph[3] === P.PH.melt && S.melt[3] === 0.5 && S.n === nA + 1, 'ph ' + S.ph[3] + '   xi ' + S.melt[3]);
 
@@ -161,11 +165,13 @@ S.n = 3;
 mush(0, 400, 1, 0, 0); S.ph[0] = P.PH.melt;      // hot melt: rises at vMelt
 mush(1, 400, 0.05, 0, 0); S.ph[1] = P.PH.melt;   // frozen transit: dies to mantle, no rise
 mush(2, 400, 0, 0, 0);                           // mantle: not this kernel's business
-var y0 = S.y[0], y1 = S.y[1], y2 = S.y[2], dt = 0.05;
+var y0 = S.y[0], y1 = S.y[1], y2 = S.y[2], dt = 0.05, mFrozen = S.m[1];
 MT.run(M, S, dt);
 check.near('hot melt rises at vMelt per geological step', S.y[0], y0 - P.vMelt * dt, 1e-12, 'km');
 check.ok('cold melt stops being melt and stops rising',
 	S.ph[1] === P.PH.mantle && S.y[1] === y1, 'ph ' + S.ph[1] + '   y ' + S.y[1]);
+check.ok('and the freeze-back is counted once', S.tx.freeze === 1, 'freeze ' + S.tx.freeze);
+check.near('and its mass leaves the melt phase as the freeze term of the book', S.thr.freeze, mFrozen, 1e-14, 'km2');
 check.ok('mantle is left to the flow map', S.ph[2] === P.PH.mantle && S.y[2] === y2, 'y ' + S.y[2]);
 var hash0 = S.hash();
 MT.run(M, S, 0);
@@ -277,9 +283,12 @@ check.ok('the global enthalpy residual is round-off against the booked intake',
 check.ok('and the P3.1 latent identity still holds across all of it',
 	Math.abs(identity()) < 1e-9 * Math.abs(S.hLedger), 'identity ' + identity().toExponential(3));
 check.ok('the burst separated real melt and the store received it',
-	burst > 0 && S.chN > 0 && S.chM[0] >= 0 && S.tx.intrude > 0,
+	burst > 0 && S.chN > 0 && S.chM[0] > 0 && S.tx.intrude > 0,
 	'burst ' + burst + ' splits   intrusions ' + S.tx.intrude + '   chambers ' + S.chN);
-check.ok('and nothing was dropped at capacity', S.tx.refuse === 0,
+var refusedShipped = S.tx.refuse, wholeShipped = S.tx.whole, freezeShipped = S.tx.freeze;
+check.near('the melt book closes over the shipped run: segregated plus whole, less freeze, is intruded plus in flight',
+	S.thr.seg + S.thr.whole - S.thr.freeze, S.thr.intrDr + meltInFlightM(), 1e-12, 'km2');
+check.ok('and nothing was dropped at capacity', refusedShipped === 0,
 	'refuse ' + S.tx.refuse + '   peak n ' + peakN + ' of ' + P.partCap);
 check.info('the two gaps, reported separately', 'marker/grid heat gap ' + mgGap.toExponential(2)
 	+ ' (quadrature)   global enthalpy residual ' + entRes.toExponential(2) + ' (closure)');
@@ -290,14 +299,48 @@ check.info('the melt after ' + SIM.t.toFixed(0) + ' Myr', 'stock ' + (lc1.l / lc
 	+ '% of mass (parcels + store)   store melt ' + (S.chL.reduce(function (a, b) { return a + b; }, 0) / lc1.m * 100).toFixed(3)
 	+ '%   in flight ' + (S.invN[P.PH.melt]) + ' parcels');
 
+// ---------------------------------------------------------------- 7b. composition is carried
+// The shipped start has no felsic or water, so section 7's closure of them is 0 = 0. This run
+// seeds a band of parcels with both, so the closure has to carry real material through the
+// split, the rise and the store.
+check.section('7b. felsic and water are carried through the segregation, not only the mass');
+M = configure(0);
+var seeded = 0, sk, lfB, lfA, meltF = 0, chamF = 0, chamW = 0, kk, peakSeeded = 0;
+for (sk = 0; sk < S.n; sk++) if (S.y[sk] >= 100 && S.y[sk] <= 500) { S.cF[sk] = 0.15; S.cW[sk] = 0.002; seeded++; }
+lfB = inv();
+// melt in flight is a transit state, so it is counted across the frames, not at the end
+for (kk = 0; kk < 400; kk++) {
+	SIM.step();
+	for (sk = 0; sk < S.n; sk++) if (S.ph[sk] === P.PH.melt && S.cF[sk] > 0) meltF++;
+	if (S.n > peakSeeded) peakSeeded = S.n;
+}
+lfA = inv();
+var refusedSeeded = S.tx.refuse;
+for (kk = 0; kk < S.chN; kk++) { chamF += S.chF[kk]; chamW += S.chW[kk]; }
+check.ok('the seed is felsic and wet', seeded > 0 && lfB.f > 0 && lfB.w > 0,
+	'parcels ' + seeded + '   felsic ' + lfB.f.toExponential(3) + '   water ' + lfB.w.toExponential(3));
+check.ok('melt in flight carries the felsic it left with', meltF > 0, meltF + ' parcel-frames of melt with felsic');
+check.ok('the store received felsic and water', S.chN > 0 && chamF > 0 && chamW > 0,
+	'chambers ' + S.chN + '   felsic ' + chamF.toExponential(2) + '   water ' + chamW.toExponential(2));
+check.near('mass closes over the seeded run', lfA.m, lfB.m, 1e-12, 'km2');
+check.near('felsic closes over the seeded run', lfA.f, lfB.f, 1e-12, 'km2');
+check.near('water closes over the seeded run', lfA.w, lfB.w, 1e-12, 'km2');
+check.near('the melt book closes over the seeded run: segregated plus whole, less freeze, is intruded plus in flight',
+	S.thr.seg + S.thr.whole - S.thr.freeze, S.thr.intrDr + meltInFlightM(), 1e-12, 'km2');
+
 // ---------------------------------------------------------------- 8. the tuning report
 check.section('8. what this run says about the three open knobs (report only)');
 check.info('the split criterion at t = 0', 'xi>=' + th.map(function (v) { return v; }).join(' >= ')
 	+ ': ' + hist.join(' ') + ' of ' + P.partBase + ' parcels   (meltHold ' + P.meltHold
 	+ ' released ' + burst + ' splits on the first frame)');
-check.info('the reserve', 'peak pool ' + peakN + ' of ' + P.partCap + ' ('
+check.info('the reserve, shipped run', 'peak pool ' + peakN + ' of ' + P.partCap + ' ('
 	+ ((peakN - P.partBase) / (P.partCap - P.partBase) * 100).toFixed(0) + '% of the reserve), refusals '
-	+ S.tx.refuse);
+	+ refusedShipped);
+check.info('the reserve, felsic-seeded run (7b)', 'peak pool ' + peakSeeded + ' of ' + P.partCap + ' ('
+	+ ((peakSeeded - P.partBase) / (P.partCap - P.partBase) * 100).toFixed(0) + '% of the reserve), refusals '
+	+ refusedSeeded + ': the wetter seed saturates the reserve and every deferral is counted, mass stays in its host');
+check.info('the phase changes, shipped run', 'whole-parcel melts ' + wholeShipped
+	+ '   freeze-backs ' + freezeShipped + '   (a freeze-back is the transit melt that cools back below meltHold)');
 check.info('the chamber radius', 'chJoin ' + P.chJoin + ' km left ' + S.chN + ' records of ' + P.chCap
 	+ ' holding ' + (S.chM.reduce(function (a, b) { return a + b; }, 0)).toFixed(0) + ' km2');
 check.info('the transit', 'first chamber at t = ' + (tStore < 0 ? 'never' : tStore.toFixed(1) + ' Myr')

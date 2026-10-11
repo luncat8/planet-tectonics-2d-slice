@@ -1,0 +1,17 @@
+# pt-p3-frame-ab.js, 8 interleaved pairs on the same host: base = P3.2 commit e0aebbc (git archive), new = P3.3 working tree
+base 14.74
+new  14.59
+base 14.03
+new  13.93
+base 13.64
+new  14.32
+base 14.52
+new  14.05
+base 15.24
+new  13.65
+base 14.04
+new  14.05
+base 14.02
+new  14.22
+base 14.02
+new  14.40
