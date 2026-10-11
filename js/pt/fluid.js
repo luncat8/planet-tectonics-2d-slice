@@ -10,6 +10,11 @@
 // the markers are carried by the flow. Nothing is projected: the flow is exactly
 // divergence-free by construction (grid.js), so the marker field is not squeezed by a
 // residual it would have to absorb.
+//
+// P3.1 retired P1's pressure-release melt overlay from this file. It was a diagnostic with
+// its own source constants and its own decay; the melt the page paints is now the pool's own
+// equilibrium fraction (phase.js, scattered by G1 with the same weights as T and strength),
+// and it feeds back through the temperature the Stokes solve reads.
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
 var G = (typeof module !== 'undefined' && module.exports) ? require('./grid.js') : window.PTG;
@@ -43,42 +48,6 @@ var F = {
 		G.gatherDT(M, S, M.inc, S.Tg, flip);
 		G.gatherVel(M, S, M.pr);
 		G.advect(M, S, dt);
-		this.melt(M, S, dt);
-	},
-
-	// P1 has one conserved thermal mantle phase, so this is an indicator rather than a second
-	// material ledger. Hot rising mantle creates it in the decompression window; it segregates
-	// upward and is removed at the shallow extraction cap instead of painting the surface wall.
-	// P3 replaces this diagnostic with conserved melt particles and conduits.
-	melt: function (M, S, dt) {
-		if (!P.meltProxy || !(dt > 0)) return;
-		var nx = M.nx, ny = M.ny, T = S.Tg, u = S.u, v = S.v, mg = S.Mg, out = S.MgS, row = S.rowT;
-		var i, j, q, base, y, decomp, sum, ux, vy, m, hot, up;
-		for (j = 1; j < ny; j++) {
-			base = j * nx; sum = 0;
-			for (i = 0; i < nx; i++) sum += T[base + i];
-			row[j] = sum / nx;
-		}
-		for (j = 1; j < ny; j++) {
-			base = j * nx; y = M.yN[j];
-			decomp = (P.meltDepth - y) / (P.meltDepth - P.meltTop);
-			if (decomp < 0) decomp = 0; else if (decomp > 1) decomp = 1;
-			for (i = 0; i < nx; i++) {
-				q = base + i;
-				if (y <= P.meltTop) { out[q] = 0; continue; }
-				ux = 0.5 * (u[(j - 1) * nx + i] + u[base + i]);
-				vy = v[q] - P.meltRise;
-				m = meltSample(M, mg, i * M.dx - ux * dt, j * M.dEta - vy * dt / M.jN[j]);
-				hot = (T[q] - row[j] - P.meltExcess) / P.meltRange;
-				up = -v[q] / P.meltUpRef;
-				if (hot < 0) hot = 0; else if (hot > 1) hot = 1;
-				if (up < 0) up = 0; else if (up > 1) up = 1;
-				m += dt * (P.meltBuild * decomp * hot * up - m / P.meltDecay);
-				out[q] = m < 0 ? 0 : (m > 1 ? 1 : m);
-			}
-		}
-		for (i = 0; i < nx; i++) { out[i] = 0; out[ny * nx + i] = 0; }
-		mg.set(out);
 	},
 
 	// G7: a separate periodic horizon keeps the separable Stokes domain's coordinate top flat.
@@ -257,6 +226,10 @@ var F = {
 		}
 		d.heat = heat; d.mHeat = mheat;
 		d.tMin = tmin; d.tMax = tmax;
+		// The melt overlay's own extremes: the fraction at its brightest node, and the
+		// depth the overlay's weight sits at. The field is scatterT's mass-weighted mean of
+		// the parcels' equilibrium melt (P3.1), so both numbers describe material, not a
+		// diagnostic that lived in this file.
 		var melt = 0, meltY = 0, meltMax = 0, mq;
 		for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) {
 			mq = S.Mg[j * nx + i];
@@ -300,22 +273,6 @@ function flex(nx, a, tmp, passes) {
 		}
 		a.set(tmp);
 	}
-}
-
-// Bilinear sample of the node-centred melt indicator. The scalar is extracted at both walls,
-// so a backtrace outside the mantle is zero rather than a reflected parcel.
-function meltSample(M, a, x, e) {
-	var nx = M.nx, ny = M.ny, i0, i1, j0, j1, fx, fy, base, a0, a1;
-	if (e <= 0 || e >= M.etaBot) return 0;
-	i0 = Math.floor(x / M.dx); fx = x / M.dx - i0;
-	i0 -= Math.floor(i0 / nx) * nx;
-	i1 = i0 + 1 === nx ? 0 : i0 + 1;
-	j0 = Math.floor(e / M.dEta); fy = e / M.dEta - j0;
-	if (j0 < 0 || j0 >= ny) return 0;
-	j1 = j0 + 1; base = j0 * nx;
-	a0 = a[base + i0] + (a[base + i1] - a[base + i0]) * fx;
-	a1 = a[base + nx + i0] + (a[base + nx + i1] - a[base + nx + i0]) * fx;
-	return a0 + (a1 - a0) * fy;
 }
 
 if (typeof module !== 'undefined' && module.exports) module.exports = F; else window.PTF = F;

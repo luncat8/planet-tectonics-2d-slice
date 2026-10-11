@@ -54,19 +54,44 @@ var PTP = {
 	icBand: 0.6,                 // 0 = the pure single mode (the fixtures' validated draw)
 	icBandMax: 12,
 	seed: 1,
-	// pressure-release melt indicator. P1 does not yet turn markers into conserved melt
-	// particles (that is P3), but a separate diagnostic makes hot upward mantle visibly
-	// generate and segregate melt instead of asking the one-phase thermal field to stand in
-	// for magma. It never feeds back into the P1 Stokes solve.
-	meltProxy: true,
-	meltDepth: 550,              // km: decompression melting begins above this depth
-	meltTop: 80,				// km: shallow extraction cap; melt indicator is removed above it
-	meltExcess: 0.008,           // T above the row mean before a source is active
-	meltRange: 0.04,             // T excess that reaches unit source strength
-	meltUpRef: 12,               // km/Myr of upward mantle flow for unit source strength
-	meltRise: 400,               // km/Myr of buoyant segregation through the mantle
-	meltBuild: 1.2,              // 1/Myr, source to visible melt-potential conversion
-	meltDecay: 6,                // Myr, extraction/cooling time of the indicator
+	// The phase law (0.3.0-p3-plan.md §4 P3.1). P1's pressure-release overlay is gone with its
+	// source constants: `melt` is now the equilibrium melt fraction of a parcel's own mass,
+	// from a depth- and composition-dependent solidus plus one normalized latent heat, and T is
+	// the reading of H through it. The solidus is written against the model's own anchor, the
+	// CMB temperature (T = 1, where the wall is held):
+	//
+	//   u(y)  = 1 / (1 + y * meltInvLam)          y > 0; u = 1 above the surface
+	//   Ts(y) = 1 + meltSup - meltDrop * u * u - meltWF * cF - meltWW * cW
+	//   Tl(y) = Ts(y) + meltGap
+	//   H     = T + meltLat * xi                  xi = (T - Ts) / meltGap in the mush
+	//
+	// so the curve is fixed by three anchors -- the surface solidus of pure rock, the margin
+	// the deep solidus keeps over the CMB wall, and the depth at which material at the CMB
+	// temperature meets its own solidus:
+	//
+	//   meltDrop   = 1 + meltSup - Ts(0)      (1 + meltSup + meltWF*cF + meltWW*cW - meltSurf)
+	//   meltInvLam = (sqrt(meltDrop / meltSup) - 1) / meltOnset, i.e. Ts(meltOnset) = 1
+	//
+	// (the derived block below owns those two; phase.js only evaluates the curve). Ts is
+	// monotone in depth, so a parcel melts in exactly one window: above the depth where its own
+	// solidus crosses the parcel's own H. Melt is a material state, not a place -- a parcel that
+	// rises at nearly constant H melts as the pressure falls, and one a drip drags down carries
+	// its melt until the deeper solidus catches it (measured: the deepest mushy parcel of a
+	// 300 Myr run is a carried one, experiments/logs/0.3.0-p3.1-melt-trajectory.txt). u^2 is a
+	// rational decay rather than the exponential this was first written as: an exp costs a
+	// transcendental per parcel per substep, and the rational form puts the three anchors in
+	// the same place. Felsic material and water depress the solidus (water far more per unit
+	// mass); the liquidus and the solidus move together, so the mushy interval stays meltGap
+	// wide. Every number here is checked by experiments/pt-p3-enthalpy.js against the anchors
+// above, and the four calibration rounds that chose them are recorded in
+// archive/0.3.0-p3.1-worklog.md.
+	meltSurf: 0.77,              // Ts(0): the surface solidus, 0.23 below the CMB temperature
+	meltSup: 0.02,               // the deep solidus's margin over the CMB temperature
+	meltOnset: 700,              // km: where material at the CMB temperature meets Ts
+	meltGap: 0.15,               // liquidus - solidus, in T units: the width of the mushy interval
+	meltLat: 0.25,               // L, the latent heat of fusion in the same normalized unit as T
+	meltWF: 0.2,                 // solidus depression per unit felsic mass fraction
+	meltWW: 20,                  // and per unit water mass fraction: the potent flux
 	// crust (plan §4.2, reduced to the kinematic core for P2.1): a marker's strength is
 	//   heat(T)  = smoothstep(muLo, muHi, T)          hot rock is soft
 	//   mu(T,a)  = (0.05 + 0.95 * (1 - heat)) * (1 - exp(-age / tauWeld))
@@ -203,6 +228,14 @@ var PTP = {
 PTP.RaK = PTP.Ra * PTP.kappa / (PTP.depth * PTP.depth * PTP.depth);
 // 1 cm/yr in km/Myr, the one place the two velocity units meet
 PTP.cmYr = 0.1;
+// The derived solidus of the phase law above; phase.js reads these rather than re-deriving
+// them, so the curve has one owner. meltDrop is the drop from the deep asymptote to the
+// surface, and meltInvLam is the decay that puts the third anchor exactly where it belongs:
+// u(meltOnset)^2 = meltDeep / meltDrop, i.e. Ts(meltOnset) = 1.
+PTP.meltDrop = 1 + PTP.meltSup - PTP.meltSurf;
+PTP.meltInvLam = (Math.sqrt(PTP.meltDrop / PTP.meltSup) - 1) / PTP.meltOnset;
+PTP.meltU0 = 1 / (1 + PTP.meltOnset * PTP.meltInvLam);
+PTP.meltDeep = PTP.meltDrop * PTP.meltU0 * PTP.meltU0;
 // the pool's reserve as one fraction: sim.js multiplies the base population by it
 PTP.resFrac = PTP.resMelt + PTP.resAir + PTP.resDep;
 

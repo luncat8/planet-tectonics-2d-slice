@@ -475,8 +475,13 @@ check.near('the enthalpy changed by exactly the recorded wall flux', S.invHTot -
 check.ok('which closes against the operator\'s own wall book inside the P1 tolerance',
 	gap > 0.8 && gap < 1.2, 'intake/wall ' + gap.toFixed(4) + '  (' + intake.toExponential(3)
 	+ ' vs ' + wall.toExponential(3) + ')');
-check.ok('and the enthalpy ledger is still the heat ledger bitwise', S.hLedger === S.ledger,
-	S.hLedger + ' vs ' + S.ledger);
+// P3.1 replaced the bitwise canary: once a parcel can melt, the enthalpy book and the
+// sensible book separate by exactly the latent heat the material has stored since reset.
+var lat = P.meltLat * (S.invLTot - S.invL0);
+check.ok('and the two books differ by exactly the latent heat the melt stores',
+	Math.abs((S.hLedger - S.ledger) - lat) < 1e-9 * Math.abs(S.hLedger),
+	'enthalpy ' + S.hLedger.toExponential(3) + '   sensible ' + S.ledger.toExponential(3)
+	+ '   latent ' + lat.toExponential(3));
 check.ok('coverage stayed inside the P1 tolerance', worstEmpty < 0.15 * M4.nx * (M4.ny - 1),
 	'worst ' + worstEmpty + ' of ' + M4.nx * (M4.ny - 1) + ' nodes');
 var stayed = 0;

@@ -7,7 +7,13 @@
 // particle last froze":
 //
 //     heat(T)  = smoothstep(muLo, muHi, T)              hot rock is soft
-//     mu(T, a) = (0.05 + 0.95 * (1 - heat)) * (1 - exp(-a / tauWeld))
+//     mu(T, a) = (0.05 + 0.95 * (1 - heat)) * (1 - exp(-a / tauWeld)) * (1 - melt)
+//
+// The last factor is P3.1's melt weakening (0.3.0-p3-plan.md §3, G4): a parcel that is partly
+// liquid has lost the cohesion of its solid fraction. It is read here rather than applied as
+// a pass of its own because this function *builds* mu from T and age every frame -- an
+// earlier weakening step would be overwritten -- and G4 runs the phase equilibrium first
+// (sim.js), so the fraction read here is the one H implies this substep.
 //
 // `age` accumulates below TLock, resets above TSoft and holds between, so the law is a
 // hysteresis loop on cooling: rock that has stayed cold welds with time, rock that is warm
@@ -89,7 +95,8 @@ function strength(M, S, dt) {
 		a = S.age[p];
 		heat = smoothstep(P.muLo, P.muHi, T);
 		weld = 1 - Math.exp(-a / P.tauWeld);
-		S.mu[p] = (0.05 + 0.95 * (1 - heat)) * weld;
+		// a mushy parcel is as weak as its solid fraction: melt weakening, P3.1
+		S.mu[p] = (0.05 + 0.95 * (1 - heat)) * weld * (1 - S.melt[p]);
 	}
 }
 

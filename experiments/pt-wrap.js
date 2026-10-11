@@ -45,8 +45,10 @@ console.log('  spin-up to ' + SIM.t.toFixed(1) + ' Myr: plates ' + S.d.plates + 
 
 // the persistent state: per-marker fields and the grid fields that survive a frame (Tg and
 // mug are rebuilt by the transfer, but a paused diag reads them; Mg is carried by the melt
-// indicator's semi-Lagrangian step)
-var MK = ['x', 'y', 'e', 'T', 'm', 'vx', 'vy', 'age', 'mu', 'dmg'];
+// indicator's semi-Lagrangian step). H is the material state since P3.1 -- the twin has to
+// get the parcel's enthalpy, not just the temperature it reads through it, or the very next
+// equilibrium pass re-derives T from the other run's H.
+var MK = ['x', 'y', 'e', 'T', 'm', 'vx', 'vy', 'age', 'mu', 'dmg', 'H', 'melt', 'cF', 'cW'];
 var GR = ['Tg', 'mug', 'Mg', 'zh'];      // zh is the P2.3 surface profile: a node field
 function save() {
 	var o = { n: S.n, t: SIM.t, frame: SIM.frame, ledger: S.ledger, wall: S.wall }, k;

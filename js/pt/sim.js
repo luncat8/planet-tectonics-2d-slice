@@ -2,8 +2,9 @@
 // inline (clocks and the slider); the rest sit in slots so the later milestones can fill
 // them without touching this file:
 //   G1 markers -> grid      G2 buoyancy + Stokes      G3 conduction + advection
-//   G4 solid   G5 phase change   G6 eruptions   G7 surface   G8 diagnostics   (P2..P5)
-// G4 is P2.1's crust law: age, strength, plate clusters and the rigid projection (solid.js).
+//   G4 phase equilibrium + solid   G5 segregation   G6 eruptions   G7 surface   G8 diag
+// G4 is P3.1's equilibrium mapping (phase.js) followed by P2.1's crust law: age, strength,
+// plate clusters and the rigid projection (solid.js).
 // Every kernel no-ops at dtGeo = 0: a paused frame reports, it does not change the state.
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
@@ -11,6 +12,7 @@ var G = (typeof module !== 'undefined' && module.exports) ? require('./grid.js')
 var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.PTS;
 var F = (typeof module !== 'undefined' && module.exports) ? require('./fluid.js') : window.PTF;
 var SC = (typeof module !== 'undefined' && module.exports) ? require('./solid.js') : window.PTSC;
+var PHASE = (typeof module !== 'undefined' && module.exports) ? require('./phase.js') : window.PTPHASE;
 var PERF = (typeof module !== 'undefined' && module.exports) ? require('../perf.js') : window.COLPERF;
 
 var SIM = {
@@ -94,7 +96,15 @@ var SIM = {
 SIM.k[1] = function (M, S) { F.transfer(M, S); };
 SIM.k[2] = function (M, S) { F.flow(M, S, P.RaK); };
 SIM.k[3] = function (M, S, dt) { F.move(M, S, dt, P.kappa, P.flip); };
-SIM.k[4] = function (M, S, dt) { if (P.solid) SC.crust(M, S, dt); };
+// G4: phase equilibrium first, then the crust pass. The equilibrium maps the enthalpy the
+// substep's conduction delivered back to temperature and melt fraction, which is what the
+// strength law, the clusters and the rigid projection then read (0.3.0-p3-plan.md §3). Both
+// halves no-op at dt = 0: a paused frame reports, it does not melt or weld.
+SIM.k[4] = function (M, S, dt) {
+	if (!(dt > 0) || !S.n) return;
+	PHASE.equil(M, S);
+	if (P.solid) SC.crust(M, S, dt);
+};
 // G7 runs after G4 because it reads the welded strength and damage the crust pass leaves
 // behind (plan §5)
 SIM.k[7] = function (M, S, dt) { F.surface(M, S, dt); };

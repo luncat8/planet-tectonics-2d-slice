@@ -100,10 +100,13 @@ var PTR = {
 
 	// The field: T bilinear from the two node rows each screen row spans. Two overlays sit on
 	// top of the thermal colour, in this order: the grey rock of the crust (the node's mean
-	// strength, solid.js), then the gold pressure-release melt indicator. The melt indicator
-	// is not a replacement for the cold/hot mantle colour: one-phase P1 still shows physically
-	// valid cold downwellings, and the crust overlay is what tells cold *plate* from cold
-	// *fluid*.
+	// strength, solid.js), then the gold melt. Since P3.1 that gold is material rather than a
+	// diagnostic: the node's own mass-weighted equilibrium melt fraction (grid.js scatterT),
+	// the same quantity the HUD's melt line reports and the pool's inventory totals. It is not
+	// a replacement for the cold/hot mantle colour -- the crust overlay is what tells cold
+	// *plate* from cold *fluid*. meltLevel is indexed by the node's own fraction, not by the
+	// P1 indicator's arbitrary 0..1 units: gold starts at a node mean of 0.08 and saturates
+	// at 0.18, and the mush zone this planet actually carries reads between the two.
 	//
 	// The terrain warp (P2.3, plan §4.5): the horizon of each column is its own elevation
 	// zh[x], drawn kRelief times exaggerated and damped with depth, so a column's rock starts

@@ -147,11 +147,24 @@ check.ok('20 frames advanced the clock', SIM.t > 0.9 && SIM.t < 1.1, 't ' + SIM.
 check.ok('the HUD is built', /^t .*\nNu /m.test(L.els.hud.textContent) || /Nu /.test(L.els.hud.textContent),
 	JSON.stringify(L.els.hud.textContent.split('\n')[0]));
 // a fresh page is all mantle: no melt, air or deposit yet, and no refusal to report
-var phaseLine = /phase mantle (\d+)  melt 0  air 0  dep 0   mass [^\n]* km2   H [^\n]*hLedger/.exec(L.els.hud.textContent);
+var phaseLine = /phase mantle (\d+)  melt 0  air 0  dep 0   mass [^\n]* km2   H /m.exec(L.els.hud.textContent);
 check.ok('the HUD phase line counts the all-mantle pool', phaseLine !== null && +phaseLine[1] === P.partBase,
 	phaseLine ? 'mantle ' + phaseLine[1] : 'no phase line in the HUD');
 check.ok('and prints no refusal while the reserve holds', !/refused/.test(L.els.hud.textContent) && TS.tx.refuse === 0,
 	'refused ' + TS.tx.refuse);
+// P3.1's two lines: the enthalpy book against the walls with its latent stock, and the melt
+// the phase law gives the pool
+var ledgerLine = /ledger [^\n]*   walls [^\n]*   gap ([\dx.]+|--)   latent /.exec(L.els.hud.textContent);
+check.ok('the HUD ledger line carries the enthalpy book, the walls and the latent stock',
+	ledgerLine !== null, ledgerLine ? 'gap ' + ledgerLine[1] : 'no ledger line in the HUD');
+var meltLine = /melt ([\d.]+)% of mass   max ([\d.]+)   depth ([\d.]+) km/.exec(L.els.hud.textContent);
+check.ok('the HUD melt line reports the pool\'s own melt, not a proxy', meltLine !== null
+	&& +meltLine[1] > 0 && +meltLine[2] > 0 && +meltLine[3] > 0 && +meltLine[3] < P.depth,
+	meltLine ? meltLine[1] + '% of mass, max ' + meltLine[2] + ' at ' + meltLine[3] + ' km' : 'no melt line in the HUD');
+check.ok('and it is the inventory the pool reports', (function () {
+	L.sb.PTPOOL.inventory(TS);
+	return Math.abs(+meltLine[1] - TS.invLTot / (TS.invMTot || 1) * 100) < 0.005;
+}()), 'HUD ' + meltLine[1] + '%  vs inventory ' + (TS.invLTot / TS.invMTot * 100).toFixed(2) + '%');
 
 // --- B. the switch bar -----------------------------------------------------------
 

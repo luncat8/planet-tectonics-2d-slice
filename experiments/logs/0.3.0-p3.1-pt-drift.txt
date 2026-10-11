@@ -1,0 +1,33 @@
+  drift diagnostic: the shipped run, 256x24, wrap 16000 km, 50 kyr/f, 400 Myr
+
+   t/Myr  plate  markers   plate depth    |vPlate|   |vOwn|   |vBase|   |v150|   |v300|
+     100      0    4896        4..97 km       0.01     0.01     0.01    0.01    0.01
+     200      0    1298       4..118 km       4.85     0.41     0.42    0.39    0.46
+     200      4    1153        4..84 km       4.43     0.42     0.43    0.39    0.42
+     300      2     705        4..85 km       2.81     0.66     0.66    0.62    0.72
+     300      1     384        4..38 km       1.52     0.08     0.09    0.17    0.31
+     300      0     288        4..62 km       1.04     0.38     0.38    0.36    0.41
+     400      5     381        4..32 km       0.49     0.09     0.09    0.09    0.11
+     400      0     170        4..50 km       1.59     0.54     0.54    0.48    0.44
+     400      4     161        4..29 km       1.65     0.49     0.49    0.46    0.48
+
+  every plate at the last sample (>= 64 markers):
+   plate 5: 381 markers   drift 0.49 cm/yr   own 0.09   base 0.09   at 150 km 0.09   at 300 km 0.11 (mean speed there 0.94)
+   plate 0: 170 markers   drift 1.59 cm/yr   own 0.54   base 0.54   at 150 km 0.48   at 300 km 0.44 (mean speed there 0.69)
+   plate 4: 161 markers   drift 1.65 cm/yr   own 0.49   base 0.49   at 150 km 0.46   at 300 km 0.48 (mean speed there 0.65)
+
+the diagnostic is sane
+PASS  plates were found at every sample   100.04999999999646, 200.00000000001123, 300.00000000003394, 400.0000000000567
+PASS  every number is finite
+PASS  an unbroken planet-wrapping lid is not pulled sideways   t 100 Myr drift 0.00 cm/yr
+PASS  slab pull drives mean plate drift above the cancelled net flow   plate 2.04 vs own 0.34 cm/yr (5.9x)
+PASS  slab-bearing plates reach the 3-10 cm/yr demonstration scale   peak 4.85 cm/yr
+INFO  mean plate drift over all samples   2.04 cm/yr
+INFO  mean own-marker flow   0.34 cm/yr
+INFO  mean base flow under the plates   0.35 cm/yr
+INFO  mean flow at 150 km under the plates   0.33 cm/yr
+INFO  mean flow at 300 km under the plates   0.37 cm/yr
+INFO  mean speed (not net) at 300 km   0.70 cm/yr
+INFO  ratio net-300km/plate   0.18x
+
+ALL PASS (5 checks)

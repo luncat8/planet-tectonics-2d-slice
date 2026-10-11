@@ -25,6 +25,7 @@
 // forward and one inverse transform, not two of each.
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
+var PTPHASE = (typeof module !== 'undefined' && module.exports) ? require('./phase.js') : window.PTPHASE;
 
 var G = {};
 
@@ -112,6 +113,7 @@ G.alloc = function (M) {
 	M.inc = new Float64Array(n);                                // conduction increment
 	M.sum = new Float64Array(n); M.w = new Float64Array(n);      // scatter accumulators
 	M.sumU = new Float64Array(n);                               // strength scatter (crust overlay)
+	M.sumL = new Float64Array(n);                               // melt scatter (melt overlay)
 	M.counts = new Int32Array(n); M.slot = new Int32Array(n);    // marker occupancy, then slots
 	M.rr = new Float64Array(M.ny + 1); M.ri = new Float64Array(M.ny + 1);
 	M.xr = new Float64Array(M.ny + 1); M.xi = new Float64Array(M.ny + 1);
@@ -357,10 +359,10 @@ G.cellOf = cellOf;
 // round-off. With plain weights it is not, and the increments' x-structure amplifies the gap
 // brutally: a 4% occupancy hole read as 360x the wall flux.
 G.scatterT = function (M, S, Tg, mug) {
-	var nx = M.nx, ny = M.ny, n = M.n, sum = M.sum, w = M.w, cw = M.cw, sumU = M.sumU;
+	var nx = M.nx, ny = M.ny, n = M.n, sum = M.sum, w = M.w, cw = M.cw, sumU = M.sumU, sumL = M.sumL;
 	var p, q, i, j, base, ic, jc, ii, jj, di, dj, px, pe, wx, we, ww, tm, mm, e = 0, mu;
-	var grid = P.PH_GRID, ph = S.ph;
-	for (i = 0; i < n; i++) { sum[i] = 0; w[i] = 0; sumU[i] = 0; }
+	var grid = P.PH_GRID, ph = S.ph, ml = S.melt, Mg = S.Mg;
+	for (i = 0; i < n; i++) { sum[i] = 0; w[i] = 0; sumU[i] = 0; sumL[i] = 0; }
 	for (p = 0; p < S.n; p++) {
 		// only grid-coupled material is a sample of the node field: an airborne clast is
 		// outside the domain this field describes (0.3.0-p3-plan.md §1.3)
@@ -381,6 +383,7 @@ G.scatterT = function (M, S, Tg, mug) {
 				ww = wx * we;
 				q = base + ii;
 				sum[q] += ww * tm; w[q] += ww * mm; sumU[q] += ww * mm * S.mu[p];
+				sumL[q] += ww * mm * ml[p];
 			}
 		}
 	}
@@ -392,13 +395,21 @@ G.scatterT = function (M, S, Tg, mug) {
 			if (w[q] > M.cover * mu) {
 				Tg[q] = sum[q] / w[q]; cw[q] = mu / w[q];
 				if (mug) mug[q] = sumU[q] / w[q];
+				// the melt overlay is the same mass-weighted mean as the strength overlay:
+				// what the raster paints is the equilibrium state of the material there, not
+				// a stale patch, so a hole reads zero rather than its last frame's gold
+				Mg[q] = sumL[q] / w[q];
 			}
-			else { e++; cw[q] = 0; }                           // under M.cover: not a sample
+			else { e++; cw[q] = 0; Mg[q] = 0; }                // under M.cover: not a sample
 		}
 	}
 	if (e) fillHoles(M, S, Tg);
 	// the walls are boundary conditions, not marker averages
-	for (i = 0; i < nx; i++) { Tg[i] = 0; Tg[ny * nx + i] = 1; cw[i] = 0; cw[ny * nx + i] = 0; }
+	for (i = 0; i < nx; i++) {
+		Tg[i] = 0; Tg[ny * nx + i] = 1;
+		cw[i] = 0; cw[ny * nx + i] = 0;
+		Mg[i] = 0; Mg[ny * nx + i] = 0;
+	}
 	if (mug) {
 		// the surface carries the row below it so the crust colour reaches the top edge of
 		// the picture; the CMB wall is mantle and never crust
@@ -407,16 +418,23 @@ G.scatterT = function (M, S, Tg, mug) {
 	S.empty = e;
 };
 
-// the grid increment back to the markers: flip = 1 is pure FLIP (the marker keeps its own
-// temperature and receives only what the grid did to it), flip < 1 relaxes toward the grid.
-// The marker's weight is the parcel area it was created with (state.js init, the local node
-// volume) and does not change: area is a material property, and the run's heat bookkeeping
-// and, later, the erupting mass both ride on it. The heat handed out here is the marker
-// field's only source, so it is summed as it is applied into S.ledger: the marker heat then closes against the ledger to round-off by
-// construction, and the *accuracy* of the delivery (the quadrature of the conduction intake
-// against the operator's own wall flux) is a separate measured number, pt-check's job.
+// The grid increment back to the markers: flip = 1 is pure FLIP (the marker keeps its own
+// heat and receives only what the grid did to it), flip < 1 relaxes toward the equilibrium
+// enthalpy of the grid temperature it sits in. The marker's weight is the parcel area it was
+// created with (state.js init, the local node volume) and does not change: area is a material
+// property, and the run's heat bookkeeping and, later, the erupting mass both ride on it.
+//
+// P3.1 writes the increment to *enthalpy*. That is the whole change: H is the conserved
+// quantity and the phase kernel (phase.js, G4) reads T and the melt fraction back out of it,
+// so a conduction increment a parcel used to spend on raising its temperature can now be
+// spent on melting it. The heat handed out here is the marker field's only source, so it is
+// summed as it is applied into S.hLedger: the marker enthalpy then closes against that book
+// to round-off by construction, and the *accuracy* of the delivery (the quadrature of the
+// conduction intake against the operator's own wall flux) is a separate measured number,
+// pt-check's job. The sensible part of the same intake is booked by the phase kernel in
+// S.ledger, which is what makes hLedger - ledger the latent heat a run has stored.
 G.gatherDT = function (M, S, inc, Tg, flip) {
-	var nx = M.nx, p, q, di, dj, jj, ii, ic, jc, px, pe, tot = 0, d, cw = M.cw, wsum;
+	var nx = M.nx, p, q, di, dj, jj, ii, ic, jc, px, pe, tot = 0, d, cw = M.cw, wsum, out;
 	var grid = P.PH_GRID, ph = S.ph;
 	for (p = 0; p < S.n; p++) {
 		// the adjoint of the deposit over the *same* parcel set: the coverage weights cw were
@@ -444,20 +462,12 @@ G.gatherDT = function (M, S, inc, Tg, flip) {
 			}
 		}
 		if (flip < 1) {
-			d = flip * (S.T[p] + di_) + (1 - flip) * tg - S.T[p];
-			S.T[p] += d;
-		} else {
-			d = di_;
-			S.T[p] += di_;
-		}
-		// P3.0 books the same increment as enthalpy: H is the conserved quantity and T its
-		// equilibrium reading, so while no phase change repartitions H the two stay bitwise
-		// equal and the enthalpy ledger is the P1 heat ledger (P3.1 inverts which one the
-		// kernel writes). One intake, two books, and a gap between them is a phase-change bug.
+			out = PTPHASE.byT(tg, S.y[p], S.cF[p], S.cW[p]);
+			d = flip * di_ + (1 - flip) * (out.h - S.H[p]);
+		} else d = di_;
 		S.H[p] += d;
 		tot += S.m[p] * d;
 	}
-	S.ledger += tot;
 	S.hLedger += tot;
 };
 

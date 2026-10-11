@@ -218,13 +218,14 @@ var PTUI = {
 			+ '\nmarkers ' + S.n + '/' + P.partCap + '  ' + P.mpc + '/node   empty ' + S.empty
 			+ '   moved ' + S.moved + '  redeals ' + S.redeals + '   nodes ' + M.nx + 'x' + M.ny
 			+ '\nphase ' + inv + '   mass ' + fmt(S.invMTot) + ' km2   H ' + fmt(S.invHTot)
-			+ '   hLedger ' + fmt(S.hLedger)
 			+ '\ncrust ' + (d.lid * 100).toFixed(0) + '% of markers strong   plates ' + d.plates
 			+ '   plate drift ' + d.plV.toFixed(1) + ' cm/yr'
 			+ '\nsurface ' + d.zMin.toFixed(1) + '..' + d.zMax.toFixed(1) + ' km   (zero mean, drawn x' + P.kRelief + ')'
-			+ '\nledger ' + fmt(S.ledger) + '   walls ' + fmt(S.wall) + '   gap ' + (S.wall ? (S.ledger / S.wall).toFixed(1) + 'x' : '--')
+			+ '\nledger ' + fmt(S.hLedger) + '   walls ' + fmt(S.wall) + '   gap ' + (S.wall ? (S.hLedger / S.wall).toFixed(2) + 'x' : '--')
+			+ '   latent ' + fmt(P.meltLat * (S.invLTot - S.invL0))
 			+ '\nT ' + d.tMin.toFixed(3) + '..' + d.tMax.toFixed(3) + '   heat ' + fmt(d.heat)
-			+ '\nmelt* ' + d.melt.toFixed(2) + '   source depth ' + d.meltY.toFixed(0) + ' km'
+			+ '\nmelt ' + (S.invMTot > 0 ? (S.invLTot / S.invMTot * 100).toFixed(2) : '0.00') + '% of mass'
+			+ '   max ' + d.melt.toFixed(3) + '   depth ' + d.meltY.toFixed(0) + ' km'
 			+ '\nsim ' + PERF.msSim.toFixed(1) + ' ms   draw ' + PERF.msDraw.toFixed(1) + ' ms   fps ' + PERF.fps.toFixed(0);
 		if (this.probeOn) out += '\n' + this.probe;
 		this.hud.textContent = out;

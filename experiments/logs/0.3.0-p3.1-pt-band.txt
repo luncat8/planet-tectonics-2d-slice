@@ -1,0 +1,16 @@
+  band 0.0  seed 1  t 50  asym 0.025  plates 1 (max 1)  drift 0.00 (max 0.00) cm/yr  lid 18%  Nu 22.7  wells 4
+  band 0.0  seed 1  t 150  asym 0.060  plates 1 (max 1)  drift 0.01 (max 0.01) cm/yr  lid 20%  Nu 19.6  wells 4
+  band 0.0  seed 1  t 300  asym 0.321  plates 4 (max 4)  drift 2.59 (max 3.07) cm/yr  lid 7%  Nu 38.4  wells 4
+  band 0.0  seed 1  t 600  asym 0.526  plates 1 (max 5)  drift 0.55 (max 6.84) cm/yr  lid 2%  Nu 56.8  wells 4
+  band 0.6  seed 1  t 50  asym 0.117  plates 1 (max 1)  drift 0.01 (max 0.01) cm/yr  lid 18%  Nu 22.7  wells 4
+  band 0.6  seed 1  t 150  asym 0.542  plates 1 (max 1)  drift 0.06 (max 0.06) cm/yr  lid 20%  Nu 19.2  wells 4
+  band 0.6  seed 1  t 300  asym 0.728  plates 3 (max 3)  drift 2.83 (max 5.23) cm/yr  lid 6%  Nu 35.5  wells 4
+  band 0.6  seed 1  t 600  asym 0.679  plates 1 (max 4)  drift 2.08 (max 7.19) cm/yr  lid 2%  Nu 54.6  wells 4
+  band 0.6  seed 2  t 50  asym 0.118  plates 1 (max 1)  drift 0.00 (max 0.00) cm/yr  lid 18%  Nu 22.6  wells 6
+  band 0.6  seed 2  t 150  asym 0.469  plates 1 (max 1)  drift 0.03 (max 0.03) cm/yr  lid 21%  Nu 18.5  wells 5
+  band 0.6  seed 2  t 300  asym 0.762  plates 2 (max 3)  drift 4.93 (max 6.20) cm/yr  lid 7%  Nu 33.1  wells 5
+  band 0.6  seed 2  t 600  asym 0.652  plates 1 (max 3)  drift 0.27 (max 6.20) cm/yr  lid 2%  Nu 56.5  wells 5
+  band 0.6  seed 3  t 50  asym 0.121  plates 1 (max 1)  drift 0.00 (max 0.00) cm/yr  lid 18%  Nu 22.7  wells 4
+  band 0.6  seed 3  t 150  asym 0.510  plates 1 (max 1)  drift 0.00 (max 0.01) cm/yr  lid 22%  Nu 18.5  wells 4
+  band 0.6  seed 3  t 300  asym 0.764  plates 3 (max 3)  drift 4.08 (max 6.95) cm/yr  lid 4%  Nu 33.2  wells 4
+  band 0.6  seed 3  t 600  asym 0.712  plates 2 (max 3)  drift 4.64 (max 6.95) cm/yr  lid 4%  Nu 47.3  wells 3

@@ -77,7 +77,7 @@ check.near('the two clocks carry the same heat ledger', fast.ledger, native.ledg
 check.near('the two clocks read the same wall ledger', fast.wall, native.wall, 0, 'km2*T');
 check.near('the two clocks give the same Nusselt number', fast.nu, native.nu, 0);
 check.near('the two clocks give the same peak vertical speed', fast.v, native.v, 0, 'cm/yr');
-check.near('the two clocks give the same melt indicator', fast.melt, native.melt, 0);
+check.near('the two clocks give the same peak node melt', fast.melt, native.melt, 0);
 check.near('the two clocks extract it at the same depth', fast.meltY, native.meltY, 0, 'km');
 
 check.done();

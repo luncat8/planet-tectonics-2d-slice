@@ -17,6 +17,8 @@
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
 // aliased under the name pool.js exports, so this adds no second global (P3 plan §6)
 var PTPOOL = (typeof module !== 'undefined' && module.exports) ? require('./pool.js') : window.PTPOOL;
+// the phase law: the reset seeds H from the initial temperature through it (P3.1)
+var PTPHASE = (typeof module !== 'undefined' && module.exports) ? require('./phase.js') : window.PTPHASE;
 
 // The fingerprint runs in fixtures and debug tools, not in the frame loop. Reuse one view
 // pair so it hashes the exact Float64 representation without allocating per call.
@@ -47,12 +49,17 @@ var PTS = {
 	ph: null,                       // P.PH — mantle, mobile melt, airborne, landed deposit.
 	                                // The routing masks P.PH_GRID/PH_ADV/PH_SOLID say which
 	                                // passes see it; a phase is not a plate id
-	H: null,                        // specific enthalpy. P3.0 keeps H === T bitwise (sensible
-	                                // heat alone, cp = 1 in the normalized unit) so the
-	                                // enthalpy ledger *is* the P1 heat ledger; P3.1 makes H the
-	                                // primary and T the equilibrium mapping out of it
-	cF: null, cW: null,             // composition: felsic and water mass fraction
-	melt: null,                     // melt fraction of the parcel's own mass, 0..1 (P3.1)
+	H: null,                        // specific enthalpy: sensible + latent, the conserved
+	                                // quantity. P3.0 kept H === T bitwise (sensible heat
+	                                // alone, cp = 1 in the normalized unit); P3.1 makes T the
+	                                // equilibrium reading of H through the phase law
+	                                // (phase.js), so the identity holds exactly while the
+	                                // parcel is solid and breaks by the latent heat it holds
+	cF: null, cW: null,             // composition: felsic and water mass fraction. Both
+	                                // depress the solidus (params.js meltWF/meltWW)
+	melt: null,                     // melt fraction of the parcel's own mass, 0..1: the
+	                                // equilibrium reading of H (P3.1), not a free field. P3.2
+	                                // detaches it, P3.3 erupts it
 	nextId: 0,                      // the id the next admitted parcel gets
 	age: null,                      // Myr since the marker last froze (plan §3.1): the
 	                                // welding clock of the crust law (solid.js)
@@ -65,16 +72,20 @@ var PTS = {
 	                                // not scale with local marker density (solid.js pair)
 	Tg: null,                       // node temperature field (ny+1) * nx
 	mug: null,                      // node mean strength, the raster's crust overlay
-	Mg: null, MgS: null,            // pressure-release melt indicator and its transport scratch
-	rowT: null,                     // horizontally averaged T at each node row, reused by melt
+	Mg: null,                       // node mean melt fraction, the raster's melt overlay: the
+	                                // mass-weighted reading of the parcels' own equilibrium
+	                                // melt (P3.1 replaced P1's pressure-release indicator)
 	u: null, v: null,               // staggered velocity fields
 	empty: 0, clamp: 0,             // diagnostics of the last frame: nodes with no marker, and
 	                                // markers that had to be kept inside the box
-	ledger: 0,                      // km2 * T, the heat the markers received from the walls since reset
+	ledger: 0,                      // km2 * T, the sensible part of the intake: the phase
+	                                // kernel books the temperature change it reads out of H, so
+	                                // this and hLedger agree while nothing melts and diverge
+	                                // by exactly the latent heat stored once something does
 	wall: 0,                        // the same heat read from the operator's side (sim.js k[8])
-	hLedger: 0,                     // km2 * H, the same intake booked as enthalpy. It is the
-	                                // P3 heat invariant's Q_wall (P3 plan §1.2): P3 has no
-	                                // external source and no export, so this is the only net
+	hLedger: 0,                     // km2 * H, the intake booked as enthalpy in gatherDT. This
+	                                // is the P3 heat invariant's Q_wall (P3 plan §1.2): P3 has
+	                                // no external source and no export, so it is the only net
 	                                // change H_total may show
 	// pool transaction counters (pool.js): what was admitted, split, merged, moved and
 	// refused since reset. A refused transaction is a capacity event and is never silent, so
@@ -85,6 +96,8 @@ var PTS = {
 	invMTot: 0, invHTot: 0,         // and the totals, with composition and melt as mass: the
 	invFTot: 0, invWTot: 0,         // closure a fixture gates to 1e-9 (pool.js inventoryComp)
 	invLTot: 0, invErr: 0,
+	invL0: 0,                       // invLTot right after the last reset: the latent heat a run
+	                                // has stored so far is meltLat * (invLTot - invL0)
 	moved: 0, redeals: 0,           // markers the last repair moved; lattice re-deals since reset
 	nSolid: 0,                      // parcels the crust pass may bond this frame (PH_SOLID):
 	                                // the lid fraction's denominator, so airborne material
@@ -144,8 +157,7 @@ var PTS = {
 		if (!this.Tg || this.Tg.length !== M.n) {
 			this.Tg = new Float64Array(M.n);
 			this.mug = new Float64Array(M.n);
-			this.Mg = new Float64Array(M.n); this.MgS = new Float64Array(M.n);
-			this.rowT = new Float64Array(M.ny + 1);
+			this.Mg = new Float64Array(M.n);
 			this.u = new Float64Array(M.ny * M.nx);
 			this.v = new Float64Array((M.ny + 1) * M.nx);
 		}
@@ -175,7 +187,7 @@ var PTS = {
 	// the wall), 'blob' is one plume head under a conduction profile.
 	reset: function (M, phase) {
 		var nx = M.nx, ny = M.ny, i, j, k, p = 0, m, T, rnd = 12345, e, tx = this.tx;
-		var mpc = P.mpc;
+		var mpc = P.mpc, out;
 		this.band(phase);
 		for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) {
 			m = M.dEta * M.jN[j] * M.dx / mpc;
@@ -194,12 +206,19 @@ var PTS = {
 				this.T[p] = T;
 				this.m[p] = m;
 				this.vx[p] = 0; this.vy[p] = 0;
-				// P3.0 seeds a fresh planet as one phase: every parcel is mantle, its
-				// enthalpy is its sensible heat alone (H === T, bitwise) and it carries no
-				// felsic material, no water and no melt. Ids are the slot order, so a reset
-				// planet's identity is its geometry and a replay reproduces both.
-				this.id[p] = p; this.ph[p] = P.PH.mantle; this.H[p] = T;
-				this.cF[p] = 0; this.cW[p] = 0; this.melt[p] = 0;
+				// A fresh planet is one phase: every parcel is mantle, carries no felsic
+				// material and no water, and its enthalpy is the equilibrium enthalpy of
+				// the initial temperature (phase.js). Below the solidus that is the
+				// identity H = T; where the initial geotherm is *above* its own solidus
+				// -- the shipped 'cool' start is mushy in a 250-700 km band, measured
+				// in experiments/pt-p3-enthalpy.js -- H = T + L*xi and the melt
+				// fraction comes with it. Either way T is the equilibrium reading
+				// of H from the first frame, so the first phase pass changes nothing.
+				// Ids are the slot order, so a reset planet's identity is its geometry
+				// and a replay reproduces both.
+				out = PTPHASE.byT(T, this.y[p], 0, 0);
+				this.id[p] = p; this.ph[p] = P.PH.mantle; this.H[p] = out.h;
+				this.cF[p] = 0; this.cW[p] = 0; this.melt[p] = out.melt;
 				p++;
 			}
 		}
@@ -207,7 +226,7 @@ var PTS = {
 		this.empty = 0; this.clamp = 0; this.ledger = 0; this.wall = 0; this.hLedger = 0;
 		this.moved = 0; this.redeals = 0; this.csN = 0; this.nSolid = 0;
 		tx.admit = 0; tx.split = 0; tx.merge = 0; tx.move = 0; tx.refuse = 0;
-		this.Tg.fill(0); this.mug.fill(0); this.Mg.fill(0); this.MgS.fill(0); this.rowT.fill(0);
+		this.Tg.fill(0); this.mug.fill(0); this.Mg.fill(0);
 		this.age.fill(0); this.mu.fill(0); this.dmg.fill(0); this.cl.fill(-1);
 		this.pLoad.fill(0); this.pCnt.fill(0);
 		// the material state past the prefix is cleared, not merely unused: a phase or an id
@@ -230,6 +249,8 @@ var PTS = {
 		// the stock side of the ledger is true at t = 0, before any frame's G8 has run: the
 		// page's HUD and a fixture that reads the inventory at reset see the planet, not zeros
 		PTPOOL.inventory(this);
+		// the latent heat a run stores is measured against the stock it started with
+		this.invL0 = this.invLTot;
 	},
 
 	// the initial temperature of the node at (i, j)
