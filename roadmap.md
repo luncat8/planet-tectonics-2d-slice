@@ -15,7 +15,7 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | 0.1.8 | collision arrest: the absorbed-shortening brake (`S.edgeShort`, checkpoint v4) closes R4; R1/R2/R5 left open only as measurement definitions on one 100 kyr leg | `archive/0.1.8-plan.md`, `archive/0.1.8-worklog.md` | 0.1.7 flow laws and corrected audit |
 | 0.1.9 | the two contact measurements: R1's site window anchored at the event and its background taken from the quiet-frame yardstick, R2's needle shoulder read over the belt's own neighbourhood | `0.1.9-plan.md`, `archive/0.1.9-worklog.md` | 0.1.8's M3 matrix |
 | 0.2.x | column engine: eruptives, deposits, extraction; page chrome (pause/step/reset) uses E1/E3 — **closed at M5** | `archive/0.2.0-plan.md` | — |
-| 0.3.x | particle engine P3+ (melt, eruptions, contact) | `0.3.0-plan.md`, `0.3.0-p3-plan.md` | — |
+| 0.3.x | particle engine P3+ (melt, eruptions, contact). P3.0 landed: the conserved pool, phase routing and the measured reserve cost (reserve not yet frozen) — `archive/0.3.0-p3.0-worklog.md` | `0.3.0-plan.md`, `0.3.0-p3-plan.md` | — |
 | 0.4.0 | sync/exchange: provenance, deposits core, water, checkpoint, section pack | `0.4.0-sync-plan.md` | — |
 | 0.4.1 | the cut: draw a line on the globe, copy/save, paste/load, reconstruct a section | `0.4.1-plan.md` | 0.4.0's format (`port/slice-format.js`, M0 done) |
 | 0.9.0 | globe page hosts the section as a library; live sync is C3+C4 | `0.9.0-draft-sync.md`, `0.4.1-plan.md` §8 | 0.4.1 M1–M2; C1 on the column engine |
@@ -84,6 +84,13 @@ stay 4/4. `P.Vbirth` stays 4: the batching region the rule frees measures worse,
 better — no `(16, ·)` row is landable (cone 7.61 px at best against the 8 px gate, 3 of
 12 legs red, duty means 73.7–78.0% still outside 0.2.1's 57–69%) — and stays 0.3.0-P3's
 measurement to spend. Acceptance 49/49, `experiments/logs/0.2.5-acceptance.txt`.
+
+0.3.0 P3.0 (`archive/0.3.0-p3.0-worklog.md`) lands the conserved pool: `js/pt/pool.js`
+(`PTPOOL`: admit/split/merge/remove, refusals counted never silent), the four transport
+phases routed through `PH_GRID` / `PH_ADV` / `PH_SOLID`, the enthalpy and composition
+ledgers, and the HUD phase line. Airborne parcels are in no pass. The reserve candidates stay
+in `params.js` but are **not frozen**: `pt-p3-budget.js`'s price is inside the sandbox's own
+frame-time noise, so the freeze waits for an idle-host measurement. Suite 22/22 exit 0.
 
 A release may pull a milestone out of 0.2 or 0.3 when it is the piece that makes a page usable;
 it never re-specifies a kernel.

@@ -1,0 +1,37 @@
+
+0.3.0 P0 — plates emerge from bonded particles whose strength is f(T, age)
+
+  rigidity — a 20x4 lattice in a shear flow, 400 steps
+    cold, old:   strain 1.39e-6   clusters 1   plate v 36.21  vs flow mean 36.21
+    hot:         strain 1.62e-2   clusters 80
+    young:       strain 2.96e+0   clusters 80
+PASS  cold old rock is rigid (internal strain < 2% of the body)   strain 1.39e-6
+PASS  a rigid body travels at the mean of the flow under it (R7)   v 36.21 vs mean 36.21
+PASS  hot rock flows where cold rock does not   hot 1.62e-2 vs cold 1.39e-6
+PASS  young rock flows where old rock does not   young 2.96e+0 vs old 1.39e-6
+
+  welding — a divergent flow across a seam: 200 steps young, then it cools (or not)
+    young seam: separates 0.24 cells, clusters 7
+    cooled seam: separates 0.24 cells, clusters 7 -> after cooling 0.00 cells, clusters 1
+PASS  a hot young seam yields and the halves part   separated 0.244 cells, clusters 7
+PASS  once the seam cools and ages it welds: one cluster, and no further drift   clusters 1, drift after cooling 0.000 cells vs 0.24 while young
+
+  rifting — a divergent flow under a lid, 250 steps
+    hot band:  clusters 12, halves separate 0.21 cells
+    cold band: clusters 1, halves separate 0.00 cells
+PASS  a hot band splits the lid into two plates   clusters 12
+PASS  the same flow leaves a cold lid whole   clusters 1
+
+  slab pull — MEASURED, NOT GATED (a cold dense slab bonded to a plate end,
+  400 steps, gravity on, no mantle support under the plate)
+    short slab: plate v -1.96e-1, 2.18e+0   clusters 2
+    long slab:  plate v 4.97e-9, -2.01e-9   clusters 15
+    A rigid cluster free to fall has no horizontal force: the hanging weight moves the
+    plate only through the mantle that supports it. The engine must show this with the
+    fluid grid present (P1), so it is a measurement here, not a fixture.
+
+  cost of the solid pass (bones only, one cluster, 8 bonds per particle; 2 cores)
+    6000 particles: 2.59 ms/step   (0.43 us per particle)
+    16000 particles: 8.42 ms/step   (0.53 us per particle)
+
+ALL PASS (8 checks)

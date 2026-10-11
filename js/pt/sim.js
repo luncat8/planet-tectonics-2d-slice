@@ -25,7 +25,13 @@ var SIM = {
 	// build the mesh and the state (plan §3.3). The mesh size is a runtime switch: the
 	// plan's §7 levers trade resolution for the frame budget.
 	init: function () {
-		P.partCap = P.mpc * P.mesh.nx * (P.mesh.ny - 1) + 256;
+		// The pool's capacity (0.3.0-p3-plan.md §3.1): the base population is mpc markers per
+		// interior node, and the reserve above it is what detached melt, airborne clasts and
+		// landed deposits may add. partCap is the parameter a capture records and a load
+		// refuses to reinterpret (§6 of that plan); experiments/pt-p3-budget.js measured the
+		// reserve fractions at every quality rung before they became the default.
+		P.partBase = P.mpc * P.mesh.nx * (P.mesh.ny - 1);
+		P.partCap = P.partBase + Math.ceil(P.partBase * P.resFrac);
 		this.M = G.mesh(P.mesh.nx, P.mesh.ny, P.wrap, P.depth, P.yLin);
 		G.alloc(this.M);
 		S.init(this.M, this.phase);

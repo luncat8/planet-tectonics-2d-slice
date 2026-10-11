@@ -1,0 +1,48 @@
+  crust: the P2.1 law and the emergent plates, engine mesh 256x24
+
+
+the strength law
+PASS  a cold marker welds on the tauWeld clock   rel 0.00e+0  got 0.6321205588285577  want 0.6321205588285577
+PASS  its age is the geologic clock   rel 0.00e+0  got 20  want 20
+PASS  a warm marker resets its age and never welds   rel 0.00e+0  got 0  want 0
+PASS  the hysteresis band holds its age   rel 0.00e+0  got 10  want 10
+PASS  its strength is the law at the held age   rel 0.00e+0  got 0.3830030558357226  want 0.3830030558357226
+PASS  hot rock is soft however old   mu 0.000
+PASS  cold rock below yWeldMax resets its age and never welds   rel 0.00e+0  got 0  want 0
+
+a cluster rides the flow as one body
+PASS  both markers are in one cluster   cl 0 0
+PASS  the cluster travels at the mass-weighted mean   rel 0.00e+0  got 15  want 15
+PASS  and so does its partner   rel 0.00e+0  got 15  want 15
+PASS  the body holds its shape (no internal strain)   rel 0.00e+0  got 0  want 0
+PASS  a cold root at the +x end pulls the plate in +x   vx 27.08 km/Myr
+PASS  a root at the -x end pulls in -x by the same speed   rel 0.00e+0  got -27.082589298903418  want -27.082589298903418
+
+a hot band splits the lid
+PASS  the hot band is not plate   cl -1
+PASS  the cold side on the left is one cluster   
+PASS  the cold side on the right is another   
+PASS  the rift is real: the two sides are different plates   
+
+a worked seam opens, a quiet one welds
+PASS  a violently worked seam accumulates damage   dmg 1.000
+PASS  and it opens   dmg 0.87
+PASS  a seam loaded below its yield is elastic forever   rel 0.00e+0  got 0  want 0
+PASS  and stays bonded   
+PASS  a quiet seam anneals its damage away   rel 0.00e+0  got 0  want 0
+PASS  and welds back into one body   
+
+the live run (the real pipeline, 300 Myr)
+  t 300 Myr: lid 4%, plates 2, drift 4.96 (max 6.93) cm/yr, Nu 38.8, holes 3, moved 3, redeals 0
+PASS  the crust forms and stays plate through 300 Myr   lid 4..21%
+PASS  and it carries at least one plate   plates max 3
+PASS  plates drift at the demonstration scale (3-10 cm/yr)   peak drift 6.93 cm/yr
+PASS  the field remains bounded under a rigid lid   T -0.211..1.011
+PASS  the rigid motion never re-deals the lattice   redeals 0
+PASS  coverage survives the plates   worst holes 3
+PASS  the ledger still closes against the wall flux   intake/wall 1.000
+
+the clock
+PASS  dt = 0 reports but does not move, age or damage anything   t 300.000
+
+ALL PASS (31 checks)

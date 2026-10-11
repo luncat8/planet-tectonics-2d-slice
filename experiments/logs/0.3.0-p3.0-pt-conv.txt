@@ -1,0 +1,44 @@
+
+0.3.0 P0 — mantle convection clock bench (uniform Rayleigh-Benard box, free slip)
+
+PASS  conduction state has no flow   max|u| = 0.00e+0
+PASS  y-solver reproduces a manufactured sin(pi y)   rel 2.86e-4
+PASS  Stokes velocity is (discretely) divergence free   max|div| * dx / |u| = 1.97e-5
+PASS  a hot blob under a conduction profile rises   v above the blob = 3.50e+0
+PASS  a cold blob at the top sinks   v below the blob = -3.50e+0
+  runs: 128x48, aspect 4, to t = 0.5 diffusion times, dt = 0.2 dy^2
+
+    t 0.000  Nu 1.00  max|u| 65  max|v| 32  upwellings 1  CFL 0.2
+    t 0.125  Nu 140.98  max|u| 3359  max|v| 4703  upwellings 4  CFL 5.7
+    t 0.250  Nu 113.12  max|u| 2573  max|v| 3509  upwellings 3  CFL 5.9
+    t 0.375  Nu 70.90  max|u| 3907  max|v| 2884  upwellings 3  CFL 8.0
+  Ra 1e+5:  Nu 125.48  max|u| 1759  max|v| 2133  upwellings 9  CFL 5.9   (6510 steps, 6.3 s)
+
+    t 0.000  Nu 1.00  max|u| 194  max|v| 97  upwellings 1  CFL 0.5
+    t 0.125  Nu 30.47  max|u| 2051  max|v| 3464  upwellings 5  CFL 4.7
+    t 0.250  Nu 33.53  max|u| 2880  max|v| 3782  upwellings 3  CFL 6.1
+    t 0.375  Nu 18.33  max|u| 2170  max|v| 2761  upwellings 6  CFL 6.0
+  Ra 3e+5:  Nu 25.59  max|u| 1350  max|v| 2136  upwellings 4  CFL 5.9   (6537 steps, 5.1 s)
+
+    t 0.000  Nu 1.01  max|u| 647  max|v| 324  upwellings 1  CFL 1.8
+    t 0.125  Nu 27.45  max|u| 3563  max|v| 6123  upwellings 3  CFL 4.7
+    t 0.250  Nu 27.45  max|u| 3563  max|v| 6123  upwellings 3  CFL 4.7
+    t 0.375  Nu 27.45  max|u| 3563  max|v| 6123  upwellings 3  CFL 4.7
+  Ra 1e+6:  Nu 27.45  max|u| 3562  max|v| 6123  upwellings 3  CFL 8.0   (12253 steps, 9.4 s)
+
+    t 0.000  Nu 1.02  max|u| 1942  max|v| 973  upwellings 1  CFL 5.4
+    t 0.125  Nu 34.97  max|u| 9733  max|v| 16911  upwellings 5  CFL 4.6
+    t 0.250  Nu 35.02  max|u| 9893  max|v| 17124  upwellings 5  CFL 4.6
+    t 0.375  Nu 34.92  max|u| 9706  max|v| 16799  upwellings 5  CFL 4.6
+  Ra 3e+6:  Nu 34.94  max|u| 9950  max|v| 16767  upwellings 5  CFL 8.0   (33937 steps, 26.7 s)
+
+  calibration: 1 nondimensional velocity unit = 0.0032 cm/yr
+  (kappa 1e-6 m2/s, depth 1000 km; 1 cm/yr = 10 km/Myr)
+
+  Ra        max|u| cm/yr   plume cm/yr   px/frame @100 kyr/f, 2.34 km/px   3000 km in
+  1e+5      5.55          6.73          2.88                    446 frames
+  3e+5      4.26          6.74          2.88                    445 frames
+  1e+6      11.24          19.32          8.26                    155 frames
+  3e+6      31.40          52.92          22.61                    57 frames
+
+ALL PASS (5 checks)

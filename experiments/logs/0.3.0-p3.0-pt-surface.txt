@@ -1,0 +1,62 @@
+  surface: P2.3 relief, mesh 256x24, wrap 16000 km
+    iso 0.09 / 150 km, dyn 0.3, lid/rift 0.05/2, crust/orogen depth 250/80 km
+    collision 45 km Myr, yield 0.03 /Myr, cap 8 km, flex 4, relax 1.5 Myr
+    profile diffusion 20 km2/Myr, slope scale 0.025
+
+
+deterministic state fingerprint
+PASS  the same seed replays the complete particle and surface state   fingerprints 4828188679525117 / 4828188679525117
+PASS  a changed relief profile changes the state fingerprint
+PASS  a changed plate-damage state changes the fingerprint
+
+the target law: a hand-built state reads the independent formula
+PASS  a hot column rises by kIso * sum(dT * dy) through the filter   rel 1.28e-15  got 1.27675647831893e-15 km  want 0
+PASS  and it rises   zh 0.40 km at the column, -0.01 km eight columns away
+PASS  the shallow convergence pulls the horizon down by kDyn * yIso * du/dx   rel 2.55e-15  got 2.55351295663786e-15 km  want 0
+PASS  the deepest column is the most convergent one   dzh/dx -0.0173 /Myr at column 128, zh -0.77 km
+PASS  the welded-lid and rift terms match the filtered target   rel 1.78e-15  got 1.7763568394002505e-15 km  want 0
+PASS  a thick lid makes a broad swell   band 0.42/0.38 km, outside -0.02 km
+PASS  rift damage makes a rounded notch without high-pass side moats   notch -0.01 km, shoulders 0.08/0.08 km
+
+convergent plates build a smoothed mountain belt
+PASS  plates closing at 12 km/Myr follow the independent collision law   rel 5.77e-15  got 5.773159728050814e-15 km  want 0
+PASS  convergence raises a broad crest, not a single-column needle   crest 1.77 km at 127, neighbours 1.17/1.77 km, outside max -0.03 km
+PASS  relative motion inside one rigid cluster does not build a range   max |zh| 0.00e+0 km
+PASS  a divergent boundary does not uplift   divergent -0.03 km, convergent wrap seam 1.77 km
+
+profile diffusion rounds sharp relief and conserves mean elevation
+PASS  diffusion lowers a one-cell crest and raises adjacent elevations   crest 4.000->3.897 km, shoulder -0.016->0.036 km
+PASS  periodic diffusion keeps the sea-level mean at zero   mean 2.57e-17 km
+PASS  diffusion does not create a new undershoot   min -0.0157 km from -0.0157 km
+PASS  a flat quiet planet reads zero   max |zh| 0.00e+0 km
+
+the live run: swells, basins and trenches at 250 Myr
+  spin-up to 250.0 Myr in 64.1 s
+PASS  hot upwelling columns stand above the cold basins   hot 2.41 km vs cold -7.67 km
+PASS  the most convergent columns are the deepest trenches   mean zh -8.07 km, deepest -9.03 km
+PASS  and the most divergent ones are swells   divergent 2.65 km vs cold -7.67 km
+PASS  the horizon is thermal isostasy first (r > 0.4 with the upper-column integral)   r 0.95 over 256 columns
+PASS  the mean elevation is zero to machine precision after a live run   mean -4.21e-17 km
+PASS  the profile stays inside the drawn band   zh -9.03..3.53 km
+PASS  the live run contains active convergent plate boundaries   5 edges, max closure 0.625 /Myr
+
+the view: the drawn horizon, the ocean band and the warp
+PASS  the ocean band exists only below the reference sea level   652 water pixels, 0 of them above y = 0
+PASS  the drawn rock top sits on the profile (within a row)   0 of 320 columns off, worst 0 rows
+PASS  the relief toggle off leaves the unwarped raster   0 water pixels, flat 1
+PASS  a marker on a swell is drawn up by the profile   abs 6.34e-1  got 6 rows (zh at the marker 3.51 km)  want 6.6339538178321025
+PASS  and a marker in a basin is drawn down by it   abs 1.18e-1  got 15 rows (zh at the marker -8.81 km)  want 15.11767357902375
+PASS  the two warps really are opposite   swell 27->21, basin 27->42
+
+ridge push: a slope moves a plate, a flat planet does not
+PASS  a flat planet does not push   vx 0.00e+0 km/Myr
+PASS  a slope pushes the plate at kPush * (-dzh/dx)   rel 0.00e+0  got 6 km/Myr  want 6
+PASS  and the push is capped at vPushMax   rel 0.00e+0  got 15 km/Myr  want 15
+
+the price: no per-frame allocation
+PASS  the surface kernel and the warped view construct no arrays per frame   0 typed arrays over 400 frames
+PASS  and grow no ArrayBuffer memory   arrayBuffers 0 bytes, heap 1341832 bytes over 400 frames
+
+  total 64.6 s of spin-ups
+
+ALL PASS (36 checks)

@@ -359,8 +359,12 @@ G.cellOf = cellOf;
 G.scatterT = function (M, S, Tg, mug) {
 	var nx = M.nx, ny = M.ny, n = M.n, sum = M.sum, w = M.w, cw = M.cw, sumU = M.sumU;
 	var p, q, i, j, base, ic, jc, ii, jj, di, dj, px, pe, wx, we, ww, tm, mm, e = 0, mu;
+	var grid = P.PH_GRID, ph = S.ph;
 	for (i = 0; i < n; i++) { sum[i] = 0; w[i] = 0; sumU[i] = 0; }
 	for (p = 0; p < S.n; p++) {
+		// only grid-coupled material is a sample of the node field: an airborne clast is
+		// outside the domain this field describes (0.3.0-p3-plan.md §1.3)
+		if (!grid[ph[p]]) continue;
 		px = S.x[p] / M.dx; ic = Math.round(px); px -= ic;
 		pe = S.e[p] / M.dEta; jc = Math.round(pe); pe -= jc;
 		tm = S.m[p] * S.T[p]; mm = S.m[p];
@@ -413,7 +417,13 @@ G.scatterT = function (M, S, Tg, mug) {
 // against the operator's own wall flux) is a separate measured number, pt-check's job.
 G.gatherDT = function (M, S, inc, Tg, flip) {
 	var nx = M.nx, p, q, di, dj, jj, ii, ic, jc, px, pe, tot = 0, d, cw = M.cw, wsum;
+	var grid = P.PH_GRID, ph = S.ph;
 	for (p = 0; p < S.n; p++) {
+		// the adjoint of the deposit over the *same* parcel set: the coverage weights cw were
+		// built from the coupled parcels alone, so gathering over them keeps
+		// sum_p m_p a_pk = mu_k exact and the intake is still the operator's own integral.
+		// Airborne material conducts nothing and its enthalpy changes only by transfer.
+		if (!grid[ph[p]]) continue;
 		px = S.x[p] / M.dx; ic = Math.round(px); px -= ic;
 		pe = S.e[p] / M.dEta; jc = Math.round(pe); pe -= jc;
 		var wxm = spl(-1 - px), wx0 = spl(-px), wxp = spl(1 - px);
@@ -440,9 +450,15 @@ G.gatherDT = function (M, S, inc, Tg, flip) {
 			d = di_;
 			S.T[p] += di_;
 		}
+		// P3.0 books the same increment as enthalpy: H is the conserved quantity and T its
+		// equilibrium reading, so while no phase change repartitions H the two stay bitwise
+		// equal and the enthalpy ledger is the P1 heat ledger (P3.1 inverts which one the
+		// kernel writes). One intake, two books, and a gap between them is a phase-change bug.
+		S.H[p] += d;
 		tot += S.m[p] * d;
 	}
 	S.ledger += tot;
+	S.hLedger += tot;
 };
 
 // the flow at the markers, from the streamfunction rather than from the staggered arrays:
@@ -457,7 +473,12 @@ G.gatherDT = function (M, S, inc, Tg, flip) {
 // (solid.js) is what may replace a marker's flow velocity with its plate's rigid one first.
 G.gatherVel = function (M, S, psi) {
 	var nx = M.nx, ny = M.ny, p, base, i0, i1, fx, fy, a, b, c, d, y;
+	var adv = P.PH_ADV, ph = S.ph;
 	for (p = 0; p < S.n; p++) {
+		// a parcel that does not ride the flow map keeps the velocity it was given: airborne
+		// material is ballistic on wall time (§2 of the P3 plan) and mobile melt gets its own
+		// buoyant rule (P3.2) rather than the mantle's
+		if (!adv[ph[p]]) continue;
 		cellOf(M, S.x[p], S.e[p], 0, 0, 0, ny - 1);
 		base = _j0 * nx; i0 = _i0; i1 = _i1; fx = _fx; fy = _fy;
 		a = psi[base + i0]; b = psi[base + i1];
@@ -489,9 +510,10 @@ G.keepInside = function (M, S, p) {
 // carry the markers with the velocity field for dt. Eta steps through the metric: with y
 // halfway through the frame, J = yLin*cosh(eta) = sqrt(yLin^2 + y^2), so dEta = dy / J.
 G.advect = function (M, S, dt) {
-	var p, ym, dy;
+	var p, ym, dy, adv = P.PH_ADV, ph = S.ph;
 	if (!(dt > 0)) return;
 	for (p = 0; p < S.n; p++) {
+		if (!adv[ph[p]]) continue;
 		dy = S.vy[p] * dt;
 		ym = S.y[p] + 0.5 * dy;
 		S.x[p] += S.vx[p] * dt;
@@ -519,10 +541,21 @@ G.advect = function (M, S, dt) {
 G.reseed = function (M, S, force) {
 	var nx = M.nx, ny = M.ny, counts = M.counts, slot = M.slot, order = S.order, w = M.w;
 	var p, q, i, j, c = 0, n = 0, L, total = 0, mu;
+	var grid = P.PH_GRID, ph = S.ph;
 	counts.fill(0);
-	for (p = 0; p < S.n; p++) counts[nodeOf(M, S, p)]++;
+	// The buckets hold grid-coupled parcels *inside the mesh* only, which is what makes the
+	// repair unable to borrow, compact or move airborne mass (P3 plan §1.3): every donor below
+	// is picked out of `order`, and a clast in flight is not in it. A landed deposit above the
+	// surface is coupled -- it covers the surface boundary's nodes through the same deposit --
+	// but it is not a donor either, because moving it would turn edifice material into a mantle
+	// marker. Coverage is a property of the deposit; borrowable material is a property of the
+	// mesh's own eta range.
+	for (p = 0; p < S.n; p++) { if (grid[ph[p]] && S.e[p] >= 0) counts[nodeOf(M, S, p)]++; }
 	for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) { q = j * nx + i; slot[q] = c; c += counts[q]; }
-	for (p = 0; p < S.n; p++) { q = nodeOf(M, S, p); order[slot[q]++] = p; }
+	for (p = 0; p < S.n; p++) {
+		if (!grid[ph[p]] || S.e[p] < 0) continue;
+		q = nodeOf(M, S, p); order[slot[q]++] = p;
+	}
 	if (force) { G.redeal(M, S, slot, order, counts); S.moved = 0; return; }
 	// A nearest-node bucket being empty is not a coverage failure: the quadratic deposit may
 	// still sample it well. Move a marker only for the same low deposited weight scatterT

@@ -1,0 +1,2 @@
+/home/user/planet-tectonics-2d-slice/experiments/logs/pt-snap-100Myr.png   t 100.0 Myr   lid 21%   plates 1   drift 0.0 cm/yr   Nu 19.7   wells 4   empty 0   redeals 0
+total 29.5 s for 2001 frames

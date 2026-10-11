@@ -1,0 +1,55 @@
+
+A. the pool at every quality rung
+  rung        mpc  base      reserve   capacity   pool MB   ms/frame
+  256x24      4   23552     4711      28263         6.17   8.36
+  512x48      2   48128     9626      57754        12.61   23.86
+  1024x96     2   194560    38912     233472       50.99   77.57
+PASS  the capacity is the base plus the reserve the params name   28263 / 57754 / 233472
+PASS  the base is the marker population, one row short of the top wall   23552 / 48128 / 194560
+INFO  the pool's typed arrays at each rung   6.17 MB / 12.61 MB / 50.99 MB (sized to the capacity, not to n)
+
+B. the price of the reserve, with the reserve filled
+  rung        resFrac  melt/air/dep       cap      n        ms/frame  vs empty
+  256x24      0.00    0.00/0.00/0.00    23552    23552        9.89  1.000x  window spread 17%
+  256x24      0.10    0.03/0.01/0.06    25908    25908       10.68  1.079x  window spread 21%
+  256x24      0.20    0.05/0.03/0.12    28263    28263       11.76  1.189x  window spread 14%
+  256x24      0.40    0.10/0.06/0.24    32973    32973       11.89  1.202x  window spread 36%
+  512x48      0.00    0.00/0.00/0.00    48128    48128       19.67  1.000x  window spread 37%
+  512x48      0.10    0.03/0.01/0.06    52941    52941       23.53  1.197x  window spread 7%
+  512x48      0.20    0.05/0.03/0.12    57754    57754       24.00  1.220x  window spread 6%
+  512x48      0.40    0.10/0.06/0.24    67380    67380       27.00  1.373x  window spread 14%
+  1024x96     0.00    0.00/0.00/0.00    194560   194560      86.00  1.000x  window spread 11%
+  1024x96     0.10    0.03/0.01/0.06    214016   214016      86.83  1.010x  window spread 2%
+  1024x96     0.20    0.05/0.03/0.12    233472   233472      85.17  0.990x  window spread 23%
+  1024x96     0.40    0.10/0.06/0.24    272384   272384     105.00  1.221x  window spread 6%
+PASS  the shipped rung fills its whole reserve exactly   4711 admitted of 4711, n 28263/28263
+PASS  the shipped rung stays inside the frame budget with the reserve filled   11.76 ms/frame against 14 ms
+INFO  the reserve's marginal price at 256x24, against an empty pool   reserve 0.00 1.000x, reserve 0.10 1.079x, reserve 0.20 1.189x, reserve 0.40 1.202x
+INFO  the noise the prices sit in: the widest window spread in the sweep, per rung   256x24 36%, 512x48 37%, 1024x96 23% -- a reserve price inside this spread is not resolved
+INFO  the finer rungs report their own cost, they make no budget claim   512x48 24.0 ms with the reserve filled, 1024x96 85.2 ms with the reserve filled
+
+C. a frame with the phases present at capacity constructs nothing
+PASS  400 frames at capacity construct no typed array   0 arrays over 400 frames, n 28263/28263
+PASS  and grow no ArrayBuffer   arrayBuffers 0 bytes
+
+D. a live run pressed to the capacity loses nothing
+PASS  the run reached the capacity and stayed there   n 28263/28263 after 4711 admissions
+PASS  and counted every refusal: 20 admits + 20 splits at the top   refusals 40
+PASS  the mass it gained is the mass it was given   rel 1.63e-9  got 623737.3325189948 km2  want 623737.3325189932
+PASS  no NaN at capacity over 170 frames   0 of 28263
+PASS  coverage survived the pressure   worst 0 of 5888 nodes
+PASS  and the enthalpy ledger still closes against the wall flux   intake/wall 1.0000
+INFO  a frame at capacity, with the pressure still on   11.67 ms against 14 ms
+
+E. the inventory: the frame pass and the gate pass
+PASS  the frame inventory costs less than the whole frame budget   0.110 ms per call at n 28263
+INFO  the compensated pass, for the fixtures   0.705 ms per call, 6.4x the frame pass
+PASS  and the two agree on the mass they report   rel 6.18e-7  got 42312184.03495117 km2  want 42312184.03495179
+PASS  and on the enthalpy   rel 4.47e-7  got 40804064.6277842 km2*H  want 40804064.62778465
+PASS  the compensated mass is the direct Neumaier sum   rel 0.00e+0  got 42312184.03495179 km2  want 42312184.03495179
+PASS  and the compensated enthalpy is   rel 0.00e+0  got 40804064.62778465 km2*H  want 40804064.62778465
+INFO  the naive pass's own loss against the compensated one, relative   1.46e-14
+
+  total 64.8 s
+
+ALL PASS (17 checks)

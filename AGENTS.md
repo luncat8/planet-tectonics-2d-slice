@@ -55,7 +55,8 @@ The pages cross-link each other; keep the mirror in sync when editing index.html
 
 harnesses (node, no runner script): experiments/pt-ui.js (page wiring, particle),
 experiments/smoke.js + view-check.js (column engine), experiments/tephra-pile.js (live arc
-cone vs death write-back), plus the per-milestone pt-*.js checks,
+cone vs death write-back), plus the per-milestone pt-*.js checks (0.3.0 P3: pt-p3-pool.js, pt-p3-routing.js, pt-p3-budget.js;
+the budget is a report whose gates are the plan's own, its price table never edits params.js),
 and the cut in three: experiments/slice-cut.js (the walk, the pack, the resample),
 section-pack.js (the section page: transports, refusals, switches, HUD), section-seed.js (the
 mapping: the z identity, the ledger, the quiet start, the two run modes), checkpoint.js (the

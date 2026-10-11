@@ -1,0 +1,18 @@
+  melt indicator: 128x48, 4 markers/node, cool start
+
+
+the source needs upward flow
+PASS  conduction without a Stokes flow makes no melt indicator   rel 0.00e+0  got 0  want 0
+
+hot upwelling and pressure release
+  t 160 Myr: melt* 0.107 at 176 km
+PASS  a hot upward pathway creates a visible melt indicator   melt* 0.107
+PASS  the indicator stays in the shallow decompression window   176 km
+PASS  melt is extracted before reaching the surface cap
+
+it is diagnostic until P3
+PASS  the indicator does not alter thermal marker motion   rel 0.00e+0  got 3515590320044037  want 3515590320044037
+PASS  the indicator does not alter the heat ledger   rel 0.00e+0  got -51221.455653598976 km2*T  want -51221.455653598976
+PASS  disabled indicator remains empty   rel 0.00e+0  got 0  want 0
+
+ALL PASS (7 checks)

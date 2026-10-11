@@ -1,0 +1,91 @@
+  pool: 256x24 nodes, 4 markers/node, 18 fields per parcel
+
+
+A. FIELDS is the whole parcel
+PASS  every field pool.js permutes is an allocated per-parcel array   18 fields at capacity 28263
+PASS  every per-parcel array in the state is a field or declared workspace   33 arrays: 18 fields + 15 workspace
+PASS  the workspace list names real arrays, not an excuse   15 workspace arrays
+PASS  fields() resolves the table to the live arrays
+PASS  and follows a reallocation instead of holding freed arrays   cap 29440 len 29440
+
+B. a removal compacts every field and keeps the identity
+PASS  the last active parcel arrived in the hole with every field   18 fields moved to slot 7
+PASS  and kept its own identity   id 24551 of 24551
+PASS  nothing lives past the dense prefix   slot 23551 zeroed
+PASS  the compaction is counted once   move 1
+PASS  removing the last slot compacts nothing   n 23550  move 1
+PASS  40 removals leave unique ids and reuse none   duplicates 0  invented 0  n 23512
+
+C. a split moves mass and shares the intensive state
+PASS  every split was admitted below the capacity   n 23552 -> 23808 of cap 28263
+PASS  mass closes over 256 splits   rel 0.00e+0  got 41688446.7024328  want 41688446.7024328
+PASS  x momentum closes   |d| 2.68e-9 of 3.35e+7
+PASS  y momentum closes   |d| 1.16e-9 of 4.31e+7
+PASS  enthalpy closes   rel 0.00e+0  got 40302082.33901751  want 40302082.33901751
+PASS  felsic mass closes   rel 0.00e+0  got 90318.5850403103  want 90318.5850403103
+PASS  water mass closes   rel 0.00e+0  got 199.9019100773834  want 199.9019100773834
+PASS  melt mass closes   rel 0.00e+0  got 4413.905981054458  want 4413.905981054458
+PASS  every child took the phase it was asked for   0 wrong
+PASS  the host kept its id and every child is fresh   renamed 0  renumbered 0
+PASS  the intensive state is shared and the bond state is not   0 wrong
+PASS  the child mass is the fraction of the host's   0 wrong
+PASS  the counters and the id sequence agree with the transactions   split 256  admit 256  nextId 23808
+
+D. a merge sums the extensive state and keeps the older id
+PASS  the hand pair merges
+PASS  mass sums   rel 0.00e+0  got 4  want 4
+PASS  x momentum sums   rel 0.00e+0  got 28  want 28
+PASS  y momentum sums   rel 0.00e+0  got 8  want 8
+PASS  enthalpy is the mass-weighted mean   rel 1.11e-16  got 0.65  want 0.6500000000000001
+PASS  and so is the composition   rel 0.00e+0  got 0.2  want 0.2
+PASS  and the position   rel 0.00e+0  got 125  want 125
+PASS  and the melt fraction   rel 0.00e+0  got 0.075  want 0.075
+PASS  the survivor keeps the older id   id 2
+PASS  a merge across the seam lands on the seam   rel 0.00e+0  got 0 km  want 0
+PASS  and keeps the older of the two ids   id 4
+PASS  merge(a, b) and merge(b, a) are the same parcel   id 12/12  m 8/8  H 0.400000000000/0.400000000000
+PASS  split then merge round-trips mass to 1e-9   1.56e-16
+PASS  and momentum to 1e-9   3.00e-16
+PASS  and enthalpy to 1e-9   0.00e+0
+PASS  the round trip left the pool at its starting count   n 23552  duplicates 0
+PASS  a merge across phases is refused and counted   refuse 1
+PASS  a fractional split of 0 or 1 is refused   refuse 3
+PASS  and neither refusal touched the pool   n 23553
+
+E. a full pool defers, and deferring loses nothing
+PASS  the reserve fills exactly to the capacity   4711 splits, n 28263/28263
+PASS  filling it conserved the mass   rel 0.00e+0  got 41688446.7024328  want 41688446.7024328
+PASS  and the enthalpy   rel 0.00e+0  got 40315962.12899683  want 40315962.12899683
+PASS  and left the ids unique at capacity   duplicates 0
+PASS  a full pool defers the split and refuses the admission   split -1  admit -1
+PASS  and counts both   refuse 2
+PASS  a refused transaction changed nothing but the counter   hash 964197213162095 -> 964197213162095
+PASS  and lost no material   rel 0.00e+0  got 41688446.7024328  want 41688446.7024328
+PASS  a freed slot is admitted again at the end of the prefix   slot 28262
+
+F. the fingerprint is the complete state
+PASS  a reset planet numbers its parcels in slot order   n 23552  nextId 23552
+PASS  a change of id, phase, enthalpy, composition, melt, mass or T is visible   8 fields probed
+PASS  the pool's own counters are part of it too   nextId true  tx true
+PASS  the same seed and the same transaction script replay bitwise   hash 2741502055340261
+PASS  and the replayed pool is finite and inside its box   n 23583
+
+G. the inventory is the stock, and the two passes agree
+PASS  the frame inventory reads the mass the parcels carry   rel 0.00e+0  got 41688446.70242977  want 41688446.70242977
+PASS  and the enthalpy as m*H   rel 0.00e+0  got 40151720.37558654  want 40151720.37558654
+PASS  and the composition as mass fractions   rel 0.00e+0  got 54671.94283944739  want 54671.94283944739
+PASS  and the phase counts   23552,300,200,400 vs 23552,300,200,400
+PASS  the compensated total agrees with the frame one on mass   rel 3.02e-6  got 41688446.7024328  want 41688446.70242977
+PASS  and on enthalpy   rel 3.28e-7  got 40151720.37558687  want 40151720.37558654
+PASS  and on the felsic mass   rel 0.00e+0  got 54671.94283944739  want 54671.94283944739
+PASS  per phase too   0 of 8 lines apart
+PASS  the phase lines sum to the active prefix and to the total   23552+300+200+400 = 24452
+PASS  the compensated error it reports is the naive pass's own   rel 5.26e-27  got 7.256052843472263e-14  want 7.256052843471737e-14
+PASS  a throughput counter is not a stock   41688446.7024328 vs 41688446.7024328
+PASS  a fresh planet's stock is the interior node measure   rel 0.00e+0  got 41688446.7024328 km2  want 41688446.7024328
+PASS  and the compensated stock is the direct Neumaier sum over the same parcels   rel 0.00e+0  got 41688446.7024328 km2  want 41688446.7024328
+INFO  that is 89.8% of the domain area: the two wall rows carry no markers
+
+  total 3.1 s
+
+ALL PASS (70 checks)

@@ -1,0 +1,15 @@
+  reference: pt-conv.js, 128x48, aspect 4, Ra 1e+6
+    t 0.500 diffusion times:  Nu 27.45  max|u| 3562 nd = 11.24 cm/yr (D = 1000 km)  upwellings 3
+
+  engine: 128x48, aspect 4, yLin = depth, 4 markers/node
+    t 120 Myr (2400 frames, 8.26 ms/frame):  Nu 30.55  max|u| 3.43 cm/yr = 3153 nd  upwellings 1  T -0.063..1.003
+
+
+engine vs the clock
+PASS  the engine convects at all   Nu 30.55
+PASS  Nu is within 25% of the reference   engine 30.55  reference 27.45  (11.3%)
+PASS  the velocity scale is within 35% of the reference   engine 3153 nd  reference 3562 nd  (-11.5%)
+PASS  the plan's §7 velocity target is the reference's own depth scale   pt-conv 11.24 cm/yr at D = 1000 km;  the engine's D = 2900 km gives 3.88 cm/yr for the same nondimensional flow
+PASS  both count upwellings of the same order   engine 1  reference 3
+
+ALL PASS (5 checks)

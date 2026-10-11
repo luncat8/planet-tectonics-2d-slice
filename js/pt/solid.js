@@ -69,8 +69,13 @@ function smoothstep(a, b, x) {
 // Below yWeldMax the mantle is in ductile creep regardless of T, so cold plumes that reach
 // the deep mantle or pool at the CMB reset their age and never weld into a bottom lid.
 function strength(M, S, dt) {
-	var p, T, a, heat, weld, d;
+	var p, T, a, heat, weld, d, sol = P.PH_SOLID, ph = S.ph;
 	for (p = 0; p < S.n; p++) {
+		// A parcel that is not solid carries no bond state: mobile melt has no bonds to load
+		// and an airborne clast has none to weld, so both read mu = 0 to the deposit, the
+		// raster and the cluster pass, and their welding clock restarts when they freeze
+		// (P3.1's phase law, P3.4's landing). 0.3.0-p3-plan.md §1.3's routing table.
+		if (!sol[ph[p]]) { S.age[p] = 0; S.dmg[p] = 0; S.mu[p] = 0; continue; }
 		T = S.T[p];
 		d = S.dmg[p];
 		if (T >= P.TSoft || S.y[p] > P.yWeldMax) { S.age[p] = 0; S.dmg[p] = 0; }
@@ -96,11 +101,17 @@ function strength(M, S, dt) {
 // scan visits each pair once.
 function clusters(M, S, dt) {
 	var nx = M.nx, ny = M.ny, counts = M.counts, slot = M.slot, order = S.order;
-	var p, q, i, j, c = 0, nCl = 0, q2, base, k, r, d;
-	var strong = P.clusterMin, near = strong * 0.6;
+	var p, q, i, j, c = 0, nCl = 0, nSol = 0, q2, base, k, r, d;
+	var strong = P.clusterMin, near = strong * 0.6, sol = P.PH_SOLID, ph = S.ph;
 	counts.fill(0);
 	for (p = 0; p < S.n; p++) {
 		S.cl[p] = -1;
+		// the crust pass's own population, i.e. what the lid fraction is a fraction *of*:
+		// airborne and mobile material is not crust and must not dilute a crust diagnostic.
+		// strength() has already left it at mu = 0, which is what keeps it out of the
+		// candidate test below; this count is the mask's own, so the two cannot disagree.
+		if (!sol[ph[p]]) continue;
+		nSol++;
 		d = S.mu[p] * (1 - S.dmg[p]);
 		if (d < near) continue;
 		q = G.nodeOf(M, S, p);
@@ -113,6 +124,7 @@ function clusters(M, S, dt) {
 		S.pLoad[p] = 0; S.pCnt[p] = 0;
 		counts[q]++;
 	}
+	S.nSolid = nSol;
 	for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) { q = j * nx + i; slot[q] = c; c += counts[q]; }
 	for (p = 0; p < S.n; p++) {
 		if (S.cl[p] > -2) continue;         // -1: below the candidate threshold
@@ -320,7 +332,7 @@ function kinematics(M, S, dt) {
 		S.e[p] += dy / Math.sqrt(M.yLin * M.yLin + ym * ym);
 		G.keepInside(M, S, p);
 	}
-	S.d.lid = S.n ? lid / S.n : 0;
+	S.d.lid = S.nSolid ? lid / S.nSolid : 0;
 	S.d.plates = plates;
 	S.d.plV = Math.sqrt(plV) * P.cmYr;
 }

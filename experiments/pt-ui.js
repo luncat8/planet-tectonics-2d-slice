@@ -140,11 +140,18 @@ var P = L.sb.PTP, SIM = L.sb.SIM, UI = L.sb.PTUI, R = L.sb.PTRNDR, TS = L.sb.PTS
 check.ok('the page loaded and started the frame loop', typeof L.sb.__next === 'function');
 check.ok('the engine built its mesh', SIM.M.nx === 256 && SIM.M.ny === 24,
 	SIM.M.nx + 'x' + SIM.M.ny);
-check.ok('the markers are placed', TS.n === P.partCap - 256, 'n ' + TS.n + '/' + P.partCap);
+check.ok('the markers are placed, and the reserve starts empty', TS.n === P.partBase && P.partBase < P.partCap,
+	'n ' + TS.n + '/' + P.partBase + ' base, ' + P.partCap + ' capacity');
 frames(L, 20);
 check.ok('20 frames advanced the clock', SIM.t > 0.9 && SIM.t < 1.1, 't ' + SIM.t.toFixed(2) + ' Myr');
 check.ok('the HUD is built', /^t .*\nNu /m.test(L.els.hud.textContent) || /Nu /.test(L.els.hud.textContent),
 	JSON.stringify(L.els.hud.textContent.split('\n')[0]));
+// a fresh page is all mantle: no melt, air or deposit yet, and no refusal to report
+var phaseLine = /phase mantle (\d+)  melt 0  air 0  dep 0   mass [^\n]* km2   H [^\n]*hLedger/.exec(L.els.hud.textContent);
+check.ok('the HUD phase line counts the all-mantle pool', phaseLine !== null && +phaseLine[1] === P.partBase,
+	phaseLine ? 'mantle ' + phaseLine[1] : 'no phase line in the HUD');
+check.ok('and prints no refusal while the reserve holds', !/refused/.test(L.els.hud.textContent) && TS.tx.refuse === 0,
+	'refused ' + TS.tx.refuse);
 
 // --- B. the switch bar -----------------------------------------------------------
 

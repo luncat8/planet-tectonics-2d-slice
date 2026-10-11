@@ -206,12 +206,19 @@ var PTUI = {
 
 	// 2 Hz. Strings are built here and only here in the engine.
 	updateHud: function (SIM) {
-		var M = SIM.M, d = S.d, out;
+		var M = SIM.M, d = S.d, out, inv = '', k;
 		var px = d.uMax * (P.sl.kyr / 1000) / P.view.kx;      // the fastest marker, px per frame
+		// the pool's stock by transport phase, one term per phase the enum names, so a phase
+		// added later prints itself. Refusals are the capacity events pool.js counted: the
+		// line stays quiet while the reserve holds and names the number when it does not.
+		for (k = 0; k < P.PH_N; k++) inv += (k ? '  ' : '') + P.PH_NAME[k] + ' ' + S.invN[k];
+		inv += S.tx.refuse ? '   refused ' + S.tx.refuse : '';
 		out = clock(SIM.t) + '   seed ' + P.seed + '   ' + (P.sl.kyr > 0 ? P.sl.kyr.toFixed(0) + ' kyr/f  ' + (P.sl.kyr * PERF.fps / 1000).toFixed(2) + ' Myr/s  fluid ' + SIM.sub + 'x' : 'paused')
 			+ '\nNu ' + d.nu.toFixed(2) + '   max|u| ' + d.uMax.toFixed(1) + ' cm/yr   ' + px.toFixed(1) + ' px/f   wells ' + d.wells
 			+ '\nmarkers ' + S.n + '/' + P.partCap + '  ' + P.mpc + '/node   empty ' + S.empty
 			+ '   moved ' + S.moved + '  redeals ' + S.redeals + '   nodes ' + M.nx + 'x' + M.ny
+			+ '\nphase ' + inv + '   mass ' + fmt(S.invMTot) + ' km2   H ' + fmt(S.invHTot)
+			+ '   hLedger ' + fmt(S.hLedger)
 			+ '\ncrust ' + (d.lid * 100).toFixed(0) + '% of markers strong   plates ' + d.plates
 			+ '   plate drift ' + d.plV.toFixed(1) + ' cm/yr'
 			+ '\nsurface ' + d.zMin.toFixed(1) + '..' + d.zMax.toFixed(1) + ' km   (zero mean, drawn x' + P.kRelief + ')'

@@ -1,0 +1,14 @@
+
+0.3.0 P0 — the fluid skeleton on the stretched mesh (asinh eta, 8-40 km cells)
+
+  mesh: 128 x 96, 8000 km wide, 2900 km deep plus 20 km of sky; the top row is 2.51 km thick, the bottom row 160 km
+
+PASS  the gradient/divergence pair composes into the solver operator (D G = L)   rel 2.40e-16
+PASS  the projected velocity is divergence free (buoyancy-driven, all-Neumann)   residual 7.50e-15 of the source
+PASS  a conduction profile has no flow   max|v| = 1.64e-13 x amp
+PASS  a hot blob drives an upwelling through its own level   v(eta) at the blob = -1.16e-3
+PASS  a cold blob drives a downwelling through its own level   v(eta) at the cold blob = 1.16e-3
+
+  buoyancy + projection step: 128x96  1.200 ms   |   256x96  2.000 ms
+
+ALL PASS (5 checks)

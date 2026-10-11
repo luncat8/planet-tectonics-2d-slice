@@ -7,8 +7,16 @@
 // representations but is not created by either. In P1 the marker set is fixed: one marker
 // per interior node, each carrying the node's own measure, so the marker heat equals the
 // field's heat exactly and the ledger (plan §3.4) has nothing to balance but the walls.
+//
+// P3.0 turned that fixed set into a *pool* (0.3.0-p3-plan.md §1.1-§1.3): every parcel carries
+// a transport phase, a stable material id, a specific enthalpy and a composition, `0..S.n` is
+// a dense prefix of `P.partCap`, and the transactions that change which parcels exist live in
+// pool.js. What this file owns is the storage, the reset that seeds it and the fingerprint
+// that has to cover all of it.
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
+// aliased under the name pool.js exports, so this adds no second global (P3 plan §6)
+var PTPOOL = (typeof module !== 'undefined' && module.exports) ? require('./pool.js') : window.PTPOOL;
 
 // The fingerprint runs in fixtures and debug tools, not in the frame loop. Reuse one view
 // pair so it hashes the exact Float64 representation without allocating per call.
@@ -31,6 +39,21 @@ var PTS = {
 	T: null,                        // 0 at the surface, 1 at the CMB
 	m: null,                        // mass per unit out-of-plane depth, km2 (fixed in P1)
 	vx: null, vy: null,             // km/Myr, the interpolated grid velocity
+	// the P3.0 material state (0.3.0-p3-plan.md §1.1, §1.3). One transport phase per parcel,
+	// one id that survives every move it makes, one specific enthalpy in the normalized unit
+	// the phase law will repartition, and composition as mass fractions that stay in the
+	// global inventory however the parcel is split or merged.
+	id: null,                       // stable material identity: never reused, never renumbered
+	ph: null,                       // P.PH — mantle, mobile melt, airborne, landed deposit.
+	                                // The routing masks P.PH_GRID/PH_ADV/PH_SOLID say which
+	                                // passes see it; a phase is not a plate id
+	H: null,                        // specific enthalpy. P3.0 keeps H === T bitwise (sensible
+	                                // heat alone, cp = 1 in the normalized unit) so the
+	                                // enthalpy ledger *is* the P1 heat ledger; P3.1 makes H the
+	                                // primary and T the equilibrium mapping out of it
+	cF: null, cW: null,             // composition: felsic and water mass fraction
+	melt: null,                     // melt fraction of the parcel's own mass, 0..1 (P3.1)
+	nextId: 0,                      // the id the next admitted parcel gets
 	age: null,                      // Myr since the marker last froze (plan §3.1): the
 	                                // welding clock of the crust law (solid.js)
 	mu: null,                       // strength 0..1 from T and age (plan §4.2); >=
@@ -49,7 +72,23 @@ var PTS = {
 	                                // markers that had to be kept inside the box
 	ledger: 0,                      // km2 * T, the heat the markers received from the walls since reset
 	wall: 0,                        // the same heat read from the operator's side (sim.js k[8])
+	hLedger: 0,                     // km2 * H, the same intake booked as enthalpy. It is the
+	                                // P3 heat invariant's Q_wall (P3 plan §1.2): P3 has no
+	                                // external source and no export, so this is the only net
+	                                // change H_total may show
+	// pool transaction counters (pool.js): what was admitted, split, merged, moved and
+	// refused since reset. A refused transaction is a capacity event and is never silent, so
+	// the block exists from load and reset zeroes it
+	tx: { admit: 0, split: 0, merge: 0, move: 0, refuse: 0 },
+	invN: null, invM: null,         // the stock inventory by phase: parcels, mass, m*H
+	invH: null,
+	invMTot: 0, invHTot: 0,         // and the totals, with composition and melt as mass: the
+	invFTot: 0, invWTot: 0,         // closure a fixture gates to 1e-9 (pool.js inventoryComp)
+	invLTot: 0, invErr: 0,
 	moved: 0, redeals: 0,           // markers the last repair moved; lattice re-deals since reset
+	nSolid: 0,                      // parcels the crust pass may bond this frame (PH_SOLID):
+	                                // the lid fraction's denominator, so airborne material
+	                                // cannot dilute a crust diagnostic
 	order: null,                    // marker indices, bucketed by node (grid.js reseed)
 	// cluster scratch for the crust pass (solid.js), sized with the marker set. Clusters are
 	// recomputed every frame from the strong markers' adjacency, so this is workspace, not
@@ -82,6 +121,12 @@ var PTS = {
 			this.age = new Float64Array(cap); this.mu = new Float64Array(cap);
 			this.dmg = new Float64Array(cap);
 			this.pLoad = new Float64Array(cap); this.pCnt = new Int32Array(cap);
+			// the P3.0 material state: id and phase are integers, H and the composition
+			// fractions ride the same Float64 precision as m so a split/merge closes to 1e-9
+			this.id = new Int32Array(cap); this.ph = new Uint8Array(cap);
+			this.H = new Float64Array(cap);
+			this.cF = new Float64Array(cap); this.cW = new Float64Array(cap);
+			this.melt = new Float64Array(cap);
 			this.par = new Int32Array(cap); this.cl = new Int32Array(cap); this.csOf = new Int32Array(cap);
 			this.csM = new Float64Array(cap); this.csX = new Float64Array(cap);
 			this.csY = new Float64Array(cap); this.csVX = new Float64Array(cap);
@@ -90,6 +135,11 @@ var PTS = {
 			this.csS = new Float64Array(cap); this.csP = new Float64Array(cap);
 			this.csCnt = new Int32Array(cap);
 			this.order = new Int32Array(cap);
+		}
+		if (!this.invN || this.invN.length !== P.PH_N) {
+			this.invN = new Int32Array(P.PH_N);
+			this.invM = new Float64Array(P.PH_N);
+			this.invH = new Float64Array(P.PH_N);
 		}
 		if (!this.Tg || this.Tg.length !== M.n) {
 			this.Tg = new Float64Array(M.n);
@@ -124,8 +174,8 @@ var PTS = {
 	// cold skin, 'hot' is the P2 cooling start (nearly uniform hot, the lid has to grow from
 	// the wall), 'blob' is one plume head under a conduction profile.
 	reset: function (M, phase) {
-		var nx = M.nx, ny = M.ny, i, j, k, p = 0, m, T, rnd = 12345, e;
-		var mpc = P.mpc, node = M.dEta * M.jN[0] * M.dx;
+		var nx = M.nx, ny = M.ny, i, j, k, p = 0, m, T, rnd = 12345, e, tx = this.tx;
+		var mpc = P.mpc;
 		this.band(phase);
 		for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) {
 			m = M.dEta * M.jN[j] * M.dx / mpc;
@@ -144,15 +194,27 @@ var PTS = {
 				this.T[p] = T;
 				this.m[p] = m;
 				this.vx[p] = 0; this.vy[p] = 0;
+				// P3.0 seeds a fresh planet as one phase: every parcel is mantle, its
+				// enthalpy is its sensible heat alone (H === T, bitwise) and it carries no
+				// felsic material, no water and no melt. Ids are the slot order, so a reset
+				// planet's identity is its geometry and a replay reproduces both.
+				this.id[p] = p; this.ph[p] = P.PH.mantle; this.H[p] = T;
+				this.cF[p] = 0; this.cW[p] = 0; this.melt[p] = 0;
 				p++;
 			}
 		}
-		this.n = p;
-		this.empty = 0; this.clamp = 0; this.ledger = 0; this.wall = 0;
-		this.moved = 0; this.redeals = 0; this.csN = 0;
+		this.n = p; this.nextId = p;
+		this.empty = 0; this.clamp = 0; this.ledger = 0; this.wall = 0; this.hLedger = 0;
+		this.moved = 0; this.redeals = 0; this.csN = 0; this.nSolid = 0;
+		tx.admit = 0; tx.split = 0; tx.merge = 0; tx.move = 0; tx.refuse = 0;
 		this.Tg.fill(0); this.mug.fill(0); this.Mg.fill(0); this.MgS.fill(0); this.rowT.fill(0);
 		this.age.fill(0); this.mu.fill(0); this.dmg.fill(0); this.cl.fill(-1);
 		this.pLoad.fill(0); this.pCnt.fill(0);
+		// the material state past the prefix is cleared, not merely unused: a phase or an id
+		// left behind by a bigger population would be a parcel a wrongly bounded pass could
+		// find. pool.js remove() keeps the same rule per transaction.
+		this.ph.fill(P.PH.mantle, p); this.H.fill(0, p); this.id.fill(-1, p);
+		this.cF.fill(0, p); this.cW.fill(0, p); this.melt.fill(0, p);
 		this.u.fill(0); this.v.fill(0);
 		// a fresh planet is flat: the horizon relaxes up from the reference sea level as the
 		// upper column's buoyancy, convergence and welded lid develop
@@ -165,6 +227,9 @@ var PTS = {
 		this.d.melt = 0; this.d.meltY = 0;
 		this.d.lid = 0; this.d.plates = 0; this.d.plV = 0;
 		this.d.zMin = 0; this.d.zMax = 0;
+		// the stock side of the ledger is true at t = 0, before any frame's G8 has run: the
+		// page's HUD and a fixture that reads the inventory at reset see the planet, not zeros
+		PTPOOL.inventory(this);
 	},
 
 	// the initial temperature of the node at (i, j)
@@ -217,11 +282,15 @@ var PTS = {
 		}
 	},
 
-	// a deterministic fingerprint for replay, pause and view-mutation checks. Include the
+	// A deterministic fingerprint for replay, pause and view-mutation checks. Include the
 	// material, mechanical and surface state: a marker-only checksum misses a changed relief
-	// profile or a different plate failure history.
+	// profile or a different plate failure history. P3.0 made it the *complete* state
+	// fingerprint the P3 plan's §1.3 asks for -- id, phase, enthalpy and composition are in
+	// it per parcel, and the pool's own counters (nextId and tx) are in it too, so two runs
+	// that reached the same population by a different transaction history do not compare
+	// equal. A capture is this plus the capacity word (§6 of that plan).
 	hash: function () {
-		var a = 2166136261, b = 2654435769, p, i, n = this.n;
+		var a = 2166136261, b = 2654435769, p, i, n = this.n, tx = this.tx;
 		a = mixHash(a, n, HASH_PRIME_A); b = mixHash(b, n, HASH_PRIME_B);
 		for (p = 0; p < n; p++) {
 			a = mixHash(a, this.x[p], HASH_PRIME_A); b = mixHash(b, this.x[p], HASH_PRIME_B);
@@ -235,12 +304,25 @@ var PTS = {
 			a = mixHash(a, this.mu[p], HASH_PRIME_A); b = mixHash(b, this.mu[p], HASH_PRIME_B);
 			a = mixHash(a, this.dmg[p], HASH_PRIME_A); b = mixHash(b, this.dmg[p], HASH_PRIME_B);
 			a = mixHash(a, this.cl[p], HASH_PRIME_A); b = mixHash(b, this.cl[p], HASH_PRIME_B);
+			a = mixHash(a, this.id[p], HASH_PRIME_A); b = mixHash(b, this.id[p], HASH_PRIME_B);
+			a = mixHash(a, this.ph[p], HASH_PRIME_A); b = mixHash(b, this.ph[p], HASH_PRIME_B);
+			a = mixHash(a, this.H[p], HASH_PRIME_A); b = mixHash(b, this.H[p], HASH_PRIME_B);
+			a = mixHash(a, this.cF[p], HASH_PRIME_A); b = mixHash(b, this.cF[p], HASH_PRIME_B);
+			a = mixHash(a, this.cW[p], HASH_PRIME_A); b = mixHash(b, this.cW[p], HASH_PRIME_B);
+			a = mixHash(a, this.melt[p], HASH_PRIME_A); b = mixHash(b, this.melt[p], HASH_PRIME_B);
 		}
 		if (this.zh) for (i = 0; i < this.zh.length; i++) {
 			a = mixHash(a, this.zh[i], HASH_PRIME_A); b = mixHash(b, this.zh[i], HASH_PRIME_B);
 		}
 		a = mixHash(a, this.ledger, HASH_PRIME_A); b = mixHash(b, this.ledger, HASH_PRIME_B);
 		a = mixHash(a, this.wall, HASH_PRIME_A); b = mixHash(b, this.wall, HASH_PRIME_B);
+		a = mixHash(a, this.hLedger, HASH_PRIME_A); b = mixHash(b, this.hLedger, HASH_PRIME_B);
+		a = mixHash(a, this.nextId, HASH_PRIME_A); b = mixHash(b, this.nextId, HASH_PRIME_B);
+		a = mixHash(a, tx.admit, HASH_PRIME_A); b = mixHash(b, tx.admit, HASH_PRIME_B);
+		a = mixHash(a, tx.split, HASH_PRIME_A); b = mixHash(b, tx.split, HASH_PRIME_B);
+		a = mixHash(a, tx.merge, HASH_PRIME_A); b = mixHash(b, tx.merge, HASH_PRIME_B);
+		a = mixHash(a, tx.move, HASH_PRIME_A); b = mixHash(b, tx.move, HASH_PRIME_B);
+		a = mixHash(a, tx.refuse, HASH_PRIME_A); b = mixHash(b, tx.refuse, HASH_PRIME_B);
 		return a * 2097152 + (b & 0x1fffff);
 	}
 };

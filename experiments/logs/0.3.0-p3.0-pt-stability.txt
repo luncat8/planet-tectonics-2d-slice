@@ -1,0 +1,22 @@
+  stability: 128x48, 4 markers/node, cool start, through 180 Myr
+
+  50 kyr/f: t 180 Myr, outer frames 3600, fluid 1x, Nu 24.30, T -0.040..1.000, holes 1, moved 1, redeals 0
+  500 kyr/f: t 180 Myr, outer frames 360, fluid 10x, Nu 24.30, T -0.040..1.000, holes 1, moved 1, redeals 0
+
+long-run coverage repair
+PASS  the native clock does not globally re-deal the cloud   redeals 0
+PASS  the native clock repairs only actual transfer holes   holes 1   moved 1
+PASS  the field remains bounded through the former transition   T -0.040..1.000
+
+clock invariance
+PASS  500 kyr/f uses ten fluid substeps   fluid 10x
+PASS  the fast clock does not globally re-deal the cloud   redeals 0
+PASS  the two clocks end at the same marker state   rel 0.00e+0  got 5237473459298580  want 5237473459298580
+PASS  the two clocks carry the same heat ledger   rel 0.00e+0  got -351920.1119566101 km2*T  want -351920.1119566101
+PASS  the two clocks read the same wall ledger   rel 0.00e+0  got -351920.2855129086 km2*T  want -351920.2855129086
+PASS  the two clocks give the same Nusselt number   rel 0.00e+0  got 24.29646275038796  want 24.29646275038796
+PASS  the two clocks give the same peak vertical speed   rel 0.00e+0  got 4.578266723558157 cm/yr  want 4.578266723558157
+PASS  the two clocks give the same melt indicator   rel 0.00e+0  got 0.11719832551751719  want 0.11719832551751719
+PASS  the two clocks extract it at the same depth   rel 0.00e+0  got 174.10393448762736 km  want 174.10393448762736
+
+ALL PASS (12 checks)

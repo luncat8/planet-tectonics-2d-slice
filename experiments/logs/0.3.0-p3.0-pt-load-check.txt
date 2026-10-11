@@ -1,0 +1,27 @@
+  load calibration: flow strain rate across lid pairs, mesh 256x24, wrap 16000 km
+
+   t/Myr      p50      p80      p90      p99      max    yield 0.060
+      50   0.0025   0.0051   0.0070   0.0166    1.051
+     100   0.0039   0.0084   0.0125   0.0276    0.657
+     200   0.0122   0.0274   0.0425   0.0950    1.024
+
+the calibrated regime
+PASS  t 50 Myr: the body of the lid stays below yield   p80 0.0051 < 0.06
+PASS  t 100 Myr: the body of the lid stays below yield   p80 0.0084 < 0.06
+PASS  t 200 Myr: the body of the lid stays below yield   p80 0.0274 < 0.06
+PASS  the worked tail reaches above yield (so seams can open)   p99 0.0950 > 0.06
+PASS  the load scale is the one solid.js fails at   p50 0.0122 .. max 1.02
+
+  the density of the sample, and what the two damage laws make of it:
+   t/Myr  markers  partners p10/p50/p90   per-pair p50/p90   mean p50/p90   corr(rate,n) pair/mean   rescale
+      50     9468            17/25/30     0.0749/0.1443     0.0031/0.0056     0.45/0.12    24.6x
+     100     9276            16/25/33     0.1194/0.2616     0.0047/0.0101     0.53/0.12    24.9x
+     200     8725            11/35/52     0.5359/1.2314     0.0156/0.0330     0.73/0.19    33.9x
+
+the damage rate is a property of the rock, not of the sample
+PASS  partners per marker vary by more than 2x across the lid (p10 to p90)   partners 17/25/30  16/25/33  11/35/52
+PASS  a per-pair law tracks that count (the rate is density-dependent)   corr 0.45/0.53/0.73
+PASS  the shipped mean law does not (the rate is density-free)   corr 0.12/0.12/0.19
+PASS  params.js kDamage sits inside the measured rescale band   90 in [74, 102]
+
+ALL PASS (9 checks)

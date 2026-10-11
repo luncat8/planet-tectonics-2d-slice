@@ -1,5 +1,9 @@
-// pt/fluid.js — 0.3.0 P1: the fluid kernels of the frame pipeline (plan §5, G1..G3 and G8).
-// Each one no-ops at zero population; the clock is the caller's business (sim.js).
+// pt/fluid.js — 0.3.0 P1: the fluid kernels of the frame pipeline (plan §5, G1..G3, G7 and
+// G8). Each one no-ops at zero population; the clock is the caller's business (sim.js).
+//
+// P3.0 made every pass over the pool phase aware (0.3.0-p3-plan.md §1.3): the masks in
+// params.js decide which parcels a kernel sees, so the routing is one table and not a
+// condition per kernel.
 //
 // The order inside one frame is the plan's: the markers make the grid, the grid makes the
 // flow, conduction happens on the grid, the increment goes back to the markers, and then
@@ -9,6 +13,8 @@
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
 var G = (typeof module !== 'undefined' && module.exports) ? require('./grid.js') : window.PTG;
+// aliased under the name pool.js exports, so this adds no second global (P3 plan §6)
+var PTPOOL = (typeof module !== 'undefined' && module.exports) ? require('./pool.js') : window.PTPOOL;
 
 var F = {
 	// markers -> node temperature (G1). Repair runs while M.w still describes these exact
@@ -88,7 +94,7 @@ var F = {
 		var hLid = S.hLid, hRaw = S.hRaw, rft = S.rft, colM = S.colM;
 		var i, j, p, base, y, x, fx, w0, w1, m, sum, mean, k, a, im, ip;
 		var sY = S.surfaceY, sV = S.surfaceV, sCl = S.surfaceCl;
-		var slope, ratio, dL, dR, dtDx2;
+		var slope, ratio, dL, dR, dtDx2, sol = P.PH_SOLID, ph = S.ph;
 
 		for (i = 0; i < nx; i++) {
 			hLid[i] = 0; rft[i] = 0; colM[i] = 0; zr[i] = 0;
@@ -96,8 +102,11 @@ var F = {
 		}
 		// Conservative linear splatting avoids the one-column histogram that made the crust
 		// term grow narrow ridges out of marker sampling noise. The shallowest strong marker
-		// also identifies each column's surface plate for the collision pass.
+		// also identifies each column's surface plate for the collision pass. Only
+		// solid-eligible material is crust: an airborne clast sits *above* the surface, so the
+		// depth test alone would splat it into the lid, rift and mass terms (P3 plan §1.3).
 		for (p = 0; p < S.n; p++) {
+			if (!sol[ph[p]]) continue;
 			y = S.y[p];
 			if (y > P.yCrust) continue;
 			x = S.x[p] / dx;
@@ -232,11 +241,15 @@ var F = {
 		d.wells = wells >> 1;
 		// d.heat is the field's heat in the mesh measure -- the integral the conduction
 		// operator conserves exactly. d.mHeat is the same heat carried on the markers: the
-		// two differ by the transfer's quadrature error, and the fixture watches the gap.
+		// two differ by the transfer's quadrature error, and the fixture watches the gap. The
+		// marker side is the grid-coupled set, because that is the set the field describes --
+		// an airborne clast's heat is real material but it is not this field's quadrature
+		// error, and the pool's own inventory (below) is where the whole stock is counted.
 		var heat = 0;
 		for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) heat += M.dEta * M.jN[j] * M.dx * T[j * nx + i];
-		var mheat = 0, tmin = 9e9, tmax = -9e9, p, tp;
+		var mheat = 0, tmin = 9e9, tmax = -9e9, p, tp, grid = P.PH_GRID, phs = S.ph;
 		for (p = 0; p < S.n; p++) {
+			if (!grid[phs[p]]) continue;
 			tp = S.T[p];
 			mheat += S.m[p] * tp;
 			if (tp < tmin) tmin = tp;
@@ -259,6 +272,11 @@ var F = {
 			if (zv > zhi) zhi = zv;
 		}
 		d.zMin = zlo; d.zMax = zhi;
+		// The stock side of the P3 ledger (pool.js): parcels, mass and enthalpy by phase, plus
+		// the composition totals. This is the naive single pass the frame can afford; a fixture
+		// that gates closure to 1e-9 calls PTPOOL.inventoryComp itself, and pt-p3-pool.js holds
+		// the two against each other so they cannot drift.
+		PTPOOL.inventory(S);
 	},
 
 	// The ledger is accumulated where the heat changes hands, in gatherDT: it is the marker

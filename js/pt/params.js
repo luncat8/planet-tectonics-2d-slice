@@ -152,10 +152,13 @@ var PTP = {
 	                             // 2x makes the deepest basin a tenth of that view legible
 	                             // rather than a third (3x flooded the frame with ocean)
 	zVisMax: 8,                  // km, the profile the view draws is clipped to +-this
-	// particles (plan §3.1): one marker per interior node, each carrying its node's measure.
-	// The count is fixed in P1 -- no merging, no eruption, no absorb -- and a moving marker
-	// keeps its mass, so the parcel heat is exactly what the walls put in (the ledger) and
-	// the marker field's area is material
+	// particles (plan §3.1): the base population is mpc markers per interior node, each
+	// carrying its node's measure. A moving marker keeps its mass, so the parcel heat is
+	// exactly what the walls put in (the ledger) and the marker field's area is material.
+	// P3.0 made the population a *prefix* of a pool rather than a fixed count: detached melt,
+	// airborne clasts and landed deposits are admitted above the base (pool.js), so the
+	// capacity carries a reserve and reaching it defers a transaction instead of dropping mass
+	// (0.3.0-p3-plan.md §1.3).
 	mpc: 4,                      // markers per node. One per node is the thinnest possible
 	                             // sample of a stretched mesh: a single fold then empties a
 	                             // node and the field has to be patched. Four is the usual
@@ -163,7 +166,22 @@ var PTP = {
 	                             // own measure (cw ~ 1), so the conduction intake is delivered
 	                             // where the operator charged it, and a fold has to remove four
 	                             // markers from a node before it becomes a hole.
-	partCap: 32768,
+	// The reserve, as fractions of the base population, one line per phase that is admitted
+	// above it. experiments/pt-p3-budget.js measures the frame cost of each rung with the
+	// reserve filled and sets these; sim.js turns them into partCap (a save records partCap
+	// and a load refuses a different one rather than reinterpreting a pool, §6 of the P3 plan).
+	resMelt: 0.05,               // mobile melt waiting to rise, to intrude or to be erupted
+	resAir: 0.03,                // clasts in flight: a fountain is presentation, but it is mass
+	resDep: 0.12,                // landed deposits before they merge and weld into the crust
+	partBase: 0,                 // derived at init: mpc * nx * (ny - 1), the marker population
+	partCap: 32768,              // derived at init, never set by hand: base * (1 + resFrac)
+	// P3.0 phase routing (0.3.0-p3-plan.md §1.3). The phase is a transport/material state,
+	// not a plate id, and the three masks below are that table's columns -- read once per
+	// parcel per pass, so a routing change is a table edit and not a kernel edit. The enum
+	// values are implementation detail; the masks are not. Airborne material is in none of
+	// the three: it advances on wall time only (§2 of the P3 plan) and is excluded from grid
+	// repair, conduction, clustering and every crust diagnostic.
+	PH: { mantle: 0, melt: 1, air: 2, dep: 3 },
 	// display (plan §6)
 	cw: 1280, ch: 560,
 	winW: 16000,                 // km across the canvas at zoom 1: the whole periodic map at
@@ -185,6 +203,31 @@ var PTP = {
 PTP.RaK = PTP.Ra * PTP.kappa / (PTP.depth * PTP.depth * PTP.depth);
 // 1 cm/yr in km/Myr, the one place the two velocity units meet
 PTP.cmYr = 0.1;
+// the pool's reserve as one fraction: sim.js multiplies the base population by it
+PTP.resFrac = PTP.resMelt + PTP.resAir + PTP.resDep;
+
+// The routing masks of §1.3 of the P3 plan, indexed by PH and built from the enum so a
+// renamed phase cannot silently land in the wrong column:
+//   PH_GRID   the parcel is deposited to the node field and receives the conduction
+//             increment -- the adjoint pair of grid.js, which is why one mask owns both
+//   PH_ADV    the parcel rides the geological flow map. Mobile melt is *not* in it: it gets
+//             its own buoyant rise rule (P3.2) rather than the mantle's advection
+//   PH_SOLID  the parcel is eligible for the crust pass's bonds, clusters and rigid fit
+// Airborne material is in none of the three, and a parcel that is not solid carries no bond
+// state at all (solid.js strength zeroes its age, damage and mu).
+(function () {
+	var ph = PTP.PH, n = 0, k;
+	for (k in ph) if (ph[k] > n) n = ph[k];
+	PTP.PH_N = n + 1;
+	PTP.PH_NAME = new Array(PTP.PH_N);
+	PTP.PH_GRID = new Uint8Array(PTP.PH_N);
+	PTP.PH_ADV = new Uint8Array(PTP.PH_N);
+	PTP.PH_SOLID = new Uint8Array(PTP.PH_N);
+	for (k in ph) PTP.PH_NAME[ph[k]] = k;
+	PTP.PH_GRID[ph.mantle] = 1; PTP.PH_ADV[ph.mantle] = 1; PTP.PH_SOLID[ph.mantle] = 1;
+	PTP.PH_GRID[ph.melt] = 1;
+	PTP.PH_GRID[ph.dep] = 1; PTP.PH_ADV[ph.dep] = 1; PTP.PH_SOLID[ph.dep] = 1;
+}());
 
 // the window in display space: eta is the asinh depth coordinate, so zoom and pan are
 // exact in eta; kx is km per pixel horizontally

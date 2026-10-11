@@ -1,0 +1,11 @@
+  upwelling/downwelling asymmetry: 64x16 test mesh
+
+
+hot upwellings receive additional buoyancy
+PASS  hot-anomaly buoyancy increases peak vertical speed   2.45e+1 -> 2.62e+1
+
+cold fingers receive conservative lateral mixing
+PASS  cold mixing conserves each row integral   rel 3.55e-15  got 23.614984372633746  want 23.614984372633742
+PASS  cold anomaly is less concentrated than ordinary thermal diffusion   0.1066 -> 0.1182
+
+ALL PASS (3 checks)

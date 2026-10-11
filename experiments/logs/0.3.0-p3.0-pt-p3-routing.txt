@@ -1,0 +1,70 @@
+  routing: 256x24 nodes, band of row 3, 50 Myr of spin-up
+
+  the routing table as measured (0.3.0-p3-plan.md §1.3)
+  phase             deposit  conduct  flow map  advect  repair  crust  surface
+  mantle            yes      yes     yes       yes     yes    yes    yes
+  melt              yes      yes     no        no      yes    no     no 
+  airborne          no       no      no        no      no     no     no 
+  deposit above     yes      yes     yes       yes     no     yes    yes
+  deposit inside    yes      yes     yes       yes     yes    yes    yes
+
+
+A. the measured table is the plan's table
+INFO  an above-surface deposit that rides the flow map is reflected at the top wall: keepInside sends it back inside the mesh. Whether an edifice stands inside the fluid domain's top wall or above it is P3.4's landing decision, not P3.0's.
+PASS  mantle is in every pass   the reference row
+PASS  airborne is in none of them   deposit no  conduct no  flow no  advect no  repair no  crust no  surface no 
+PASS  mobile melt is grid-coupled and nothing else   mu 0.000  cl -1
+PASS  a landed deposit is coupled, rides the flow and welds   above mu 0.950 cl 0, inside mu 0.950 cl 0
+PASS  but a deposit standing above the surface is not repair material   above no   inside yes
+
+B. a fountain over the planet leaves the grid, the intake and the mantle alone
+PASS  the node field is the same field   hash 3167344534 vs 3167344534
+PASS  the coverage weights are the same weights   hash 54308172 vs 54308172
+PASS  and the hole count is the same count   empty 0
+PASS  so the conduction intake is the same number   rel 0.00e+0  got -323.8131851420667 km2*H  want -323.8131851420667
+PASS  the coupled parcels ended in the same state   hash 3789658786 vs 3789658786
+PASS  and the clasts conducted nothing at all   worst 0.00e+0
+
+C. the geological clock does not move a clast in flight
+PASS  the flow carried the same material to the same place   hash 1498978062 vs 1498978062
+PASS  and left every clast exactly where it was   0 of 5 quantities moved
+
+D. the crust pass and the horizon do not count airborne material
+PASS  the lid fraction is the same fraction   rel 0.00e+0  got 0.17094089673913043  want 0.17094089673913043
+PASS  because it is a fraction of the solid set, not of the pool   nSolid 23552 vs 23552, n 24452
+PASS  the plates and their drift are the same numbers   plates 1/1  drift 0.0017/0.0017
+PASS  and the mantle ended in the same state   hash 750244209 vs 750244209
+PASS  a clast carries no bond state after the pass   0 of 900 clasts kept a strength, an age or a cluster
+PASS  the horizon is the same profile   hash 4139937845 vs 4139937845
+PASS  and so are the crust terms that build it   hLid true rft true colM true
+PASS  including the collision sample   surfaceCl true  target true
+
+E. the coverage repair borrows from the mesh, never from the sky
+PASS  a forced re-deal left every clast bitwise alone   900 clasts, slot 23552 still theirs, redeals 1
+PASS  and every deposit standing above the surface   400 deposits, redeals 1
+PASS  while a deposit inside the mesh is repair material like any marker   400 of 400 on lattice nodes
+
+F. mobile melt conducts, holds no bond and rides no flow map
+PASS  the conduction increment reaches a melt parcel's enthalpy   worst 6.82e-2
+PASS  and the flow map leaves it where it was   worst x 0.00e+0
+PASS  a cold old melt parcel still holds no bond and joins no cluster   0 of 83 bonded
+
+G. a cold landed deposit is crust
+PASS  the deposit patch is strong enough to be plate   100 of 100 at mu >= 0.25
+PASS  and it joined the crust's clusters   100 of 100 with a cluster id, lid 17.094% -> 17.094%
+PASS  the crust diagnostic counted it   nSolid 23552 of 23552
+
+H. a live run with the phases present closes both ledgers
+PASS  no NaN in 400 frames with a fountain and an edifice in the pool   0 of 24952
+PASS  the pool has no source and no sink: the mass is the mass   rel 0.00e+0  got 41873806.97955583 km2  want 41873806.97955583
+PASS  and the composition is the composition   rel 0.00e+0  got 55608.08313690875 km2  want 55608.08313690875
+PASS  the enthalpy changed by exactly the recorded wall flux   rel 2.13e-8  got -106238.41374311596 km2*H  want -106238.41374309464
+PASS  which closes against the operator's own wall book inside the P1 tolerance   intake/wall 1.0000  (-1.062e+5 vs -1.062e+5)
+PASS  and the enthalpy ledger is still the heat ledger bitwise   -106238.41374309464 vs -106238.41374309464
+PASS  coverage stayed inside the P1 tolerance   worst 0 of 5888 nodes
+PASS  the clasts are still exactly where the fountain put them   5 of 5 quantities unchanged over 400 frames
+PASS  the phases are still the phases   23552/0/800/600
+
+  total 42.7 s
+
+ALL PASS (39 checks)
