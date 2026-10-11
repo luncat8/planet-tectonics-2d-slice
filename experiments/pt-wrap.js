@@ -47,20 +47,30 @@ console.log('  spin-up to ' + SIM.t.toFixed(1) + ' Myr: plates ' + S.d.plates + 
 // mug are rebuilt by the transfer, but a paused diag reads them; Mg is carried by the melt
 // indicator's semi-Lagrangian step). H is the material state since P3.1 -- the twin has to
 // get the parcel's enthalpy, not just the temperature it reads through it, or the very next
-// equilibrium pass re-derives T from the other run's H.
-var MK = ['x', 'y', 'e', 'T', 'm', 'vx', 'vy', 'age', 'mu', 'dmg', 'H', 'melt', 'cF', 'cW'];
+// equilibrium pass re-derives T from the other run's H. P3.2 made the pool a transaction
+// history: ph and id travel with the parcel, nextId and the counters replay the splits and
+// intrusions, and the chamber records are stock the twin must not inherit from its sibling.
+var MK = ['x', 'y', 'e', 'T', 'm', 'vx', 'vy', 'age', 'mu', 'dmg', 'H', 'melt', 'cF', 'cW', 'ph', 'id'];
 var GR = ['Tg', 'mug', 'Mg', 'zh'];      // zh is the P2.3 surface profile: a node field
+var CH = ['chX', 'chY', 'chM', 'chH', 'chL', 'chF', 'chW'];
 function save() {
-	var o = { n: S.n, t: SIM.t, frame: SIM.frame, ledger: S.ledger, wall: S.wall }, k;
+	var o = { n: S.n, t: SIM.t, frame: SIM.frame, ledger: S.ledger, wall: S.wall,
+		hLedger: S.hLedger, invL0: S.invL0, nextId: S.nextId, chN: S.chN,
+		tx: { admit: S.tx.admit, split: S.tx.split, merge: S.tx.merge, move: S.tx.move,
+			intrude: S.tx.intrude, refuse: S.tx.refuse } }, k;
 	for (k = 0; k < MK.length; k++) o[MK[k]] = S[MK[k]].slice(0, S.n);
 	for (k = 0; k < GR.length; k++) o[GR[k]] = S[GR[k]].slice();
+	for (k = 0; k < CH.length; k++) o[CH[k]] = S[CH[k]].slice();
 	return o;
 }
 function load(o) {
 	var k;
 	S.n = o.n; SIM.t = o.t; SIM.frame = o.frame; S.ledger = o.ledger; S.wall = o.wall;
+	S.hLedger = o.hLedger; S.invL0 = o.invL0; S.nextId = o.nextId; S.chN = o.chN;
+	for (k in o.tx) S.tx[k] = o.tx[k];
 	for (k = 0; k < MK.length; k++) S[MK[k]].set(o[MK[k]]);
 	for (k = 0; k < GR.length; k++) S[GR[k]].set(o[GR[k]]);
+	for (k = 0; k < CH.length; k++) S[CH[k]].set(o[CH[k]]);
 }
 // translate the live state by `cells` columns: markers move, node rows roll
 function translate(cells) {

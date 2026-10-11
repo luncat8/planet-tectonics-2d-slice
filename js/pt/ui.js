@@ -226,6 +226,8 @@ var PTUI = {
 			+ '\nT ' + d.tMin.toFixed(3) + '..' + d.tMax.toFixed(3) + '   heat ' + fmt(d.heat)
 			+ '\nmelt ' + (S.invMTot > 0 ? (S.invLTot / S.invMTot * 100).toFixed(2) : '0.00') + '% of mass'
 			+ '   max ' + d.melt.toFixed(3) + '   depth ' + d.meltY.toFixed(0) + ' km'
+			+ '   store ' + (S.invMTot > 0 ? (S.invChL / S.invMTot * 100).toFixed(2) : '0.00') + '%'
+			+ ' in ' + S.chN + ' chambers'
 			+ '\nsim ' + PERF.msSim.toFixed(1) + ' ms   draw ' + PERF.msDraw.toFixed(1) + ' ms   fps ' + PERF.fps.toFixed(0);
 		if (this.probeOn) out += '\n' + this.probe;
 		this.hud.textContent = out;

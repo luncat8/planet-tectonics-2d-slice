@@ -61,7 +61,7 @@ var PTP = {
 	// CMB temperature (T = 1, where the wall is held):
 	//
 	//   u(y)  = 1 / (1 + y * meltInvLam)          y > 0; u = 1 above the surface
-	//   Ts(y) = 1 + meltSup - meltDrop * u * u - meltWF * cF - meltWW * cW
+	//   Ts(y) = 1 + meltDeep - meltDrop * u * u - meltWF * cF - meltWW * cW
 	//   Tl(y) = Ts(y) + meltGap
 	//   H     = T + meltLat * xi                  xi = (T - Ts) / meltGap in the mush
 	//
@@ -72,7 +72,9 @@ var PTP = {
 	//   meltDrop   = 1 + meltSup - Ts(0)      (1 + meltSup + meltWF*cF + meltWW*cW - meltSurf)
 	//   meltInvLam = (sqrt(meltDrop / meltSup) - 1) / meltOnset, i.e. Ts(meltOnset) = 1
 	//
-	// (the derived block below owns those two; phase.js only evaluates the curve). Ts is
+	// (the derived block below owns those two; phase.js only evaluates the curve, reading the
+	// asymptote as the derived meltDeep = meltDrop * u(meltOnset)^2, which is what makes the
+	// third anchor bitwise). Ts is
 	// monotone in depth, so a parcel melts in exactly one window: above the depth where its own
 	// solidus crosses the parcel's own H. Melt is a material state, not a place -- a parcel that
 	// rises at nearly constant H melts as the pressure falls, and one a drip drags down carries
@@ -92,6 +94,20 @@ var PTP = {
 	meltLat: 0.25,               // L, the latent heat of fusion in the same normalized unit as T
 	meltWF: 0.2,                 // solidus depression per unit felsic mass fraction
 	meltWW: 20,                  // and per unit water mass fraction: the potent flux
+	// P3.2, segregation and intrusive storage (0.3.0-p3-plan.md §4 P3.2). One threshold
+	// moves a mush's melt both ways: PH_SOLID source rock sheds its melt at the equilibrium
+	// split once the fraction reaches meltHold (the residue stays at its solidus, the melt
+	// leaves at its liquidus -- the split conserves m and H and leaves the pool in
+	// equilibrium), and a melt parcel in transit freezes back to the mantle below the same
+	// threshold. Below it the melt is trapped in the grain boundaries and stays with its
+	// host, so the two rules meet at one fixed point instead of fighting each other.
+	// experiments/pt-p3-melt.js measures the threshold, the rise speed and the chamber
+	// radius against the pool reserve; those numbers freeze with P3.5, not before.
+	meltHold: 0.1,               // melt fraction that is mobile: source rock sheds it, transit melt dies below it
+	vMelt: 60,                   // km/Myr (6 cm/yr), the melt's own buoyant rise on top of the flow map
+	yCham: 80,                   // km, intrusion depth: melt reaching this level joins a chamber and stops rising
+	chJoin: 400,                 // km, the merge radius: intrusions within it share one chamber record
+	chCap: 64,                   // chamber records, allocated once; a full chamber set defers the transfer
 	// crust (plan §4.2, reduced to the kinematic core for P2.1): a marker's strength is
 	//   heat(T)  = smoothstep(muLo, muHi, T)          hot rock is soft
 	//   mu(T,a)  = (0.05 + 0.95 * (1 - heat)) * (1 - exp(-age / tauWeld))

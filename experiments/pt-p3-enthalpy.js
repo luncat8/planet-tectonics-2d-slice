@@ -221,7 +221,7 @@ check.ok('and the melt inventory is unchanged by the round trip', sumM1 === sumM
 
 // ---------------------------------------------------------------- 4. the kernel wiring
 check.section('G3 delivers to H, G4 maps it back');
-var kFlow = SIM.k[2], kMove = SIM.k[3], kPhase = SIM.k[4];
+var kFlow = SIM.k[2], kMove = SIM.k[3], kPhase = SIM.k[4], kMelt = SIM.k[5];
 // (a) conduction alone, no flow: every increment is enthalpy, and the books must account for it
 configure('rb', [256, 24], 0);
 SIM.k[2] = null;
@@ -296,9 +296,11 @@ check.ok('and the deep parcel\'s heat sitting shallow is now mush', S.melt[q1] >
 	'xi ' + S.melt[q1].toFixed(4) + ' at ' + S.y[q1].toFixed(0) + ' km, from ' + S.y[q2].toFixed(0) + ' km');
 SIM.k[2] = kFlow; SIM.k[3] = kMove;
 
-// (c) with flow and conduction disabled the mapping is idempotent
+// (c) with flow, conduction and segregation disabled the mapping is idempotent (the gate is
+// the P3.1 mapping's own; P3.2's split moves m and H between parcels by design and is
+// gated as its own transaction in pt-p3-melt.js)
 configure('cool', [256, 24], 0);
-SIM.k[2] = null; SIM.k[3] = null;
+SIM.k[2] = null; SIM.k[3] = null; SIM.k[5] = null;
 SIM.run(1);
 var hs = new Float64Array(S.n), ms = new Float64Array(S.n);
 var ts0 = new Float64Array(S.n), xs = new Float64Array(S.n), hMove = 0, readMoved = 0;
@@ -314,6 +316,7 @@ check.ok('100 frames with the flow and the conduction off leave every parcel\'s 
 	hMove === 0, hMove + ' of ' + S.n + ' moved');
 check.ok('and leave every parcel\'s equilibrium reading of it exactly where it was',
 	readMoved === 0, readMoved + ' of ' + S.n + ' changed');
+SIM.k[2] = kFlow; SIM.k[3] = kMove; SIM.k[5] = kMelt;
 
 // (d) the reset seeds a state the very first phase pass cannot change
 configure('cool', [256, 24], 0);
@@ -356,6 +359,13 @@ for (k = 1; k <= 6; k++) {
 		}
 		if (S.melt[i] > maxXi) maxXi = S.melt[i];
 	}
+	// the melt the planet carries is the parcels' plus the intrusive store's: P3.2 moves
+	// part of the stock into chambers, and a census that ignored them would see the planet
+	// lose melt that is sitting right under the lid. The depth census stays on the parcels
+	// -- a chamber record has no marker to sample.
+	var storeL = 0, storeM = 0, meltWp = meltW;
+	for (i = 0; i < S.chN; i++) { storeL += S.chL[i]; storeM += S.chM[i]; }
+	meltW += storeL; mAll += storeM;
 	if (S.d.tMin < lo) lo = S.d.tMin;
 	if (S.d.tMax > hi) hi = S.d.tMax;
 	if (deep > deepWorst) deepWorst = deep;
@@ -363,9 +373,10 @@ for (k = 1; k <= 6; k++) {
 	if (S.hLedger / S.wall < gLo) gLo = S.hLedger / S.wall;
 	if (S.hLedger / S.wall > gHi) gHi = S.hLedger / S.wall;
 	meltEnd = meltW / mAll;
-	check.info('t ' + SIM.t.toFixed(0) + ' Myr', 'melt ' + (meltEnd * 100).toFixed(3) + '% of mass   max xi '
+	check.info('t ' + SIM.t.toFixed(0) + ' Myr', 'melt ' + (meltEnd * 100).toFixed(3) + '% of mass (store '
+		+ (storeL / (mAll || 1) * 100).toFixed(3) + '%)   max xi '
 		+ maxXi.toFixed(3) + '   deepest ' + deep.toFixed(0) + ' km   mean depth '
-		+ (meltW > 0 ? (yW / meltW).toFixed(0) : '0') + ' km   lid ' + (S.d.lid * 100).toFixed(0)
+		+ (meltWp > 0 ? (yW / meltWp).toFixed(0) : '0') + ' km   lid ' + (S.d.lid * 100).toFixed(0)
 		+ '%   Nu ' + S.d.nu.toFixed(1));
 }
 check.ok('150 Myr of the shipped planet carry real melt', meltEnd > 0.005, 'peak ' + (peak * 100).toFixed(3) + '% of mass');

@@ -87,17 +87,27 @@ var PTS = {
 	                                // is the P3 heat invariant's Q_wall (P3 plan §1.2): P3 has
 	                                // no external source and no export, so it is the only net
 	                                // change H_total may show
-	// pool transaction counters (pool.js): what was admitted, split, merged, moved and
-	// refused since reset. A refused transaction is a capacity event and is never silent, so
-	// the block exists from load and reset zeroes it
-	tx: { admit: 0, split: 0, merge: 0, move: 0, refuse: 0 },
+	// pool transaction counters (pool.js): what was admitted, split, merged, moved, intruded
+	// and refused since reset. A refused transaction is a capacity event and is never silent,
+	// so the block exists from load and reset zeroes it
+	tx: { admit: 0, split: 0, merge: 0, move: 0, intrude: 0, refuse: 0 },
 	invN: null, invM: null,         // the stock inventory by phase: parcels, mass, m*H
 	invH: null,
 	invMTot: 0, invHTot: 0,         // and the totals, with composition and melt as mass: the
 	invFTot: 0, invWTot: 0,         // closure a fixture gates to 1e-9 (pool.js inventoryComp)
 	invLTot: 0, invErr: 0,
+	invChM: 0, invChL: 0,           // the chamber stock's mass and melt, split out of the
+	                                // totals so the HUD can show the intrusive store apart
 	invL0: 0,                       // invLTot right after the last reset: the latent heat a run
 	                                // has stored so far is meltLat * (invLTot - invL0)
+	// the intrusive store (P3.2, 0.3.0-p3-plan.md §1.2): fixed-capacity chamber records,
+	// allocated once. A chamber is a reservoir, not a parcel -- mass, enthalpy, melt and
+	// composition accumulate in it through matched transfers (pool.js intrude), its stock is
+	// part of the inventory and of the enthalpy total, and the full record set defers the
+	// transfer instead of dropping mass. chX/chY are the mass-weighted mean of what the
+	// chamber has eaten; P3.3's conduit reads that as its emplacement site.
+	chN: 0,                         // chamber records in use (a record with mass > 0)
+	chX: null, chY: null, chM: null, chH: null, chL: null, chF: null, chW: null,
 	moved: 0, redeals: 0,           // markers the last repair moved; lattice re-deals since reset
 	nSolid: 0,                      // parcels the crust pass may bond this frame (PH_SOLID):
 	                                // the lid fraction's denominator, so airborne material
@@ -153,6 +163,12 @@ var PTS = {
 			this.invN = new Int32Array(P.PH_N);
 			this.invM = new Float64Array(P.PH_N);
 			this.invH = new Float64Array(P.PH_N);
+		}
+		if (!this.chM || this.chM.length !== P.chCap) {
+			this.chX = new Float64Array(P.chCap); this.chY = new Float64Array(P.chCap);
+			this.chM = new Float64Array(P.chCap); this.chH = new Float64Array(P.chCap);
+			this.chL = new Float64Array(P.chCap); this.chF = new Float64Array(P.chCap);
+			this.chW = new Float64Array(P.chCap);
 		}
 		if (!this.Tg || this.Tg.length !== M.n) {
 			this.Tg = new Float64Array(M.n);
@@ -225,7 +241,10 @@ var PTS = {
 		this.n = p; this.nextId = p;
 		this.empty = 0; this.clamp = 0; this.ledger = 0; this.wall = 0; this.hLedger = 0;
 		this.moved = 0; this.redeals = 0; this.csN = 0; this.nSolid = 0;
-		tx.admit = 0; tx.split = 0; tx.merge = 0; tx.move = 0; tx.refuse = 0;
+		tx.admit = 0; tx.split = 0; tx.merge = 0; tx.move = 0; tx.intrude = 0; tx.refuse = 0;
+		this.chN = 0;
+		this.chX.fill(0); this.chY.fill(0); this.chM.fill(0); this.chH.fill(0);
+		this.chL.fill(0); this.chF.fill(0); this.chW.fill(0);
 		this.Tg.fill(0); this.mug.fill(0); this.Mg.fill(0);
 		this.age.fill(0); this.mu.fill(0); this.dmg.fill(0); this.cl.fill(-1);
 		this.pLoad.fill(0); this.pCnt.fill(0);
@@ -343,7 +362,20 @@ var PTS = {
 		a = mixHash(a, tx.split, HASH_PRIME_A); b = mixHash(b, tx.split, HASH_PRIME_B);
 		a = mixHash(a, tx.merge, HASH_PRIME_A); b = mixHash(b, tx.merge, HASH_PRIME_B);
 		a = mixHash(a, tx.move, HASH_PRIME_A); b = mixHash(b, tx.move, HASH_PRIME_B);
+		a = mixHash(a, tx.intrude, HASH_PRIME_A); b = mixHash(b, tx.intrude, HASH_PRIME_B);
 		a = mixHash(a, tx.refuse, HASH_PRIME_A); b = mixHash(b, tx.refuse, HASH_PRIME_B);
+		// the intrusive store is state: a run that reached the same parcels by a different
+		// chamber history is not the same run (P3.2)
+		a = mixHash(a, this.chN, HASH_PRIME_A); b = mixHash(b, this.chN, HASH_PRIME_B);
+		for (i = 0; i < this.chN; i++) {
+			a = mixHash(a, this.chX[i], HASH_PRIME_A); b = mixHash(b, this.chX[i], HASH_PRIME_B);
+			a = mixHash(a, this.chY[i], HASH_PRIME_A); b = mixHash(b, this.chY[i], HASH_PRIME_B);
+			a = mixHash(a, this.chM[i], HASH_PRIME_A); b = mixHash(b, this.chM[i], HASH_PRIME_B);
+			a = mixHash(a, this.chH[i], HASH_PRIME_A); b = mixHash(b, this.chH[i], HASH_PRIME_B);
+			a = mixHash(a, this.chL[i], HASH_PRIME_A); b = mixHash(b, this.chL[i], HASH_PRIME_B);
+			a = mixHash(a, this.chF[i], HASH_PRIME_A); b = mixHash(b, this.chF[i], HASH_PRIME_B);
+			a = mixHash(a, this.chW[i], HASH_PRIME_A); b = mixHash(b, this.chW[i], HASH_PRIME_B);
+		}
 		return a * 2097152 + (b & 0x1fffff);
 	}
 };

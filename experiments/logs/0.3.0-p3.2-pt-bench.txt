@@ -1,0 +1,28 @@
+
+0.3.0 P0 — particle engine kernel bench  (best of N; this box has 2 cores)
+
+PASS  FFT matches a naive DFT   max abs diff 2.18e-14
+PASS  FFT round trip is the identity   max abs diff 1.11e-16
+PASS  mode 1 tridiagonal matches a dense solve   rel 6.97e-15 vs |p| 2.14e+6
+PASS  mode 0 (pinned) tridiagonal matches a dense solve   rel 3.27e-15 vs |p| 4.45e+5
+PASS  projection cancels the divergence (128x96)   rel residual 1.46e-12
+PASS  projection cancels the divergence (256x96)   rel residual 4.27e-13
+
+  128x96 solve   0.694 ms
+  256x96 solve   1.567 ms
+  512x96 solve   3.605 ms
+  (x3 penalised solid iterations: 2.08 / 4.70 / 10.82 ms)
+  (real-input FFT packing halves every number above)
+
+  small  (20000 particles):  transfer 1.09  gather 0.87  integrate 0.25  bonds 1.46  shape 0.15  | total 3.82 ms
+  target (40000 particles):  transfer 2.47  gather 1.89  integrate 0.39  bonds 4.48  shape 0.31  | total 9.54 ms
+  large  (80000 particles):  transfer 5.28  gather 3.84  integrate 0.88  bonds 16.89  shape 0.61  | total 27.51 ms
+  bond pass, one rsqrt per bond, 40000 particles:  3.40 ms
+
+  splat 20000 particles, 5x5 kernel:  1.47 ms
+  splat 40000 particles, 5x5 kernel:  2.94 ms
+  splat 40000 particles, 3x3 kernel:  1.52 ms
+
+ALL PASS (6 checks)
+
+ALL PASS (6 checks)

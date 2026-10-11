@@ -1,0 +1,80 @@
+// pt/melt.js — 0.3.0 P3.2: G5, melt segregation and intrusive storage
+// (0.3.0-p3-plan.md §3 G5, §4 P3.2). One pass, three rules, in the order the plan gives:
+//
+//   detach   PH_SOLID source rock sheds its equilibrium melt (pool.js separate) once the
+//            fraction reaches P.meltHold; a fully molten parcel is a whole-parcel phase
+//            change. A full pool defers the split and the phase fraction stays in its
+//            source parcel.
+//   transit  mobile melt rises on the flow map plus its own buoyant speed (grid.js velAt
+//            plus vMelt downward-in-y terms: y is depth, so rising is -vy). Below
+//            meltHold the parcel is frozen residue: it becomes mantle again and rides the
+//            flow map like any other rock ("non-rising cold material").
+//   store    melt reaching P.yCham intrudes into a chamber record (pool.js intrude): a
+//            matched transfer into the intrusive store, never a sink. A full record set
+//            defers the transfer and the melt waits at the chamber depth.
+//
+// meltHold is one threshold used both ways on purpose: source rock sheds at it, transit
+// melt dies below it, so the two rules share a fixed point instead of fighting (a melt
+// parcel frozen at a *higher* threshold than the shed one would re-shed the moment it
+// became mantle).
+//
+// Everything moves on the geological clock (plan §2): zero dt reports and changes nothing.
+// One global per new file (§6): the IIFE's only export is PTMELT.
+'use strict';
+
+(function () {
+	var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
+	var G = (typeof module !== 'undefined' && module.exports) ? require('./grid.js') : window.PTG;
+	var POOL = (typeof module !== 'undefined' && module.exports) ? require('./pool.js') : window.PTPOOL;
+
+	var MELT = {
+		run: function (M, S, dt) {
+			if (!(dt > 0) || !S.n) return;
+			this.detach(S);
+			this.transit(M, S, dt);
+		},
+
+		// source rock (mantle and landed deposits) sheds its melt at the equilibrium split
+		detach: function (S) {
+			var solid = P.PH_SOLID, ph = S.ph, ml = S.melt, hold = P.meltHold, p, xi;
+			for (p = 0; p < S.n; p++) {
+				if (!solid[ph[p]]) continue;
+				xi = ml[p];
+				if (xi >= 1) {
+					// wholly molten: one whole-parcel phase change (P3.1's rule), and a
+					// parcel that is not solid carries no bond state at all (§1.3)
+					ph[p] = P.PH.melt;
+					S.age[p] = 0; S.mu[p] = 0; S.dmg[p] = 0; S.pLoad[p] = 0; S.pCnt[p] = 0;
+				} else if (xi >= hold) POOL.separate(S, p);
+			}
+		},
+
+		// mobile melt: freeze back, rise, and intrude at the chamber depth. The walk
+		// re-visits slot p after a removal (pool.js compacts the tail into the hole), so no
+		// parcel is skipped or visited twice.
+		transit: function (M, S, dt) {
+			var ph = S.ph, mPh = P.PH.melt, sPh = P.PH.mantle, hold = P.meltHold;
+			var y = S.y, e = S.e, x = S.x, p, dy, ym;
+			for (p = 0; p < S.n;) {
+				if (ph[p] !== mPh) { p++; continue; }
+				if (S.melt[p] < hold) { ph[p] = sPh; p++; continue; }
+				if (y[p] <= P.yCham) {
+					// intrude returns -1 only on a full record set: the melt then waits at
+					// the chamber depth instead of climbing through it or being dropped
+					if (POOL.intrude(M, S, p) >= 0) continue;
+					p++; continue;
+				}
+				G.velAt(M, M.pr, x[p], e[p], y[p]);
+				dy = (G.vyAt - P.vMelt) * dt;
+				ym = y[p] + 0.5 * dy;
+				x[p] += G.vxAt * dt;
+				y[p] += dy;
+				e[p] += dy / Math.sqrt(M.yLin * M.yLin + ym * ym);
+				G.keepInside(M, S, p);
+				p++;
+			}
+		}
+	};
+
+	if (typeof module !== 'undefined' && module.exports) module.exports = MELT; else window.PTMELT = MELT;
+}());

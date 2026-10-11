@@ -26,6 +26,9 @@
 
 (function () {
 	var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
+	// the phase law: the equilibrium split puts its two children exactly on the law's own
+	// solidus/liquidus, so it needs the curve the law owns (phase.js loads first)
+	var PHASE = (typeof module !== 'undefined' && module.exports) ? require('./phase.js') : window.PTPHASE;
 
 	// Neumaier compensated accumulators, two doubles each (running sum, compensation), laid
 	// out in one array so the pass allocates nothing: five totals, then per-phase mass and
@@ -125,6 +128,73 @@
 			return q;
 		},
 
+		// P3.2's equilibrium melt split (0.3.0-p3-plan.md §4 P3.2): a mushy parcel separates
+		// into the two pure phases its own law already names. The host keeps its unmelted
+		// mass at its solidus, exactly solid; the child takes the melt mass at the liquidus,
+		// exactly molten, and carries the enthalpy that makes m*H close. This is the unique
+		// separation that leaves both children on the equilibrium manifold -- the next phase
+		// pass reads them back with zero change and books nothing into the sensible ledger,
+		// which is the identity P3.1 gated across a split: a split moves material, it does
+		// not melt it. The child's T and melt are snapped to the law's own reading of its H
+		// so the snap is bitwise-quiet under the next equilibrium pass. A full pool defers
+		// and counts; the phase fraction stays in its source parcel and tries again.
+		separate: function (S, p) {
+			var xi = S.melt[p], q, m, ts;
+			if (!(xi > 0) || !(xi < 1)) return -1;      // pure phase: nothing to separate
+			// admit counts a capacity refusal itself; this is one event, not two
+			q = this.admit(S, P.PH.melt);
+			if (q < 0) return -1;
+			m = S.m[p];
+			ts = PHASE.solidus(S.y[p], S.cF[p], S.cW[p]);
+			S.m[q] = m * xi;
+			S.m[p] = m - S.m[q];
+			S.x[q] = S.x[p]; S.y[q] = S.y[p]; S.e[q] = S.e[p];
+			S.vx[q] = S.vx[p]; S.vy[q] = S.vy[p];
+			S.cF[q] = S.cF[p]; S.cW[q] = S.cW[p];
+			S.T[p] = ts; S.H[p] = ts; S.melt[p] = 0;
+			S.H[q] = ts + P.meltGap + P.meltLat;
+			PHASE.byH(S.H[q], S.y[q], S.cF[q], S.cW[q]);
+			S.T[q] = PHASE.out.t; S.melt[q] = PHASE.out.melt;
+			S.tx.split++;
+			return q;
+		},
+
+		// P3.2's intrusion (0.3.0-p3-plan.md §4 P3.2): a melt parcel reaching the chamber
+		// depth transfers its whole stock into a chamber record -- mass, enthalpy, melt and
+		// composition move and the parcel slot closes, so the transfer is internal to the
+		// inventory either way. Two intrusions within chJoin of each other share one record
+		// (a chamber is one body of emplaced melt, not one parcel's worth) and the record's
+		// position is the mass-weighted mean of what it has eaten. A full record set defers
+		// the transfer and counts it: the melt stays in the pool, nothing is dropped.
+		intrude: function (M, S, p) {
+			var x = S.x[p], best = -1, bd = P.chJoin, k, dx, w, m = S.m[p];
+			for (k = 0; k < S.chN; k++) {
+				dx = S.chX[k] - x;
+				dx -= Math.floor(dx / M.wrap + 0.5) * M.wrap;
+				if (Math.abs(dx) < bd) { bd = Math.abs(dx); best = k; }
+			}
+			if (best < 0) {
+				if (S.chN >= P.chCap) { S.tx.refuse++; return -1; }
+				best = S.chN++;
+				S.chX[best] = x; S.chY[best] = S.y[p];
+			} else {
+				w = m / (S.chM[best] + m);
+				dx = x - S.chX[best];
+				dx -= Math.floor(dx / M.wrap + 0.5) * M.wrap;
+				S.chX[best] += w * dx;
+				if (S.chX[best] < 0) S.chX[best] += M.wrap; else if (S.chX[best] >= M.wrap) S.chX[best] -= M.wrap;
+				S.chY[best] += w * (S.y[p] - S.chY[best]);
+			}
+			S.chM[best] += m;
+			S.chH[best] += m * S.H[p];
+			S.chL[best] += m * S.melt[p];
+			S.chF[best] += m * S.cF[p];
+			S.chW[best] += m * S.cW[p];
+			this.remove(S, p);
+			S.tx.intrude++;
+			return best;
+		},
+
 		// combine a and b into a, then close b's slot. Mass, momentum and enthalpy sum;
 		// composition, melt fraction, age and position are mass weighted; the survivor keeps
 		// the *older* id, so the result does not depend on the order the pair was found in.
@@ -177,6 +247,15 @@
 				tm += m; th += m * S.H[p];
 				tf += m * S.cF[p]; tw += m * S.cW[p]; tl += m * S.melt[p];
 			}
+			// the chambers are stock too (P3 plan §1.2): reservoir mass sums into the same
+			// totals exactly once, or an intrusion would read as a leak
+			var cm = 0, cl = 0;
+			for (p = 0; p < S.chN; p++) {
+				cm += S.chM[p]; cl += S.chL[p];
+				tm += S.chM[p]; th += S.chH[p];
+				tf += S.chF[p]; tw += S.chW[p]; tl += S.chL[p];
+			}
+			S.invChM = cm; S.invChL = cl;
 			S.invMTot = tm; S.invHTot = th;
 			S.invFTot = tf; S.invWTot = tw; S.invLTot = tl;
 		},
@@ -198,6 +277,13 @@
 				cadd(A_F, m * S.cF[p]); cadd(A_W, m * S.cW[p]); cadd(A_L, m * S.melt[p]);
 				tm += m; th += m * S.H[p];
 			}
+			for (p = 0; p < S.chN; p++) {
+				cadd(A_M, S.chM[p]); cadd(A_H, S.chH[p]);
+				cadd(A_F, S.chF[p]); cadd(A_W, S.chW[p]); cadd(A_L, S.chL[p]);
+				tm += S.chM[p]; th += S.chH[p];
+			}
+			S.invChM = 0; S.invChL = 0;
+			for (p = 0; p < S.chN; p++) { S.invChM += S.chM[p]; S.invChL += S.chL[p]; }
 			for (ph = 0; ph < P.PH_N; ph++) {
 				invM[ph] = fin(A_PH + 2 * ph);
 				invH[ph] = fin(A_PH + 2 * ph + 2 * P.PH_N);

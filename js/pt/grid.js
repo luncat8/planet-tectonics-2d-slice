@@ -481,21 +481,29 @@ G.gatherDT = function (M, S, inc, Tg, flip) {
 //
 // This pass only reads the velocity; advect is what moves the markers, and the solid pass
 // (solid.js) is what may replace a marker's flow velocity with its plate's rigid one first.
+// the flow velocity at a point of the psi map, for the two rules that read it: the mantle
+// advection (gatherVel) and the melt's own buoyant rule (P3.2). One interpolant, one owner;
+// the result lands in G.vxAt/G.vyAt so the call allocates nothing.
+G.vxAt = 0; G.vyAt = 0;
+G.velAt = function (M, psi, x, e, y) {
+	var nx = M.nx, base, i0, i1, fx, fy, a, b, c, d;
+	cellOf(M, x, e, 0, 0, 0, M.ny - 1);
+	base = _j0 * nx; i0 = _i0; i1 = _i1; fx = _fx; fy = _fy;
+	a = psi[base + i0]; b = psi[base + i1];
+	c = psi[base + nx + i0]; d = psi[base + nx + i1];
+	G.vxAt = ((1 - fx) * (c - a) + fx * (d - b)) / M.dEta / Math.sqrt(M.yLin * M.yLin + y * y);
+	G.vyAt = -((1 - fy) * (b - a) + fy * (d - c)) / M.dx;
+};
+
 G.gatherVel = function (M, S, psi) {
-	var nx = M.nx, ny = M.ny, p, base, i0, i1, fx, fy, a, b, c, d, y;
-	var adv = P.PH_ADV, ph = S.ph;
+	var p, adv = P.PH_ADV, ph = S.ph;
 	for (p = 0; p < S.n; p++) {
 		// a parcel that does not ride the flow map keeps the velocity it was given: airborne
 		// material is ballistic on wall time (§2 of the P3 plan) and mobile melt gets its own
 		// buoyant rule (P3.2) rather than the mantle's
 		if (!adv[ph[p]]) continue;
-		cellOf(M, S.x[p], S.e[p], 0, 0, 0, ny - 1);
-		base = _j0 * nx; i0 = _i0; i1 = _i1; fx = _fx; fy = _fy;
-		a = psi[base + i0]; b = psi[base + i1];
-		c = psi[base + nx + i0]; d = psi[base + nx + i1];
-		y = S.y[p];
-		S.vx[p] = ((1 - fx) * (c - a) + fx * (d - b)) / M.dEta / Math.sqrt(M.yLin * M.yLin + y * y);
-		S.vy[p] = -((1 - fy) * (b - a) + fy * (d - c)) / M.dx;
+		G.velAt(M, psi, S.x[p], S.e[p], S.y[p]);
+		S.vx[p] = G.vxAt; S.vy[p] = G.vyAt;
 	}
 };
 

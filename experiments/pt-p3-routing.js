@@ -334,9 +334,11 @@ function crustRun(withAir) {
 }
 var refD = crustRun(false), airD = crustRun(true);
 check.near('the lid fraction is the same fraction', airD.lid, refD.lid, 0);
+var meltN = 0, pMN;
+for (pMN = 0; pMN < S.n; pMN++) if (S.ph[pMN] === P.PH.melt) meltN++;
 check.ok('because it is a fraction of the solid set, not of the pool',
-	airD.nSolid === refD.nSolid && airD.nSolid === S.n - 900,
-	'nSolid ' + airD.nSolid + ' vs ' + refD.nSolid + ', n ' + S.n);
+	airD.nSolid === refD.nSolid && airD.nSolid + meltN + 900 === S.n,
+	'nSolid ' + airD.nSolid + ' vs ' + refD.nSolid + ', melt ' + meltN + ', n ' + S.n);
 check.ok('the plates and their drift are the same numbers',
 	airD.plates === refD.plates && airD.plV === refD.plV,
 	'plates ' + airD.plates + '/' + refD.plates + '  drift ' + airD.plV.toFixed(4) + '/' + refD.plV.toFixed(4));
@@ -450,7 +452,10 @@ check.ok('the deposit patch is strong enough to be plate', strong === dIdx.lengt
 check.ok('and it joined the crust\'s clusters', welded === dIdx.length,
 	welded + ' of ' + dIdx.length + ' with a cluster id, lid ' + (100 * lidBefore).toFixed(3)
 	+ '% -> ' + (100 * S.d.lid).toFixed(3) + '%');
-check.ok('the crust diagnostic counted it', S.nSolid === S.n, 'nSolid ' + S.nSolid + ' of ' + S.n);
+meltN = 0;
+for (i5 = 0; i5 < S.n; i5++) if (S.ph[i5] === P.PH.melt) meltN++;
+check.ok('the crust diagnostic counted it', S.nSolid === S.n - meltN,
+	'nSolid ' + S.nSolid + ' of ' + S.n + ' (melt ' + meltN + ' is not solid)');
 
 // ---------------------------------------------------------------- H. the live ledgers
 check.section('H. a live run with the phases present closes both ledgers');
@@ -492,8 +497,8 @@ for (i6 = 0; i6 < airPos.length; i6++) {
 check.ok('the clasts are still exactly where the fountain put them', stayed === airPos.length,
 	stayed + ' of ' + airPos.length + ' quantities unchanged over ' + frames + ' frames');
 check.ok('the phases are still the phases', S.invN[P.PH.air] === 800 && S.invN[P.PH.dep] === 600
-	&& S.invN[P.PH.mantle] === P.partBase && S.invN[P.PH.melt] === 0,
-	S.invN.join('/'));
+	&& S.invN[P.PH.mantle] + S.invN[P.PH.melt] >= P.partBase,
+	S.invN.join('/') + '  (P3.2 segregation keeps the base in mantle+melt)');
 
 console.log('\n  total ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s');
 check.done();

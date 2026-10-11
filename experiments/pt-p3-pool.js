@@ -173,7 +173,7 @@ for (i = 0; i < nSplit; i++) {
 	S.vy[p] = 2 - 4 * draw(1000) / 1000;
 	sample.push(p);
 }
-var tA = totals(S), nA = S.n, idA = S.nextId;
+var tA = totals(S), nA = S.n, idA = S.nextId, spA = S.tx.split, adA = S.tx.admit;
 var fr = [0.5, 0.25, 0.1, 0.75, 0.02], phs = [P.PH.melt, P.PH.air, P.PH.dep];
 var badPhase = 0, badId = 0, renamed = 0, badMass = 0, badState = 0, badCount = 0;
 for (i = 0; i < nSplit; i++) {
@@ -208,8 +208,8 @@ check.ok('the host kept its id and every child is fresh', renamed === 0 && badId
 check.ok('the intensive state is shared and the bond state is not', badState === 0, badState + ' wrong');
 check.ok('the child mass is the fraction of the host\'s', badMass === 0, badMass + ' wrong');
 check.ok('the counters and the id sequence agree with the transactions',
-	S.tx.split === nSplit && S.tx.admit === nSplit && S.nextId === idA + nSplit && dupIds(S) === 0,
-	'split ' + S.tx.split + '  admit ' + S.tx.admit + '  nextId ' + S.nextId);
+	S.tx.split - spA === nSplit && S.tx.admit - adA === nSplit && S.nextId === idA + nSplit && dupIds(S) === 0,
+	'split ' + (S.tx.split - spA) + '  admit ' + (S.tx.admit - adA) + '  nextId ' + S.nextId);
 
 // ---------------------------------------------------------------- D. merge
 check.section('D. a merge sums the extensive state and keeps the older id');
@@ -260,15 +260,17 @@ check.ok('merge(a, b) and merge(b, a) are the same parcel',
 	mA.id === mB.id && mA.m === mB.m && mA.h === mB.h && mA.f === mB.f && mA.x === mB.x,
 	'id ' + mA.id + '/' + mB.id + '  m ' + mA.m + '/' + mB.m + '  H ' + mA.h.toFixed(12) + '/' + mB.h.toFixed(12));
 
-// a split and its inverse merge, at the tolerance P3.4 gates
+// a split and its inverse merge, at the tolerance P3.4 gates. The pair is pinned to one
+// phase: the live pipeline (P3.2's segregation) leaves melt children in the pool, and an
+// inverse merge across phases is refused by its own contract (tested below).
 M = configure('cool');
 SIM.run(50);
-var rt = [], worstM = 0, worstP = 0, worstH = 0;
+var rt = [], worstM = 0, worstP = 0, worstH = 0, nRT = S.n;
 for (i = 0; i < 64; i++) {
 	p = draw(S.n - 1);
+	S.ph[p] = P.PH.mantle;
 	var m0 = S.m[p], h0 = S.H[p], px = S.m[p] * S.vx[p], py = S.m[p] * S.vy[p];
 	q = PTPOOL.split(S, p, 0.1 + 0.08 * (i % 10), P.PH.mantle);
-	S.ph[q] = P.PH.mantle;
 	PTPOOL.merge(SIM.M, S, p, q);
 	worstM = Math.max(worstM, Math.abs(S.m[p] - m0) / m0);
 	worstH = Math.max(worstH, Math.abs(S.H[p] - h0) / Math.max(1e-30, Math.abs(h0)));
@@ -279,7 +281,7 @@ for (i = 0; i < 64; i++) {
 check.ok('split then merge round-trips mass to 1e-9', worstM < 1e-9, worstM.toExponential(2));
 check.ok('and momentum to 1e-9', worstP < 1e-9, worstP.toExponential(2));
 check.ok('and enthalpy to 1e-9', worstH < 1e-9, worstH.toExponential(2));
-check.ok('the round trip left the pool at its starting count', S.n === P.partBase && dupIds(S) === 0,
+check.ok('the round trip left the pool at its starting count', S.n === nRT && dupIds(S) === 0,
 	'n ' + S.n + '  duplicates ' + dupIds(S));
 
 // a merge across phases is refused: it would move material between ledger lines with no

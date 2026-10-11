@@ -66,8 +66,15 @@ check.section('long-run coverage repair');
 check.ok('the native clock does not globally re-deal the cloud', native.redeals === 0, 'redeals ' + native.redeals);
 check.ok('the native clock repairs only actual transfer holes', native.empty <= 2 && native.moved <= 2,
 	'holes ' + native.empty + '   moved ' + native.moved);
-check.ok('the field remains bounded through the former transition', native.lo > -0.15 && native.hi < 1.10,
-	'T ' + native.lo.toFixed(3) + '..' + native.hi.toFixed(3));
+// the upper bound is the law's own: no equilibrium parcel is hotter than the deepest
+// liquidus (the deep solidus asymptote plus the mush gap), and the scatter that builds the
+// field is a mean of parcels. P3.2's melt children sit at their liquidus -- the first
+// states that reach it -- so the bar is stated in the phase law's terms, not as a number
+// measured before melt could segregate.
+check.ok('the field remains bounded through the former transition',
+	native.lo > -0.15 && native.hi < 1 + P.meltDeep + P.meltGap,
+	'T ' + native.lo.toFixed(3) + '..' + native.hi.toFixed(3) + '   liquidus ceiling '
+	+ (1 + P.meltDeep + P.meltGap).toFixed(3));
 
 check.section('clock invariance');
 check.ok('500 kyr/f uses ten fluid substeps', fast.sub === 10, 'fluid ' + fast.sub + 'x');

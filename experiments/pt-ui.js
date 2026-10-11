@@ -165,6 +165,12 @@ check.ok('and it is the inventory the pool reports', (function () {
 	L.sb.PTPOOL.inventory(TS);
 	return Math.abs(+meltLine[1] - TS.invLTot / (TS.invMTot || 1) * 100) < 0.005;
 }()), 'HUD ' + meltLine[1] + '%  vs inventory ' + (TS.invLTot / TS.invMTot * 100).toFixed(2) + '%');
+// P3.2's store: the intrusive stock is named apart on the same line, so the melt the
+// chambers hold cannot be mistaken for melt the picture does not show
+var storeLine = /store ([\d.]+)% in (\d+) chambers/.exec(L.els.hud.textContent);
+check.ok('the melt line names the intrusive store apart', storeLine !== null
+	&& +storeLine[2] === TS.chN, storeLine ? 'store ' + storeLine[1] + '% in ' + storeLine[2]
+	+ ' chambers' : 'no store token in the HUD');
 
 // --- B. the switch bar -----------------------------------------------------------
 
