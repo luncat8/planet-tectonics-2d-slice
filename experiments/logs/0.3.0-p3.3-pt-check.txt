@@ -15,14 +15,14 @@ PASS  Ra 1e+5: no NaN over 1200 frames
 PASS  Ra 1e+5: temperature stays in range   T -0.000..0.833
 PASS  Ra 1e+5: the enthalpy book closes against the wall flux   intake/wall 1.000   (1.09e+3 vs 1.09e+3)
 PASS  Ra 1e+5: the deposit covers all but a fraction of the nodes   worst 0 of 5888
-INFO  Ra 1e+5 timing at 50 kyr/frame (1x the default clock)   22.88 ms/frame
+INFO  Ra 1e+5 timing at 50 kyr/frame (1x the default clock)   12.41 ms/frame
 PASS  Ra 1e+6: no NaN over 1200 frames
 PASS  Ra 1e+6: temperature stays in range   T -0.013..0.830
 PASS  Ra 1e+6: the enthalpy book closes against the wall flux   intake/wall 0.988   (-9.92e+3 vs -1.00e+4)
 PASS  Ra 1e+6: the deposit covers all but a fraction of the nodes   worst 0 of 5888
-INFO  Ra 1e+6 timing at 50 kyr/frame (1x the default clock)   16.14 ms/frame
-PASS  a frame of the shipped config fits the §7 budget   13.7 ms/frame
-PASS  and the equilibrium pass is a fraction of that frame   0.245 ms per pass over 23561 parcels
+INFO  Ra 1e+6 timing at 50 kyr/frame (1x the default clock)   8.52 ms/frame
+PASS  a frame of the shipped config fits the §7 budget   7.2 ms/frame (best of 4x100)
+PASS  and the equilibrium pass is a fraction of that frame   0.095 ms per pass over 23558 parcels
 
 the flow and the map
 PASS  the Stokes pair has no discrete divergence   7.36e-17
