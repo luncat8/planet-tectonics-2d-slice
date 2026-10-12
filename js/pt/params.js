@@ -219,6 +219,34 @@ var PTP = {
 	kProfileDiff: 20,           // km2/Myr; profile-only diffusivity, calibrated by pt-surface.js
 	slopeProfileDiff: 0.025,    // slope scale for profile diffusion; this does not move particles
 	                             // P4 material erosion/deposition needs a separate mass transfer
+	// P4.0, inter-plate contact (0.3.0-p4-plan.md §3 P4.0). The contact pass reads the same lid
+	// band the crust relief terms read (yCrust) and answers a closing contact in one of two
+	// regimes. The material model has one density, so temperature is the only density proxy the
+	// buoyancy law itself uses: the colder side of a contact is the denser one, and it is the
+	// contrast across the contact -- not a label the model does not carry -- that decides
+	// whether that side can sink. With contrast, the colder plate subducts: it keeps its
+	// velocity, its leading band bends down along contactDip beneath the override, and the
+	// override's approach is held. Without contrast the response is arrest: both clusters take
+	// a mass-weighted share of the correction that cancels the closing, and the belt the
+	// kinematic orogen term raises is fed by the convergence this pass arrested (S.ctConv),
+	// because a locked boundary that keeps converging is a boundary that keeps thickening.
+	// The position guard is the discrete statement of the plan's gate: inter-cluster crust
+	// markers closer than contactHard of a cell are pushed apart along their separation, and
+	// the pushes are counted so the report can say how often the velocity-level response left
+	// work for it. Every constant here is a P4.4 freeze candidate measured by
+	// experiments/pt-p4-contact.js, not a claim.
+	contact: true,
+	contactYield: 0.03,         // 1/Myr: the closing rate below which a contact is not a
+	                            // collision, the same yardstick as collisionYield's
+	contactdT: 0.08,            // the temperature contrast across a contact that makes the
+	                            // colder side dense enough to sink; below it, arrest
+	contactDip: 35,             // degrees, the slab's descent beneath the override
+	contactBand: 300,           // km, the bending zone's reach into the subducting plate
+	contactHard: 0.55,          // cells, the no-penetration radius of the position guard
+	ctTop: 4,                   // clusters per column in the contact table: the shallowest
+	                            // crust marker of each, so a plate boundary is read where it
+	                            // reaches the surface
+	ctHinge: 16,                // bending bands per frame
 	// the view warps by kRelief * zh, damped with depth; zVisMax clips outlier relief before
 	// exaggeration so a deep rift cannot fill the lid camera with ocean.
 	yTaper: 120,                 // km, e-folding depth of the view's terrain warp
@@ -292,6 +320,9 @@ PTP.meltU0 = 1 / (1 + PTP.meltOnset * PTP.meltInvLam);
 PTP.meltDeep = PTP.meltDrop * PTP.meltU0 * PTP.meltU0;
 // the pool's reserve as one fraction: sim.js multiplies the base population by it
 PTP.resFrac = PTP.resMelt + PTP.resAir + PTP.resDep;
+// the contact pass's slab direction, in radians, from the one dip angle above
+PTP.contactCos = Math.cos(PTP.contactDip * Math.PI / 180);
+PTP.contactSin = Math.sin(PTP.contactDip * Math.PI / 180);
 
 // The routing masks of §1.3 of the P3 plan, indexed by PH and built from the enum so a
 // renamed phase cannot silently land in the wrong column:

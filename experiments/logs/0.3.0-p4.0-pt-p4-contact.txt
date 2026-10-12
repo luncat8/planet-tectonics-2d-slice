@@ -1,0 +1,48 @@
+
+A. the controlled two-plate legs (both regimes, and the kernel-off control)
+INFO  arrest   (dT 0, kernel on)   sites 2  worst closing 0.715/Myr  subducting plate 2.37 cm/yr  override 2.37 cm/yr  weld at t=-1.0 Myr  shortening 421 km
+INFO  subduct. (dT 0.2, kernel on)   sites 4  worst closing 0.715/Myr  subducting plate 4.51 cm/yr  override 0.12 cm/yr  weld at t=-1.0 Myr  shortening 539 km
+INFO  control  (kernel off)   sites 0  subducting plate 4.44 cm/yr  override 0.16 cm/yr  closing 4.29 cm/yr  weld at t=-1.0 Myr
+PASS  the control leg converges and is never answered   closing 4.29 cm/yr, 0 sites answered, shared ground 1 -> 4 columns
+PASS  the arrest leg answers the contact and keeps two plates   sites 2, no weld over 5 Myr (100/100 frames), shortening 421 km
+PASS  the subduction leg answers the contact and keeps two plates   sites 4, no weld over 5 Myr (100/100 frames), 246 hold-frames, 4669 bending markers
+PASS  arrest: the closing rate at the contact falls to zero   post-brake closing -0.000 cm/yr against the control 4.29
+PASS  subduction: the override is held   override 0.119 cm/yr against the control 0.16, subducting plate keeps 4.51 cm/yr
+PASS  subduction: the subducting band ends up below the crust base   41 of 749 subducting markers below 250 km (0 before the response), 4669 bending markers
+PASS  subduction: the override markers stay above the band   0 override markers below 250 km
+PASS  the control leg bends no material below the crust base   0 markers below 250 km with the kernel off
+
+B. the ledgers and the arrest impulse pair
+PASS  the kernel leaves the mass ledger bitwise unchanged   0 of 6 measured contact frames differ
+PASS  the kernel leaves the composition ledgers bitwise unchanged   felsic 0, water 0
+PASS  the kernel leaves the melt stock bitwise unchanged   0 frames differ
+PASS  the kernel leaves the enthalpy ledger bitwise unchanged   0 of 6 frames differ
+PASS  the arrest leg closes its mass ledger   residual 0.00e+0
+PASS  the subduction leg closes its mass ledger   residual 0.00e+0
+PASS  the arrest brake leaves the combined momentum unchanged   dpx 0.00e+0 over 6 measured frames (px 2.029e+7)
+
+C. the live shipped planet
+INFO  kernel on   t 300 Myr, 20 sites in the worst frame, worst closing 1.949/Myr, 10657 hold-frames, 166112 bending markers, 873 guard pushes on 650 frames, absorbed shortening 12821 km
+INFO  kernel off   t 300 Myr, no response, ledger drift 0.00e+0 km2, 0 km absorbed, 0 guard pushes -- the control books nothing because it answers nothing
+PASS  the live planet reaches contacts   20 sites in the worst frame
+PASS  the live planet answers its contacts   10657 hold-frames and 166112 bending markers over 6000 frames
+PASS  the controlled legs leave no hard overlap for the guard   0 pushes over 200 controlled frames
+PASS  the live leg leaves the guard a bounded minority of frames   873 pushes on 650 of 6000 frames (10.8%), against 0 with the kernel off
+PASS  the live ledger still closes with the kernel on   mass residual 0.00e+0 km2 over 6000 frames
+PASS  the live leg is deterministic   fingerprint 7076230798859164
+PASS  the contact pass costs under 2% of the frame   0.141 ms/frame for the pass against 10.11 ms/frame for the rest (1.40%)
+/home/user/planet-tectonics-2d-slice/experiments/pt-p4-contact.js:411
+	+ (LEGS * MYR + 2 * LIVE + N * SIM.dt).toFixed(0) + ' Myr of simulation');
+	   ^
+
+ReferenceError: LEGS is not defined
+    at Object.<anonymous> (/home/user/planet-tectonics-2d-slice/experiments/pt-p4-contact.js:411:5)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49
+
+Node.js v22.22.3

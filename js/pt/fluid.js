@@ -99,10 +99,15 @@ var F = {
 
 		// Shortening between distinct, strong surface clusters adds a broad orogenic load.
 		// The source is shared across the boundary's two columns and capped before filtering.
+		// P4.0: where the contact pass resolved this boundary, its measurement is the belt's
+		// source -- the convergence an arrest regime locked up (a locked boundary that keeps
+		// converging keeps thickening), or nothing at a subducting site, whose belt is the
+		// arc's and not this proxy's. Where no contact was resolved the velocity reading
+		// stands, which is what a fixture driving this kernel directly sees.
 		for (i = 0; i < nx; i++) {
 			ip = i + 1 === nx ? 0 : i + 1;
 			if (sCl[i] < 0 || sCl[ip] < 0 || sCl[i] === sCl[ip]) continue;
-			k = (sV[i] - sV[ip]) / dx - P.collisionYield;
+			k = (S.ctSite[i] ? S.ctConv[i] : (sV[i] - sV[ip]) / dx) - P.collisionYield;
 			if (k <= 0) continue;
 			k *= P.kOrogen;
 			if (k > P.zOrogenMax) k = P.zOrogenMax;

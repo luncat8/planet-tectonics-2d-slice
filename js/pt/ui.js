@@ -221,6 +221,8 @@ var PTUI = {
 			+ '\nphase ' + inv + '   mass ' + fmt(S.invMTot) + ' km2   H ' + fmt(S.invHTot)
 			+ '\ncrust ' + (d.lid * 100).toFixed(0) + '% of markers strong   plates ' + d.plates
 			+ '   plate drift ' + d.plV.toFixed(1) + ' cm/yr'
+			+ '\ncontact ' + d.contact + ' sites  ' + d.hold + ' subducting  ' + d.subduct
+			+ ' bending  ' + d.push + ' pushed  ' + fmt(S.contactShort) + ' km taken up'
 			+ '\nsurface ' + d.zMin.toFixed(1) + '..' + d.zMax.toFixed(1) + ' km   (zero mean, drawn x' + P.kRelief + ')'
 			+ '\nledger ' + fmt(S.hLedger) + '   walls ' + fmt(S.wall) + '   gap ' + (S.wall ? (S.hLedger / S.wall).toFixed(2) + 'x' : '--')
 			+ '   latent ' + fmt(P.meltLat * (S.invLTot - S.invL0))

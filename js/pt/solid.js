@@ -53,6 +53,10 @@
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
 var G = (typeof module !== 'undefined' && module.exports) ? require('./grid.js') : window.PTG;
+// the P4.0 contact kernel: it sits between the rigid fit and the projection, which is why
+// kinematics is split in two below. Aliased under the name contact.js exports, so this adds
+// no second global (0.3.0-p3-plan.md §6)
+var CONTACT = (typeof module !== 'undefined' && module.exports) ? require('./contact.js') : window.PTCONTACT;
 
 var SC = {
 	// G4: strength, clusters (damage + connectivity), then the rigid projection. No-op at
@@ -62,6 +66,19 @@ var SC = {
 		strength(M, S, dt);
 		clusters(M, S, dt);
 		kinematics(M, S, dt);
+		// P4.0: the contact pass. The brake has to correct the clusters' rigid velocities
+		// before the projection moves markers with them, and the bending band has to move
+		// markers *instead of* the projection, so the order is fixed: detect, brake,
+		// project, hinge, guard.
+		if (P.contact) {
+			CONTACT.detect(M, S, dt);
+			CONTACT.brake(M, S);
+			project(M, S, dt);
+			CONTACT.hinge(M, S, dt);
+			CONTACT.guard(M, S);
+			return;
+		}
+		project(M, S, dt);
 	}
 };
 
@@ -239,6 +256,10 @@ function find(S, i) {
 // with the periodic delta folded into [-wrap/2, wrap/2), so a plate that straddles the wrap
 // seam is one body, not two.
 //
+// P4.0 split the move out into project(): the contact brake (contact.js) has to correct the
+// cluster velocity this pass computes before anything moves with it. kinematics() is
+// therefore the fit and the drives, and it touches no position.
+//
 // The mantle flow under a plate is largely convergent/divergent across the cell it spans, so
 // its net traction cancels (experiments/pt-drift.js). What breaks the cancellation is the
 // negative buoyancy of the cold root hanging below the cluster's centroid depth (ry > 0) at
@@ -321,9 +342,22 @@ function kinematics(M, S, dt) {
 			if (sp > plV) plV = sp;
 		}
 	}
+	S.d.lid = S.nSolid ? lid / S.nSolid : 0;
+	S.d.plates = plates;
+	S.d.plV = Math.sqrt(plV) * P.cmYr;
+}
+
+// the projection: the rigid motion applied to the markers, blended by smoothstep so a
+// barely-strong marker joins softly. P4.0's bending band is skipped here -- contact.js moves
+// those markers itself, along the slab's dip, instead of with the plate's rigid motion.
+function project(M, S, dt) {
+	var wrap = M.wrap, csX = S.csX, csY = S.csY;
+	var csVX = S.csVX, csVY = S.csVY, csW = S.csW;
+	var hinge = S.hinge;
+	var p, c, rx, ry, vRx, vRy, w, dvx, dvy, dy, ym;
 	for (p = 0; p < S.n; p++) {
 		c = S.cl[p];
-		if (c < 0) continue;
+		if (c < 0 || hinge[p]) continue;
 		rx = S.x[p] - csX[c];
 		rx -= Math.floor(rx / wrap + 0.5) * wrap;
 		ry = S.y[p] - csY[c];
@@ -339,9 +373,6 @@ function kinematics(M, S, dt) {
 		S.e[p] += dy / Math.sqrt(M.yLin * M.yLin + ym * ym);
 		G.keepInside(M, S, p);
 	}
-	S.d.lid = S.nSolid ? lid / S.nSolid : 0;
-	S.d.plates = plates;
-	S.d.plV = Math.sqrt(plV) * P.cmYr;
 }
 
 if (typeof module !== 'undefined' && module.exports) module.exports = SC; else window.PTSC = SC;

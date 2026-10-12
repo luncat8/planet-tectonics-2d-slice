@@ -137,11 +137,25 @@ var PTS = {
 	hLid: null, hRaw: null, rft: null, colM: null,
 	surfaceY: null, surfaceV: null, surfaceCl: null, jIso: 1,
 	bandA: null, bandP: null,       // the initial perturbation's seeded band (icT)
+	// the P4.0 contact table (contact.js): the shallowest strong crust marker of each
+	// cluster, per column, and what the pass decided at each column boundary. The table is
+	// per-frame workspace -- the frame rebuilds it -- except ctConv/ctSite, which the relief
+	// terms (G7) read as the belt's source: the convergence the contact pass arrested, so a
+	// locked boundary that keeps converging keeps thickening. A subducting site books its
+	// convergence to the slab instead, and its belt comes from the arc, not from this proxy.
+	ctCl: null, ctY: null, ctP: null, ctT: null, ctV: null, ctN: null,
+	ctConv: null, ctSite: null,
+	hgCl: null, hgX: null, hgS: null, hgC: null, hgN: 0, hgOver: 0,   // the bending bands
+	contactShort: 0, contactPush: 0, contactHold: 0,   // cumulative: km of convergence taken up by
+	                                  // contact, the guard's position pushes, and the subduction hold's
+	                                  // unbalanced impulse -- the one place P4 adds momentum (all three
+	                                  // are in the fingerprint)
 	// per-frame diagnostics, mutated in place: the HUD formats them at 2 Hz
 	d: {
 		nu: 0, uMax: 0, vMax: 0, wells: 0, heat: 0, mHeat: 0, tMin: 0, tMax: 0,
 		fluxTop: 0, fluxBot: 0, wallRate: 0, drift: 0, melt: 0, meltY: 0,
-		lid: 0, plates: 0, plV: 0, zMin: 0, zMax: 0
+		lid: 0, plates: 0, plV: 0, zMin: 0, zMax: 0,
+		contact: 0, contactC: 0, hold: 0, subduct: 0, push: 0
 	},
 
 	// allocate for a mesh (idempotent: the quality switch can change the mesh size)
@@ -167,6 +181,13 @@ var PTS = {
 			this.csR2 = new Float64Array(cap); this.csRef = new Float64Array(cap);
 			this.csS = new Float64Array(cap); this.csP = new Float64Array(cap);
 			this.csCnt = new Int32Array(cap);
+			// the contact pass's own workspace (contact.js): the brake's demanded correction
+			// and the count it is a mean over, and the bending band's target velocity. All of
+			// it is rebuilt every frame and none of it is carried by a parcel, which is why
+			// pool.js lists it as workspace rather than a field.
+			this.csBX = new Float64Array(cap); this.csBN = new Int32Array(cap);
+			this.hinge = new Uint8Array(cap);
+			this.hvx = new Float64Array(cap); this.hvy = new Float64Array(cap);
 			this.order = new Int32Array(cap);
 		}
 		if (!this.invN || this.invN.length !== P.PH_N) {
@@ -198,6 +219,17 @@ var PTS = {
 			this.rft = new Float64Array(M.nx); this.colM = new Float64Array(M.nx);
 			this.surfaceY = new Float64Array(M.nx); this.surfaceV = new Float64Array(M.nx);
 			this.surfaceCl = new Int32Array(M.nx);
+			// the contact table: P.ctTop clusters per column, plus the per-column verdict the
+			// relief terms read
+			var kTop = P.ctTop, nTop = M.nx * kTop;
+			this.ctCl = new Int32Array(nTop); this.ctY = new Float64Array(nTop);
+			this.ctP = new Int32Array(nTop); this.ctT = new Float64Array(nTop);
+			this.ctV = new Float64Array(nTop); this.ctN = new Int32Array(M.nx);
+			this.ctConv = new Float64Array(M.nx); this.ctSite = new Uint8Array(M.nx);
+		}
+		if (!this.hgCl || this.hgCl.length !== P.ctHinge) {
+			this.hgCl = new Int32Array(P.ctHinge); this.hgX = new Float64Array(P.ctHinge);
+			this.hgS = new Int8Array(P.ctHinge); this.hgC = new Float64Array(P.ctHinge);
 		}
 		// Resolve the transaction field table at setup, not on the first live split or launch.
 		PTPOOL.fields(this);
@@ -269,7 +301,18 @@ var PTS = {
 		this.vM.fill(0); this.vH.fill(0); this.vL.fill(0); this.vF.fill(0); this.vW.fill(0);
 		this.Tg.fill(0); this.mug.fill(0); this.Mg.fill(0);
 		this.age.fill(0); this.mu.fill(0); this.dmg.fill(0); this.cl.fill(-1);
+		this.csN = 0;                             // the cluster table is rebuilt by crust()
 		this.pLoad.fill(0); this.pCnt.fill(0);
+		// the contact workspace is cleared, not merely unused: a band flag or a brake demand
+		// left behind by a bigger population would be a decision a wrongly bounded pass could
+		// find, and the cumulative counters restart with the planet
+		this.csBX.fill(0); this.csBN.fill(0);
+		this.hinge.fill(0); this.hvx.fill(0); this.hvy.fill(0);
+		this.ctN.fill(0); this.ctConv.fill(0); this.ctSite.fill(0);
+		this.hgN = 0; this.hgOver = 0;
+		this.contactShort = 0; this.contactPush = 0; this.contactHold = 0;
+		this.d.contact = 0; this.d.contactC = 0; this.d.hold = 0;
+		this.d.subduct = 0; this.d.push = 0;
 		// the material state past the prefix is cleared, not merely unused: a phase or an id
 		// left behind by a bigger population would be a parcel a wrongly bounded pass could
 		// find. pool.js remove() keeps the same rule per transaction.
@@ -403,6 +446,11 @@ var PTS = {
 		a = mixHash(a, this.thr.airCr, HASH_PRIME_A); b = mixHash(b, this.thr.airCr, HASH_PRIME_B);
 		a = mixHash(a, this.thr.landDr, HASH_PRIME_A); b = mixHash(b, this.thr.landDr, HASH_PRIME_B);
 		a = mixHash(a, this.thr.landCr, HASH_PRIME_A); b = mixHash(b, this.thr.landCr, HASH_PRIME_B);
+		// the contact pass's cumulative counters are state too: a run that reached the same
+		// parcels through a different contact history is not the same run (P4.0)
+		a = mixHash(a, this.contactShort, HASH_PRIME_A); b = mixHash(b, this.contactShort, HASH_PRIME_B);
+		a = mixHash(a, this.contactPush, HASH_PRIME_A); b = mixHash(b, this.contactPush, HASH_PRIME_B);
+	a = mixHash(a, this.contactHold, HASH_PRIME_A); b = mixHash(b, this.contactHold, HASH_PRIME_B);
 		// the intrusive store is state: a run that reached the same parcels by a different
 		// chamber history is not the same run (P3.2)
 		a = mixHash(a, this.chN, HASH_PRIME_A); b = mixHash(b, this.chN, HASH_PRIME_B);

@@ -60,7 +60,10 @@
 		FIELDS: ['x', 'y', 'e', 'T', 'm', 'vx', 'vy', 'age', 'mu', 'dmg', 'pLoad', 'pCnt',
 			'id', 'ph', 'H', 'cF', 'cW', 'melt'],
 		WORK: ['order', 'par', 'cl', 'csOf', 'csM', 'csX', 'csY', 'csVX', 'csVY', 'csW',
-			'csR2', 'csS', 'csP', 'csRef', 'csCnt'],
+		'csR2', 'csS', 'csP', 'csRef', 'csCnt',
+		// P4.0's own (contact.js): the brake's demanded correction and the count it is a mean
+		// over, and the bending band's target velocity and flag
+		'csBX', 'csBN', 'hinge', 'hvx', 'hvy'],
 
 		// the field arrays, resolved once per allocation generation. state.js reallocates all
 		// of them together when the capacity grows, so the identity of S.x is the generation
