@@ -80,6 +80,9 @@ function configure(ic, frames) {
 	P.ic = ic || 'cool'; P.flip = 1; P.solid = true;
 	P.Ra = 1e6; P.RaK = P.Ra * P.kappa / (P.depth * P.depth * P.depth);
 	P.sl.kyr = 50; P.seed = 1;
+	// Keep this P3.0 routing fixture upstream-only. P3.4's live two-clock path is gated by
+	// pt-p3-flight.js; these injected phases must not be confused with new vent emissions.
+	P.yCham = 80; P.chJoin = 400; P.chSpan = 400;
 	SIM.init(); SIM.reset();
 	SIM.dt = P.sl.kyr / 1000;
 	if (frames) SIM.run(frames);
@@ -466,7 +469,9 @@ var m0 = S.invMTot, h0 = S.invHTot, f0 = S.invFTot;
 var airPos = [col('x', airH), col('y', airH), col('e', airH), col('m', airH), col('H', airH)];
 var frames = 400, worstEmpty = 0, nan = 0, i6, p6;
 for (i6 = 0; i6 < frames; i6++) {
-	SIM.step();
+	// This is the geological routing leg: wall time is deterministically zero, so the
+	// airborne canary remains fixed while the coupled phases complete all geological passes.
+	SIM.step(0);
 	if (S.empty > worstEmpty) worstEmpty = S.empty;
 }
 for (p6 = 0; p6 < S.n; p6++) if (!isFinite(S.T[p6]) || !isFinite(S.x[p6]) || !isFinite(S.H[p6])) nan++;

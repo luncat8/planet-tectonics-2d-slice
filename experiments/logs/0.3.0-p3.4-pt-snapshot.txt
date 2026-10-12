@@ -1,0 +1,2 @@
+archive/p34-lid-10Myr.png   t 10.0 Myr   lid 13%   plates 1   drift 0.0 cm/yr   Nu 29.6   wells 4   empty 0   redeals 0
+total 2.8 s for 200 frames

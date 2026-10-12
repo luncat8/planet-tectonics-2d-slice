@@ -182,6 +182,17 @@ check.ok('the HUD conduit line counts the vent records', conduitLine !== null
 check.ok('and it reports the drained total the transfer book holds, to the printed digits',
 	conduitLine !== null && Math.abs(+conduitLine[4] - TS.thr.ventCr) <= Math.abs(TS.thr.ventCr) * 0.005 + 1e-9,
 	conduitLine ? 'printed ' + conduitLine[4] + ' vs book ' + TS.thr.ventCr.toFixed(1) : 'no conduit line in the HUD');
+// P3.4's phase census and two transfer legs. Seed only the diagnostics here; the material
+// path itself is exercised by pt-p3-flight.js, without spending seven simulated Myr in a UI test.
+TS.invN[P.PH.air] = 3; TS.invN[P.PH.dep] = 2; TS.thr.airCr = 125; TS.thr.landCr = 75;
+UI.updateHud(SIM);
+var flightLine = /flight 3 airborne  2 landed   emitted 125   landed 75   wall clock/.test(L.els.hud.textContent);
+check.ok('the HUD names airborne and landed stock with both transfer totals', flightLine,
+	L.els.hud.textContent.split('\n').filter(function (x) { return /^flight /.test(x); })[0]);
+check.ok('the page legend distinguishes flight from landed lava', /orange = conserved ejecta/.test(html)
+	&& /rust = landed lava/.test(html));
+TS.invN[P.PH.air] = 0; TS.invN[P.PH.dep] = 0; TS.thr.airCr = 0; TS.thr.landCr = 0;
+UI.updateHud(SIM);
 
 // --- B. the switch bar -----------------------------------------------------------
 

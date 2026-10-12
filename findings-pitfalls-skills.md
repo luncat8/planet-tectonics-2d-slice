@@ -1085,3 +1085,21 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
 - A frame-time gate on a shared 2-core host is a host measurement. Before blaming the change,
   time the base commit (`git archive <commit>`) and the tree interleaved on the same host
   (`experiments/pt-p3-frame-ab.js`).
+
+## 0.3.0 P3.4 flight (archive/0.3.0-p3.4-worklog.md)
+
+- **A dual-clock regression must say which clock it fixes.** Fluid-step invariance cannot also
+  demand equal airborne state when one geological run has ten times as many rendered wall
+  frames. Pass explicit zero wall time when gating geology; gate wall trajectories separately
+  with a fixed interval sequence.
+- **Collision and drawing use different horizons.** Land against physical `-zh(x)`, never the
+  relief-exaggerated raster. Air/deposits already carry that 1x height, so rendering adds only
+  the remaining visual factor; applying the full warp lifts them twice.
+- **A hot deposit cannot reuse mantle detachment unchanged.** The next G5 pass reintrudes it
+  before it can cool. Keep landed material in its phase, apply a named surface-wall exchange,
+  and let the existing age/strength law weld it only after crystallisation.
+- **Dense compaction changes a merge's return slot.** If survivor `a` is the tail and `b` is a
+  hole, `remove(b)` moves `a` into `b`; return `b`, not the now-cleared tail index.
+- **A short tuning probe is not a long-run stability gate.** The first conduit geometry closed
+  perfectly at 20 Myr but drove the 150 Myr field below its existing bound. Sweep against the
+  longest owning regression before shipping the geometric default.

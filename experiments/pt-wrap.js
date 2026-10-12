@@ -109,14 +109,16 @@ function dxWrap(a, b) {
 
 var base = save();
 
-// run A
-SIM.run(frames);
+// Run the geological equivariance leg with deterministic zero wall time. A clast sitting on
+// its collision threshold may otherwise land one rendered frame apart after round-off in the
+// translated x coordinate; wall-clock trajectory equivariance has its own P3.4 fixture.
+SIM.run(frames, 0);
 var A = save(), dA = { nu: S.d.nu, plates: S.d.plates, lid: S.d.lid, csN: S.csN, uMax: S.d.uMax, heat: S.d.heat };
 
 // run B: the shifted twin
 load(base);
 translate(shift);
-SIM.run(frames);
+SIM.run(frames, 0);
 translate(-shift);
 var Bs = save(), dB = { nu: S.d.nu, plates: S.d.plates, lid: S.d.lid, csN: S.csN, uMax: S.d.uMax, heat: S.d.heat };
 
@@ -170,8 +172,13 @@ check.ok('the same number of chamber records', chCount, 'A ' + A.chN + '  B ' + 
 check.ok('every chamber sits at the same folded site', chDX < 1e-6, 'max d(x) ' + chDX.toExponential(2) + ' km');
 check.ok('the same chamber stock and vent stock', chRel < 1e-9, 'max relative ' + chRel.toExponential(2));
 check.ok('the same conduit states and styles', vOK);
-check.ok('the same transaction and throughput counters', JSON.stringify(A.tx) === JSON.stringify(Bs.tx)
-	&& JSON.stringify(A.thr) === JSON.stringify(Bs.thr));
+var txOK = JSON.stringify(A.tx) === JSON.stringify(Bs.tx), thrRel = 0, tk;
+for (tk in A.thr) {
+	v = Math.abs(A.thr[tk] - Bs.thr[tk]) / Math.max(Math.abs(A.thr[tk]), 1);
+	if (v > thrRel) thrRel = v;
+}
+check.ok('the same transactions and shift-equivalent throughputs', txOK && thrRel < 1e-9,
+	'transactions ' + txOK + '   max throughput relative ' + thrRel.toExponential(2));
 
 // ---------------------------------------------------------------- 2. a plate across the seam
 // Find the shift that puts the seam through the middle of the biggest plate, run a frame, and

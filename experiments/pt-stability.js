@@ -23,6 +23,9 @@ function configure(kyr) {
 	P.ic = 'cool'; P.flip = 1;
 	P.icMode = 1; P.icAmp = 0.02; P.icBand = 0;   // the validated draw; the demo's planet uses other modes
 	P.solid = false;          // this fixture gates the fluid pipeline alone (pt-crust.js has the solid one)
+	// A wall-clock flight intentionally differs when 180 Myr is displayed in 360 rather than
+	// 3600 frames. Disable its supply here; pt-p3-flight.js owns the independent clock gate.
+	P.emitEff = 0; P.emitBlast = 0;
 	P.Ra = 1e6;
 	P.RaK = P.Ra * P.kappa / (P.depth * P.depth * P.depth);
 	P.sl.kyr = kyr;
@@ -36,7 +39,7 @@ function run(kyr) {
 	SIM.dt = kyr / 1000;
 	n = Math.round(END / SIM.dt);
 	for (i = 0; i < n; i++) {
-		SIM.step();
+		SIM.step(0);
 		if (S.d.tMin < lo) lo = S.d.tMin;
 		if (S.d.tMax > hi) hi = S.d.tMax;
 		if (S.empty > empty) empty = S.empty;

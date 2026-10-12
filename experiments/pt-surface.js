@@ -28,6 +28,9 @@ console.log('  surface: P2.3 relief, mesh ' + P.mesh.nx + 'x' + P.mesh.ny + ', w
 	+ '\n    profile diffusion ' + P.kProfileDiff + ' km2/Myr, slope scale ' + P.slopeProfileDiff + '\n');
 
 P.ic = 'cool'; P.sl.kyr = 50; P.solid = true; P.seed = 1;
+// This is the P2.3 surface-law fixture. Keep its upstream chamber fixture non-erupting;
+// shipped P3.4 relief collision and the integrated live eruption are gated in pt-p3-flight.js.
+P.yCham = 80; P.chJoin = 400; P.chSpan = 400;
 SIM.init(); SIM.reset(); SIM.dt = 0.05;
 var M = SIM.M, nx = M.nx, ny = M.ny;
 var profileDiffusivity = P.kProfileDiff, surfaceTau = P.tauSurf, lidScale = P.kLid, riftScale = P.kRift;

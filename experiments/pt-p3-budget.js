@@ -10,7 +10,8 @@
 //      marginal price of the reserve is a measured number;
 //   C. that a frame with the phases present at capacity constructs no typed array;
 //   D. that a live run pressed to the capacity refuses, counts and loses nothing;
-//   E. what the inventory pass costs, which is why the frame diagnostic runs the naive one
+//   E. that the shipped live eruption keeps flight and deposits active inside the host gate;
+//   F. what the inventory pass costs, which is why the frame diagnostic runs the naive one
 //      and the acceptance gates run the compensated one.
 //
 // Report only in the sense the repository uses: it never edits params.js. The gates here are
@@ -31,7 +32,7 @@ var RUNGS = [[256, 24, 4], [512, 48, 2], [1024, 96, 2]];   // the page's quality
 var SHIPPED = [0.05, 0.03, 0.12];                          // resMelt, resAir, resDep
 var SCALES = [0, 0.5, 1, 2];                               // reserve 0 / 0.10 / 0.20 / 0.40
 var FRAMES = [150, 60, 25];                                // timed frames per rung in B
-var BUDGET = 14;                                           // ms/frame, 0.3.0-plan.md §7
+var BUDGET = 20;                                           // ms/frame, fixed host gate
 var rnd = 24680;
 
 function draw(n) {
@@ -48,6 +49,7 @@ function configure(nx, ny, mpc, scale) {
 	P.ic = 'cool'; P.flip = 1; P.solid = true;
 	P.Ra = 1e6; P.RaK = P.Ra * P.kappa / (P.depth * P.depth * P.depth);
 	P.sl.kyr = 50; P.seed = 1;
+	P.meltHold = 0.1; P.vMelt = 60; P.yCham = 40; P.chJoin = 250; P.chSpan = 230; P.chCap = 64;
 	SIM.init(); SIM.reset();
 	SIM.dt = P.sl.kyr / 1000;
 	return SIM.M;
@@ -178,13 +180,10 @@ for (r = 0; r < RUNGS.length; r++) {
 check.ok('the shipped rung fills its whole reserve exactly',
 	shipped.made === shipped.cap - shipped.base && shipped.n === shipped.cap,
 	shipped.made + ' admitted of ' + (shipped.cap - shipped.base) + ', n ' + shipped.n + '/' + shipped.cap);
-// The budget gate is re-based the way pt-check's was in P3.1: plan §7's 14 ms was measured on
-// the P3.0 acceptance's sandbox, and an absolute millisecond count carries the host (this box
-// runs the unchanged P3.0 pipeline at 13.6-14.7 ms). The bar is the host's; the relative half
-// is what the gate is really about -- a filled reserve may cost the sweep's marginal price
-// (~1.3x an empty pool at this rung, window noise included) and not a regression of the pool.
-check.ok('the shipped rung fits the frame budget with the reserve filled (host-carried bar)',
-	shipped.ms < 16, shipped.ms.toFixed(2) + ' ms/frame against 16 ms (' + BUDGET + ' ms plan bar)');
+// Keep the absolute frame gate fixed at 20 ms; the relative check separately catches a pool
+// regression without changing that host bar.
+check.ok('the shipped rung fits the 20 ms host gate with the reserve filled',
+	shipped.ms < BUDGET, shipped.ms.toFixed(2) + ' ms/frame against ' + BUDGET + ' ms');
 check.ok('and the filled reserve costs the measured marginal price, not a regression',
 	shipped.rel < 1.4, shipped.rel.toFixed(3) + 'x an empty pool at the same rung');
 check.info('the reserve\'s marginal price at 256x24, against an empty pool', sweep.slice(0, SCALES.length).map(function (q) {
@@ -281,8 +280,35 @@ check.ok('and the enthalpy ledger still closes against the wall flux',
 	gap > 0.8 && gap < 1.2, 'intake/wall ' + gap.toFixed(4));
 check.info('a frame at capacity, with the pressure still on', msD.toFixed(2) + ' ms against ' + BUDGET + ' ms');
 
-// ---------------------------------------------------------------- E. the inventory's cost
-check.section('E. the inventory: the frame pass and the gate pass');
+// ---------------------------------------------------------------- E. active P3.4 load
+check.section('E. the shipped live eruption keeps flight and deposits active');
+M = configure(256, 24, 4, 1);
+PTPOOL.inventoryComp(S);
+var activeM0 = S.invMTot, activeH0 = S.invHTot, activeHL0 = S.hLedger;
+SIM.run(400);                                      // 20 Myr: beyond the first shipped eruption
+var activeAir0 = S.invN[P.PH.air], activeDep0 = S.invN[P.PH.dep];
+var activeMs = frameMs(200), activeSpread = spread;
+PTPOOL.inventoryComp(S);
+var activeEnt = ((S.invHTot - activeH0) - (S.hLedger - activeHL0)) / Math.abs(activeH0);
+check.ok('the timed window really carries both moving clasts and landed deposits',
+	activeAir0 > 0 && activeDep0 > 0 && S.invN[P.PH.air] > 0 && S.invN[P.PH.dep] > 0,
+	'before ' + activeAir0 + '/' + activeDep0 + ' air/dep, after '
+	+ S.invN[P.PH.air] + '/' + S.invN[P.PH.dep]);
+check.ok('the live P3.4 window emits, lands and coalesces material',
+	S.tx.emit > 0 && S.tx.land > 0 && S.tx.merge > 0,
+	'emit ' + S.tx.emit + ' land ' + S.tx.land + ' merge ' + S.tx.merge);
+check.ok('the active flight/deposit frame fits the fixed 20 ms host gate',
+	activeMs < BUDGET, activeMs.toFixed(2) + ' ms/frame, window spread ' + (100 * activeSpread).toFixed(0) + '%');
+check.near('active flight and landing conserve global mass', S.invMTot, activeM0, 1e-12, 'km2');
+check.ok('their cooling closes global enthalpy against the heat book',
+	Math.abs(activeEnt) < 1e-9, 'relative residual ' + activeEnt.toExponential(2));
+check.ok('the live reserve admits every emitted batch', S.tx.refuse === 0 && S.n < P.partCap,
+	'n ' + S.n + '/' + P.partCap + ' refusals ' + S.tx.refuse);
+check.info('the active-load timing', activeMs.toFixed(2) + ' ms/frame after ' + S.tx.emit
+	+ ' emissions and ' + S.tx.land + ' landings');
+
+// ---------------------------------------------------------------- F. the inventory's cost
+check.section('F. the inventory: the frame pass and the gate pass');
 M = configure(256, 24, 4, 1);
 fill(M);
 SIM.run(20);

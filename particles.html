@@ -51,7 +51,7 @@
 	<div id="hud"></div>
 </div>
 <div id="keys">
-	space pause &middot; . step &middot; r reset &middot; n new planet (next seed) &middot; m markers &middot; v melt &middot; c crust overlay &middot; w relief &middot; g ruler &middot; 1/2/3 quality &middot; l/d/f lid, deep, mantle &middot; wheel zoom &middot; drag pan (the map wraps round) &middot; grey = welded crust (strong markers ride rigid plates) &middot; blue = ocean over the drawn horizon &middot; gold = the mantle's equilibrium melt (conserved in H, one host per parcel) &middot; <a href="columns.html">column engine &rarr;</a>
+	space pause &middot; . step &middot; r reset &middot; n new planet (next seed) &middot; m markers &middot; v melt &middot; c crust overlay &middot; w relief &middot; g ruler &middot; 1/2/3 quality &middot; l/d/f lid, deep, mantle &middot; wheel zoom &middot; drag pan (the map wraps round) &middot; grey = welded crust (strong markers ride rigid plates) &middot; blue = ocean over the drawn horizon &middot; gold = equilibrium melt &middot; orange = conserved ejecta in wall-clock flight &middot; rust = landed lava &middot; <a href="columns.html">column engine &rarr;</a>
 </div>
 <!-- classic scripts, no build, file:// safe: params first, then the engine, then the view, and
      the UI last because sim.js's bootstrap calls PTUI and PTRNDR as soon as it loads -->
@@ -65,6 +65,7 @@
 <script src="js/pt/solid.js"></script>
 <script src="js/pt/melt.js"></script>
 <script src="js/pt/vent.js"></script>
+<script src="js/pt/flight.js"></script>
 <script src="js/pt/render.js"></script>
 <script src="js/pt/ui.js"></script>
 <script src="js/pt/sim.js"></script>

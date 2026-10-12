@@ -1,10 +1,10 @@
 // pt/melt.js — 0.3.0 P3.2: G5, melt segregation and intrusive storage
 // (0.3.0-p3-plan.md §3 G5, §4 P3.2). One pass, three rules, in the order the plan gives:
 //
-//   detach   PH_SOLID source rock sheds its equilibrium melt (pool.js separate) once the
+//   detach   mantle source rock sheds its equilibrium melt (pool.js separate) once the
 //            fraction reaches P.meltHold; a fully molten parcel is a whole-parcel phase
 //            change. A full pool defers the split and the phase fraction stays in its
-//            source parcel.
+//            source parcel. Landed ejecta remains a deposit while flight.js cools it.
 //   transit  mobile melt rises on the flow map plus its own buoyant speed (grid.js velAt
 //            plus vMelt downward-in-y terms: y is depth, so rising is -vy). Below
 //            meltHold the parcel is frozen residue: it becomes mantle again and rides the
@@ -34,11 +34,13 @@
 			this.transit(M, S, dt);
 		},
 
-		// source rock (mantle and landed deposits) sheds its melt at the equilibrium split
+		// Mantle source rock sheds its melt at the equilibrium split. A landed parcel is
+		// already at the end of the buoyant path; keeping it in the deposit phase lets the
+		// surface exchange cool it instead of sending hot ejecta straight back to a chamber.
 		detach: function (S) {
-			var solid = P.PH_SOLID, ph = S.ph, ml = S.melt, hold = P.meltHold, p, xi;
+			var ph = S.ph, ml = S.melt, hold = P.meltHold, p, xi;
 			for (p = 0; p < S.n; p++) {
-				if (!solid[ph[p]]) continue;
+				if (ph[p] !== P.PH.mantle) continue;
 				xi = ml[p];
 				if (xi >= 1) {
 					// wholly molten: one whole-parcel phase change (P3.1's rule), and a

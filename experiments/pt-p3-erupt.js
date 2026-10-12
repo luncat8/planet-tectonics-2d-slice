@@ -19,11 +19,10 @@
 //   7. the books       -- vent stock closes inside the pool inventory exactly once; throughput is
 //                         matched debit/credit and reported apart from stock; zero time changes
 //                         nothing
-//   8. the live run    -- 100 Myr of the shipped pipeline (footprint 400 km): closure, no NaN,
-//                         and the margin between the largest head and its threshold
-//   9. the live run    -- 100 Myr with the footprint at 100 km, a fixture that opens conduits so
-//                         the whole path runs live: closure with vents in the inventory, blocked
-//                         conduits counted, enthalpy and the latent identity unmoved
+//   8. the live run    -- 100 Myr of the shipped lower-crustal geometry (footprint 230 km):
+//                         closure, no NaN and conduits that actually feed downstream flight
+//   9. the live run    -- 100 Myr with the footprint at 100 km, a high-throughput fixture:
+//                         closure across vents and downstream phases, enthalpy and latent identity
 //  10. the crystal     -- a chamber with no melt is stock once, with mass and heat and no melt
 //
 // Report-only numbers (the margin, the footprint at which the shipped run would open, the time
@@ -44,8 +43,8 @@ function configure(chSpan) {
 	P.mesh.nx = 256; P.mesh.ny = 24; P.mpc = 4; P.ic = 'cool'; P.flip = 1; P.solid = true;
 	P.Ra = 1e6; P.RaK = P.Ra * P.kappa / (P.depth * P.depth * P.depth);
 	P.sl.kyr = 50; P.seed = 1;
-	P.meltHold = 0.1; P.vMelt = 60; P.yCham = 80; P.chJoin = 400; P.chCap = 64;
-	P.chSpan = chSpan || 400;
+	P.meltHold = 0.1; P.vMelt = 60; P.yCham = 40; P.chJoin = 250; P.chCap = 64;
+	P.chSpan = chSpan || 230;
 	SIM.init(); SIM.reset();
 	SIM.dt = P.sl.kyr / 1000;
 	return SIM.M;
@@ -54,6 +53,7 @@ function configure(chSpan) {
 function inv() { PTPOOL.inventoryComp(S); return { m: S.invMTot, h: S.invHTot, f: S.invFTot, w: S.invWTot, l: S.invLTot }; }
 function identity() { return (S.hLedger - S.ledger) - P.meltLat * (S.invLTot - S.invL0); }
 function sum(a, n) { var s = 0, i; for (i = 0; i < n; i++) s += a[i]; return s; }
+function phaseMass(ph) { var s = 0, i; for (i = 0; i < S.n; i++) if (S.ph[i] === ph) s += S.m[i]; return s; }
 // the melt-phase mass in flight: the other side of the melt book (segregated mass, plus whole-parcel
 // melting, less freeze-backs, is what intrusions and the mass still in flight must add up to)
 function meltInFlight() { var k, m = 0; for (k = 0; k < S.n; k++) if (S.ph[k] === P.PH.melt) m += S.m[k]; return m; }
@@ -215,7 +215,7 @@ VENT.run(M, S, 0);
 check.ok('zero geological time changes nothing', S.hash() === hashZ, 'hash ' + S.hash());
 
 // ---------------------------------------------------------------- 8. the shipped run
-check.section('8. 100 Myr of the shipped pipeline (footprint 400 km)');
+check.section('8. 100 Myr of the shipped pipeline (footprint 230 km)');
 M = configure(0);
 var lc0 = inv(), hl0 = S.hLedger, frames = 2000, fk, nan = 0, pk, maxEx = -1e9, maxK = -1;
 var opened = 0, kk, ex;
@@ -236,13 +236,17 @@ check.ok('the latent identity still holds', Math.abs(identity()) < 1e-9 * Math.a
 	'identity ' + identity().toExponential(3));
 check.near('the melt book closes over the shipped run: segregated plus whole, less freeze, is intruded plus in flight',
 	S.thr.seg + S.thr.whole - S.thr.freeze, S.thr.intrDr + meltInFlight(), 1e-12, 'km2');
-check.ok('the shipped run opens no conduit', opened === 0 && S.tx.vent === 0 && S.invVM === 0,
-	'max open ' + opened + '   vent drains ' + S.tx.vent);
-check.info('the margin at the shipped footprint', 'largest head ' + (maxEx + VENT.threshold(M, S, maxK)).toFixed(1)
-	+ ' km against a threshold of ' + VENT.threshold(M, S, maxK).toFixed(1) + ' km (chamber ' + maxK + ', margin '
-	+ maxEx.toFixed(1) + ' km of head)');
-check.info('the footprint that would open that chamber now', 'chSpan* = chM / threshold = '
-	+ (S.chM[maxK] / VENT.threshold(M, S, maxK)).toFixed(0) + ' km (shipped ' + P.chSpan + ' km)');
+check.ok('the shipped geometry opens conduits under the melt supply it actually produces',
+	opened > 0 && S.tx.vent > 0, 'max open ' + opened + '   vent drains ' + S.tx.vent);
+check.ok('the shipped drains continue into flight and terrain landing', S.tx.emit > 0 && S.tx.land > 0,
+	'emissions ' + S.tx.emit + '   landings ' + S.tx.land);
+check.ok('all three downstream transfer pairs remain exact', S.thr.ventDr === S.thr.ventCr
+	&& S.thr.airDr === S.thr.airCr && S.thr.landDr === S.thr.landCr,
+	'vent/air/land ' + S.thr.ventCr.toFixed(0) + '/' + S.thr.airCr.toFixed(0) + '/' + S.thr.landCr.toFixed(0));
+check.info('the largest observed pressure margin at the shipped footprint', 'head ' +
+	(maxEx + VENT.threshold(M, S, maxK)).toFixed(1) + ' km against threshold ' +
+	VENT.threshold(M, S, maxK).toFixed(1) + ' km (chamber ' + maxK + ', margin ' +
+	maxEx.toFixed(1) + ' km of head)');
 
 // ---------------------------------------------------------------- 9. the fixture run
 check.section('9. 100 Myr with the footprint at 100 km: the whole eruption path runs live');
@@ -270,10 +274,15 @@ check.near('and water', fx1.w, fx0.w, 1e-12, 'km2');
 check.ok('the global enthalpy residual is round-off', Math.abs(entRes9) < 1e-9, 'residual ' + entRes9.toExponential(2));
 check.ok('the latent identity holds across the eruptions', Math.abs(identity()) < 1e-9 * Math.abs(S.hLedger),
 	'identity ' + identity().toExponential(3));
-check.near('the drained mass is the vent stock, once', drained, vStock, 1e-12, 'km2');
+check.near('drained mass is staged in a vent or has been debited to flight',
+	drained, vStock + S.thr.airDr, 1e-12, 'km2');
+check.near('emitted mass is airborne or has been debited to landing',
+	S.thr.airCr, phaseMass(P.PH.air) + S.thr.landDr, 1e-12, 'km2');
+check.near('landed mass is still deposit stock after compatible merges',
+	S.thr.landCr, phaseMass(P.PH.dep), 1e-12, 'km2');
 check.near('the melt book closes over the seeded run, with the eruptions beside it', S.thr.seg + S.thr.whole - S.thr.freeze,
 	S.thr.intrDr + meltInFlight(), 1e-12, 'km2');
-check.ok('a schedule that fills blocks its conduit and the chamber keeps the rest', S.tx.block > 0 && nBlk > 0,
+check.ok('active flight keeps the finite vent schedules from remaining blocked', S.tx.block === 0 && nBlk === 0,
 	'blocked events ' + S.tx.block + '   blocked now ' + nBlk);
 check.ok('nothing was dropped: refusals stay at the pool\'s own count', S.tx.refuse === 0, 'refuse ' + S.tx.refuse);
 check.info('the eruption census', 'open ' + VENT.count(S, VENT.OPEN) + '   blocked ' + nBlk + '   closed '
@@ -282,7 +291,7 @@ check.info('the eruption census', 'open ' + VENT.count(S, VENT.OPEN) + '   block
 		var k, n = 0; for (k = 0; k < S.chN; k++) if (S.vState[k] && S.vStyle[k] === VENT.EXPLOSIVE) n++; return n;
 	}()));
 check.info('the throughputs, apart from stock', 'segregated ' + S.thr.seg.toFixed(0) + '   intruded '
-	+ S.thr.intrDr.toFixed(0) + '   drained ' + drained.toFixed(0) + ' km2  (never added to the inventory)');
+	+ S.thr.intrDr.toFixed(0) + '   drained ' + drained.toFixed(0) + ' km2  (throughput, never extra stock)');
 
 // ---------------------------------------------------------------- 10. crystallised intrusions
 // No chamber cools in P3.3, so the live run never holds a crystal-only record. The inventory

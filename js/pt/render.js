@@ -30,6 +30,7 @@ var PTR = {
 
 	SKY: 0xff1c1014, CMB: 0xff2e1a10, MARK: 0x404040, PM: 0xd8d4c8,
 	WATER: 0xff7a3a12, HORIZON: 0xff9a968c,
+	AIR_EFF: 0xff38b5ff, AIR_BLAST: 0xffb8e8ff, DEP: 0xff5078d8,
 
 	// The canvas is 5x the mesh in x and 6x in y, so the raster runs at half resolution and
 	// is scaled up: 4x fewer pixels and the stipple's scattered writes stay in cache, which
@@ -175,32 +176,48 @@ var PTR = {
 	// The map is periodic, so a marker is drawn at its image nearest the view centre: the
 	// camera clamps the window to one period (zoomAt), so that image is the only one on screen.
 	// A marker rides the same terrain warp the raster draws (P2.3): its drawn eta is shifted by
-	// zVis / J(y), the km-to-eta metric at its own depth, damped by exp(-y / yTaper) -- one
-	// exp and one sqrt per shallow marker, and nothing at all below the taper is spent.
+	// zVis / J(y), the km-to-eta metric at its own depth, damped by exp(-y / yTaper). Air and
+	// deposits already carry the physical (1x) horizon in y, so they receive only the remaining
+	// visual exaggeration; this keeps a landed mark on the drawn horizon with relief on or off.
 	stipple: function (M, S, px, w, h) {
 		var v = P.view, inv = (h - 1) / (v.eB - v.eT), W = M.wrap, nx = M.nx;
 		var zh = S.zh, yT = P.yTaper, yL = M.yLin, kRel = this.relief ? P.kRelief : 0;
-		var zTop = P.zVisMax;
-		var p, x, xf, y, q, m, d, e, i, i1, f, fx, yy, zv;
+		var zTop = P.zVisMax, ph = S.ph;
+		var p, x, xf, y, q, m, d, e, i, i1, f, fx, yy, zv, air, surface, warp;
 		for (p = 0; p < S.n; p++) {
 			d = S.x[p] - v.cx;
 			d -= Math.floor(d / W + 0.5) * W;
 			xf = d / this.sx + w * 0.5;
 			if (xf < 0 || xf >= w) continue;
 			e = S.e[p];
-			yy = S.y[p];
-			if (kRel && yy < 3 * yT) {
+			yy = S.y[p]; air = ph[p] === P.PH.air;
+			surface = air || ph[p] === P.PH.dep;
+			warp = surface ? kRel - 1 : kRel;
+			if (warp && yy < 3 * yT) {
 				f = S.x[p] / M.dx; i = Math.floor(f); fx = f - i;
 				i -= Math.floor(i / nx) * nx;
 				i1 = i + 1 === nx ? 0 : i + 1;
 				zv = zh[i] + (zh[i1] - zh[i]) * fx;
 				if (zv > zTop) zv = zTop; else if (zv < -zTop) zv = -zTop;
-				e -= kRel * zv * Math.exp(-yy / yT) / Math.sqrt(yL * yL + yy * yy);
+				if (surface) e = Math.asinh((yy - warp * zv) / yL);
+				else e -= warp * zv * Math.exp(-yy / yT) / Math.sqrt(yL * yL + yy * yy);
 			}
 			y = (e - v.eT) * inv;
 			if (y < 0 || y >= h) continue;
 			x = xf | 0;
 			q = (y | 0) * w + x;
+			if (air) {
+				m = S.cW[p] > P.wBlast ? this.AIR_BLAST : this.AIR_EFF;
+				px[q] = m;
+				if (P.flightPx > 1) {
+					if (x > 0) px[q - 1] = m;
+					if (x + 1 < w) px[q + 1] = m;
+					if (q >= w) px[q - w] = m;
+					if (q + w < px.length) px[q + w] = m;
+				}
+				continue;
+			}
+			if (ph[p] === P.PH.dep) { px[q] = this.DEP; continue; }
 			m = S.mu[p] >= P.clusterMin ? this.PM : this.MARK;
 			px[q] |= m;
 		}

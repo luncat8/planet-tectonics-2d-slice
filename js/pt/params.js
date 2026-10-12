@@ -105,8 +105,8 @@ var PTP = {
 	// radius against the pool reserve; those numbers freeze with P3.5, not before.
 	meltHold: 0.1,               // melt fraction that is mobile: source rock sheds it, transit melt dies below it
 	vMelt: 60,                   // km/Myr (6 cm/yr), the melt's own buoyant rise on top of the flow map
-	yCham: 80,                   // km, intrusion depth: melt reaching this level joins a chamber and stops rising
-	chJoin: 400,                 // km, the merge radius: intrusions within it share one chamber record
+	yCham: 40,                   // km, lower-crustal storage depth; the 8-37 km top mesh rows resolve it
+	chJoin: 250,                 // km, coarse volcanic-system catchment; nearby intrusions share one record
 	chCap: 64,                   // chamber records, allocated once; a full chamber set defers the transfer
 	// P3.3, conduits and eruption scheduling (0.3.0-p3-plan.md §4 P3.3). Pressures are km of
 	// rock head: density is uniform (P1), so a melt column of thickness h pushes with h, and the
@@ -114,14 +114,32 @@ var PTP = {
 	// chM / chSpan; its roof is at chY. A conduit opens when that head exceeds the roof's
 	// lithostatic load plus its tensile strength, and drains at a rate set by the excess. The
 	// schedule meters melt the chamber already holds; nothing here creates it.
-	chSpan: 400,                 // km, lateral footprint of one chamber record
+	chSpan: 230,                 // km, effective 2D footprint of a regional lower-crustal reservoir
 	tensile: 0.3,                // km of rock head at full strength: ~10 MPa at rho g ~ 33 MPa/km
 	kVent: 0.5,                  // 1/Myr, effusive drain: flux = kVent * excess * chSpan (km2/Myr)
 	kBlast: 2,                   // 1/Myr, explosive drain at the same excess
 	wBlast: 0.01,                // water mass fraction above which a new conduit is explosive
-	vCap: 4000,                  // km2, a vent schedule's capacity: full, its conduit blocks. Only
-	                             // P3.4's flight takes mass out of a schedule, so this is the
-	                             // room the vent has until then
+	vCap: 4000,                  // km2, conserved vent stock waiting for a flight slot
+	// P3.4, flight, landing and welding. Supply and cooling use geological time; only the
+	// ballistic path uses seconds of wall time. One emitted parcel is a conserved batch of
+	// ejecta, not one literal bomb, so its mass may be much larger than its display mark.
+	emitEff: 1000,               // km2/Myr, maximum vent-to-flight transfer per effusive outlet
+	emitBlast: 4000,             // km2/Myr, explosive transfer at the same geological clock
+	flightFrame: 1 / 60,         // s, deterministic headless frame when no wall interval is supplied
+	flightDtMax: 0.05,           // s, suspended tabs advance at most this far on their return frame
+	flightG: 40,                 // km/s2 in presentation space (the trajectory is deliberately dilated)
+	flightVyEff: 18,             // km/s upward: about 0.9 s and 4 km high
+	flightVyBlast: 30,           // km/s upward: about 1.5 s and 11 km high
+	flightVxEff: 30,             // km/s maximum lateral presentation speed
+	flightVxBlast: 80,
+	flightLift: 0.05,            // km above the local terrain horizon at launch
+	flightPx: 2,                 // half-resolution raster pixels used by an airborne mark
+	depositCoolT: 0,             // normalized surface boundary temperature (the model's ambient)
+	depositCoolTau: 0.1,         // Myr; a coarse-step quench over a few demonstration frames
+	depositCoolDepth: 30,        // km, only shallow landed material exchanges with the surface wall
+	depositMerge: 40,            // km, compatible landed batches inside this radius may coalesce
+	mergeCompF: 0.02,            // maximum felsic-fraction difference for a material merge
+	mergeCompW: 0.002,           // maximum water-fraction difference for a material merge
 	// crust (plan §4.2, reduced to the kinematic core for P2.1): a marker's strength is
 	//   heat(T)  = smoothstep(muLo, muHi, T)          hot rock is soft
 	//   mu(T,a)  = (0.05 + 0.95 * (1 - heat)) * (1 - exp(-age / tauWeld))

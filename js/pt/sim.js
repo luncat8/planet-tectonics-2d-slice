@@ -5,8 +5,10 @@
 //   G4 phase equilibrium + solid   G5 segregation   G6 eruptions   G7 surface   G8 diag
 // G4 is P3.1's equilibrium mapping (phase.js) followed by P2.1's crust law: age, strength,
 // plate clusters and the rigid projection (solid.js). G5 is P3.2's segregation (melt.js), G6 is
-// P3.3's conduits and metered eruption supply (vent.js).
-// Every kernel no-ops at dtGeo = 0: a paused frame reports, it does not change the state.
+// P3.3's conduits and metered eruption supply (vent.js), followed by P3.4's conserved
+// vent-to-air transfer, wall-clock flight, landing and surface cooling (flight.js).
+// Geological kernels no-op at dtGeo = 0; only an explicitly supplied wall interval may move
+// airborne material while geology is paused.
 'use strict';
 var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
 var G = (typeof module !== 'undefined' && module.exports) ? require('./grid.js') : window.PTG;
@@ -16,6 +18,8 @@ var SC = (typeof module !== 'undefined' && module.exports) ? require('./solid.js
 var PHASE = (typeof module !== 'undefined' && module.exports) ? require('./phase.js') : window.PTPHASE;
 var MT = (typeof module !== 'undefined' && module.exports) ? require('./melt.js') : window.PTMELT;
 var VENT = (typeof module !== 'undefined' && module.exports) ? require('./vent.js') : window.PTVENT;
+var FLIGHT = (typeof module !== 'undefined' && module.exports) ? require('./flight.js') : window.PTFLIGHT;
+var PTPOOL = (typeof module !== 'undefined' && module.exports) ? require('./pool.js') : window.PTPOOL;
 var PERF = (typeof module !== 'undefined' && module.exports) ? require('../perf.js') : window.COLPERF;
 
 var SIM = {
@@ -65,31 +69,47 @@ var SIM = {
 		this.frame++;
 	},
 
-	step: function () {
+	step: function (wallDt) {
+		if (wallDt === undefined) wallDt = P.flightFrame;
 		this.k0();
-		if (!(this.dt > 0)) { this.sub = 0; this.subDt = 0; return; }
-		// The clock controls how much geology one *rendered* frame represents, not the
-		// transport CFL. A 500 kyr display frame is ten validated 50 kyr fluid updates, so its
-		// result matches ten ordinary frames instead of skipping across the narrow top rows.
-		var n = Math.ceil(this.dt / P.dtFluidMax);
-		if (n < 1) n = 1;
-		var ds = this.dt / n, t0 = this.t - this.dt, s, i, f;
-		this.sub = n; this.subDt = ds;
-		for (s = 0; s < n; s++) {
-			for (i = 1; i < 8; i++) {
-				f = this.k[i];
-				if (f) f(this.M, S, ds, t0 + (s + 1) * ds);
+		var f, n = 0, ds = 0, t0 = this.t - this.dt, s, i;
+		if (this.dt > 0) {
+			// The clock controls how much geology one *rendered* frame represents, not the
+			// transport CFL. A 500 kyr display frame is ten validated 50 kyr fluid updates, so
+			// its result matches ten ordinary frames instead of skipping the narrow top rows.
+			n = Math.ceil(this.dt / P.dtFluidMax);
+			if (n < 1) n = 1;
+			ds = this.dt / n;
+			for (s = 0; s < n; s++) {
+				for (i = 1; i < 8; i++) {
+					f = this.k[i];
+					if (f) f(this.M, S, ds, t0 + (s + 1) * ds);
+				}
+				F.wall(this.M, S);
+				S.wall += S.d.wallRate * ds;
 			}
-			F.wall(this.M, S);
-			S.wall += S.d.wallRate * ds;
 		}
+		this.sub = n; this.subDt = ds;
+		// Supply is one conserved batch per vent per rendered geological frame; its mass is
+		// proportional to the whole geological interval. The trajectory then advances on the
+		// independent wall interval, including when dtGeo is zero.
+		FLIGHT.run(this.M, S, this.dt, wallDt);
 		f = this.k[8];
 		if (f) f(this.M, S, this.dt, this.t);
 	},
 
-	// n frames with no rendering (fixtures); the diagnostics are part of a frame
-	run: function (n) {
-		for (var i = 0; i < n; i++) this.step();
+	// A UI pause stops geology, not a clast already in flight. Inventory is refreshed because
+	// a wall-only landing changes phase counts even though it changes no total stock.
+	wall: function (wallDt) {
+		if (wallDt === undefined) wallDt = P.flightFrame;
+		FLIGHT.run(this.M, S, 0, wallDt);
+		PTPOOL.inventory(S);
+	},
+
+	// n frames with no rendering (fixtures); the diagnostics are part of a frame. Passing an
+	// explicit wall interval fixes the presentation sequence; omitted means a 60 Hz sequence.
+	run: function (n, wallDt) {
+		for (var i = 0; i < n; i++) this.step(wallDt);
 		return S.hash();
 	}
 };
@@ -112,9 +132,11 @@ SIM.k[4] = function (M, S, dt) {
 // needs the equilibrium fraction G4 just read; the rise and the intrusion need the flow
 // map G2 solved, which is why the plan puts this at the end of the substep.
 SIM.k[5] = function (M, S, dt) { MT.run(M, S, dt); };
-// G6: conduits open on the overpressure the intrusions just built, and meter the chamber's
-// melt into the vent schedules (vent.js). It reads the strength G4 left and the stock G5 left.
-SIM.k[6] = function (M, S, dt) { VENT.run(M, S, dt); };
+// G6: conduits meter the chamber into vent schedules, while previously landed ejecta cools
+// against the surface wall on geological time. Vent stock becomes one airborne batch after
+// all fluid substeps, in step(), so a rendered frame cannot create ten overlapping clasts just
+// because its geological clock required ten transport solves.
+SIM.k[6] = function (M, S, dt) { VENT.run(M, S, dt); FLIGHT.cool(M, S, dt); };
 // G7 runs after G4 because it reads the welded strength and damage the crust pass leaves
 // behind (plan §5)
 SIM.k[7] = function (M, S, dt) { F.surface(M, S, dt); };
@@ -130,9 +152,12 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 	PTRNDR.init(document.getElementById('c'), SIM.M);      // the tables PTUI's preset rewrites
 	PTUI.init(SIM);
 	PTUI.updateHud(SIM);
+	var lastNow = 0;
 	function tick(now) {
-		var a = performance.now();
-		if (!PTUI.paused || PTUI.stepOnce) { PTUI.stepOnce = false; SIM.step(); }
+		var a = performance.now(), wallDt = lastNow ? (now - lastNow) / 1000 : 0;
+		lastNow = now;
+		if (!PTUI.paused || PTUI.stepOnce) { PTUI.stepOnce = false; SIM.step(wallDt); }
+		else SIM.wall(wallDt);
 		var b = performance.now();
 		PTRNDR.redraw(SIM.M, S);
 		var c = performance.now();

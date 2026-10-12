@@ -219,7 +219,7 @@ S.m[0] = 3; S.m[1] = 1;
 S.x[0] = 100; S.x[1] = 200; S.y[0] = 50; S.y[1] = 70; S.e[0] = 0.5; S.e[1] = 0.7;
 S.vx[0] = 10; S.vx[1] = -2; S.vy[0] = 1; S.vy[1] = 5;
 S.H[0] = 0.8; S.H[1] = 0.2; S.T[0] = 0.8; S.T[1] = 0.2;
-S.cF[0] = 0.1; S.cF[1] = 0.5; S.cW[0] = 0; S.cW[1] = 0.04;
+S.cF[0] = 0.1; S.cF[1] = 0.11; S.cW[0] = 0.001; S.cW[1] = 0.002;
 S.melt[0] = 0; S.melt[1] = 0.3; S.age[0] = 10; S.age[1] = 30;
 S.id[0] = 5; S.id[1] = 2; S.ph[0] = P.PH.mantle; S.ph[1] = P.PH.mantle;
 var px0 = 3 * 10 + 1 * -2, py0 = 3 * 1 + 1 * 5;
@@ -228,7 +228,7 @@ check.near('mass sums', S.m[0], 4, 0);
 check.near('x momentum sums', S.m[0] * S.vx[0], px0, 1e-14);
 check.near('y momentum sums', S.m[0] * S.vy[0], py0, 1e-14);
 check.near('enthalpy is the mass-weighted mean', S.H[0], (3 * 0.8 + 1 * 0.2) / 4, 1e-15);
-check.near('and so is the composition', S.cF[0], (3 * 0.1 + 1 * 0.5) / 4, 1e-15);
+check.near('and so is the composition', S.cF[0], (3 * 0.1 + 1 * 0.11) / 4, 1e-15);
 check.near('and the position', S.x[0], 125, 1e-14);
 check.near('and the melt fraction', S.melt[0], (3 * 0 + 1 * 0.3) / 4, 1e-15);
 check.ok('the survivor keeps the older id', S.id[0] === 2, 'id ' + S.id[0]);
@@ -248,7 +248,7 @@ function mergeScript(swap) {
 	M = configure('cool');
 	SIM.run(20);
 	var a = 101, b = 102, t;
-	S.cF[a] = 0.2; S.cF[b] = 0.4; S.H[a] = 0.7; S.H[b] = 0.3;
+	S.cF[a] = 0.2; S.cF[b] = 0.21; S.H[a] = 0.7; S.H[b] = 0.3;
 	S.m[a] = 2; S.m[b] = 6; S.id[a] = 30; S.id[b] = 12;
 	S.ph[a] = P.PH.mantle; S.ph[b] = P.PH.mantle;
 	if (swap) { t = a; a = b; b = t; }
@@ -259,6 +259,13 @@ var mA = mergeScript(false), mB = mergeScript(true);
 check.ok('merge(a, b) and merge(b, a) are the same parcel',
 	mA.id === mB.id && mA.m === mB.m && mA.h === mB.h && mA.f === mB.f && mA.x === mB.x,
 	'id ' + mA.id + '/' + mB.id + '  m ' + mA.m + '/' + mB.m + '  H ' + mA.h.toFixed(12) + '/' + mB.h.toFixed(12));
+M = configure('cool');
+var tail = S.n - 1, hole = 100, tailMass = S.m[tail] + S.m[hole];
+S.cF[tail] = S.cF[hole] = 0; S.cW[tail] = S.cW[hole] = 0;
+var survivor = PTPOOL.merge(M, S, tail, hole);
+check.ok('when the survivor was the tail, merge returns its compacted slot',
+	survivor === hole && S.m[survivor] === tailMass && S.n === P.partBase - 1,
+	'slot ' + survivor + '   n ' + S.n);
 
 // a split and its inverse merge, at the tolerance P3.4 gates. The pair is pinned to one
 // phase: the live pipeline (P3.2's segregation) leaves melt children in the pool, and an
@@ -292,6 +299,11 @@ S.ph[3] = P.PH.dep;
 check.ok('a merge across phases is refused and counted',
 	PTPOOL.merge(M, S, 2, 3) === -1 && S.tx.refuse === ref0 + 1, 'refuse ' + S.tx.refuse);
 S.ph[3] = P.PH.mantle;
+S.cF[2] = 0; S.cF[3] = P.mergeCompF + 0.01;
+ref0 = S.tx.refuse;
+check.ok('a merge of incompatible compositions is refused and counted',
+	PTPOOL.merge(M, S, 2, 3) === -1 && S.tx.refuse === ref0 + 1, 'refuse ' + S.tx.refuse);
+S.cF[3] = S.cF[2];
 var hRef2 = S.hash();
 PTPOOL.split(S, 5, 0.5, P.PH.air);
 check.ok('a fractional split of 0 or 1 is refused', PTPOOL.split(S, 6, 0, P.PH.air) === -1

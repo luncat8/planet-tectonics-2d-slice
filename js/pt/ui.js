@@ -232,6 +232,9 @@ var PTUI = {
 			+ '\nconduits ' + VENT.count(S, VENT.OPEN) + ' open  ' + VENT.count(S, VENT.BLOCKED) + ' blocked'
 			+ '   vent stock ' + (S.invMTot > 0 ? (S.invVM / S.invMTot * 100).toFixed(2) : '0.00') + '% of mass'
 			+ '   drained ' + fmt(S.thr.ventCr)
+			+ '\nflight ' + S.invN[P.PH.air] + ' airborne  ' + S.invN[P.PH.dep] + ' landed'
+			+ '   emitted ' + fmt(S.thr.airCr) + '   landed ' + fmt(S.thr.landCr)
+			+ (S.invN[P.PH.air] ? '   wall clock ≤' + P.flightDtMax.toFixed(2) + ' s/f' : '')
 			+ '\nsim ' + PERF.msSim.toFixed(1) + ' ms   draw ' + PERF.msDraw.toFixed(1) + ' ms   fps ' + PERF.fps.toFixed(0);
 		if (this.probeOn) out += '\n' + this.probe;
 		this.hud.textContent = out;

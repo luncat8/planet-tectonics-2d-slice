@@ -202,41 +202,52 @@
 			return best;
 		},
 
+		// A merge is a material operation, so matching a transport phase is not enough: unlike
+		// compositions remain separate parcels. The tolerances are settings because P3.4's
+		// landed batches need a reproducible, captureable compatibility rule.
+		compatible: function (S, a, b) {
+			return a !== b && S.ph[a] === S.ph[b]
+				&& Math.abs(S.cF[a] - S.cF[b]) <= P.mergeCompF
+				&& Math.abs(S.cW[a] - S.cW[b]) <= P.mergeCompW;
+		},
+
 		// combine a and b into a, then close b's slot. Mass, momentum and enthalpy sum;
-		// composition, melt fraction, age and position are mass weighted; the survivor keeps
-		// the *older* id, so the result does not depend on the order the pair was found in.
-		// x is weighted through the periodic delta folded into [-wrap/2, wrap/2), so a pair
-		// straddling the seam merges into one body instead of one at each end of the map.
-		// y and e are weighted separately rather than one derived from the other: each is
-		// carried by its own kernel (advect steps e through the metric), and a merge only ever
-		// meets adjacent parcels, where the two conventions already agree.
-		// Same phase only -- a merge across phases would move material between ledger lines
-		// with no transfer counter for it. The composition/melt tolerance is P3.4's.
+		// composition, melt fraction, bond state and position are mass weighted; the survivor
+		// keeps the older id. x is weighted through the periodic delta folded into
+		// [-wrap/2, wrap/2), so a pair straddling the seam remains one body. y and e are
+		// weighted separately because both are carried state. Pair-load scratch is reset: the
+		// next crust pass rebuilds it from the merged parcel's actual neighbours.
 		merge: function (M, S, a, b) {
-			var ma, mb, mt, w, dx;
-			if (a === b || S.ph[a] !== S.ph[b]) { S.tx.refuse++; return -1; }
+			var ma, mb, mt, w, dx, out = a, last;
+			if (!this.compatible(S, a, b)) { S.tx.refuse++; return -1; }
 			ma = S.m[a]; mb = S.m[b]; mt = ma + mb;
 			if (!(mt > 0)) { S.tx.refuse++; return -1; }
 			w = mb / mt;
 			dx = S.x[b] - S.x[a];
 			dx -= Math.floor(dx / M.wrap + 0.5) * M.wrap;
-			S.vx[a] = (ma * S.vx[a] + mb * S.vx[b]) / mt;
-			S.vy[a] = (ma * S.vy[a] + mb * S.vy[b]) / mt;
+			S.vx[a] += w * (S.vx[b] - S.vx[a]);
+			S.vy[a] += w * (S.vy[b] - S.vy[a]);
 			S.H[a] += w * (S.H[b] - S.H[a]);
 			S.T[a] += w * (S.T[b] - S.T[a]);
 			S.cF[a] += w * (S.cF[b] - S.cF[a]);
 			S.cW[a] += w * (S.cW[b] - S.cW[a]);
 			S.melt[a] += w * (S.melt[b] - S.melt[a]);
 			S.age[a] += w * (S.age[b] - S.age[a]);
+			S.mu[a] += w * (S.mu[b] - S.mu[a]);
+			S.dmg[a] += w * (S.dmg[b] - S.dmg[a]);
 			S.x[a] += w * dx;
 			if (S.x[a] < 0) S.x[a] += M.wrap; else if (S.x[a] >= M.wrap) S.x[a] -= M.wrap;
 			S.y[a] += w * (S.y[b] - S.y[a]);
 			S.e[a] += w * (S.e[b] - S.e[a]);
-			S.m[a] = mt;
+			S.m[a] = mt; S.pLoad[a] = 0; S.pCnt[a] = 0;
 			if (S.id[b] < S.id[a]) S.id[a] = S.id[b];
+			// If a occupied the tail, remove(b) compacts that survivor into b. Return its
+			// actual slot so callers never receive the cleared tail index.
+			last = S.n - 1;
 			this.remove(S, b);
+			if (a === last) out = b;
 			S.tx.merge++;
-			return a;
+			return out;
 		},
 
 		// the stock side of the ledger, one naive pass: counts, per-phase mass and enthalpy,

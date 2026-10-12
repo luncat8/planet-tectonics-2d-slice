@@ -40,7 +40,7 @@ var PTS = {
 	x: null, y: null, e: null,      // km, km (depth), asinh(y/yLin) — e is carried, not derived
 	T: null,                        // 0 at the surface, 1 at the CMB
 	m: null,                        // mass per unit out-of-plane depth, km2 (fixed in P1)
-	vx: null, vy: null,             // km/Myr, the interpolated grid velocity
+	vx: null, vy: null,             // km/Myr while coupled; airborne presentation uses km/s
 	// the P3.0 material state (0.3.0-p3-plan.md §1.1, §1.3). One transport phase per parcel,
 	// one id that survives every move it makes, one specific enthalpy in the normalized unit
 	// the phase law will repartition, and composition as mass fractions that stay in the
@@ -91,11 +91,11 @@ var PTS = {
 	// and refused since reset. A refused transaction is a capacity event and is never silent,
 	// so the block exists from load and reset zeroes it
 	tx: { admit: 0, split: 0, merge: 0, move: 0, intrude: 0, refuse: 0,
-		whole: 0, freeze: 0, vent: 0, block: 0 },
-	// gross throughput, mass (km2) since reset: segregated melt, the two phase changes that
-	// move mass into and out of the melt phase (whole, freeze), intrusions and vent drains.
-	// Each has a debit and a credit side that must match. Throughput is never inventory
-	thr: { seg: 0, whole: 0, freeze: 0, intrDr: 0, intrCr: 0, ventDr: 0, ventCr: 0 },
+		whole: 0, freeze: 0, vent: 0, block: 0, emit: 0, land: 0 },
+	// gross throughput, mass (km2) since reset: phase changes and each reservoir/phase leg.
+	// Dr/Cr pairs are matching debit and credit sides. Throughput is never inventory.
+	thr: { seg: 0, whole: 0, freeze: 0, intrDr: 0, intrCr: 0, ventDr: 0, ventCr: 0,
+		airDr: 0, airCr: 0, landDr: 0, landCr: 0 },
 	invN: null, invM: null,         // the stock inventory by phase: parcels, mass, m*H
 	invH: null,
 	invMTot: 0, invHTot: 0,         // and the totals, with composition and melt as mass: the
@@ -199,6 +199,8 @@ var PTS = {
 			this.surfaceY = new Float64Array(M.nx); this.surfaceV = new Float64Array(M.nx);
 			this.surfaceCl = new Int32Array(M.nx);
 		}
+		// Resolve the transaction field table at setup, not on the first live split or launch.
+		PTPOOL.fields(this);
 		// the compensation depth as a node row: the last row at or above P.yIso (the top
 		// row, the surface boundary, is never included -- it carries no markers)
 		this.jIso = 1;
@@ -256,9 +258,10 @@ var PTS = {
 		this.empty = 0; this.clamp = 0; this.ledger = 0; this.wall = 0; this.hLedger = 0;
 		this.moved = 0; this.redeals = 0; this.csN = 0; this.nSolid = 0;
 		tx.admit = 0; tx.split = 0; tx.merge = 0; tx.move = 0; tx.intrude = 0; tx.refuse = 0;
-		tx.whole = 0; tx.freeze = 0; tx.vent = 0; tx.block = 0;
+		tx.whole = 0; tx.freeze = 0; tx.vent = 0; tx.block = 0; tx.emit = 0; tx.land = 0;
 		this.thr.seg = 0; this.thr.whole = 0; this.thr.freeze = 0;
 		this.thr.intrDr = 0; this.thr.intrCr = 0; this.thr.ventDr = 0; this.thr.ventCr = 0;
+		this.thr.airDr = 0; this.thr.airCr = 0; this.thr.landDr = 0; this.thr.landCr = 0;
 		this.chN = 0;
 		this.chX.fill(0); this.chY.fill(0); this.chM.fill(0); this.chH.fill(0);
 		this.chL.fill(0); this.chF.fill(0); this.chW.fill(0);
@@ -387,6 +390,8 @@ var PTS = {
 		a = mixHash(a, tx.freeze, HASH_PRIME_A); b = mixHash(b, tx.freeze, HASH_PRIME_B);
 		a = mixHash(a, tx.vent, HASH_PRIME_A); b = mixHash(b, tx.vent, HASH_PRIME_B);
 		a = mixHash(a, tx.block, HASH_PRIME_A); b = mixHash(b, tx.block, HASH_PRIME_B);
+		a = mixHash(a, tx.emit, HASH_PRIME_A); b = mixHash(b, tx.emit, HASH_PRIME_B);
+		a = mixHash(a, tx.land, HASH_PRIME_A); b = mixHash(b, tx.land, HASH_PRIME_B);
 		a = mixHash(a, this.thr.seg, HASH_PRIME_A); b = mixHash(b, this.thr.seg, HASH_PRIME_B);
 		a = mixHash(a, this.thr.whole, HASH_PRIME_A); b = mixHash(b, this.thr.whole, HASH_PRIME_B);
 		a = mixHash(a, this.thr.freeze, HASH_PRIME_A); b = mixHash(b, this.thr.freeze, HASH_PRIME_B);
@@ -394,6 +399,10 @@ var PTS = {
 		a = mixHash(a, this.thr.intrCr, HASH_PRIME_A); b = mixHash(b, this.thr.intrCr, HASH_PRIME_B);
 		a = mixHash(a, this.thr.ventDr, HASH_PRIME_A); b = mixHash(b, this.thr.ventDr, HASH_PRIME_B);
 		a = mixHash(a, this.thr.ventCr, HASH_PRIME_A); b = mixHash(b, this.thr.ventCr, HASH_PRIME_B);
+		a = mixHash(a, this.thr.airDr, HASH_PRIME_A); b = mixHash(b, this.thr.airDr, HASH_PRIME_B);
+		a = mixHash(a, this.thr.airCr, HASH_PRIME_A); b = mixHash(b, this.thr.airCr, HASH_PRIME_B);
+		a = mixHash(a, this.thr.landDr, HASH_PRIME_A); b = mixHash(b, this.thr.landDr, HASH_PRIME_B);
+		a = mixHash(a, this.thr.landCr, HASH_PRIME_A); b = mixHash(b, this.thr.landCr, HASH_PRIME_B);
 		// the intrusive store is state: a run that reached the same parcels by a different
 		// chamber history is not the same run (P3.2)
 		a = mixHash(a, this.chN, HASH_PRIME_A); b = mixHash(b, this.chN, HASH_PRIME_B);

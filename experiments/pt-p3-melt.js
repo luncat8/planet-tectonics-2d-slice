@@ -44,7 +44,7 @@ function configure(frames) {
 	P.mesh.nx = 256; P.mesh.ny = 24; P.mpc = 4; P.ic = 'cool'; P.flip = 1; P.solid = true;
 	P.Ra = 1e6; P.RaK = P.Ra * P.kappa / (P.depth * P.depth * P.depth);
 	P.sl.kyr = 50; P.seed = 1;
-	P.meltHold = 0.1; P.vMelt = 60; P.yCham = 80; P.chJoin = 400; P.chCap = 64;
+	P.meltHold = 0.1; P.vMelt = 60; P.yCham = 80; P.chJoin = 400; P.chSpan = 400; P.chCap = 64;
 	SIM.init(); SIM.reset();
 	SIM.dt = P.sl.kyr / 1000;
 	if (frames) SIM.run(frames);
