@@ -1,0 +1,31 @@
+  drift diagnostic: the shipped run, 256x24, wrap 16000 km, 50 kyr/f, 400 Myr
+
+   t/Myr  plate  markers   plate depth    |vPlate|   |vOwn|   |vBase|   |v150|   |v300|
+     100      0    4942        4..89 km       0.01     0.00     0.01    0.00    0.01
+     200      2    1729        4..79 km       4.73     0.25     0.25    0.24    0.28
+     200      0    1432       4..107 km       4.78     0.34     0.34    0.33    0.39
+     300      0     866       4..103 km       0.49     0.54     0.54    0.51    0.57
+     300      4     348        4..43 km       2.12     1.07     1.08    0.97    0.99
+     300      2     286        4..41 km       1.37     0.45     0.46    0.47    0.60
+     400      3     533        4..53 km       1.36     0.84     0.84    0.75    0.77
+     400      1     305        4..37 km       1.87     0.59     0.59    0.56    0.61
+
+  every plate at the last sample (>= 64 markers):
+   plate 3: 533 markers   drift 1.36 cm/yr   own 0.84   base 0.84   at 150 km 0.75   at 300 km 0.77 (mean speed there 1.06)
+   plate 1: 305 markers   drift 1.87 cm/yr   own 0.59   base 0.59   at 150 km 0.56   at 300 km 0.61 (mean speed there 0.77)
+
+the diagnostic is sane
+PASS  plates were found at every sample   100.04999999999646, 200.00000000001123, 300.00000000003394, 400.0000000000567
+PASS  every number is finite
+PASS  an unbroken planet-wrapping lid is not pulled sideways   t 100 Myr drift 0.00 cm/yr
+PASS  slab pull drives mean plate drift above the cancelled net flow   plate 2.09 vs own 0.51 cm/yr (4.1x)
+PASS  slab-bearing plates reach the 3-10 cm/yr demonstration scale   peak 4.78 cm/yr
+INFO  mean plate drift over all samples   2.09 cm/yr
+INFO  mean own-marker flow   0.51 cm/yr
+INFO  mean base flow under the plates   0.51 cm/yr
+INFO  mean flow at 150 km under the plates   0.48 cm/yr
+INFO  mean flow at 300 km under the plates   0.53 cm/yr
+INFO  mean speed (not net) at 300 km   0.77 cm/yr
+INFO  ratio net-300km/plate   0.25x
+
+ALL PASS (5 checks)

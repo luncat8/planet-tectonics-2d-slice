@@ -75,8 +75,8 @@ function worst(a, b) {
 function configure(ic, frames) {
 	P.wrap = 16000; P.depth = 2900; P.yLin = 40;
 	P.mesh.nx = 256; P.mesh.ny = 24;
-	P.mpc = 4; P.resMelt = 0.05; P.resAir = 0.03; P.resDep = 0.12;
-	P.resFrac = P.resMelt + P.resAir + P.resDep;
+	P.mpc = 4;
+	P.resFrac = P.resMelt + P.resAir + P.resDep;   // the shipped reserve, not a copy
 	P.ic = ic || 'cool'; P.flip = 1; P.solid = true;
 	P.Ra = 1e6; P.RaK = P.Ra * P.kappa / (P.depth * P.depth * P.depth);
 	P.sl.kyr = 50; P.seed = 1;

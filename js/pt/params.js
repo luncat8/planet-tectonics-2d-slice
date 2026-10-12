@@ -129,7 +129,9 @@ var PTP = {
 	flightDtMax: 0.05,           // s, suspended tabs advance at most this far on their return frame
 	flightG: 40,                 // km/s2 in presentation space (the trajectory is deliberately dilated)
 	flightVyEff: 18,             // km/s upward: about 0.9 s and 4 km high
-	flightVyBlast: 30,           // km/s upward: about 1.5 s and 11 km high
+	flightVyBlast: 27,           // km/s upward: about 1.4 s and 9 km high. 30 with the +-10%
+	                             // launch jitter of flight.js put the longest explosive arc at
+	                             // 1.65 s, outside §2.4's 0.5-1.5 s band; 27 bounds it at 1.49 s.
 	flightVxEff: 30,             // km/s maximum lateral presentation speed
 	flightVxBlast: 80,
 	flightLift: 0.05,            // km above the local terrain horizon at launch
@@ -240,14 +242,16 @@ var PTP = {
 	                             // where the operator charged it, and a fold has to remove four
 	                             // markers from a node before it becomes a hole.
 	// The reserve, as fractions of the base population. pool.js enforces only their sum, one
-	// shared cap above the base: a phase may take the whole reserve. The three fractions are
-	// the per-phase budget that experiments/pt-p3-budget.js and pt-p3-melt.js measure; per-phase
-	// lines are not enforced until P3.5 freezes them. sim.js turns the sum into partCap (a save
-	// records partCap and a load refuses a different one rather than reinterpreting a pool, §6
-	// of the P3 plan).
-	resMelt: 0.05,               // mobile melt waiting to rise, to intrude or to be erupted
+	// shared cap above the base: a phase may take the whole reserve. The three fractions are the
+	// per-phase budget, frozen by P3.5 against the slider matrix `experiments/pt-p3-check.js` §6
+	// measures: worst peaks over the matrix are melt 5.9% of the base (the initial condition's
+	// own mushy band), air 1.4%, deposits 0.03%, so each line sits above its own measurement and
+	// the sum stays the 0.20 the frame budget was proven at (P3.0's candidate 0.05 sat *below*
+	// the initial condition's melt population). sim.js turns the sum into partCap (a save records
+	// partCap and a load refuses a different one rather than reinterpreting a pool, §6 of the plan).
+	resMelt: 0.08,               // mobile melt waiting to rise, to intrude or to be erupted
 	resAir: 0.03,                // clasts in flight: a fountain is presentation, but it is mass
-	resDep: 0.12,                // landed deposits before they merge and weld into the crust
+	resDep: 0.09,                // landed deposits before they merge and weld into the crust
 	partBase: 0,                 // derived at init: mpc * nx * (ny - 1), the marker population
 	partCap: 32768,              // derived at init, never set by hand: base * (1 + resFrac)
 	// P3.0 phase routing (0.3.0-p3-plan.md §1.3). The phase is a transport/material state,

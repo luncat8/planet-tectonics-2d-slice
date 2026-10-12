@@ -6,13 +6,16 @@
 //
 //   A. the base population, the reserve, the capacity, and the bytes the pool holds;
 //   B. the full-frame cost of the real pipeline with the reserve *filled* with the phase mix
-//      the reserves name, over a sweep of candidate reserves (0 / 0.10 / 0.20 / 0.40), so the
-//      marginal price of the reserve is a measured number;
+//      the reserves name, over a sweep of candidate reserves (0 / 0.10 / 0.20 / 0.40) for the
+//      price table, and the gated ratio itself as an interleaved pair so the host cannot move
+//      it;
 //   C. that a frame with the phases present at capacity constructs no typed array;
 //   D. that a live run pressed to the capacity refuses, counts and loses nothing;
 //   E. that the shipped live eruption keeps flight and deposits active inside the host gate;
 //   F. what the inventory pass costs, which is why the frame diagnostic runs the naive one
-//      and the acceptance gates run the compensated one.
+//      and the acceptance gates run the compensated one;
+//   G. 0.3.0-plan.md §7's rung obligation: every supported rung run live past its first
+//      eruption, with the melt, air and deposit populations the model itself carries.
 //
 // Report only in the sense the repository uses: it never edits params.js. The gates here are
 // the plan's own (the shipped rung inside the §7 frame budget, the reserve filled exactly,
@@ -29,7 +32,7 @@ var S = require(B + 'state.js'), SIM = require(B + 'sim.js');
 
 var t0 = Date.now();
 var RUNGS = [[256, 24, 4], [512, 48, 2], [1024, 96, 2]];   // the page's quality ladder
-var SHIPPED = [0.05, 0.03, 0.12];                          // resMelt, resAir, resDep
+var SHIPPED = [P.resMelt, P.resAir, P.resDep];             // the shipped reserve (P3.5 froze it)
 var SCALES = [0, 0.5, 1, 2];                               // reserve 0 / 0.10 / 0.20 / 0.40
 var FRAMES = [150, 60, 25];                                // timed frames per rung in B
 var BUDGET = 20;                                           // ms/frame, fixed host gate
@@ -184,8 +187,32 @@ check.ok('the shipped rung fills its whole reserve exactly',
 // regression without changing that host bar.
 check.ok('the shipped rung fits the 20 ms host gate with the reserve filled',
 	shipped.ms < BUDGET, shipped.ms.toFixed(2) + ' ms/frame against ' + BUDGET + ' ms');
+
+// The price gate reads a *ratio*, so both sides have to be timed under the same host. The sweep
+// above measures the curve; this measures the pair, by reconfiguring and timing the empty pool
+// and the filled one in alternating windows. The sweep's own window spread is wider than the
+// price it is trying to resolve (measured: the same tree prices the shipped reserve anywhere in
+// 1.33-1.48x across runs), so a ratio read across two minutes of host drift is a coin flip and
+// not a measurement.
+function median(a) { var b = a.slice().sort(function (x, y) { return x - y; }); return b[b.length >> 1]; }
+var PAIRS = 8, side = { empty: [], filled: [] }, k3, who, name;
+for (k3 = 0; k3 < PAIRS; k3++) {
+	for (who = 0; who < 2; who++) {
+		M = configure(256, 24, 4, who);
+		if (who) fill(M);
+		SIM.run(20);
+		side[who ? 'filled' : 'empty'].push(frameMs(60));
+	}
+}
+var pairedEmpty = median(side.empty), pairedFilled = median(side.filled);
+var price = pairedFilled / pairedEmpty;
 check.ok('and the filled reserve costs the measured marginal price, not a regression',
-	shipped.rel < 1.4, shipped.rel.toFixed(3) + 'x an empty pool at the same rung');
+	price < 1.4, price.toFixed(3) + 'x an empty pool, interleaved ('
+	+ PAIRS + ' windows a side: empty ' + pairedEmpty.toFixed(2) + ' ms, filled '
+	+ pairedFilled.toFixed(2) + ' ms, ' + (100 * Math.max(spread, 0)).toFixed(0) + '% spread)');
+check.info('the same pair read the naive way, for the record',
+	'sweep ratio ' + shipped.rel.toFixed(3) + 'x against the interleaved '
+	+ price.toFixed(3) + 'x -- the difference is the host, not the pool');
 check.info('the reserve\'s marginal price at 256x24, against an empty pool', sweep.slice(0, SCALES.length).map(function (q) {
 	return 'reserve ' + q.resFrac.toFixed(2) + ' ' + q.rel.toFixed(3) + 'x';
 }).join(', '));
@@ -332,6 +359,59 @@ for (kk = 0; kk < S.n; kk++) { mv[kk] = S.m[kk]; hv[kk] = S.m[kk] * S.H[kk]; }
 check.near('the compensated mass is the direct Neumaier sum', S.invMTot, neumaier(mv, S.n), 1e-14, 'km2');
 check.near('and the compensated enthalpy is', S.invHTot, neumaier(hv, S.n), 1e-14, 'km2*H');
 check.info('the naive pass\'s own loss against the compensated one, relative', S.invErr.toExponential(2));
+
+// ---------------------------------------------------------------- G. the live populations at every rung
+// 0.3.0-plan.md §7: "P3 must benchmark all supported rungs with melt, air and deposit populations
+// enabled before fixing capacity or promising 60 fps." Sections A and B price every rung with the
+// reserve *filled*, melt, air and deposits all present; this runs each rung live for the same
+// 20 Myr as section E and records what the model itself puts in those phases, so the reserve's
+// lines are checked against the model and not only against a fill. This is also where the
+// obligation's other half shows up: the finer rungs do *not* promise the shipped rung's cadence.
+check.section('G. every supported rung carries the live populations');
+console.log('  rung        n/cap            melt (%)      air     dep     first eject   ms/frame');
+var rowG = [], k4, peak, msG, firstEmit;
+for (r = 0; r < RUNGS.length; r++) {
+	rung = RUNGS[r];
+	M = configure(rung[0], rung[1], rung[2], 1);
+	peak = { melt: 0, air: 0, dep: 0 }; firstEmit = -1;
+	for (k4 = 0; k4 < 400; k4++) {                 // 20 Myr, as section E at the shipped rung
+		SIM.step();
+		PTPOOL.inventory(S);
+		if (S.invN[P.PH.melt] > peak.melt) peak.melt = S.invN[P.PH.melt];
+		if (S.invN[P.PH.air] > peak.air) peak.air = S.invN[P.PH.air];
+		if (S.invN[P.PH.dep] > peak.dep) peak.dep = S.invN[P.PH.dep];
+		if (firstEmit < 0 && S.tx.emit > 0) firstEmit = k4;
+	}
+	// the census is read at the end of the 20 Myr leg; the timing window after it moves the
+	// counters on, so snapshot before it or the row would quote 25 Myr of ejecta
+	var legN = S.n, legEmit = S.tx.emit, legRefuse = S.tx.refuse;
+	msG = frameMs(rung[0] === 256 ? 100 : (rung[0] === 512 ? 40 : 20));
+	rowG.push({ rung: rung[0], ny: rung[1], peak: peak, base: P.partBase, ms: msG,
+		refuse: legRefuse, n: legN, cap: P.partCap, emit: legEmit, first: firstEmit });
+	console.log('  ' + (rung[0] + 'x' + rung[1]).padEnd(10) + '  ' + (legN + '/' + P.partCap).padEnd(15)
+		+ '  ' + (peak.melt + ' (' + (100 * peak.melt / P.partBase).toFixed(1) + ')').padEnd(12)
+		+ ' ' + String(peak.air).padEnd(6) + '  ' + String(peak.dep).padEnd(6) + '  '
+		+ ((firstEmit < 0 ? 'none by 20 Myr' : ((firstEmit * 0.05).toFixed(1) + ' Myr')).padEnd(12)) + '  ' + msG.toFixed(2));
+}
+check.ok('every rung carries the melt band live and never crosses the reserve line',
+	rowG.every(function (q) { return q.peak.melt > 0 && q.peak.melt / q.base < P.resMelt; }),
+	rowG.map(function (q) { return (100 * q.peak.melt / q.base).toFixed(2) + '% of ' + (100 * P.resMelt) + '%'; }).join(' / '));
+check.ok('the live melt band is the initial condition\'s own, not the mesh\'s',
+	rowG.every(function (q) { return Math.abs(q.peak.melt / q.base - rowG[0].peak.melt / rowG[0].base) / (rowG[0].peak.melt / rowG[0].base) < 0.15; }),
+	rowG.map(function (q) { return (100 * q.peak.melt / q.base).toFixed(2) + '%'; }).join(' / '));
+check.ok('no rung refused a transfer or lost a parcel to its cap',
+	rowG.every(function (q) { return q.refuse === 0 && q.n <= q.cap; }),
+	rowG.map(function (q) { return q.rung + 'x' + q.ny + ' refusals ' + q.refuse + ' n ' + q.n + '/' + q.cap; }).join(' / '));
+check.ok('every rung\'s live airborne and landed peaks stay under their lines', rowG.every(function (q) {
+	return q.peak.air <= P.resAir * q.base && q.peak.dep <= P.resDep * q.base;
+}), rowG.map(function (q) { return q.rung + 'x' + q.ny + ' air ' + (100 * q.peak.air / q.base).toFixed(2)
+	+ '% dep ' + (100 * q.peak.dep / q.base).toFixed(2) + '%'; }).join(' / ')
+	+ ' against the frozen ' + (100 * P.resAir) + '% / ' + (100 * P.resDep) + '%');
+check.info('the finer rungs run the same kernels on their own cadence',
+	rowG.slice(1).map(function (q) { return q.rung + 'x' + q.ny + ' ' + q.ms.toFixed(1) + ' ms/frame, '
+		+ (q.emit ? q.emit + ' ejecta, first at ' + (q.first * 0.05).toFixed(1) + ' Myr' : 'no ejecta by 20 Myr')
+		+ ', peaks ' + q.peak.melt + '/' + q.peak.air + '/' + q.peak.dep; }).join('; ')
+	+ ' -- the plan fixes no cadence across rungs, only that the phases are enabled and the books close');
 
 console.log('\n  total ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s');
 check.done();
