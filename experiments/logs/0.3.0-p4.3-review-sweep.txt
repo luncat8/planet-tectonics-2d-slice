@@ -1,0 +1,82 @@
+
+A. the controlled relief fixture: two divides, two basins, one drainage map
+  relief 256 columns x 62.5 km, wrap 16000 km, 16 knots
+    zh -0.45..2.60 km, mean 5.14e-1, mean |slope| 4.81e-4
+    sinks 150, 240   deposition reaches (|slope| < 0.0001) 150..157  230..240   basins 150..157  230..240
+PASS  the fixture has two divides and two basins   2 sinks, 2 basins
+PASS  each basin holds its own sink   2 of 2
+PASS  every receiver is the steepest lower neighbour, recomputed by hand   0 disagreements
+PASS  the drainage peel equals a per-column upstream walk   0 columns differ
+PASS  the demand is kStream * sqrt(A) * channel-slope * dt * dx, and a sink gets none, by hand   3 of 3 columns; the divide drains left so the right-face slope is the wrong face
+    one frame at the shipped coefficients: runoff 4.470 km2 (0 columns at the channel cap), hillslope 7.665 km2 (0 transfers longer than one column), ratio 0.58x
+PASS  the fixture's runoff demand stays under the channel cap, so the compared shape is the shipped law's own   0 columns capped
+PASS  the runoff law routes and the hillslope law hops one column   stray hops 0
+
+B. conservation: both laws move material as a pool transaction
+PASS  runoff: mass closes across one hand-called frame   dM 0.00e+0
+PASS  runoff: enthalpy closes   dH 0.00e+0 of 4.04e+7
+PASS  runoff: felsic and water mass close   dF 0.00e+0, dW 0.00e+0
+PASS  runoff: the P3.1 latent identity holds across the pass   shift -4.24e-17
+PASS  runoff: the matched books balance and the fingerprint moves   254 transfers, 4.47 km2
+PASS  runoff: no refusal on a hand-called frame   refusals 0
+PASS  hillslope: mass closes across one hand-called frame   dM 0.00e+0
+PASS  hillslope: enthalpy closes   dH 0.00e+0 of 4.04e+7
+PASS  hillslope: felsic and water mass close   dF 0.00e+0, dW 0.00e+0
+PASS  hillslope: the P3.1 latent identity holds across the pass   shift 5.96e-19
+PASS  hillslope: the matched books balance and the fingerprint moves   254 transfers, 7.66 km2
+PASS  hillslope: no refusal on a hand-called frame   refusals 0
+PASS  a frame that does not call move changes neither mass nor the fingerprint   mass 4.17e+7
+
+C. equal work on the fixture: 400 frames per leg, the same mass per frame
+  rate A runoff   : moved 3066.00 km2 in 101600 transfers (scale 1.71e+0), sediment 19 parcels 3066.00 km2, net redistribution 3028.78 km2
+      lands in basins 100.0%   >1 column away 96.3%   in place 1.2%   mean hop 41.43 columns   starved 0.00e+0 km2, refusals 0
+  rate A hillslope: moved 3066.00 km2 in 102403 transfers (scale 1.00e+0), sediment 252 parcels 2801.81 km2, net redistribution 255.00 km2
+      lands in basins 4.9%   >1 column away 0.0%   in place 0.0%   mean hop 1.00 columns   starved 0.00e+0 km2, refusals 0
+  rate B runoff   : moved 1788.15 km2 in 101600 transfers (scale 1.00e+0), sediment 19 parcels 1788.15 km2, net redistribution 1766.44 km2
+      lands in basins 100.0%   >1 column away 96.3%   in place 1.2%   mean hop 41.43 columns   starved 0.00e+0 km2, refusals 0
+  rate B hillslope: moved 1788.15 km2 in 101748 transfers (scale 5.83e-1), sediment 252 parcels 1765.53 km2, net redistribution 148.72 km2
+      lands in basins 4.9%   >1 column away 0.0%   in place 0.0%   mean hop 1.00 columns   starved 0.00e+0 km2, refusals 0
+PASS  at equal work both laws move the same total mass (rate A)   rel 1.17e-12  got 3066.000000003348 km2  want 3065.9999999997576
+PASS  D2 no law lands material outside its own receiver chain or uphill (rate A)   runoff off/uphill 0/0, hillslope 0/0
+PASS  D3 runoff: at least 3/4 of the moved mass settles inside the basins (rate A)   100.0%
+PASS  D4 runoff: at least 1/2 of the moved mass settles more than one column away (rate A)   96.3%
+INFO  D3/D4 hillslope (rate A)   basin 4.9%, >1 column 0.0%, in place 0.0%, mean hop 1.00
+PASS  neither leg starves the weathering band or meets a refusal (rate A)   starved 0.00e+0/0.00e+0, refusals 0/0
+PASS  at equal work both laws move the same total mass (rate B)   rel 2.51e-13  got 1788.1515387390618 km2  want 1788.1515387386123
+PASS  D2 no law lands material outside its own receiver chain or uphill (rate B)   runoff off/uphill 0/0, hillslope 0/0
+PASS  D3 runoff: at least 3/4 of the moved mass settles inside the basins (rate B)   100.0%
+PASS  D4 runoff: at least 1/2 of the moved mass settles more than one column away (rate B)   96.3%
+INFO  D3/D4 hillslope (rate B)   basin 4.9%, >1 column 0.0%, in place 0.0%, mean hop 1.00
+PASS  neither leg starves the weathering band or meets a refusal (rate B)   starved 0.00e+0/0.00e+0, refusals 0/0
+
+D. the shipped planet at the shipped coefficients: cost, and where the mass ends up
+  shipped run: 160 frames of 0.05 Myr, frame 10.66 ms with the pass, pass alone 0.355 ms/frame
+    moved 574.0 km2 in 106221 transfers, sediment 1555 km2 in 261 parcels, starved 0.000 km2, refusals 0
+PASS  the shipped law is the runoff candidate, bitwise, on a live state   0 columns differ, worst 0.00e+0 km2
+PASS  both legs start from the same crust (the warm-up is deterministic)   band 7277 km2/column
+  live legs, 8 Myr each at each law's own coefficient, background frozen:
+    runoff    moved 314.3 km2 in 37760 transfers, net redistribution 310.0 km2 (98.7% of what it moved), sediment 47 parcels, band -0.0 km2, pass 0.512 ms/frame
+    hillslope moved 1056.0 km2 in 37760 transfers, net redistribution 207.8 km2 (19.7% of what it moved), sediment 219 parcels, band -0.0 km2, pass 0.481 ms/frame
+    hillslope / runoff: throughput 336.0%, net redistribution 67.0%, concentration net/moved 98.7% against 19.7%
+PASS  the runoff law redistributes a real share of the mass it moves (it concentrates it)   98.7%
+PASS  neither frozen leg starves a column or meets a refusal   starved 0.000/0.000 km2, refusals 0/0
+PASS  D5 the shipped pass costs at most 1.0 ms/frame of its own work   0.355 ms
+PASS  D5 the shipped run meets no refusal and starves no reach   refusals 0, starved 0.000 km2
+
+E. the decision
+  D1 conservation        both laws close mass, enthalpy, felsic, water and melt
+  D2 downhill            runoff 0 violations, hillslope 0   (in place: runoff 1.2%, hillslope 0.0%)
+  D3 basin capture       runoff 100.0/100.0%   hillslope 4.9/4.9%   (need 75%)
+  D4 transport reach     runoff 96.3/96.3%   hillslope 0.0/0.0%   (need 50%)
+  D5 budget and effect   shipped pass 0.355 ms/frame, live legs 0.512/0.481 ms, concentration 98.7% against 19.7% (net/moved), throughput 336% of the runoff law's
+PASS  the comparison picks the runoff/stream-power rule   runoff passes, hillslope fails
+
+DECISION: runoff/stream power ships: E = kStream*sqrt(A)*slope, capped at eroMax,
+  each column settling at the end of its own flow path (js/pt/erode.js). The hillslope
+  rule loses D3 and D4 by construction -- every transfer is one hop, so material creeps
+  along the profile instead of following the drainage the profile defines -- and D5 by
+  measurement: at this model's gradients a diffusive law circulates material between
+  neighbours and only its divergence changes the crust, so its net redistribution is a
+  small fraction of the stream-power rule's.
+
+ALL PASS (37 checks)

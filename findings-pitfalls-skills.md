@@ -1103,3 +1103,26 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
 - **A short tuning probe is not a long-run stability gate.** The first conduit geometry closed
   perfectly at 20 Myr but drove the 150 Myr field below its existing bound. Sweep against the
   longest owning regression before shipping the geometric default.
+
+## 0.3.0 P4.3 erosion (archive/0.3.0-p4.3-review-worklog.md)
+
+- **Stream power slope is the drop to the receiver, never a stored right-face.** `E = k * sqrt(A)
+  * S` with `S = (z_i - z_receiver) / dx`. A right-face `|zh[i+1] - zh[i]|` is the *uphill* side
+  of every left-draining column. Half the live profile drains left; the two faces differ at every
+  non-linear column (24% of live demand, 46 depositional disagreements after 10 Myr). A piecewise-
+  linear fixture hides it (equal faces on each flank) and a by-hand check that samples two
+  right-draining columns cannot see it. The hillslope candidate already used the drop; the shipped
+  law has to.
+- **A demand check that restates `|erS|` cannot catch a wrong `erS`.** Recompute
+  `(zh[i] - zh[erR[i]]) / dx` from the profile. Same trap as a book that closes on `0 = 0`.
+- **JS typed arrays silently discard `arr[-1] = x`.** A drainage peel that pushes sinks indexes
+  `erA[-1]`; `(new Float64Array(4))[-1] = 3` does not stick, so `erA[-1] === undefined` after
+  `route` is not a gate. Do not push a node with `erR < 0`. The sink's area is already complete
+  when its last tributary is processed.
+- **The deposit seat is the shallowest in-band deposit, slot as tiebreak** — the same total order
+  the donor scan uses. Lowest slot is pool order, not the pile. Do not reuse `depositMerge` as a
+  seat radius: by 20 Myr the crust has buried the typical deposit ~8 km below `-zh`, and a
+  "must sit on the horizon" test would admit a fresh parcel every frame.
+- **A `share > 0.25` gate on the top decile was 0.4 points under the measured 25.4%** — a
+  restatement, not a concentration claim. Twice uniform (0.20) still has teeth; gate sqrt(A)
+  itself on a linear flank where the slope is shared and only area ranks the demand.

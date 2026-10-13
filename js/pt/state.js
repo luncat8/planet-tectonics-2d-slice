@@ -163,8 +163,8 @@ var PTS = {
 	// column, ordered from smallest solidus gap, plus the column count and active slot. All of
 	// it is rebuilt per frame and none of it is state.
 	arcP: null, arcG: null, arcN: null, arcC: null,
-	// P4.3's surface transport workspace (erode.js): the profile's face slope and
-	// steepest-descent receiver per column, the drainage area the receiver map accumulates
+	// P4.3's surface transport workspace (erode.js): the channel slope (drop to the
+	// receiver) and steepest-descent receiver per column, the drainage area the receiver map accumulates
 	// into each column, each column's deposition site, this frame's demand table, the donor
 	// bucket (erList holds parcel slots, erTop their per-column offsets), the site's own
 	// deposit parcel, and the topological peel's inflow counts and stack. All rebuilt every

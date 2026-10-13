@@ -67,7 +67,9 @@ delegates the eight owner harnesses as children and quotes their counts rather t
 them),
 plus the 0.3.0 P4 owner harnesses (pt-p4-contact.js for inter-plate contact and underthrusting,
 pt-p4-slab.js for slab sinking and deep recycling, pt-p4-arc.js for slab dehydration and arc
-melt, sharing the two-plate fixture builder pt-p4-lib.js),
+melt, pt-p4-erosion.js for particle weathering/erosion/sedimentation and
+pt-p4-transport-sweep.js for the surface-law comparison, sharing the fixture builder
+pt-p4-lib.js),
 and the cut in three: experiments/slice-cut.js (the walk, the pack, the resample),
 section-pack.js (the section page: transports, refusals, switches, HUD), section-seed.js (the
 mapping: the z identity, the ledger, the quiet start, the two run modes), checkpoint.js (the

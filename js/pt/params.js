@@ -335,10 +335,10 @@ var PTP = {
 	// hillslope rule (experiments/pt-p4-transport-sweep.js, whose own file keeps both laws'
 	// measurements side by side):
 	//
-	//   E_i = kStream * sqrt(A_i) * |slope_i|        km/Myr, capped at eroMax
+	//   E_i = kStream * sqrt(A_i) * slope_i          km/Myr, capped at eroMax
 	//
 	// with A_i the drainage area accumulated into column i along the steepest-descent receiver
-	// map and slope_i the profile's own gradient there, so erosion concentrates where the
+	// map and slope_i the drop to that receiver over dx, so erosion concentrates where the
 	// drainage accumulates and the trunk carries a catchment's worth of material instead of a
 	// neighbour's. Per-frame demand is E_i * dt * dx km2. Every leg is a pool transaction
 	// (pool.js carry): mass, enthalpy, melt and composition move together, the inventory is

@@ -156,8 +156,9 @@ SIM.k[5] = function (M, S, dt) {
 SIM.k[6] = function (M, S, dt) { VENT.run(M, S, dt); FLIGHT.cool(M, S, dt); };
 // G7 runs after G4 because it reads the welded strength and damage the crust pass leaves
 // behind (plan §5). Its tail is P4.3's material surface law: the profile has just relaxed, so
-// that is the terrain this frame's erosion reads, and the deposit parcels it credits are the
-// same phase G6's landing wrote earlier in the frame.
+// that is the terrain this frame's erosion reads. Landing (FLIGHT.run) is after every
+// geological substep, so this frame's ejecta is not eroded until the next one; the sediment
+// the pass credits is the same deposit phase earlier frames landed into.
 SIM.k[7] = function (M, S, dt) { F.surface(M, S, dt); ERODE.run(M, S, dt); };
 SIM.k[8] = function (M, S) { F.diag(M, S); };
 

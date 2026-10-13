@@ -19,10 +19,10 @@
 // The law is the runoff/stream-power rule P4.3 chose by comparison
 // (experiments/pt-p4-transport-sweep.js):
 //
-//   E_i = kStream * sqrt(A_i) * |slope_i|        km/Myr, capped at eroMax
+//   E_i = kStream * sqrt(A_i) * slope_i          km/Myr, capped at eroMax
 //
 // where A_i is the drainage area accumulated into column i along the steepest-descent receiver
-// map and slope_i is the profile's own gradient there. Erosion therefore concentrates where
+// map and slope_i is the drop to that receiver over dx. Erosion therefore concentrates where
 // the drainage accumulates, and the trunk of a catchment carries a catchment's worth of
 // material instead of a neighbour's. One frame's demand is E_i * dt * dx km2 (km of column
 // width, unit out-of-plane depth). The hillslope alternative -- a face flux proportional to
@@ -32,12 +32,12 @@
 // Order inside the frame: G7, after `F.surface`, so the terrain a frame erodes is the profile
 // that frame just relaxed (0.3.0-p4-plan.md §2). Three steps:
 //
-//   route   per-column face slope and steepest-descent receiver (a strict drop, so the map
-//           cannot cycle), the drainage area that map accumulates (a topological peel, no
-//           allocation), each column's deposition site (the first reach on its path whose
-//           gradient is below `eroSlopeDep`, or the sink the path ends in), the donor buckets
-//           (every solid parcel above the band, grouped by column) and the site's own deposit
-//           parcel when it has one.
+//   route   per-column channel slope (drop to the receiver) and steepest-descent receiver
+//           (a strict drop, so the map cannot cycle), the drainage area that map accumulates
+//           (a topological peel, no allocation), each column's deposition site (the first
+//           reach on its path whose channel slope is below `eroSlopeDep`, or the sink the
+//           path ends in), the donor buckets (every solid parcel above the band, grouped by
+//           column) and the site's own deposit parcel when it has one (shallowest in-band).
 //   law     the shipped demand table: one column's mass this frame. A sink gets none -- a lake
 //           floor is where material arrives, not where it leaves.
 //   move    the transfers: from each column with a demand, take `min(demand, eroTake * m,
@@ -60,6 +60,14 @@
 	var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
 	var PHASE = (typeof module !== 'undefined' && module.exports) ? require('./phase.js') : window.PTPHASE;
 	var POOL = (typeof module !== 'undefined' && module.exports) ? require('./pool.js') : window.PTPOOL;
+
+	// periodic column of a parcel: the same map the bucket, the depot book and the donor
+	// scan share. floor-mod, not a one-step wrap, so a marker more than a cell past the seam
+	// still lands in its column (contact.js's rule).
+	function colOf(x, nx, invDx) {
+		var i = Math.round(x * invDx);
+		return i - Math.floor(i / nx) * nx;
+	}
 
 	// the receiving parcel's seat: the site column's own node (the same column map the bucket,
 	// the depot book and the donor scan use -- a half-cell offset would round into the next
@@ -95,20 +103,25 @@
 			var erTop = S.erTop, erList = S.erList;
 			var ph = S.ph, y = S.y, sol = P.PH_SOLID, dep = P.PH.dep, band = P.eroBand;
 			var i, p, q, ip, im, dr, dl, top, site;
-			// face slope to the right and the steepest-descent receiver. The right neighbour
-			// wins an exact tie, a relative rule that survives a whole-cell shift of the
-			// initial condition the way pt-wrap's equivariance gate reads it.
+			// channel slope and the steepest-descent receiver. Slope is the drop to the
+			// receiver over dx -- the face the water actually takes -- not the right face: a
+			// left-draining column's right face is the uphill side, and on anything but a
+			// linear ramp the two differ (half the live profile drains left). The right
+			// neighbour still wins an exact tie, a relative rule that survives a whole-cell
+			// shift of the initial condition the way pt-wrap's equivariance gate reads it.
 			for (i = 0; i < nx; i++) {
 				ip = i + 1 === nx ? 0 : i + 1;
 				im = i === 0 ? nx - 1 : i - 1;
-				erS[i] = (zh[ip] - zh[i]) * invDx;
-				erR[i] = -1; erSite[i] = -1; erD[i] = 0; erDep[i] = -1;
+				erR[i] = -1; erSite[i] = -1; erD[i] = 0; erDep[i] = -1; erS[i] = 0;
 				dr = zh[i] - zh[ip]; dl = zh[i] - zh[im];
-				if (dr > 0 && dr >= dl) erR[i] = ip; else if (dl > 0) erR[i] = im;
+				if (dr > 0 && dr >= dl) { erR[i] = ip; erS[i] = dr * invDx; }
+				else if (dl > 0) { erR[i] = im; erS[i] = dl * invDx; }
 			}
 			// drainage area: every column is its own source, accumulated downstream in
 			// topological order. A column flows into exactly one receiver and strictly downhill,
 			// so peeling the columns with no inflow visits every path from its source down.
+			// A sink has no receiver -- do not push it: the last tributary already added its
+			// area, and indexing erA[-1] is a typed-array no-op that would hide the mistake.
 			for (i = 0; i < nx; i++) { erA[i] = dx; erIn[i] = 0; }
 			for (i = 0; i < nx; i++) if (erR[i] >= 0) erIn[erR[i]]++;
 			top = 0;
@@ -117,15 +130,16 @@
 				i = erStack[--top];
 				q = erR[i];
 				erA[q] += erA[i];
-				if (--erIn[q] === 0) erStack[top++] = q;
+				if (--erIn[q] === 0 && erR[q] >= 0) erStack[top++] = q;
 			}
 			// the deposition site of a column: the first reach its path crosses whose own
-			// gradient has fallen below eroSlopeDep -- the water slows, the sediment settles --
-			// or the sink the path ends in. Sinks are sites, never sources (law below).
+			// channel slope has fallen below eroSlopeDep -- the water slows, the sediment
+			// settles -- or the sink the path ends in. Sinks are sites, never sources (law
+			// below).
 			for (i = 0; i < nx; i++) {
 				site = i;
 				for (;;) {
-					if (Math.abs(erS[site]) < P.eroSlopeDep) break;
+					if (erS[site] < P.eroSlopeDep) break;
 					q = erR[site];
 					if (q < 0) break;
 					site = q;
@@ -139,8 +153,7 @@
 			for (i = 0; i <= nx; i++) erTop[i] = 0;
 			for (p = 0; p < S.n; p++) {
 				if (!sol[ph[p]] || y[p] > band) continue;
-				i = Math.round(S.x[p] * invDx);
-				if (i >= nx) i -= nx; else if (i < 0) i += nx;
+				i = colOf(S.x[p], nx, invDx);
 				erTop[i + 1]++;
 			}
 			for (i = 0; i < nx; i++) erTop[i + 1] += erTop[i];
@@ -148,18 +161,18 @@
 			for (p = 0; p < S.n; p++) {
 				// the two walks must agree on the column map or a bucket would overrun another
 				if (!sol[ph[p]] || y[p] > band) continue;
-				i = Math.round(S.x[p] * invDx);
-				if (i >= nx) i -= nx; else if (i < 0) i += nx;
+				i = colOf(S.x[p], nx, invDx);
 				erList[erIn[i]++] = p;
 			}
 			// the site's own deposit parcel, when it has one: the seat a frame's sediment is
-			// credited into before a fresh parcel is admitted. Lowest slot wins, so the choice
-			// is a function of the pool's order and not of the walk's luck.
+			// credited into before a fresh parcel is admitted. Shallowest in-band deposit
+			// wins, slot as tiebreak -- the same total order the donor scan uses -- so a
+			// buried pile in the same column does not swallow the surface one.
 			for (p = 0; p < S.n; p++) {
-				if (ph[p] !== dep) continue;
-				i = Math.round(S.x[p] * invDx);
-				if (i >= nx) i -= nx; else if (i < 0) i += nx;
-				if (erDep[i] < 0) erDep[i] = p;
+				if (ph[p] !== dep || y[p] > band) continue;
+				i = colOf(S.x[p], nx, invDx);
+				q = erDep[i];
+				if (q < 0 || y[p] < y[q] || (y[p] === y[q] && p < q)) erDep[i] = p;
 			}
 		},
 
@@ -172,7 +185,7 @@
 			var i, e, s;
 			for (i = 0; i < nx; i++) {
 				if (erR[i] < 0) { erD[i] = 0; continue; }
-				s = erS[i] < 0 ? -erS[i] : erS[i];
+				s = erS[i];
 				if (!(s > 0)) { erD[i] = 0; continue; }
 				e = k * Math.sqrt(erA[i]) * s;
 				if (e > cap) e = cap;

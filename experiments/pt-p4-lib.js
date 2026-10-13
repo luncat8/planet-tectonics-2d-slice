@@ -182,13 +182,22 @@ var L = {
 		return out;
 	},
 
-	// the reaches a transfer can settle in: the column ranges whose own gradient is below the
-	// deposition threshold the shipped law reads (erode.js). The fixture measures against the
-	// same number the law does, so "lands in a basin" is not a private definition.
+	// the reaches a transfer can settle in: the column ranges whose channel slope (the drop
+	// to the receiver over dx, the same number erode.js reads) is below the deposition
+	// threshold. The fixture measures against the same number the law does, so "lands in a
+	// basin" is not a private definition. A sink's channel slope is 0 -- the drainage ends
+	// there -- even when one of its faces is steep.
 	flats: function () {
-		var nx = SIM.M.nx, dx = SIM.M.dx, out = [], i, lo = -1, s;
+		var nx = SIM.M.nx, dx = SIM.M.dx, zh = S.zh, out = [], i, ip, im, dr, dl, lo = -1, s;
 		for (i = 0; i <= nx; i++) {
-			s = i < nx ? Math.abs(S.zh[(i + 1) % nx] - S.zh[i]) / dx : 1;
+			if (i === nx) s = 1;
+			else {
+				ip = i + 1 === nx ? 0 : i + 1; im = i === 0 ? nx - 1 : i - 1;
+				dr = zh[i] - zh[ip]; dl = zh[i] - zh[im];
+				if (dr > 0 && dr >= dl) s = dr / dx;
+				else if (dl > 0) s = dl / dx;
+				else s = 0;
+			}
 			if (s < P.eroSlopeDep) { if (lo < 0) lo = i; }
 			else if (lo >= 0) { out.push([lo, i - 1]); lo = -1; }
 		}

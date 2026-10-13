@@ -7,11 +7,12 @@
 // `route` / `law` / `move`) on one controlled relief fixture, so the comparison is between
 // *laws* and not between implementations:
 //
-//   runoff / stream power   E_i = kStream * sqrt(A_i) * |slope_i| km/Myr, capped at eroMax,
+//   runoff / stream power   E_i = kStream * sqrt(A_i) * slope_i km/Myr, capped at eroMax,
 //                           A_i the drainage area the profile's steepest-descent receiver map
-//                           accumulates into column i. One frame's demand is E_i * dt * dx km2
+//                           accumulates into column i and slope_i the drop to that receiver
+//                           over dx. One frame's demand is E_i * dt * dx km2
 //                           and every column's material settles at the end of its own flow
-//                           path: the first reach whose gradient has fallen below
+//                           path: the first reach whose channel slope has fallen below
 //                           `eroSlopeDep`, or the sink the path ends in.
 //   conservative hillslope  q = D * (z_i - z_j) per face, j the steeper lower neighbour,
 //                           D = kProfileDiff km2/Myr, P2.3's profile diffusivity applied to
@@ -83,11 +84,12 @@ function same(a, b) {
 // nothing, which is what makes a basin depositional.
 
 function candStream(M, S, dt) {
-	var nx = M.nx, dx = M.dx, k = P.kStream, cap = P.eroMax, i, s, e;
+	var nx = M.nx, dx = M.dx, invDx = 1 / dx, k = P.kStream, cap = P.eroMax, i, r, s, e;
 	for (i = 0; i < nx; i++) {
 		S.erD[i] = 0;
-		if (S.erR[i] < 0) continue;
-		s = S.erS[i] < 0 ? -S.erS[i] : S.erS[i];
+		r = S.erR[i];
+		if (r < 0) continue;
+		s = (S.zh[i] - S.zh[r]) * invDx;
 		if (!(s > 0)) continue;
 		e = k * Math.sqrt(S.erA[i]) * s;
 		if (e > cap) e = cap;
@@ -111,13 +113,14 @@ function candHill(M, S, dt) {
 
 // the two laws' raw per-frame demand tables on the fixture (no transfer, no scaling)
 function rawTables() {
-	var nx = SIM.M.nx, i;
+	var nx = SIM.M.nx, dx = SIM.M.dx, i, r;
 	ERODE.route(SIM.M, S);
 	candStream(SIM.M, S, SIM.dt);
 	var s = 0, capHit = 0;
 	for (i = 0; i < nx; i++) {
 		s += S.erD[i];
-		if (P.kStream * Math.sqrt(S.erA[i]) * Math.abs(S.erS[i]) > P.eroMax) capHit++;
+		r = S.erR[i];
+		if (r >= 0 && P.kStream * Math.sqrt(S.erA[i]) * (S.zh[i] - S.zh[r]) / dx > P.eroMax) capHit++;
 	}
 	ERODE.route(SIM.M, S);
 	candHill(SIM.M, S, SIM.dt);
@@ -294,20 +297,22 @@ for (q = 0; q < nx; q++) {
 }
 check.ok('the drainage peel equals a per-column upstream walk', areaBad === 0, areaBad + ' columns differ');
 
-// the demand table, by hand, on two slope columns and on a sink at the shipped rate
+// the demand table, by hand, from zh and the receiver -- not from erS -- on a right-draining
+// column, a left-draining column (the divide, whose two faces differ) and a sink. Reading
+// |erS| would restate the pass and would not have caught a right-face slope.
 ERODE.law(M, S, SIM.dt);
-var ok = 0, cols = [100, 200];
+var ok = 0, cols = [100, L.RELIEF[2][0], sinks[0]], e, r, sChan;
 for (i = 0; i < cols.length; i++) {
 	q = cols[i];
-	var e = P.kStream * Math.sqrt(S.erA[q]) * Math.abs(S.erS[q]);
+	r = S.erR[q];
+	sChan = r < 0 ? 0 : (S.zh[q] - S.zh[r]) / dx;
+	e = sChan > 0 ? P.kStream * Math.sqrt(S.erA[q]) * sChan : 0;
 	if (e > P.eroMax) e = P.eroMax;
-	if (S.erR[q] < 0) e = 0;
 	if (Math.abs(S.erD[q] - e * SIM.dt * dx) < 1e-12) ok++;
 }
-q = sinks[0];
-if (S.erD[q] === 0 && S.erR[q] < 0) ok++;
-check.ok('the demand is kStream * sqrt(A) * |slope| * dt * dx, and a sink gets none, by hand',
-	ok === 3, ok + ' of 3 columns');
+check.ok('the demand is kStream * sqrt(A) * channel-slope * dt * dx, and a sink gets none, by hand',
+	ok === 3 && S.erR[L.RELIEF[2][0]] === L.RELIEF[2][0] - 1,
+	ok + ' of 3 columns; the divide drains left so the right-face slope is the wrong face');
 var raw = rawTables();
 console.log('    one frame at the shipped coefficients: runoff ' + raw.stream.toFixed(3)
 	+ ' km2 (' + raw.capHit + ' columns at the channel cap), hillslope ' + raw.hill.toFixed(3)
@@ -493,7 +498,7 @@ console.log('  D5 budget and effect   shipped pass ' + shipPass.toFixed(3) + ' m
 	+ (100 * legL.moved / (legR.moved || 1)).toFixed(0) + '% of the runoff law\'s');
 check.ok('the comparison picks the runoff/stream-power rule', passS && !passH,
 	'runoff ' + (passS ? 'passes' : 'fails') + ', hillslope ' + (passH ? 'passes' : 'fails'));
-console.log('\nDECISION: runoff/stream power ships: E = kStream*sqrt(A)*|slope|, capped at eroMax,');
+console.log('\nDECISION: runoff/stream power ships: E = kStream*sqrt(A)*slope, capped at eroMax,');
 console.log('  each column settling at the end of its own flow path (js/pt/erode.js). The hillslope');
 console.log('  rule loses D3 and D4 by construction -- every transfer is one hop, so material creeps');
 console.log('  along the profile instead of following the drainage the profile defines -- and D5 by');

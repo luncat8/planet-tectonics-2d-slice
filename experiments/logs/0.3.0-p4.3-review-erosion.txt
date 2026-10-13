@@ -1,0 +1,21 @@
+# 0.3.0 P4.3 review — experiments/pt-p4-erosion.js  (default 300 Myr, 2000 fixture frames)
+# wall 154 s, 820 Myr of simulation. ALL PASS (33 checks).
+#
+# Channel slope, not the right face: 50 left-draining columns, divide at 24 drains to 23 at
+# slope 2.80e-3 against the right face 4.00e-4. Linear flank 45/60: same slope 5.33e-4,
+# A 1313/2250 km2, demand 1.81e-2/2.37e-2 km2.
+#
+# One hand-called pass: 254 transfers moved 4.470379 km2 of 100.0% of the demand, 19 seats,
+# 4.416107 km2 across a boundary, 0.054272 km2 in place. Mass/H/F/W 0. Seat is shallowest
+# (slots 23552 buried / 23553 surface, credit 82.5364 vs 80.0000).
+#
+# 2000 frozen frames: 508009 transfers, 8940.758 km2, fall 1.081 km, top decile 24.3%,
+# divide 2.08e-2 km2 against 1.75e-2 a column, 19 parcels hold the whole mass.
+#
+# Live 300 Myr on: 1432033 transfers, 99231.1 km2, sediment 352435 km2 in 763 parcels,
+# unmet 13.8 km2 (0.01%), 12.81 ms/frame, hash 2960640650489454.
+# Live off: 277872 km2 in 362, 11.00 ms/frame, hash 1736079014518515 (pre-review planet).
+# Frozen attribution: 1416063 transfers / 11787.9 km2, fall 0.247 km, 0.446 ms/frame (3.48%).
+# Replay: 186923077625313 both times, 47106 transfers.
+
+ALL PASS (33 checks)

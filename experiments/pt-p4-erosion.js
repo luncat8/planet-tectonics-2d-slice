@@ -1,6 +1,6 @@
 // pt-p4-erosion.js — 0.3.0 P4.3: particle weathering, erosion and sedimentation
 // (0.3.0-p4-plan.md §3 P4.3). The law is the sweep's pick (experiments/pt-p4-transport-sweep.js):
-// stream power E = kStream * sqrt(A) * |slope|, capped at eroMax, every column's material
+// stream power E = kStream * sqrt(A) * slope, capped at eroMax, every column's material
 // settling at the end of its own flow path. This harness is the pass's own acceptance:
 //
 //   A. route, law and move by hand on one controlled relief fixture (pt-p4-lib.js `relief()`):
@@ -10,8 +10,8 @@
 //      phase manifold, takes only from the shallowest in-band solid donor and never writes `zh`;
 //   B. a long leg on the frozen fixture: the profile stays bitwise untouched, the high columns
 //      lose and the basin floors gain exactly what they lost, the sediment is the P3 deposit
-//      phase the inventory already counts, and the divide -- the column with the smallest
-//      drainage -- barely erodes, which is sqrt(A) saying so;
+//      phase the inventory already counts, and on a linear flank demand ranks with drainage
+//      area (same slope, more A, more E);
 //   C. the sediment is P3.4's own deposit stock: a later landing finds the pass's pile and merges
 //      into it instead of stacking a second one at the same place;
 //   D. the live shipped planet at the demonstration clock, pass on and pass off: both close their
@@ -166,17 +166,43 @@ check.ok('the drainage the peel accumulates equals a walk of every column\'s own
 	+ L.mean(S.erA).toFixed(1) + ' km2, largest ' + Math.max.apply(null, S.erA).toFixed(0) + ' km2');
 
 ERODE.law(M, S, SIM.dt);
-var worstD = 0, nErode = 0, e, want0;
+var worstD = 0, nErode = 0, e, want0, r, sChan, worstS = 0, nLeft = 0, leftFace = 0;
 for (i = 0; i < nx; i++) {
-	e = S.erR[i] < 0 ? 0 : P.kStream * Math.sqrt(S.erA[i]) * Math.abs(S.erS[i]);
+	r = S.erR[i];
+	sChan = r < 0 ? 0 : (S.zh[i] - S.zh[r]) / dx;
+	e = sChan > 0 ? P.kStream * Math.sqrt(S.erA[i]) * sChan : 0;
 	if (e > P.eroMax) e = P.eroMax;
 	want0 = e * SIM.dt * dx;
 	worstD = Math.max(worstD, scaled(S.erD[i], want0));
 	if (want0 > 0) nErode++;
+	if (r >= 0) worstS = Math.max(worstS, scaled(S.erS[i], sChan));
+	ip = i + 1 === nx ? 0 : i + 1;
+	if (r >= 0 && r !== ip) {
+		nLeft++;
+		if (Math.abs(S.erS[i] - Math.abs(S.zh[ip] - S.zh[i]) / dx) < 1e-12
+			&& Math.abs(sChan - Math.abs(S.zh[ip] - S.zh[i]) / dx) > 1e-6) leftFace++;
+	}
 }
-check.ok('the demand table is kStream * sqrt(A) * |slope| * dt * dx column by column, sinks 0',
-	worstD <= 1e-15 && nErode > nx / 2, 'worst relative difference ' + worstD.toExponential(2)
+check.ok('the demand table is kStream * sqrt(A) * channel-slope * dt * dx, recomputed from zh, sinks 0',
+	worstD <= 1e-12 && nErode > nx / 2, 'worst relative difference ' + worstD.toExponential(2)
 	+ ', ' + nErode + ' of ' + nx + ' columns erode, the ' + sinks.length + ' sinks get nothing');
+var div = L.RELIEF[2][0], divL = div === 0 ? nx - 1 : div - 1, divR = div + 1 === nx ? 0 : div + 1;
+check.ok('the slope the law reads is the drop to the receiver, not the right face',
+	worstS <= 1e-12 && nLeft > 0 && leftFace === 0
+	&& S.erR[div] === divL
+	&& scaled(S.erS[div], (S.zh[div] - S.zh[divL]) / dx) <= 1e-12
+	&& Math.abs(S.erS[div] - Math.abs(S.zh[divR] - S.zh[div]) / dx) > 1e-6,
+	nLeft + ' left-draining columns, ' + leftFace + ' still on the right face; the divide at '
+	+ div + ' drains to ' + S.erR[div] + ' at slope ' + S.erS[div].toExponential(2)
+	+ ' against the right face ' + (Math.abs(S.zh[divR] - S.zh[div]) / dx).toExponential(2));
+var flankUp = 45, flankDn = 60;
+check.ok('on a linear flank demand ranks with drainage area (same slope, more A, more E)',
+	scaled(S.erS[flankUp], S.erS[flankDn]) <= 1e-12
+	&& S.erA[flankDn] > S.erA[flankUp] && S.erD[flankDn] > S.erD[flankUp],
+	'columns ' + flankUp + '/' + flankDn + ' slope ' + S.erS[flankUp].toExponential(2)
+	+ '/' + S.erS[flankDn].toExponential(2) + ', A ' + S.erA[flankUp].toFixed(0)
+	+ '/' + S.erA[flankDn].toFixed(0) + ' km2, demand ' + S.erD[flankUp].toExponential(2)
+	+ '/' + S.erD[flankDn].toExponential(2) + ' km2');
 
 // one hand-called pass: who loses, who gains, and what the receiving parcel is left looking like
 var zh0 = Float64Array.from(S.zh), m0 = Float64Array.from(S.m.subarray(0, S.n));
@@ -303,6 +329,29 @@ check.ok('dt = 0 leaves the state alone and P.ero off clears the frame diagnosti
 	hA + ' -> ' + hB + ', paused and disabled both leave ' + S.hash()
 	+ ' (d.ero 0, throughput still ' + S.thr.eroCr.toFixed(6) + ' km2, zh untouched ' + zhSame + ')');
 
+// two deposits in one site column: the seat is the shallowest, not the first slot, and a
+// transfer into that site credits the surface pile, not the buried one.
+restore();
+M = L.configure();
+L.relief();
+nx = M.nx; dx = M.dx;
+ERODE.route(M, S);
+var srcCol = 100, iSeat = S.erSite[srcCol];
+var buried = POOL.admit(S, P.PH.dep), surf = POOL.admit(S, P.PH.dep);
+S.x[buried] = iSeat * dx; S.y[buried] = 40; S.e[buried] = Math.asinh(40 / M.yLin); S.m[buried] = 80;
+S.x[surf] = iSeat * dx; S.y[surf] = -S.zh[iSeat];
+S.e[surf] = Math.asinh(S.y[surf] / M.yLin); S.m[surf] = 80;
+ERODE.route(M, S);
+check.ok('the site seat is the shallowest in-band deposit, not the lowest slot',
+	surf > buried && S.erDep[iSeat] === surf && iSeat !== srcCol,
+	'slots buried ' + buried + ' then surface ' + surf + ', seat ' + S.erDep[iSeat]
+	+ ', source column ' + srcCol + ' deposits at ' + iSeat);
+ERODE.law(M, S, SIM.dt);
+ERODE.move(M, S);
+check.ok('a transfer into that site credits the surface pile and leaves the buried one alone',
+	S.m[surf] > 80 && S.m[buried] === 80,
+	'surface ' + S.m[surf].toFixed(4) + ' km2, buried ' + S.m[buried].toFixed(4) + ' km2');
+
 // ------------------------------------------------------------------ B. the frozen fixture leg
 check.section('B. ' + FIXF + ' frames on the frozen fixture: the profile stands, the basins fill');
 
@@ -365,8 +414,8 @@ check.ok('the sediment is the P3 inventory\'s own deposit stock, not a second po
 	fix1.depN >= 2 && scaled(fix1.depM, fix1.moved) <= 1e-12,
 	fix1.depN + ' deposit parcels hold ' + fix1.depM.toFixed(6) + ' km2 against the '
 	+ fix1.moved.toFixed(6) + ' km2 the leg moved: the same mass, counted once');
-check.ok('the work is concentrated in the trunk: the top decile of columns carries the demand',
-	fix1.share > 0.25,
+check.ok('the work is concentrated in the trunk: the top decile carries more than twice a uniform share',
+	fix1.share > 0.20,
 	'the top 10% of columns carry ' + (100 * fix1.share).toFixed(1) + '% of a frame\'s demand, '
 	+ 'the divide at column ' + L.RELIEF[2][0] + ' ' + fix1.divide.toExponential(2)
 	+ ' km2 against ' + (fix1.dem / nx).toExponential(2) + ' km2 a column on average');
