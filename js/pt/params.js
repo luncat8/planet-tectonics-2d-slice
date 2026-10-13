@@ -295,6 +295,8 @@ var PTP = {
 	// deferral path exists for the fixture that fills it on purpose. One P4.4 bookkeeping
 	// line: a recycled parcel can be subducted sediment, so recycle() names the deposit
 	// phase's share of its debits (thr.deepDep) and the deposit identity gains a third term.
+	// 0.3.1's M1 adds exactly one more (thr.depMelt, the certified deposits that shed melt
+	// into G5); the deposit identity is the four debits of pool.js recycle()/carry().
 	slab: true,
 	slabdT: 0.05,               // the contrast against the background of its depth below which
 	                            // material is not dense enough to sink on its own: a slab that
@@ -380,7 +382,8 @@ var PTP = {
 	// the integrated leg moved 99,231 km2 of the weathering band in 300 Myr with 13.8 km2
 	// (0.01%) of demand unmet and 0 refusals, so eroTake, eroMinM and eroSlopeDep sit above
 	// their measured worst cases. The sediment is the P3 deposit stock, whose identity now
-	// reads landings + weathering - rework - what the slab pass recycles (thr.deepDep).
+	// reads landings + weathering - rework - what the slab pass recycles (thr.deepDep) - what
+	// the certified buried deposit sheds into G5 (thr.depMelt, 0.3.1 M1).
 	ero: true,
 	eroBand: 120,               // km, the weathering band: solid parcels above this depth are
 	                            // the surface law's population. The 'cool' start's hydrated skin

@@ -79,9 +79,14 @@ contact census re-derived from the kernel's own table that decided the two open 
 (no plate-size threshold; translation-only brake), the slider matrix, and the P4 freeze; it
 delegates the five P4 owner harnesses and pt-p3-check.js as children and quotes their counts
 rather than re-measuring them),
-experiments/pt-buried-deposit-melt.js (report-only G5 measurement of buried, threshold-molten
-deposit stock and frame-sampled residence, plus the shallow-cooling boundary; it does not
-change melt routing),
+experiments/pt-buried-deposit-melt.js (the 0.3.1 harness: section A is the M1 routing fixture --
+the certificate, the depth and threshold terms of the G5 deposit gate, both transfer shapes and
+the capacity rule, all on the kernel; sections B/C are report-only measurement of the buried,
+threshold-molten deposit stock, frame-sampled residence, the shallow-cooling boundary, the margin
+reading that says how far the buried population sits from the threshold, the local node field's
+temperature beside each sample's own, and the live `thr.depMelt` intake the route takes; it runs
+one live leg or a cell matrix -- `--cells seed:kyr:myr,...`, each cell a seed with its own clock
+and duration, the first repeated for a fingerprint check -- and changes no routing itself),
 and the cut in three: experiments/slice-cut.js (the walk, the pack, the resample),
 section-pack.js (the section page: transports, refusals, switches, HUD), section-seed.js (the
 mapping: the z identity, the ledger, the quiet start, the two run modes), checkpoint.js (the

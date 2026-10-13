@@ -286,8 +286,8 @@ check.ok('the burst separated real melt and the store received it',
 	burst > 0 && S.chN > 0 && S.chM[0] > 0 && S.tx.intrude > 0,
 	'burst ' + burst + ' splits   intrusions ' + S.tx.intrude + '   chambers ' + S.chN);
 var refusedShipped = S.tx.refuse, wholeShipped = S.tx.whole, freezeShipped = S.tx.freeze;
-check.near('the melt book closes over the shipped run: segregated plus whole, less freeze, is intruded plus in flight',
-	S.thr.seg + S.thr.whole - S.thr.freeze, S.thr.intrDr + meltInFlightM(), 1e-12, 'km2');
+check.near('the melt book closes over the shipped run: both sources, less freeze, is intruded plus in flight',
+	S.thr.seg + S.thr.whole + S.thr.depMelt - S.thr.freeze, S.thr.intrDr + meltInFlightM(), 1e-12, 'km2');
 check.ok('and nothing was dropped at capacity', refusedShipped === 0,
 	'refuse ' + S.tx.refuse + '   peak n ' + peakN + ' of ' + P.partCap);
 check.info('the two gaps, reported separately', 'marker/grid heat gap ' + mgGap.toExponential(2)
@@ -325,8 +325,8 @@ check.ok('the store received felsic and water', S.chN > 0 && chamF > 0 && chamW 
 check.near('mass closes over the seeded run', lfA.m, lfB.m, 1e-12, 'km2');
 check.near('felsic closes over the seeded run', lfA.f, lfB.f, 1e-12, 'km2');
 check.near('water closes over the seeded run', lfA.w, lfB.w, 1e-12, 'km2');
-check.near('the melt book closes over the seeded run: segregated plus whole, less freeze, is intruded plus in flight',
-	S.thr.seg + S.thr.whole - S.thr.freeze, S.thr.intrDr + meltInFlightM(), 1e-12, 'km2');
+check.near('the melt book closes over the seeded run: both sources, less freeze, is intruded plus in flight',
+	S.thr.seg + S.thr.whole + S.thr.depMelt - S.thr.freeze, S.thr.intrDr + meltInFlightM(), 1e-12, 'km2');
 
 // ---------------------------------------------------------------- 8. the tuning report
 check.section('8. what this run says about the three open knobs (report only)');

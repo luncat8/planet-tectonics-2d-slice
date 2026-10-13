@@ -164,7 +164,7 @@ check.near('the airborne stock is what the emission counter says is still up',
 // is exactly that (thr.deepDep, zero on this leg -- nothing reaches yDeep in 50 Myr). The stock
 // is therefore the landings plus everything the erosion pass credited, less what the erosion and
 // recycling passes took back out of the phase.
-var depWant = S.thr.landCr + S.thr.eroCr - S.thr.eroDep - S.thr.deepDep;
+var depWant = S.thr.landCr + S.thr.eroCr - S.thr.eroDep - S.thr.deepDep - S.thr.depMelt;
 check.ok('the deposit stock is the landings plus the surface law, and the phase never shrinks',
 	Math.abs(S.invM[P.PH.dep] - depWant) <= 1e-9 * Math.abs(depWant) && S.thr.eroDr === S.thr.eroCr,
 	'deposits ' + S.invM[P.PH.dep].toFixed(6) + ' km2 against ' + depWant.toFixed(6) + ' = '
@@ -177,7 +177,7 @@ check.info('the live census', S.tx.vent + ' drains, ' + S.tx.emit + ' emitted ba
 	+ S.tx.land + ' landings, ' + S.tx.merge + ' deposit merges, ' + S.tx.intrude
 	+ ' intrusions, ' + S.tx.refuse + ' refusals');
 check.info('throughput is not stock', 'the gross legs moved '
-	+ (S.thr.seg + S.thr.whole + S.thr.freeze + S.thr.intrDr + S.thr.ventDr + S.thr.airDr
+	+ (S.thr.seg + S.thr.whole + S.thr.depMelt + S.thr.freeze + S.thr.intrDr + S.thr.ventDr + S.thr.airDr
 	+ S.thr.landDr).toExponential(3) + ' km2 against a ' + S.invMTot.toExponential(3)
 	+ ' km2 inventory');
 check.info('the books', 'intake ' + (S.hLedger - A.hl0).toExponential(6) + '   wall '

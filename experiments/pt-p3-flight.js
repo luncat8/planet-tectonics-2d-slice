@@ -263,8 +263,12 @@ check.near('drained chamber mass is either in a vent or credited to flight',
 	S.thr.ventCr, S.invVM + S.thr.airDr, 1e-12, 'km2');
 check.near('emitted mass is either airborne or debited by landing',
 	S.thr.airCr, sumPhase(P.PH.air) + S.thr.landDr, 1e-12, 'km2');
-check.near('landed mass is the current deposit stock despite coalescence',
-	S.thr.landCr, sumPhase(P.PH.dep), 1e-12, 'km2');
+// The deposit phase is the landings plus what the surface law credited, less what erosion
+// reworked, what the slab pass recycled and what M1's certified deposits shed -- landCr alone
+// stopped being the stock the moment P4.3's weathering shipped on.
+check.near('landed and weathered mass is the current deposit stock despite coalescence',
+	S.thr.landCr + S.thr.eroCr - S.thr.eroDep - S.thr.deepDep - S.thr.depMelt,
+	sumPhase(P.PH.dep), 1e-12, 'km2');
 check.ok('the shared reserve holds the active eruption without a dropped transfer',
 	peakN < P.partCap && S.tx.refuse === 0,
 	'peak ' + peakN + '/' + P.partCap + '   refusals ' + S.tx.refuse);

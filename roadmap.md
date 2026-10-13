@@ -16,7 +16,7 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | 0.1.9 | the two contact measurements: R1's site window anchored at the event and its background taken from the quiet-frame yardstick, R2's needle shoulder read over the belt's own neighbourhood | `0.1.9-plan.md`, `archive/0.1.9-worklog.md` | 0.1.8's M3 matrix |
 | 0.2.x | column engine: eruptives, deposits, extraction; page chrome (pause/step/reset) uses E1/E3 — **closed at M5** | `archive/0.2.0-plan.md` | — |
 | 0.3.0 | particle engine P3+ (melt, eruptions, contact). **P3 closed at P3.5**: conserved pool/routing, phase and enthalpy, segregation/storage, conduits, conserved wall-clock flight through landing/cooling/welding, and the integrated acceptance pass with the reserve frozen — `archive/0.3.0-p3.5-report.md`. **P4 closed at P4.4**: contact/underthrusting, slab sinking and deep recycling, arc melt from the slab, particle erosion/deposition, and the integrated acceptance pass with the P4 constants frozen — `archive/0.3.0-p4.4-report.md` | `0.3.0-plan.md`, `0.3.0-p3-plan.md`, `0.3.0-p4-plan.md` | — |
-| 0.3.1 | deferred buried-deposit remelting: M0 measurement and source-aware routing specification; runtime routing remains gated pending broader live evidence | `0.3.1-plan.md` | 0.3.0 P4.4 baseline |
+| 0.3.1 | buried-deposit remelting: **M1 landed** — the shallow-quench certificate, the depth-plus-threshold G5 gate, the source-aware equilibrium split and the `thr.depMelt`/`tx.depMelt` books, with the live 300 Myr cells closing both identities at zero refusals; the route runs on two of eight seeds (intake 5–35 km²) | `0.3.1-plan.md`, `archive/0.3.1-M1-remelt-worklog.md` | 0.3.0 P4.4 baseline |
 | 0.4.0 | sync/exchange: provenance, deposits core, water, checkpoint, section pack | `0.4.0-sync-plan.md` | — |
 | 0.4.1 | the cut: draw a line on the globe, copy/save, paste/load, reconstruct a section | `0.4.1-plan.md` | 0.4.0's format (`port/slice-format.js`, M0 done) |
 | 0.9.0 | globe page hosts the section as a library; live sync is C3+C4 | `0.9.0-draft-sync.md`, `0.4.1-plan.md` §8 | 0.4.1 M1–M2; C1 on the column engine |
@@ -243,13 +243,30 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   conditions.
 - **C1 on the column engine** (one global per file, `start(host)`): prerequisite of 0.9, not of
   the cut. New files do not add a second global.
-- **Remelting buried deposits (`0.3.1-plan.md`):** G5 still segregates mantle only. The
-  report-only 300 Myr seed-1 measurement observed no `PH.dep` mass at `meltHold` below the
-  30 km cooling mask (0 km²·Myr eligible host exposure); P4.1 nevertheless recycled
-  1,242.2 km² of deposit mass to deep records. These are different measurements. The absence
-  in one baseline does not generalize to other seeds or prove a deep-quench bound. Keep the
-  route deferred; any implementation needs a persistent shallow-quench certificate, a
-  source-specific conservative transfer and a `thr.depMelt` debit.
+- **Remelting buried deposits (`0.3.1-plan.md`):** G5 still segregates mantle only, and the
+  0.3.1 matrix now says the route is *exercised*, not hypothetical. The seed-1 baseline's zero
+  did not generalize: over eight 300 Myr seeds at the shipped 50 kyr/frame clock, two carry
+  buried deposit mass at or above `meltHold` below the 30 km mask (seed 6: 1.36e4 km²·Myr of
+  eligible host exposure, the closest sample at xi 0.54 near 1,869 km and T 0.997; seed 8:
+  4.6e1 km²·Myr, closest xi 0.50 at 2,291 km), and seed 6 fires at 10 and 500 kyr/frame as well.
+  The six zero seeds are not far from it either — their closest approaches sit 0.03–0.23 of H
+  short of a threshold budget of only 0.04 — so the deferral looks like a race between where the
+  deposits are carried and how fast they cool, not a structural bound. That reading landed M1
+  (`archive/0.3.1-M1-remelt-worklog.md`): G5 now routes a deposit only when it is past the 30 km
+  mask, carries the new shallow-quench certificate (`depQ`, earned by a positive-time pass that
+  leaves the parcel below `meltHold`, conjunctive through merges and carries) and is at the
+  threshold, through the existing equilibrium split and with its own `thr.depMelt`/`tx.depMelt`
+  books. Six live 300 Myr cells (seeds 1, 2, 3, 6, 7, 8 at 50 kyr/frame and seed 6 at 500 kyr)
+  close mass, enthalpy, the deposit identity and the melt book at zero refusals, and the route
+  runs on seeds 6 and 8 — but its intake is small, 35.2 km² in 6 transfers and 5.08 km² in 7,
+  against M0's counterfactual exposure integral of 1.361e4 and 4.557e1 km²·Myr. The two are not
+  comparable: the exposure integral is a resident population that only exists while nothing
+  consumes it, and with the route on the harness samples the crossing itself (closest xi 0.1003,
+  margin −1e-4). One reading stays open: every crossing the route takes sits 0.1–0.3 of T above
+  the node field it is embedded in, the same adjoint-concentration signature M0 measured, so
+  whether eligibility should also test the local field is the next measurement — the same caution
+  applies to the 600 Myr leg, whose hottest parcel in the world was itself a buried deposit at
+  T 2.267, H ≈ 2.5, 74 km deep in a field of 0.288 (`archive/0.3.1-buried-deposit-matrix-worklog.md`).
 - **The crust kernel's ×1000 (found in 0.4.1 M2): settled by `0.1.7-plan.md`.** Both
   flow laws now read `1/Myr` on metre excesses, in a backward-Euler form that is stable
   at every slider leg, with the belt's receiver capped to the ceiling headroom and the

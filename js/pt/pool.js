@@ -60,7 +60,7 @@
 		// dead work. `cl` is the crust pass's own output and is rewritten for all of 0..S.n
 		// every frame, so it is workspace too, fingerprint included.
 		FIELDS: ['x', 'y', 'e', 'T', 'm', 'vx', 'vy', 'age', 'mu', 'dmg', 'pLoad', 'pCnt',
-			'id', 'ph', 'H', 'cF', 'cW', 'melt'],
+			'id', 'ph', 'H', 'cF', 'cW', 'melt', 'depQ'],
 		WORK: ['order', 'par', 'cl', 'csOf', 'csM', 'csX', 'csY', 'csVX', 'csVY', 'csW',
 			'csR2', 'csS', 'csP', 'csRef', 'csCnt',
 			// P4.0's own (contact.js): the brake's demanded correction and the count it is a mean
@@ -150,7 +150,12 @@
 		// not melt it. The child's T and melt are snapped to the law's own reading of its H
 		// so the snap is bitwise-quiet under the next equilibrium pass. A full pool defers
 		// and counts; the phase fraction stays in its source parcel and tries again.
-		separate: function (S, p) {
+		//
+		// `dep` names the source book the debit belongs to -- the mantle's gross segregation
+		// or 0.3.1 M1's deposit remelt -- so one operation serves both sources without
+		// charging the wrong identity, and the split itself is never duplicated. The child is
+		// melt and carries no deposit certificate; the residue keeps its own.
+		separate: function (S, p, dep) {
 			var xi = S.melt[p], q, m, ts;
 			if (!(xi > 0) || !(xi < 1)) return -1;      // pure phase: nothing to separate
 			// admit counts a capacity refusal itself; this is one event, not two
@@ -168,7 +173,7 @@
 			PHASE.byH(S.H[q], S.y[q], S.cF[q], S.cW[q]);
 			S.T[q] = PHASE.out.t; S.melt[q] = PHASE.out.melt;
 			S.tx.split++;
-			S.thr.seg += S.m[q];
+			if (dep) { S.thr.depMelt += S.m[q]; S.tx.depMelt++; } else S.thr.seg += S.m[q];
 			return q;
 		},
 
@@ -252,7 +257,7 @@
 			// sediment is exactly that. Counting the phase apart is what keeps the deposit
 			// inventory's identity exact at the integrated scale (P4.4's 300 Myr leg found
 			// the gap):
-			//   invM[dep] = thr.landCr + thr.eroCr - thr.eroDep - thr.deepDep
+			//   invM[dep] = thr.landCr + thr.eroCr - thr.eroDep - thr.deepDep - thr.depMelt
 			if (dep) S.thr.deepDep += m;
 			return best;
 		},
@@ -275,11 +280,17 @@
 				S.cF[dst] += f * (S.cF[src] - S.cF[dst]);
 				S.cW[dst] += f * (S.cW[src] - S.cW[dst]);
 				S.m[dst] += d;
+				// 0.3.1 M1: a deposit receiver of this transfer is certified only if both it
+				// and the material that moved into it were
+				if (S.ph[dst] === P.PH.dep) S.depQ[dst] = S.depQ[dst] && S.depQ[src] ? 1 : 0;
 			} else {
 				q = this.admit(S, ph);
 				if (q < 0) return -1;
 				S.T[q] = S.T[src]; S.H[q] = S.H[src]; S.melt[q] = S.melt[src];
 				S.cF[q] = S.cF[src]; S.cW[q] = S.cW[src];
+				// a carried fragment of an already certified deposit keeps its certificate;
+				// a fresh parcel of anything else starts without one (admit zeroes it)
+				if (ph === P.PH.dep) S.depQ[q] = S.depQ[src];
 				S.m[q] = d;
 				dst = q;
 			}
@@ -289,7 +300,7 @@
 			// rock unless the donor was itself sediment. Counting that apart is what lets the
 			// deposit inventory's identity stay exact with the surface law running (recycle()
 			// books the phase's third debit the same way):
-			//   invM[dep] = thr.landCr + thr.eroCr - thr.eroDep - thr.deepDep
+			//   invM[dep] = thr.landCr + thr.eroCr - thr.eroDep - thr.deepDep - thr.depMelt
 			if (S.ph[src] === P.PH.dep) S.thr.eroDep += d;
 			return dst;
 		},
@@ -324,6 +335,9 @@
 			S.cF[a] += w * (S.cF[b] - S.cF[a]);
 			S.cW[a] += w * (S.cW[b] - S.cW[a]);
 			S.melt[a] += w * (S.melt[b] - S.melt[a]);
+			// 0.3.1 M1: the shallow-quench certificate is a conjunction over the merged
+			// material -- a deposit that takes in unquenched material is not quenched
+			S.depQ[a] = S.depQ[a] && S.depQ[b] ? 1 : 0;
 			S.age[a] += w * (S.age[b] - S.age[a]);
 			S.mu[a] += w * (S.mu[b] - S.mu[a]);
 			S.dmg[a] += w * (S.dmg[b] - S.dmg[a]);

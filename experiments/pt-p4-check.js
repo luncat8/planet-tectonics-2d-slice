@@ -229,7 +229,7 @@ check.ok('every transfer leg of the integrated frame is a matched debit/credit p
 // credits, the surface law's rework of its own deposits, and -- found by this leg at the
 // integrated scale -- the slab pass recycling subducted sediment below yDeep, which is
 // detached cold lithosphere whatever its phase (thr.deepDep names it).
-var depWant = S.thr.landCr + S.thr.eroCr - S.thr.eroDep - S.thr.deepDep;
+var depWant = S.thr.landCr + S.thr.eroCr - S.thr.eroDep - S.thr.deepDep - S.thr.depMelt;
 check.ok('the deposit stock is the landings plus the surface law less what left it,'
 	+ ' through booked transfers only',
 	Math.abs(S.invM[P.PH.dep] - depWant) <= 1e-9 * Math.abs(depWant),

@@ -57,7 +57,8 @@ function phaseMass(ph) { var s = 0, i; for (i = 0; i < S.n; i++) if (S.ph[i] ===
 // the melt-phase mass in flight: the other side of the melt book (segregated mass, plus whole-parcel
 // melting, less freeze-backs, is what intrusions and the mass still in flight must add up to)
 function meltInFlight() { var k, m = 0; for (k = 0; k < S.n; k++) if (S.ph[k] === P.PH.melt) m += S.m[k]; return m; }
-function meltBookGap() { return S.thr.seg + S.thr.whole - S.thr.freeze - (S.thr.intrDr + meltInFlight()); }
+function meltBookGap() { return S.thr.seg + S.thr.whole + S.thr.depMelt - S.thr.freeze
+	- (S.thr.intrDr + meltInFlight()); }
 
 // one chamber record at a chosen head (km of rock head) and roof depth, with a stock whose
 // intensives are fixed: H = 1.25, melt = 1, felsic 0.1, water cW. The roof strength is flat.
@@ -234,8 +235,8 @@ check.near('the pool and the store close: mass', lc1.m, lc0.m, 1e-12, 'km2');
 check.ok('the global enthalpy residual is round-off', Math.abs(entRes8) < 1e-9, 'residual ' + entRes8.toExponential(2));
 check.ok('the latent identity still holds', Math.abs(identity()) < 1e-9 * Math.abs(S.hLedger),
 	'identity ' + identity().toExponential(3));
-check.near('the melt book closes over the shipped run: segregated plus whole, less freeze, is intruded plus in flight',
-	S.thr.seg + S.thr.whole - S.thr.freeze, S.thr.intrDr + meltInFlight(), 1e-12, 'km2');
+check.near('the melt book closes over the shipped run: both sources, less freeze, is intruded plus in flight',
+	S.thr.seg + S.thr.whole + S.thr.depMelt - S.thr.freeze, S.thr.intrDr + meltInFlight(), 1e-12, 'km2');
 check.ok('the shipped geometry opens conduits under the melt supply it actually produces',
 	opened > 0 && S.tx.vent > 0, 'max open ' + opened + '   vent drains ' + S.tx.vent);
 check.ok('the shipped drains continue into flight and terrain landing', S.tx.emit > 0 && S.tx.land > 0,
@@ -278,9 +279,11 @@ check.near('drained mass is staged in a vent or has been debited to flight',
 	drained, vStock + S.thr.airDr, 1e-12, 'km2');
 check.near('emitted mass is airborne or has been debited to landing',
 	S.thr.airCr, phaseMass(P.PH.air) + S.thr.landDr, 1e-12, 'km2');
-check.near('landed mass is still deposit stock after compatible merges',
-	S.thr.landCr, phaseMass(P.PH.dep), 1e-12, 'km2');
-check.near('the melt book closes over the seeded run, with the eruptions beside it', S.thr.seg + S.thr.whole - S.thr.freeze,
+check.near('landed and weathered mass is still deposit stock after compatible merges',
+	S.thr.landCr + S.thr.eroCr - S.thr.eroDep - S.thr.deepDep - S.thr.depMelt,
+	phaseMass(P.PH.dep), 1e-12, 'km2');
+check.near('the melt book closes over the seeded run, with the eruptions beside it',
+	S.thr.seg + S.thr.whole + S.thr.depMelt - S.thr.freeze,
 	S.thr.intrDr + meltInFlight(), 1e-12, 'km2');
 check.ok('active flight keeps the finite vent schedules from remaining blocked', S.tx.block === 0 && nBlk === 0,
 	'blocked events ' + S.tx.block + '   blocked now ' + nBlk);

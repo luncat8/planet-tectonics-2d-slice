@@ -1,0 +1,54 @@
+
+A. the routing boundary: certificate plus depth plus meltHold, and nothing less
+PASS  the probe starts with molten deposits on both sides of the cutoff   xi 0.200/0.200/0.200
+PASS  an uncertified deposit is not re-phased, however deep and however molten   parcels 3, split 0, whole 0, depMelt tx 0
+PASS  the cooling mask includes y = depositCoolDepth   H shallow/boundary 0.755/0.757 -> 0.278/0.278
+PASS  the pass certifies the deposits it quenched below the threshold   depQ shallow/boundary/deep 1/1/0
+PASS  cool() leaves the deposit just below the mask unchanged and uncertified   y 31 km, xi 0.200
+PASS  the quenched shallow deposit is still not routed at the mask boundary   phase dep, xi 0.000
+PASS  a certified deposit past the mask sheds its melt through the P3.2 split   residue xi 0.000 at its solidus, depMelt +20.000 km2, the mantle seg book untouched
+PASS  and the child is mobile melt with no certificate of its own   phase melt, xi 1.0000
+PASS  a wholly molten certified deposit converts in place, not through the mantle book   phase melt, thr.whole 0.000, depMelt +100.000 km2
+PASS  fresh hot ejecta inside the mask is not routed and not certified   xi 1.000
+PASS  zero geological time certifies nothing   depQ 0
+PASS  a single short pass does not certify material still above the threshold   xi 0.9736
+PASS  positive-time passes certify it once its own reading is below meltHold   42 passes, xi 0.0889
+PASS  the certificate survives burial, and the parcel remelts at depth   residue xi 0.000, still certified
+PASS  a merge with uncertified material clears the certificate   depQ 0
+PASS  material carried into an uncertified deposit cannot certify it   depQ 0
+PASS  a certified donation cannot certify a receiver that was not   depQ 0
+PASS  a transfer between two certified deposits keeps the certificate   depQ 1
+PASS  a fresh parcel of a certified deposit keeps the certificate   phase dep, depQ 1
+PASS  a full pool defers the split and leaves the source exactly as it was   refuse +1, certificate intact
+PASS  a whole-parcel conversion needs no spare slot   phase melt, 1 refusal
+PASS  the margin is the kernel threshold: zero at xi = meltHold, linear below it   xi 0.050000 margin 2.00e-2; xi 0.100000 margin 0.00e+0; the threshold is 0.0400 of H
+PASS  an unfilled record reads as never sampled, not as cold   xi -1
+
+B. the cell matrix: 4 cells of 300 Myr each unless the cell declares its own clock or duration, plus one repeat of the first cell, all shipped P4 passes enabled
+INFO  cell 1 seed 1 at 50 kyr/frame over 300 Myr   buried peak 99692.5 km2 (end 352435.2 km2 in 763 parcels); buried mass-time 5.8432e+6 km2 Myr; eligible 0.000e+0 km2 Myr; closest xi 0.0168/0.1 at 1047 km, margin 0.0333 of H, T 0.912 vs field 0.630; peak deposit T 0.961; hottest parcel T 1.388 / H 1.638; deepDep 1242.20 km2; depMelt 0.000e+0 km2 in 0 transfers; fingerprint 6271680363413605; 98.7 s
+PASS  cell 1 seed 1 at 50 kyr/frame over 300 Myr closes its books, defers nothing and agrees with its own histogram   mass 0.00e+0 km2 (0.00e+0 rel); enthalpy 4.84e-8 (2.95e-14 rel); deposit 1.98e-9; refusals 0; melt book -4.66e-10 km2 (7.72e-16 rel, 0 deposits shed); threshold band against eligible mass-time 0.00e+0 / 0.00e+0
+INFO  cell 2 seed 6 at 50 kyr/frame over 300 Myr   buried peak 90069.2 km2 (end 385100.7 km2 in 686 parcels); buried mass-time 5.4739e+6 km2 Myr; eligible 1.757e+1 km2 Myr; closest xi 0.1003/0.1 at 701 km, margin -0.0001 of H, T 0.915 vs field 0.610; peak deposit T 0.967; hottest parcel T 1.373 / H 1.623; deepDep 708.95 km2; depMelt 3.520e+1 km2 in 6 transfers; fingerprint 5680894932891015; 99.3 s
+PASS  cell 2 seed 6 at 50 kyr/frame over 300 Myr closes its books, defers nothing and agrees with its own histogram   mass 0.00e+0 km2 (0.00e+0 rel); enthalpy -5.33e-8 (3.15e-14 rel); deposit 1.80e-9; refusals 0; melt book -4.66e-10 km2 (7.55e-16 rel, 6 deposits shed); threshold band against eligible mass-time 1.76e+1 / 1.76e+1
+INFO  cell 3 seed 7 at 50 kyr/frame over 300 Myr   buried peak 121460.9 km2 (end 350598.9 km2 in 768 parcels); buried mass-time 7.0482e+6 km2 Myr; eligible 0.000e+0 km2 Myr; closest xi 0.0000/0.1 at 1902 km, margin 0.0507 of H, T 0.934 vs field 0.691; peak deposit T 0.934; hottest parcel T 1.412 / H 1.662; deepDep 12283.19 km2; depMelt 0.000e+0 km2 in 0 transfers; fingerprint 718104493703670; 96.9 s
+PASS  cell 3 seed 7 at 50 kyr/frame over 300 Myr closes its books, defers nothing and agrees with its own histogram   mass 0.00e+0 km2 (0.00e+0 rel); enthalpy 3.19e-8 (1.91e-14 rel); deposit -3.14e-9; refusals 0; melt book 2.33e-10 km2 (3.88e-16 rel, 0 deposits shed); threshold band against eligible mass-time 0.00e+0 / 0.00e+0
+INFO  cell 4 seed 8 at 50 kyr/frame over 300 Myr   buried peak 97904.5 km2 (end 276511.0 km2 in 752 parcels); buried mass-time 5.3655e+6 km2 Myr; eligible 2.536e+0 km2 Myr; closest xi 0.1003/0.1 at 1381 km, margin -0.0001 of H, T 0.928 vs field 0.660; peak deposit T 0.955; hottest parcel T 1.378 / H 1.628; deepDep 4161.27 km2; depMelt 5.076e+0 km2 in 7 transfers; fingerprint 6824138350604350; 98.4 s
+PASS  cell 4 seed 8 at 50 kyr/frame over 300 Myr closes its books, defers nothing and agrees with its own histogram   mass 0.00e+0 km2 (0.00e+0 rel); enthalpy -1.00e-8 (6.59e-15 rel); deposit 1.51e-9; refusals 0; melt book -2.33e-10 km2 (4.34e-16 rel, 7 deposits shed); threshold band against eligible mass-time 2.54e+0 / 2.54e+0
+PASS  the first cell repeats bitwise, so a cell does not depend on its neighbours   fingerprint 6271680363413605 both times, buried mass-time 5.8432e+6 against 5.8432e+6
+PASS  eligible stock stays a subset of buried stock in every cell, at zero refusals   worst peak eligible 351.219 km2 against worst peak buried 121460.870 km2; 0 refusals
+INFO  matrix total   4 cells requested, 24000 sampled G5 calls at the cells' own clocks; 2.37308e+7 km2 Myr of buried-deposit exposure; 2.01017e+1 km2 Myr of eligible exposure; broadest approach xi 0.1003 (seed 8 at 50 kyr/frame over 300 Myr, 600-2400 km, y 1381.3 km, margin -0.0001 of H)
+INFO  matrix verdict   at least one cell observed a threshold-qualified buried deposit: implement M1 before generalizing
+INFO  closest cell in full seed 8 at 50 kyr/frame over 300 Myr   buried peak 97904.488 km2; eligible 2.536e+0 km2 Myr; fingerprint 6824138350604350
+INFO  closest approach in 30-250 km   xi 0.0000 against the threshold 0.1 at y 249.8 km, t=219.40 Myr; T 0.527 against its own solidus 0.851, local field T 0.354; H 0.5268 against the threshold enthalpy 0.8911; margin 0.3643 of H (0.1000 of melt fraction) on 0.2 km2 of host, cF 0.000 cW 0.0050
+INFO  closest approach in 250-600 km   xi 0.0000 against the threshold 0.1 at y 599.9 km, t=237.10 Myr; T 0.848 against its own solidus 0.895, local field T 0.546; H 0.8476 against the threshold enthalpy 0.9352; margin 0.0876 of H (0.1000 of melt fraction) on 0.2 km2 of host, cF 0.000 cW 0.0050
+INFO  closest approach in 600-2400 km   xi 0.1003 against the threshold 0.1 at y 1381.3 km, t=299.05 Myr; T 0.928 against its own solidus 0.913, local field T 0.660; H 0.9532 against the threshold enthalpy 0.9531; margin -0.0001 of H (-0.0003 of melt fraction) on 0.0 km2 of host, cF 0.000 cW 0.0050
+INFO  closest approach in >2400 km   xi 0.0000 against the threshold 0.1 at y 2591.9 km, t=300.00 Myr; T 0.950 against its own solidus 0.965, local field T 0.859; H 0.9501 against the threshold enthalpy 1.0050; margin 0.0549 of H (0.1000 of melt fraction) on 0.1 km2 of host, cF 0.000 cW 0.0026
+INFO  hottest buried deposit   T 0.955 at y 2373.3 km, xi 0.0498, Ts 0.948, local field T 0.727, cF 0.000 cW 0.0035, t=300.00 Myr
+INFO  melt-fraction mass-time histogram   xi<0.005 5.364e+6 km2 Myr (99.981%); xi 0.005-0.01 6.290e+1 km2 Myr (0.001%); xi 0.01-0.02 1.127e+2 km2 Myr (0.002%); xi 0.02-0.05 4.115e+2 km2 Myr (0.008%); xi 0.05-0.1 4.470e+2 km2 Myr (0.008%); xi>=0.1 (eligible) 2.536e+0 km2 Myr (0.000%)
+INFO  hottest parcel in the world   T 1.378 at y 37.8 km in phase melt, H 1.628, local field T 0.035, t=285.60 Myr -- above the CMB wall temperature
+INFO  highest parcel enthalpy   H 1.628 (T 1.378, xi 1.000) at y 37.8 km in phase melt, cF 0.000 cW 0.0035, t=285.60 Myr; deep source rock's own liquidus sits above the CMB wall by the meltSup margin plus meltGap, so a melt leaf of it may carry H above the surface-anchored 1.25
+INFO  deep interior yardstick   the hottest non-deposit parcel below 2400 km reached T 1.170 at y 2400.4 km, t=297.85 Myr, against the buried deposit population's peak T 0.955
+INFO  buried deposits ever above xi = 0   6 of 327 sampled IDs; 1.113e+3 km2 Myr above a zero melt fraction
+INFO  time   489.7 s
+
+ALL PASS (29 checks)
+exit=0

@@ -60,6 +60,15 @@ var PTS = {
 	melt: null,                     // melt fraction of the parcel's own mass, 0..1: the
 	                                // equilibrium reading of H (P3.1), not a free field. P3.2
 	                                // detaches it, P3.3 erupts it
+	depQ: null,                     // 0.3.1 M1's shallow-quench certificate: 1 once the deposit
+	                                // has spent a positive-time pass inside the cooling mask
+	                                // (flight.js cool) and left it below meltHold, and 0 for
+	                                // material that has not. It starts 0 on admission and on a
+	                                // landing (a freshly landed clast is not quenched), survives
+	                                // warming at depth, and is required -- with the depth and
+	                                // meltHold tests -- before a deposit may remelt. A merge or
+	                                // a carry into a deposit can only clear it: the certificate
+	                                // is a conjunction over everything the parcel is made of
 	nextId: 0,                      // the id the next admitted parcel gets
 	age: null,                      // Myr since the marker last froze (plan §3.1): the
 	                                // welding clock of the crust law (solid.js)
@@ -91,12 +100,16 @@ var PTS = {
 	// recycled, dehydrated and refused since reset. A refused transaction is a capacity event
 	// and is never silent, so the block exists from load and reset zeroes it
 	tx: { admit: 0, split: 0, merge: 0, move: 0, intrude: 0, recycle: 0, arc: 0, ero: 0, refuse: 0,
-		whole: 0, freeze: 0, vent: 0, block: 0, emit: 0, land: 0 },
+		whole: 0, freeze: 0, vent: 0, block: 0, emit: 0, land: 0, depMelt: 0 },
 	// gross throughput, mass (km2) since reset: phase changes and each reservoir/phase leg.
 	// Dr/Cr pairs are matching debit and credit sides. Throughput is never inventory.
+	// 0.3.1 M1's depMelt is the deposit-sourced leg of the melt book: mass a certified buried
+	// deposit shed into the mobile path, kept apart from the mantle's seg/whole so neither
+	// source's identity has to be read net.
 	thr: { seg: 0, whole: 0, freeze: 0, intrDr: 0, intrCr: 0, ventDr: 0, ventCr: 0,
 		airDr: 0, airCr: 0, landDr: 0, landCr: 0, deepDr: 0, deepCr: 0,
-		arcDr: 0, arcCr: 0, arcMelt: 0, eroDr: 0, eroCr: 0, eroDep: 0, deepDep: 0 },
+		arcDr: 0, arcCr: 0, arcMelt: 0, eroDr: 0, eroCr: 0, eroDep: 0, deepDep: 0,
+		depMelt: 0 },
 	invN: null, invM: null,         // the stock inventory by phase: parcels, mass, m*H
 	invH: null,
 	invMTot: 0, invHTot: 0,         // and the totals, with composition and melt as mass: the
@@ -209,6 +222,7 @@ var PTS = {
 			this.H = new Float64Array(cap);
 			this.cF = new Float64Array(cap); this.cW = new Float64Array(cap);
 			this.melt = new Float64Array(cap);
+			this.depQ = new Uint8Array(cap);
 			this.par = new Int32Array(cap); this.cl = new Int32Array(cap); this.csOf = new Int32Array(cap);
 			this.csM = new Float64Array(cap); this.csX = new Float64Array(cap);
 			this.csY = new Float64Array(cap); this.csVX = new Float64Array(cap);
@@ -353,13 +367,14 @@ var PTS = {
 	tx.admit = 0; tx.split = 0; tx.merge = 0; tx.move = 0; tx.intrude = 0;
 	tx.recycle = 0; tx.arc = 0; tx.ero = 0; tx.refuse = 0;
 	tx.whole = 0; tx.freeze = 0; tx.vent = 0; tx.block = 0; tx.emit = 0; tx.land = 0;
+	tx.depMelt = 0;
 	this.thr.seg = 0; this.thr.whole = 0; this.thr.freeze = 0;
 	this.thr.intrDr = 0; this.thr.intrCr = 0; this.thr.ventDr = 0; this.thr.ventCr = 0;
 	this.thr.airDr = 0; this.thr.airCr = 0; this.thr.landDr = 0; this.thr.landCr = 0;
 	this.thr.deepDr = 0; this.thr.deepCr = 0;
 	this.thr.arcDr = 0; this.thr.arcCr = 0; this.thr.arcMelt = 0;
 	this.thr.eroDr = 0; this.thr.eroCr = 0; this.thr.eroDep = 0;
-	this.thr.deepDep = 0;
+	this.thr.deepDep = 0; this.thr.depMelt = 0;
 		this.chN = 0;
 		this.chX.fill(0); this.chY.fill(0); this.chM.fill(0); this.chH.fill(0);
 		this.chL.fill(0); this.chF.fill(0); this.chW.fill(0);
@@ -371,6 +386,8 @@ var PTS = {
 		this.dpL.fill(0); this.dpF.fill(0); this.dpW.fill(0);
 		this.Tg.fill(0); this.mug.fill(0); this.Mg.fill(0); this.Trow.fill(0);
 		this.age.fill(0); this.mu.fill(0); this.dmg.fill(0); this.cl.fill(-1);
+		// nothing on a fresh planet has been through the shallow quench (M1)
+		this.depQ.fill(0);
 		this.csN = 0;                             // the cluster table is rebuilt by crust()
 		this.pLoad.fill(0); this.pCnt.fill(0);
 		// the contact workspace is cleared, not merely unused: a band flag or a brake demand
@@ -497,6 +514,7 @@ var PTS = {
 			a = mixHash(a, this.cF[p], HASH_PRIME_A); b = mixHash(b, this.cF[p], HASH_PRIME_B);
 			a = mixHash(a, this.cW[p], HASH_PRIME_A); b = mixHash(b, this.cW[p], HASH_PRIME_B);
 			a = mixHash(a, this.melt[p], HASH_PRIME_A); b = mixHash(b, this.melt[p], HASH_PRIME_B);
+			a = mixHash(a, this.depQ[p], HASH_PRIME_A); b = mixHash(b, this.depQ[p], HASH_PRIME_B);
 		}
 		if (this.zh) for (i = 0; i < this.zh.length; i++) {
 			a = mixHash(a, this.zh[i], HASH_PRIME_A); b = mixHash(b, this.zh[i], HASH_PRIME_B);
@@ -520,6 +538,7 @@ var PTS = {
 		a = mixHash(a, tx.block, HASH_PRIME_A); b = mixHash(b, tx.block, HASH_PRIME_B);
 		a = mixHash(a, tx.emit, HASH_PRIME_A); b = mixHash(b, tx.emit, HASH_PRIME_B);
 		a = mixHash(a, tx.land, HASH_PRIME_A); b = mixHash(b, tx.land, HASH_PRIME_B);
+		a = mixHash(a, tx.depMelt, HASH_PRIME_A); b = mixHash(b, tx.depMelt, HASH_PRIME_B);
 		a = mixHash(a, this.thr.seg, HASH_PRIME_A); b = mixHash(b, this.thr.seg, HASH_PRIME_B);
 		a = mixHash(a, this.thr.whole, HASH_PRIME_A); b = mixHash(b, this.thr.whole, HASH_PRIME_B);
 		a = mixHash(a, this.thr.freeze, HASH_PRIME_A); b = mixHash(b, this.thr.freeze, HASH_PRIME_B);
@@ -540,6 +559,7 @@ var PTS = {
 		a = mixHash(a, this.thr.eroCr, HASH_PRIME_A); b = mixHash(b, this.thr.eroCr, HASH_PRIME_B);
 		a = mixHash(a, this.thr.eroDep, HASH_PRIME_A); b = mixHash(b, this.thr.eroDep, HASH_PRIME_B);
 		a = mixHash(a, this.thr.deepDep, HASH_PRIME_A); b = mixHash(b, this.thr.deepDep, HASH_PRIME_B);
+		a = mixHash(a, this.thr.depMelt, HASH_PRIME_A); b = mixHash(b, this.thr.depMelt, HASH_PRIME_B);
 		// the contact pass's cumulative counters are state too: a run that reached the same
 		// parcels through a different contact history is not the same run (P4.0)
 		a = mixHash(a, this.contactShort, HASH_PRIME_A); b = mixHash(b, this.contactShort, HASH_PRIME_B);

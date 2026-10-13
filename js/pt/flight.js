@@ -124,6 +124,14 @@
 		// melt from H in the same operation keeps hLedger - ledger = L * delta(melt) true even
 		// between frames. Deposits stay deposits while cooling; they cannot buoyantly return to
 		// their source chamber before they have had a chance to freeze and weld.
+		//
+		// 0.3.1 M1: this pass is the only place a deposit can earn the shallow-quench
+		// certificate (S.depQ). It earns it by *being* below the mobile threshold at the end
+		// of a positive-time pass, which is a test on the parcel's own equilibrium reading --
+		// checked even when there is no enthalpy delta to apply, so material that is already
+		// at the surface wall still certifies. The certificate is never cleared here: a
+		// parcel that warms at depth keeps it, and the G5 route is what that certificate
+		// eventually buys.
 		cool: function (M, S, dt) {
 			if (!(dt > 0)) return;
 			var a = 1 - Math.exp(-dt / P.depositCoolTau), p, h0, h1, ht, t0, q;
@@ -131,13 +139,15 @@
 				if (S.ph[p] !== P.PH.dep || S.y[p] > P.depositCoolDepth) continue;
 				PHASE.byT(P.depositCoolT, S.y[p], S.cF[p], S.cW[p]); ht = PHASE.out.h;
 				h0 = S.H[p];
-				if (h0 === ht) continue;
-				h1 = h0 + a * (ht - h0); t0 = S.T[p];
-				PHASE.byH(h1, S.y[p], S.cF[p], S.cW[p]);
-				S.H[p] = h1; S.T[p] = PHASE.out.t; S.melt[p] = PHASE.out.melt;
-				q = S.m[p] * (h1 - h0);
-				S.hLedger += q; S.wall += q;
-				S.ledger += S.m[p] * (S.T[p] - t0);
+				if (h0 !== ht) {
+					h1 = h0 + a * (ht - h0); t0 = S.T[p];
+					PHASE.byH(h1, S.y[p], S.cF[p], S.cW[p]);
+					S.H[p] = h1; S.T[p] = PHASE.out.t; S.melt[p] = PHASE.out.melt;
+					q = S.m[p] * (h1 - h0);
+					S.hLedger += q; S.wall += q;
+					S.ledger += S.m[p] * (S.T[p] - t0);
+				} else PHASE.byH(h0, S.y[p], S.cF[p], S.cW[p]);
+				if (PHASE.out.melt < P.meltHold) S.depQ[p] = 1;
 			}
 		},
 

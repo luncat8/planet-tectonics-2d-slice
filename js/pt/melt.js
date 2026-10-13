@@ -5,6 +5,12 @@
 //            fraction reaches P.meltHold; a fully molten parcel is a whole-parcel phase
 //            change. A full pool defers the split and the phase fraction stays in its
 //            source parcel. Landed ejecta remains a deposit while flight.js cools it.
+//            The second source is 0.3.1 M1's buried remelt: a deposit that earned the
+//            shallow-quench certificate (state.js depQ), was then buried past the cooling
+//            mask and reached the same threshold sheds through the same split, debited to
+//            thr.depMelt instead of thr.seg. Uncertified deposits are not routed: a
+//            newly landed or carried-past-30 km hot parcel stays a deposit, which is the
+//            difference between remelting and bypassing the surface quench.
 //   transit  mobile melt rises on the flow map plus its own buoyant speed (grid.js velAt
 //            plus vMelt downward-in-y terms: y is depth, so rising is -vy). Below
 //            meltHold the parcel is frozen residue: it becomes mantle again and rides the
@@ -37,18 +43,26 @@
 		// Mantle source rock sheds its melt at the equilibrium split. A landed parcel is
 		// already at the end of the buoyant path; keeping it in the deposit phase lets the
 		// surface exchange cool it instead of sending hot ejecta straight back to a chamber.
+		// 0.3.1 M1 routes the deposits that cleared that exchange: cert, buried past the
+		// cooling mask, and at the threshold. The cert test sits before any state changes,
+		// so a full pool leaves the certificate exactly where it was.
 		detach: function (S) {
-			var ph = S.ph, ml = S.melt, hold = P.meltHold, p, xi;
+			var ph = S.ph, ml = S.melt, hold = P.meltHold, p, xi, dep;
 			for (p = 0; p < S.n; p++) {
-				if (ph[p] !== P.PH.mantle) continue;
+				dep = ph[p] === P.PH.dep;
+				if (!dep && ph[p] !== P.PH.mantle) continue;
 				xi = ml[p];
-				if (xi >= 1) {
-					// wholly molten: one whole-parcel phase change (P3.1's rule), and a
-					// parcel that is not solid carries no bond state at all (§1.3)
-					ph[p] = P.PH.melt;
-					S.age[p] = 0; S.mu[p] = 0; S.dmg[p] = 0; S.pLoad[p] = 0; S.pCnt[p] = 0;
-					S.tx.whole++; S.thr.whole += S.m[p];
-				} else if (xi >= hold) POOL.separate(S, p);
+				if (xi < hold) continue;
+				if (dep && !(S.depQ[p] && S.y[p] > P.depositCoolDepth)) continue;
+				if (xi < 1) { POOL.separate(S, p, dep); continue; }
+				// wholly molten: one whole-parcel phase change (P3.1's rule), and a parcel
+				// that is not solid carries no bond state at all (§1.3). A converted deposit
+				// leaves the deposit population and its certificate with it.
+				ph[p] = P.PH.melt;
+				S.age[p] = 0; S.mu[p] = 0; S.dmg[p] = 0; S.pLoad[p] = 0; S.pCnt[p] = 0;
+				S.tx.whole++;
+				if (dep) { S.depQ[p] = 0; S.thr.depMelt += S.m[p]; S.tx.depMelt++; }
+				else S.thr.whole += S.m[p];
 			}
 		},
 
