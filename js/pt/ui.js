@@ -240,6 +240,12 @@ var PTUI = {
 			// `store` is what the chambers hold now.
 			+ '\narc ' + d.arc + ' dehydrating  ' + fmt(S.thr.arcCr) + ' km2 water released  '
 			+ fmt(S.thr.arcMelt) + ' km2 wedge melt   store ' + fmt(S.invChW) + ' km2 water'
+			// P4.3: the material surface law. `moved` is cumulative throughput, `sediment` is
+			// what the deposit phase holds now (the P3 inventory's own line, not a second
+			// copy), `waiting` is the demand the weathering band could not meet.
+			+ '\nerosion ' + d.ero + ' moving  ' + fmt(S.thr.eroCr) + ' km2 moved  '
+			+ fmt(S.invM[P.PH.dep]) + ' km2 sediment in ' + S.invN[P.PH.dep] + ' parcels  '
+			+ fmt(S.eroShort) + ' km2 waiting  ' + fmt(S.thr.eroDep) + ' km2 reworked'
 			+ '\nsurface ' + d.zMin.toFixed(1) + '..' + d.zMax.toFixed(1) + ' km   (zero mean, drawn x' + P.kRelief + ')'
 			+ '\nledger ' + fmt(S.hLedger) + '   walls ' + fmt(S.wall) + '   gap ' + (S.wall ? (S.hLedger / S.wall).toFixed(2) + 'x' : '--')
 			+ '   latent ' + fmt(P.meltLat * (S.invLTot - S.invL0))

@@ -9,6 +9,9 @@
 // G5 is P4.2's slab dehydration into the wedge (arc.js) followed by P3.2's segregation
 // (melt.js); G6 is P3.3's conduits and metered eruption supply (vent.js), followed by P3.4's
 // conserved vent-to-air transfer, wall-clock flight, landing and surface cooling (flight.js).
+// G7 is P2.3's relief profile followed by P4.3's material surface transport (erode.js), which
+// erodes the weathering band, routes it down the profile's own drainage and credits deposit
+// parcels where the water slows down.
 // Geological kernels no-op at dtGeo = 0; only an explicitly supplied wall interval may move
 // airborne material while geology is paused.
 'use strict';
@@ -23,6 +26,7 @@ var PHASE = (typeof module !== 'undefined' && module.exports) ? require('./phase
 var MT = (typeof module !== 'undefined' && module.exports) ? require('./melt.js') : window.PTMELT;
 var VENT = (typeof module !== 'undefined' && module.exports) ? require('./vent.js') : window.PTVENT;
 var FLIGHT = (typeof module !== 'undefined' && module.exports) ? require('./flight.js') : window.PTFLIGHT;
+var ERODE = (typeof module !== 'undefined' && module.exports) ? require('./erode.js') : window.PTERODE;
 var PTPOOL = (typeof module !== 'undefined' && module.exports) ? require('./pool.js') : window.PTPOOL;
 var PERF = (typeof module !== 'undefined' && module.exports) ? require('../perf.js') : window.COLPERF;
 
@@ -151,8 +155,10 @@ SIM.k[5] = function (M, S, dt) {
 // because its geological clock required ten transport solves.
 SIM.k[6] = function (M, S, dt) { VENT.run(M, S, dt); FLIGHT.cool(M, S, dt); };
 // G7 runs after G4 because it reads the welded strength and damage the crust pass leaves
-// behind (plan §5)
-SIM.k[7] = function (M, S, dt) { F.surface(M, S, dt); };
+// behind (plan §5). Its tail is P4.3's material surface law: the profile has just relaxed, so
+// that is the terrain this frame's erosion reads, and the deposit parcels it credits are the
+// same phase G6's landing wrote earlier in the frame.
+SIM.k[7] = function (M, S, dt) { F.surface(M, S, dt); ERODE.run(M, S, dt); };
 SIM.k[8] = function (M, S) { F.diag(M, S); };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = SIM;

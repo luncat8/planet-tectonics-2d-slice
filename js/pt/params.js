@@ -326,6 +326,42 @@ var PTP = {
 	                            // the window (~83% over a 3 cm/yr transit of 250..600 km, leaving
 	                            // the rest for P4.1's deep records)
 	arcFrac: 0.25,              // per-substep cap on the released fraction (at 500 kyr/f slider)
+	// P4.3, weathering, erosion and sedimentation (0.3.0-p4-plan.md §3 P4.3). P2.3's profile
+	// diffusion moves the drawn horizon and nothing else -- no marker mass, no sediment. This
+	// block is the material law beside it: solid parcels in the weathering band are eroded,
+	// carried down the drainage the profile's own slope field defines, and credited as
+	// deposit-phase parcels where the water slows down or at the basin the path ends in. The
+	// law is the runoff/stream-power rule the comparison harness chose over a conservative
+	// hillslope rule (experiments/pt-p4-transport-sweep.js, whose own file keeps both laws'
+	// measurements side by side):
+	//
+	//   E_i = kStream * sqrt(A_i) * |slope_i|        km/Myr, capped at eroMax
+	//
+	// with A_i the drainage area accumulated into column i along the steepest-descent receiver
+	// map and slope_i the profile's own gradient there, so erosion concentrates where the
+	// drainage accumulates and the trunk carries a catchment's worth of material instead of a
+	// neighbour's. Per-frame demand is E_i * dt * dx km2. Every leg is a pool transaction
+	// (pool.js carry): mass, enthalpy, melt and composition move together, the inventory is
+	// invariant to round-off, and the deposit phase P3.4 already lands into is the sediment.
+	// Every constant here is a P4.4 freeze candidate measured by experiments/pt-p4-erosion.js
+	// and the sweep, not a claim.
+	ero: true,
+	eroBand: 120,               // km, the weathering band: solid parcels above this depth are
+	                            // the surface law's population. The 'cool' start's hydrated skin
+	                            // (yWet 20) and the shipped lid's top rows sit inside it; below
+	                            // it the crust pass's lid is not the surface's business
+	eroTake: 0.25,              // per-parcel, per-frame take cap: weathering attacks a parcel's
+	                            // surface, it does not remove the parcel
+	eroMinM: 50,                // km2, the thinnest a donor may become: the weathering front's
+	                            // floor. A thinner parcel is not eroded further and the column's
+	                            // unmet demand is reported (S.eroShort), never silently dropped
+	kStream: 0.3,               // 1/Myr: at a full-width catchment (sqrt(A) = 126) and a 1e-3
+	                            // gradient this erodes 0.04 km/Myr, the demonstration scale
+	eroMax: 0.2,                // km/Myr, the channel lowering cap: no reach outruns its own
+	                            // sediment supply by more than this
+	eroSlopeDep: 1e-4,          // the gradient below which a reach is depositional: the water
+	                            // slows and the sediment settles. Measured on the shipped planet:
+	                            // mean |slope| 3.7e-4, so this is the basins and the flats
 	// the view warps by kRelief * zh, damped with depth; zVisMax clips outlier relief before
 	// exaggeration so a deep rift cannot fill the lid camera with ocean.
 	yTaper: 120,                 // km, e-folding depth of the view's terrain warp

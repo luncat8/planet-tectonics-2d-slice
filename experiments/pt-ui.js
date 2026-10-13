@@ -220,11 +220,25 @@ var arcLine = L.els.hud.textContent.split('\n').filter(function (x) { return /^a
 var arcWant = 'arc 5 dehydrating  321 km2 water released  654 km2 wedge melt   store 19 km2 water';
 check.ok('the HUD arc line reports the dehydration pass, its wedge melt and the chamber water stock',
 	arcLine === arcWant, arcLine);
+// P4.3's erosion line: the pass's own census, the mass it has moved (cumulative throughput, which
+// is not a stock), the sediment the P3 inventory counts -- the deposit phase P3.4 lands in, named
+// with its parcel count rather than a second stock of its own -- and the demand a weathered band
+// could not meet. Seeded like the lines above.
+TS.d.ero = 4; TS.thr.eroCr = 321; TS.invM[P.PH.dep] = 654; TS.invN[P.PH.dep] = 3;
+TS.eroShort = 45.6; TS.thr.eroDep = 12;
+UI.updateHud(SIM);
+var eroLine = L.els.hud.textContent.split('\n').filter(function (x) { return /^erosion /.test(x); })[0];
+var eroWant = 'erosion 4 moving  321 km2 moved  654 km2 sediment in 3 parcels  46 km2 waiting  '
+	+ '12 km2 reworked';
+check.ok('the HUD erosion line names the pass, its throughput and the sediment the inventory counts',
+	eroLine === eroWant, eroLine);
 TS.d.contact = 0; TS.d.contactC = 0; TS.d.hold = 0; TS.d.subduct = 0; TS.d.push = 0; TS.d.over = 0;
 TS.contactShort = 0;
 TS.d.slab = 0; TS.d.slabV = 0; TS.d.slabBond = 0;
 TS.dpN = 0; TS.invDpM = 0; TS.invDpL = 0; TS.invDpW = 0; TS.thr.deepCr = 0;
 TS.d.arc = 0; TS.thr.arcCr = 0; TS.thr.arcMelt = 0; TS.invChW = 0;
+TS.d.ero = 0; TS.thr.eroCr = 0; TS.invM[P.PH.dep] = 0; TS.invN[P.PH.dep] = 0;
+TS.eroShort = 0; TS.thr.eroDep = 0;
 UI.updateHud(SIM);
 // P3.4's phase census and two transfer legs. Seed only the diagnostics here; the material
 // path itself is exercised by pt-p3-flight.js, without spending seven simulated Myr in a UI test.

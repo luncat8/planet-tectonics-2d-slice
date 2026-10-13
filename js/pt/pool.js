@@ -62,10 +62,12 @@
 		FIELDS: ['x', 'y', 'e', 'T', 'm', 'vx', 'vy', 'age', 'mu', 'dmg', 'pLoad', 'pCnt',
 			'id', 'ph', 'H', 'cF', 'cW', 'melt'],
 		WORK: ['order', 'par', 'cl', 'csOf', 'csM', 'csX', 'csY', 'csVX', 'csVY', 'csW',
-		'csR2', 'csS', 'csP', 'csRef', 'csCnt',
-		// P4.0's own (contact.js): the brake's demanded correction and the count it is a mean
-		// over, and the bending band's target velocity and flag
-		'csBX', 'csBN', 'hinge', 'hvx', 'hvy'],
+			'csR2', 'csS', 'csP', 'csRef', 'csCnt',
+			// P4.0's own (contact.js): the brake's demanded correction and the count it is a mean
+			// over, and the bending band's target velocity and flag
+			'csBX', 'csBN', 'hinge', 'hvx', 'hvy',
+			// P4.3's donor bucket (erode.js): parcel slots per column, rebuilt every frame
+			'erList'],
 
 		// the field arrays, resolved once per allocation generation. state.js reallocates all
 		// of them together when the capacity grows, so the identity of S.x is the generation
@@ -243,6 +245,42 @@
 			S.tx.recycle++;
 			S.thr.deepDr += m; S.thr.deepCr += m;
 			return best;
+		},
+
+		// P4.3's transport transaction (erode.js): `d` km2 of src's material -- mass, enthalpy,
+		// melt and composition together -- moves into dst, or into a freshly admitted parcel of
+		// phase `ph` when dst < 0 (the caller places it). Either way the pair's totals are
+		// unchanged, so the inventory cannot see the transfer, and thr.eroDr/eroCr book both
+		// sides. It is split's and merge's rule at a different granularity: a whole parcel is
+		// not a transfer (the donor keeps a floor), and the arithmetic is the mass-weighted
+		// mixing merge already uses. A fresh parcel is bond-free like landed material -- it is
+		// a deposit that has just settled, not a parcel that was carried. A full pool defers
+		// the transaction and counts the refusal: the material stays in src, nothing is dropped.
+		carry: function (S, src, dst, d, ph) {
+			var m = S.m[src], f, q;
+			if (!(d > 0) || !(d < m)) return -1;
+			if (dst >= 0) {
+				f = d / (S.m[dst] + d);
+				S.H[dst] += f * (S.H[src] - S.H[dst]);
+				S.cF[dst] += f * (S.cF[src] - S.cF[dst]);
+				S.cW[dst] += f * (S.cW[src] - S.cW[dst]);
+				S.m[dst] += d;
+			} else {
+				q = this.admit(S, ph);
+				if (q < 0) return -1;
+				S.T[q] = S.T[src]; S.H[q] = S.H[src]; S.melt[q] = S.melt[src];
+				S.cF[q] = S.cF[src]; S.cW[q] = S.cW[src];
+				S.m[q] = d;
+				dst = q;
+			}
+			S.m[src] = m - d;
+			S.tx.ero++; S.thr.eroDr += d; S.thr.eroCr += d;
+			// the credit side of every erode transfer is a deposit parcel; the debit side is
+			// rock unless the donor was itself sediment. Counting that apart is what lets the
+			// deposit inventory's identity stay exact with the surface law running:
+			//   invM[dep] = thr.landCr + thr.eroCr - thr.eroDep
+			if (S.ph[src] === P.PH.dep) S.thr.eroDep += d;
+			return dst;
 		},
 
 		// A merge is a material operation, so matching a transport phase is not enough: unlike

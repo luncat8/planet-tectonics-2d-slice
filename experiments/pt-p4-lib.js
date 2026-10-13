@@ -25,6 +25,14 @@
 // The plates are found by centroid depth and never by cluster index: the union-find renumbers
 // every frame, so a leg that named its plates by index would measure whichever fragment the
 // renumber happened to put first.
+//
+// P4.3's own fixture is a *relief profile*, not a plate geometry: one controlled terrain with
+// two divides and two basins, laid over the shipped planet's marker field. It is written as a
+// knot table and interpolated linearly, so a fixture cannot inherit the shipped planet's own
+// relief growth and the drainage the laws are compared on is the same every time. The two
+// divides (column 24 and the lip at 160) and the two sinks they make are the structure the
+// fixtures measure against; `relief()` sets the profile, `sinks()`, `flats()`, `basins()` and
+// `bandMass()` are the readings the two P4.3 harnesses share rather than re-spelling.
 'use strict';
 
 var path = require('path');
@@ -137,6 +145,84 @@ var L = {
 		var s = 0, i;
 		for (i = 0; i < a.length; i++) s += a[i];
 		return a.length ? s / a.length : 0;
+	},
+
+	// ---------------------------------------------------------------- P4.3's relief fixture
+	// The knots, in columns of the shipped 256-column mesh: a divide at 24, a long right flank
+	// into the main basin (floor at 150..157), a lip at 160, a plain descending to the wrap
+	// basin (floor at ~240), and the ring closing back up to the divide. Every flank is
+	// monotone between its divide and its sink, so a column's steepest descent is its only
+	// descent and a fixture can name the drainage from the table instead of searching for it.
+	RELIEF: [[0, 0.30], [16, 1.20], [24, 2.60], [40, 2.20], [64, 1.40], [88, 0.70],
+		[112, 0.25], [136, -0.10], [150, -0.45], [157, -0.44], [160, 0.35],
+		[200, -0.05], [230, -0.40], [240, -0.45], [248, -0.30], [255, 0.10]],
+
+	// set S.zh from the table (piecewise linear, the last knot wrapping to the first)
+	relief: function () {
+		var nx = SIM.M.nx, k = this.RELIEF, i, a, b, u;
+		for (i = 0; i < nx; i++) {
+			a = k[0]; b = k[k.length - 1];
+			for (var j = 0; j < k.length; j++) {
+				if (k[j][0] <= i) a = k[j];
+				if (k[j][0] >= i) { b = k[j]; break; }
+			}
+			u = i <= a[0] ? 0 : (b[0] === a[0] ? 0 : (i - a[0]) / (b[0] - a[0]));
+			S.zh[i] = a[1] + (b[1] - a[1]) * u;
+		}
+		return this;
+	},
+
+	// the profile's local minima: a sink is where the drainage of its own flank ends
+	sinks: function () {
+		var nx = SIM.M.nx, out = [], i, im, ip;
+		for (i = 0; i < nx; i++) {
+			im = i === 0 ? nx - 1 : i - 1; ip = i + 1 === nx ? 0 : i + 1;
+			if (S.zh[i] <= S.zh[im] && S.zh[i] <= S.zh[ip] && !(S.zh[i] === S.zh[im] && S.zh[i] === S.zh[ip])) out.push(i);
+		}
+		return out;
+	},
+
+	// the reaches a transfer can settle in: the column ranges whose own gradient is below the
+	// deposition threshold the shipped law reads (erode.js). The fixture measures against the
+	// same number the law does, so "lands in a basin" is not a private definition.
+	flats: function () {
+		var nx = SIM.M.nx, dx = SIM.M.dx, out = [], i, lo = -1, s;
+		for (i = 0; i <= nx; i++) {
+			s = i < nx ? Math.abs(S.zh[(i + 1) % nx] - S.zh[i]) / dx : 1;
+			if (s < P.eroSlopeDep) { if (lo < 0) lo = i; }
+			else if (lo >= 0) { out.push([lo, i - 1]); lo = -1; }
+		}
+		return out;
+	},
+
+	// the basins: the deposition reaches, each extended by the sinks that fall in or beside them.
+	// A sink is a basin floor even when its own outgoing face is too steep to be called flat --
+	// the drainage ends there -- so a capture reading that counted only flat columns would miss
+	// the floor the material actually lands on (the fixture's wrap basin is exactly that case).
+	basins: function () {
+		var out = [], i, r, merged = [], flat = this.flats(), sink = this.sinks();
+		for (i = 0; i < flat.length; i++) out.push([flat[i][0], flat[i][1]]);
+		for (i = 0; i < sink.length; i++) out.push([sink[i], sink[i]]);
+		out.sort(function (a, b) { return a[0] - b[0]; });
+		for (i = 0; i < out.length; i++) {
+			r = merged[merged.length - 1];
+			if (r && out[i][0] <= r[1] + 1) { if (out[i][1] > r[1]) r[1] = out[i][1]; }
+			else merged.push([out[i][0], out[i][1]]);
+		}
+		return merged;
+	},
+
+	// per-column solid mass above the weathering band, the stock the surface law draws down
+	bandMass: function (out) {
+		var nx = SIM.M.nx, dx = SIM.M.dx, p, i;
+		if (!out || out.length !== nx) out = new Float64Array(nx);
+		else out.fill(0);
+		for (p = 0; p < S.n; p++) {
+			if (!P.PH_SOLID[S.ph[p]] || S.y[p] > P.eroBand) continue;
+			i = Math.round(S.x[p] / dx); i -= Math.floor(i / nx) * nx;
+			out[i] += S.m[p];
+		}
+		return out;
 	}
 };
 

@@ -1,0 +1,44 @@
+
+A. route, law and move by hand on the controlled relief fixture
+  8472 band parcels carry a prescribed felsic and water pattern (cF 0.1..0.5, cW 0 or 0.02)
+  fixture: 256 columns x 62.5 km, zh -0.45..2.60 km, 2 sinks (150, 240), basins 150..156 230..240
+PASS  every receiver is the steeper lower neighbour and every sink is one   0 receiver mismatches, 0 sink mismatches
+PASS  the drainage the peel accumulates equals a walk of every column's own path   worst relative difference 0.00e+0, mean area 2970.2 km2, largest 8500 km2
+PASS  the demand table is kStream * sqrt(A) * |slope| * dt * dx column by column, sinks 0   worst relative difference 0.00e+0, 254 of 256 columns erode, the 2 sinks get nothing
+INFO  one hand-called pass   254 transfers moved 4.554 km2, 18 deposit parcels admitted, 0.000000 km2 unmet, donors 254 (worst take fraction 0.001 of a parcel)
+PASS  the sediment carries the source material's composition, mass-weighted   the 18 credited parcels hold 4.554 km2 at cF 0.2997 and cW 0.0068 (the pattern runs cF 0.1..0.5, cW 0 or 0.02, so the deposit is a mix of what was above it)
+PASS  the transferred mass is exactly what left the sources and reached the sites   columns lost 4.500280620 km2 and gained 4.500280621 km2 (a column holds 1.6e5 km2, so its own naive sum would resolve only 1e-8 of that), and the throughput 4.554213720 km2 is that plus the 0.053933099 km2 the law never took out of its own column
+PASS  mass, enthalpy, felsic and water close across the pass   mass 0.00e+0, enthalpy 0.00e+0, felsic 0.00e+0, water 0.00e+0
+PASS  the P3.1 latent identity holds across the transfer and the sensible ledger moved   identity shift -6.93e-17 of 4.04e+7, ledger +6.93e-17
+PASS  the pair's books balance and the profile is not written   254 transfers, books 4.554213720 = 4.554213720, zh bitwise unchanged true
+PASS  every take is from the shallowest in-band solid donor, above the take floor   254 donors, 0 violating the take rule
+PASS  no transfer lands uphill: every column that lost mass drained to a lower column   4.500281 km2 left the columns it was taken from and landed below them, 0.053933 km2 settled in place (a reach under the deposition slope), 0.00e+0 km2 uphill
+PASS  the credited parcels are deposits seated on their site column, on the manifold   18 site seats, 0 off-seat or off-manifold
+PASS  dt = 0 leaves the state alone and P.ero off clears the frame diagnostics   6014730668343931 -> 6459042495869840, paused and disabled both leave 6459042495869840 (d.ero 0, throughput still 4.554214 km2)
+
+B. 1200 frames on the frozen fixture: sources down, basins up
+INFO  the fixture leg   304801 transfers moved 5465.06 km2 of 162845 km2 per column, 0 deposit parcels admitted, 0.0000 km2 unmet, 0.423 ms/frame; the top 10% of the columns carry 25.4% of the demand, the divide itself 2.96e-3 km2 a frame
+PASS  the pass never writes the profile: zh is bitwise unchanged over the whole leg   zh identical after 1200 frames of erosion
+PASS  the columns that lose mass lose it to the basins, and the basins gain all of it   columns lost 5400.337 km2 and gained 5400.337 km2, of which the basins took +5400.337 km2; the other 64.720 km2 of the leg's 5465.056 km2 settled inside the column it came from
+PASS  the mass travelled downhill: the columns that lose sit above the columns that gain   sources at 0.612 km above sea level, sites at -0.444 km, a fall of 1.056 km
+PASS  the sediment is deposit-phase mass the P3 inventory counts, not a second stock   18 deposit parcels hold 5465.056 km2 against 5465.056 km2 moved
+PASS  the leg starves no column and drains none   unmet demand 0.00e+0 km2, lightest column 162700 km2 against 162845 km2 on average
+PASS  the leg repeats bitwise   fingerprint 1396777723388556 both times, 304801 transfers against 304801
+
+C. the sediment is P3.4's own deposit stock
+PASS  a landed batch finds the erosion's sediment and merges into the same parcel   the erosion credited parcel 23553 at column 150 with 3043.707 km2; a landed batch above it merged in (deposit count still 18), the pile now holds 4565.560 km2
+
+D. the live shipped planet, P.ero on and off
+INFO  live, P.ero on    t 300 Myr, 1431140 transfers moved 99190.3 km2 of the band, 458 sediment parcels admitted, sediment stock 330848.6 km2 in 781 parcels (0.0 km2 in 0 before); zh -8.74..4.24 km, unmet demand 3.67e+1 km2, refusals 0; the stocks are 4.169e+7 km2 of mass, 1.399e+3 of water and 0.000e+0 of felsic, the books read -5.10e-8 and -7.99e-9 against the -1.64e+6 the lane booked in
+INFO  live, P.ero off   t 300 Myr, 0 transfers moved 0.0 km2 of the band, 0 sediment parcels admitted, sediment stock 277872.1 km2 in 362 parcels (0.0 km2 in 0 before); zh -8.78..5.08 km, unmet demand 0.00e+0 km2, refusals 0; the stocks are 4.169e+7 km2 of mass, 1.399e+3 of water and 0.000e+0 of felsic, the books read -4.89e-9 and 2.65e-8 against the -1.63e+6 the lane booked in
+PASS  the live planet erodes and the deposit stock grows by the erosion its own mass   1431140 transfers admitted 458 sediment parcels; the deposit stock grew 330848.6 km2 with the pass on against 277872.1 km2 with it off, so erosion accounts for 52976.5 km2 of the 99190.3 km2 it moved
+PASS  mass, felsic and water close at round-off, and both thermodynamic books too   mass 0.000e+0 of 4.169e+7 (0.0e+0), water 0.000e+0 of 1.399e+3, felsic 0.000e+0 of 0.000e+0; the enthalpy book reads -5.099e-8 against an intake of -1.638e+6 (3.1e-14), the latent reading -7.989e-9 (4.9e-15); with the pass off and the same frame count they read -4.889e-9 and 2.653e-8
+PASS  nothing is refused and the unmet demand is a bound on the band, not a leak   0 refusals, 3.67e+1 km2 unmet against 99190.3 km2 moved (0.0370%), 79801 admits over the leg
+INFO  the pass alone on a frozen frame   1416066 transfers moved 12085.22 km2 in 6000 frames: the columns above the mean height lost -11927.09 km2 and those below it gained +11927.09 km2, 0.404 ms/frame
+PASS  the pass alone moves material downhill: the losing columns sit above the gaining ones   mass out 11927.094 km2 at -0.072 km mean height, in 11927.094 km2 at -0.300 km: a fall of 0.227 km
+PASS  the frozen leg closes its books and banks the sediment in the deposit stock   mass error 0.00e+0, latent 0.00e+0: the deposit stock grew by 12085.217 km2 against the 12085.217 km2 moved, of which 11927.094 km2 crossed a column boundary (158.123 km2 settled where it came from), and the 0 parcels the pass did admit over the leg went to seats that already existed
+  cost at t 15 Myr with 23975 parcels: 0.400 ms/frame for the pass against 14.74 ms/frame for the step it lives in (2.71%)
+PASS  the pass costs a few percent of the frame   0.400 ms of 14.74 ms per frame (2.71%)
+INFO  wall time   199 s for 720 Myr of simulation
+
+ALL PASS (25 checks)
