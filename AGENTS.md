@@ -79,6 +79,9 @@ contact census re-derived from the kernel's own table that decided the two open 
 (no plate-size threshold; translation-only brake), the slider matrix, and the P4 freeze; it
 delegates the five P4 owner harnesses and pt-p3-check.js as children and quotes their counts
 rather than re-measuring them),
+experiments/pt-buried-deposit-melt.js (report-only G5 measurement of buried, threshold-molten
+deposit stock and frame-sampled residence, plus the shallow-cooling boundary; it does not
+change melt routing),
 and the cut in three: experiments/slice-cut.js (the walk, the pack, the resample),
 section-pack.js (the section page: transports, refusals, switches, HUD), section-seed.js (the
 mapping: the z identity, the ledger, the quiet start, the two run modes), checkpoint.js (the
@@ -112,8 +115,9 @@ port/PORT.json is the manifest. They are not in js/ on purpose: experiments/smok
 that columns.html loads every js/*.js exactly once, and a shared format is not a page module.
 
 plans: 0.1.7-plan.md (crust flow-law units and the honest ceiling), 0.1.9-plan.md (the two
-contact measurements: R1's site and background, R2's needle shoulder), 0.4.0-sync-plan.md (what
-is exchanged with the reference project, in which direction), 0.4.1-plan.md (the cut: a line on
+contact measurements: R1's site and background, R2's needle shoulder), 0.3.1-plan.md (buried-
+deposit remelting: measurement, cooling eligibility, conservative G5 routing and ledger gates),
+0.4.0-sync-plan.md (what is exchanged with the reference project, in which direction), 0.4.1-plan.md (the cut: a line on
 the globe's map -> a section here), 0.9.0-draft-sync.md (the integrated globe, later). The
 completed 0.1.8 plan is `archive/0.1.8-plan.md` (collision arrest and orogen memory) and the
 completed 0.2.0 plan is `archive/0.2.0-plan.md` (eruptives, deposits, save/load; the series

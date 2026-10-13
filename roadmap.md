@@ -1,4 +1,4 @@
-# Roadmap — 0.4 to 0.9
+# Roadmap — 0.3 to 0.9
 
 Which release owns what. Each release still has exactly one plan file and that plan is the
 authority for its own milestones; this file only says what belongs where, what every release
@@ -15,7 +15,8 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | 0.1.8 | collision arrest: the absorbed-shortening brake (`S.edgeShort`, checkpoint v4) closes R4; R1/R2/R5 left open only as measurement definitions on one 100 kyr leg | `archive/0.1.8-plan.md`, `archive/0.1.8-worklog.md` | 0.1.7 flow laws and corrected audit |
 | 0.1.9 | the two contact measurements: R1's site window anchored at the event and its background taken from the quiet-frame yardstick, R2's needle shoulder read over the belt's own neighbourhood | `0.1.9-plan.md`, `archive/0.1.9-worklog.md` | 0.1.8's M3 matrix |
 | 0.2.x | column engine: eruptives, deposits, extraction; page chrome (pause/step/reset) uses E1/E3 — **closed at M5** | `archive/0.2.0-plan.md` | — |
-| 0.3.x | particle engine P3+ (melt, eruptions, contact). **P3 closed at P3.5**: conserved pool/routing, phase and enthalpy, segregation/storage, conduits, conserved wall-clock flight through landing/cooling/welding, and the integrated acceptance pass with the reserve frozen — `archive/0.3.0-p3.5-report.md`. **P4 closed at P4.4**: contact/underthrusting, slab sinking and deep recycling, arc melt from the slab, particle erosion/deposition, and the integrated acceptance pass with the P4 constants frozen — `archive/0.3.0-p4.4-report.md` | `0.3.0-plan.md`, `0.3.0-p3-plan.md`, `0.3.0-p4-plan.md` | — |
+| 0.3.0 | particle engine P3+ (melt, eruptions, contact). **P3 closed at P3.5**: conserved pool/routing, phase and enthalpy, segregation/storage, conduits, conserved wall-clock flight through landing/cooling/welding, and the integrated acceptance pass with the reserve frozen — `archive/0.3.0-p3.5-report.md`. **P4 closed at P4.4**: contact/underthrusting, slab sinking and deep recycling, arc melt from the slab, particle erosion/deposition, and the integrated acceptance pass with the P4 constants frozen — `archive/0.3.0-p4.4-report.md` | `0.3.0-plan.md`, `0.3.0-p3-plan.md`, `0.3.0-p4-plan.md` | — |
+| 0.3.1 | deferred buried-deposit remelting: M0 measurement and source-aware routing specification; runtime routing remains gated pending broader live evidence | `0.3.1-plan.md` | 0.3.0 P4.4 baseline |
 | 0.4.0 | sync/exchange: provenance, deposits core, water, checkpoint, section pack | `0.4.0-sync-plan.md` | — |
 | 0.4.1 | the cut: draw a line on the globe, copy/save, paste/load, reconstruct a section | `0.4.1-plan.md` | 0.4.0's format (`port/slice-format.js`, M0 done) |
 | 0.9.0 | globe page hosts the section as a library; live sync is C3+C4 | `0.9.0-draft-sync.md`, `0.4.1-plan.md` §8 | 0.4.1 M1–M2; C1 on the column engine |
@@ -242,6 +243,13 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   conditions.
 - **C1 on the column engine** (one global per file, `start(host)`): prerequisite of 0.9, not of
   the cut. New files do not add a second global.
+- **Remelting buried deposits (`0.3.1-plan.md`):** G5 still segregates mantle only. The
+  report-only 300 Myr seed-1 measurement observed no `PH.dep` mass at `meltHold` below the
+  30 km cooling mask (0 km²·Myr eligible host exposure); P4.1 nevertheless recycled
+  1,242.2 km² of deposit mass to deep records. These are different measurements. The absence
+  in one baseline does not generalize to other seeds or prove a deep-quench bound. Keep the
+  route deferred; any implementation needs a persistent shallow-quench certificate, a
+  source-specific conservative transfer and a `thr.depMelt` debit.
 - **The crust kernel's ×1000 (found in 0.4.1 M2): settled by `0.1.7-plan.md`.** Both
   flow laws now read `1/Myr` on metre excesses, in a backward-Euler form that is stable
   at every slider leg, with the belt's receiver capped to the ceiling headroom and the

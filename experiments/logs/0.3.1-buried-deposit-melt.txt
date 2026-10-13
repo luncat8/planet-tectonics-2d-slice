@@ -1,0 +1,28 @@
+
+A. current boundary: shallow deposits quench; deep molten deposits stay deposits
+PASS  the probe starts with molten deposits on both sides of the cutoff   xi 0.200/0.200/0.200
+PASS  G5 detach does not re-phase any deposit, including a deep molten one   parcels 3, split 0, whole 0
+PASS  the cooling mask includes y = depositCoolDepth   H shallow/boundary 0.755/0.757 -> 0.278/0.278
+PASS  cool() leaves the deposit just below the mask unchanged   y 31 km, xi 0.200
+PASS  the deep deposit remains unrouted after both G5 and shallow cooling   phase dep, xi 0.200
+
+B. live buried-deposit exposure: 300 Myr requested, seed 1, 50 kyr/frame, all shipped P4 passes enabled
+PASS  every requested geological frame was sampled once   6000 samples over 6000 frames at 50 kyr/frame
+PASS  exposure metrics are finite and non-negative   host mass-time 0.000e+0 km2 Myr; melt-equivalent 0.000e+0 km2 Myr
+PASS  threshold-qualified deposit stock is a subset of the buried deposit stock   peak eligible 0.000 km2 against peak buried 99692.536 km2
+PASS  the global mass and enthalpy books still close   mass residual 0.00e+0 km2 (0.00e+0 rel); enthalpy residual 4.84e-8 (2.95e-14 rel)
+PASS  the existing deposit inventory identity closes, including deep recycling   dep 352435.204934 = land 277495.925386 + erosion 99231.123524 - rework 23049.644451 - deep 1242.199525; residual 1.98e-9
+PASS  the live leg has no capacity refusal   0 refused transactions; fingerprint 3426360007996525
+INFO  buried deposit stock   peak 99692.536 km2; at end 352435.205 km2 in 763 parcels; subducted deposit 1242.200 km2
+INFO  melt-eligible buried deposit stock   peak 0.000 km2 host mass (0 parcels); no qualifying sample; peak equilibrium melt 0.000 km2; first exposure none
+INFO  sampled burden   0.000 km2 Myr eligible host-mass; 0.000 km2 Myr melt-equivalent; mean simultaneous eligible stock 0.000 km2 over 0 exposed frames; 0.000 parcel-Myr
+INFO  continuous residence by parcel id   0 exposure episodes, 0 IDs ever observed; mean 0.000 Myr, longest 0.000 Myr, 0 right-censored at run end; sample resolution 0.050 Myr. ID counts and entry-mass snapshots are not unique conserved material because merges/rework change parcel grouping.
+INFO  entry-event snapshots   0 qualifying episodes, 0.000 km2 host mass and 0.000 km2 melt-equivalent at their first sampled frame (re-entry may count again)
+INFO  mean depth of eligible mass-time   0.0 km
+INFO  eligible deposits at 30-250 km   0.000 km2 Myr host-mass exposure; 0.000 km2 Myr melt-equivalent exposure; 2875456.261 km2 Myr total buried-deposit exposure
+INFO  eligible deposits at 250-600 km   0.000 km2 Myr host-mass exposure; 0.000 km2 Myr melt-equivalent exposure; 423407.519 km2 Myr total buried-deposit exposure
+INFO  eligible deposits at 600-2400 km   0.000 km2 Myr host-mass exposure; 0.000 km2 Myr melt-equivalent exposure; 1952590.528 km2 Myr total buried-deposit exposure
+INFO  eligible deposits at >2400 km   0.000 km2 Myr host-mass exposure; 0.000 km2 Myr melt-equivalent exposure; 591794.991 km2 Myr total buried-deposit exposure
+INFO  time   86.5 s
+
+ALL PASS (11 checks)
