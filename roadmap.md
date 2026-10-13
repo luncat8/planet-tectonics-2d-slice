@@ -159,8 +159,37 @@ clamped the override's speed instead of its approach, and the bending band's vel
 backwards. The fixture's geometry is forced by the engine's own bond test — two plates sharing a
 depth band weld on the first frame, so the legs need a depth offset, and the weak band between the
 lids has to be weak for a reason that is not heat (a hot band's upwelling welds them in ~3 Myr) —
-which is why the legs are 5 Myr and isothermal. P4.1 (slab sinking, deep recycling) is next;
-composition still has no source.
+which is why the legs are 5 Myr and isothermal.
+
+0.3.0 P4.1 (`archive/0.3.0-p4.1-report.md`) lands slab sinking and deep recycling (`js/pt/slab.js`,
+`PTSLAB`: `run`/`background`/`sink` at G4's tail, plus `recycle()` in `js/pt/pool.js` and the
+fixed-capacity deep record set `dpX..dpW` in `js/pt/state.js`). A detached cold slab segment below
+`P.yCrust` (`T <= P.slabT = 0.45` and `Trow[j] - T >= P.slabdT = 0.05`, excluding clusters of size
+`>= P.plateMin`) descends at `min(kSink * dT, vSinkMax)` and transfers into a deep record at
+`P.yDeep` (`2,400 km`), counted once in both inventories (`invDpM`/`invDpL`/`invDpW`) and deferring
+at capacity (`deepCap 32`). `experiments/pt-p4-slab.js` (27 checks) gates the drive, the three
+exclusions, the single-call debit/credit transfer, the deferral path, a live arrival, the
+hand-over from P4.0, and the 300 Myr live planet (439 transfers into 6 records holding 86,272.6 km²
+= 0.207% of the world).
+
+0.3.0 P4.2 (`archive/0.3.0-p4.2-report.md`) lands arc melt from the slab (`js/pt/arc.js`, `PTARC`:
+`run`/`wedge`/`release` at the head of G5 ahead of `melt.js`). The shallowest cold surface skin of
+the `'cool'` start (`M.yN[j] <= P.yWet = 20 km`) carries bound water `P.slabW = 0.005`, which
+leaves a cold lid or slab (`T <= P.slabT = 0.45`) completely solid (`Ts >= 0.68`) at every depth.
+When a detached cold slab segment sinks through `(P.yArcMin, P.yArcMax]` (`250..600 km`), it
+releases `min(P.kArc * dt, P.arcFrac)` of its water into the warm, unsegregated mantle wedge above
+it (`P.yCham..P.yArcMin` within `P.arcSpan = 125 km`, up to `P.arcTop = 4` candidates per column
+ordered by solidus gap `Ts - T`), depressing the wedge's solidus through `meltWW` (`20`) and
+re-reading `(T, melt)` from `H` via `PHASE.byH` while booking `m * dT` in `S.ledger` so the P3.1
+latent-heat identity holds. The P3.2 segregation, P3.3 conduits (including explosive opening when
+`chW / chM > wBlast`) and P3.4 ballistic flight/landing path then run unchanged, and whatever water
+remains in the slab below `P.yArcMax` rides it down to `P.yDeep` for P4.1's deep records.
+`experiments/pt-p4-arc.js` (26 checks) gates the release law, its five exclusions, the dipping-slab
+calibration under a fixed wedge, the full P3 arc eruption path, and the 300 Myr live planet
+(112,774 dehydration transfers releasing 478.03 km² of water, 320.1 km² of wedge melt, 7.26 km² of
+chamber water against 0.00 km² with the pass off, and 7.25 km² of deep-record water against 42.28
+km² with the pass off; 18 processes, 693 quoted checks / 685 distinct, all green). P4.3 (particle
+weathering, erosion and sedimentation chosen by `pt-p4-transport-sweep.js`) is next.
 
 A release may pull a milestone out of 0.2 or 0.3 when it is the piece that makes a page usable;
 it never re-specifies a kernel.

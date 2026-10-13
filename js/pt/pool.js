@@ -311,21 +311,23 @@
 			// the chambers are stock too (P3 plan §1.2): reservoir mass sums into the same
 			// totals exactly once, or an intrusion would read as a leak
 			// a record's stock is its chamber's and its vent's: both are reservoirs, both count once
-			var cm = 0, cl = 0, vm = 0, vl = 0, dm = 0, dl = 0;
+			var cm = 0, cl = 0, cw = 0, vm = 0, vl = 0, vw = 0, dm = 0, dl = 0, dw = 0;
 			for (p = 0; p < S.chN; p++) {
-				cm += S.chM[p]; cl += S.chL[p]; vm += S.vM[p]; vl += S.vL[p];
+				cm += S.chM[p]; cl += S.chL[p]; cw += S.chW[p];
+				vm += S.vM[p]; vl += S.vL[p]; vw += S.vW[p];
 				tm += S.chM[p] + S.vM[p]; th += S.chH[p] + S.vH[p];
 				tf += S.chF[p] + S.vF[p]; tw += S.chW[p] + S.vW[p]; tl += S.chL[p] + S.vL[p];
 			}
 			// the deep inventory (P4.1): recycled slab material is still in the world, so it
 			// is stock exactly once, the same rule the chambers and the vent schedules have
 			for (p = 0; p < S.dpN; p++) {
-				dm += S.dpM[p]; dl += S.dpL[p];
+				dm += S.dpM[p]; dl += S.dpL[p]; dw += S.dpW[p];
 				tm += S.dpM[p]; th += S.dpH[p];
 				tf += S.dpF[p]; tw += S.dpW[p]; tl += S.dpL[p];
 			}
-			S.invChM = cm; S.invChL = cl; S.invVM = vm; S.invVL = vl;
-			S.invDpM = dm; S.invDpL = dl;
+			S.invChM = cm; S.invChL = cl; S.invChW = cw;
+			S.invVM = vm; S.invVL = vl; S.invVW = vw;
+			S.invDpM = dm; S.invDpL = dl; S.invDpW = dw;
 			S.invMTot = tm; S.invHTot = th;
 			S.invFTot = tf; S.invWTot = tw; S.invLTot = tl;
 		},
@@ -347,19 +349,20 @@
 				cadd(A_F, m * S.cF[p]); cadd(A_W, m * S.cW[p]); cadd(A_L, m * S.melt[p]);
 				tm += m; th += m * S.H[p];
 			}
-			S.invChM = 0; S.invChL = 0; S.invVM = 0; S.invVL = 0;
-			S.invDpM = 0; S.invDpL = 0;
+			S.invChM = 0; S.invChL = 0; S.invChW = 0;
+			S.invVM = 0; S.invVL = 0; S.invVW = 0;
+			S.invDpM = 0; S.invDpL = 0; S.invDpW = 0;
 			for (p = 0; p < S.chN; p++) {
 				stock(S.chM[p], S.chH[p], S.chF[p], S.chW[p], S.chL[p]);
 				stock(S.vM[p], S.vH[p], S.vF[p], S.vW[p], S.vL[p]);
 				tm += S.chM[p] + S.vM[p]; th += S.chH[p] + S.vH[p];
-				S.invChM += S.chM[p]; S.invChL += S.chL[p];
-				S.invVM += S.vM[p]; S.invVL += S.vL[p];
+				S.invChM += S.chM[p]; S.invChL += S.chL[p]; S.invChW += S.chW[p];
+				S.invVM += S.vM[p]; S.invVL += S.vL[p]; S.invVW += S.vW[p];
 			}
 			for (p = 0; p < S.dpN; p++) {
 				stock(S.dpM[p], S.dpH[p], S.dpF[p], S.dpW[p], S.dpL[p]);
 				tm += S.dpM[p]; th += S.dpH[p];
-				S.invDpM += S.dpM[p]; S.invDpL += S.dpL[p];
+				S.invDpM += S.dpM[p]; S.invDpL += S.dpL[p]; S.invDpW += S.dpW[p];
 			}
 			for (ph = 0; ph < P.PH_N; ph++) {
 				invM[ph] = fin(A_PH + 2 * ph);

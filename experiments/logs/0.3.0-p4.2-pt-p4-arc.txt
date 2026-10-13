@@ -1,0 +1,44 @@
+
+A. the release rule: water leaves the slab in the window, and only there
+INFO  one call of the pass   48 slab parcels (244.9333 km2 water at 353 km) under 507 warm wedge parcels (145 km): 48 transfers moved 3.0617 km2 of water into the wedge and produced 57.09 km2 of wedge melt
+PASS  the slab in the window releases water at the law's rate   48 of 48 slab parcels debited 3.061666 km2 against 3.061666 km2 prescribed, throughput dr 3.061666 = cr 3.061666
+PASS  what left the slab entered the wedge above it   wedge gained 3.061666 km2 of the 3.061666 km2 the slab lost
+PASS  mass, enthalpy, felsic and water close across the release   mass 0.00e+0, enthalpy 0.00e+0, felsic 0.00e+0, water -2.84e-14
+PASS  the cold slab stays solid while the wedge's solidus depression melts the wedge   slab melt 0.00 -> 0.00 km2, wedge melt 0.00 -> 57.09 km2 (d.arcM 57.09)
+PASS  and the P3.1 latent identity holds across the solidus depression   identity shift 2.33e-10 km2*H
+PASS  the release is state, so the fingerprint moves, and dt = 0 or P.arc off no-ops   6251691736382893 -> 4169956285457196, paused/disabled leaves 4169956285457196
+PASS  shallow material above yArcMin is forearc/lid and does not dehydrate   114 wet cold parcels above 150 km, water 192.7635 -> 192.7635 km2
+PASS  deep slab material below yArcMax keeps its remaining water for yDeep   38 wet cold parcels below 600 km, water 456.5129 -> 456.5129 km2
+PASS  warm material in the window is not a slab and does not dehydrate   52 warm wet parcels at 320..450 km, water 327.8653 -> 327.8653 km2
+PASS  attached lithosphere in the window rides its plate and does not dehydrate   749 wet parcels in plate-sized clusters below 150 km, water 2237.6007 -> 2237.6007 km2
+PASS  a slab with no warm wedge above it keeps its water (deferred, never lost)   55 wet slab parcels under a cold column, water 344.7931 -> 344.7931 km2, world water residual 0.00e+0
+PASS  while detached cold slab material under a warm wedge releases its share   60 of 60 detached slab parcels under the warm wedge released 4.6728 km2
+
+B. the dipping slab under a fixed wedge: where melt appears
+INFO  dipping slab, trench col 60   window cols +2..+13 (+-2 span), 514 transfers (39.25 km2 water), wedge melt in arc 1432.62 km2, forearc 0.00, backarc 0.00, mean x 4212 km
+INFO  shifted slab, trench col 100   mean x 6687 km (shift +2475 km against +2500 km trench shift), wedge melt 1264.33 km2
+PASS  wedge melt appears above the (yArcMin, yArcMax] slab window   1432.62 km2 of wedge melt above cols +2..+13 from 39.25 km2 of released slab water
+PASS  and nowhere else: zero melt in the forearc and zero behind the deep window   forearc 0.00 km2, backarc 0.00 km2, 100% of 1432.62 km2 inside the arc footprint
+PASS  shifting the slab shifts the arc by the same distance   arc mean x 4211.9 -> 6687.0 km (delta 2475.2 km against 2500.0 km)
+PASS  with the pass off or the slab dry, no water leaves and no wedge melts   pass off: relW 0, melt 0; dry slab: relW 0, melt 0
+
+C. the P3 segregation, conduit and eruption path runs unchanged on the arc melt
+INFO  full pipeline, P.arc on   19385 releases (3286.4 km2 water) -> 154146.2 km2 wedge melt -> 4851 splits -> 4048 intrusions into 4 chambers (1076.3 km2 water) -> 242 drains (73 explosive conduit-frames) -> 242 emissions -> 55 landings (52 merges, 3 deposits of 2631.8 km2 carrying 27.29 km2 water at x 6338 km)
+INFO  full pipeline, P.arc off   0 releases, 0 splits, 0 intrusions, 0 chambers, 0 drains, 0 emissions, 0 landings
+PASS  the depressed wedge separates and intrudes into chambers above the slab   4851 splits and 4048 intrusions (1076.3 km2 chamber water) against 0 and 0 with P.arc off
+PASS  the wet arc chambers open explosive conduits and erupt   242 drains, 73 explosive conduit-frames, 242 airborne batches against 0 with P.arc off
+PASS  and land coalesced wet deposits on the overriding plate above the slab   55 landings (52 merges) into 3 deposits carrying 27.29 km2 water at x 6338 km against slab center 6500 km
+PASS  mass, water, enthalpy and the latent identity all close across the full arc path   mass 0.00e+0, water 9.09e-13, enthalpy -1.03e-9, latent 0.00e+0
+PASS  the arc eruption leg repeats bitwise   fingerprint 5861189573204111 both times, 55 landings against 55
+
+D. the live shipped planet
+INFO  live, P.arc on   t 300 Myr, 112774 dehydration transfers on 2449 of 6000 frames from t 177.6 Myr (worst frame 77), 478.03 km2 water released -> 320.1 km2 wedge melt; chamber water 7.26 km2, deep water 7.25 km2 in 6 records (442 transfers), pool 23552 -> 24998 parcels
+INFO  live, P.arc off (same initial water)   t 300 Myr, 0 dehydration transfers on 0 of 6000 frames (worst frame 0), 0.00 km2 water released -> 0.0 km2 wedge melt; chamber water 0.00 km2, deep water 42.28 km2 in 6 records (439 transfers), pool 23552 -> 24991 parcels
+PASS  the live planet dehydrates its sinking slabs in the window   112774 transfers from t 177.6 Myr released 478.03 km2 of water and produced 320.1 km2 of wedge melt
+PASS  dehydration delivers slab water to the shallow chambers and spares the deep records   chamber water 7.26 km2 (pass off 0.00 km2 -- without the pass the cold skin never melts on its own), deep record water 7.25 km2 against 42.28 km2 with the pass off
+PASS  the live mass, water and latent books close across 6000 frames of dehydration   mass 0.00e+0, water 0.00e+0 of 1399.35 km2, latent 2.65e-8, throughput dr 478.03 = cr 478.03
+PASS  nothing was refused and the two live legs fingerprint apart   0 refusals, P.arc on 3896376545078363 vs off 8756624640142324
+PASS  the arc pass costs under 2% of the frame   0.2139 ms/frame for the pass against 12.62 ms/frame for the rest of it (1.695%)
+INFO  wall time   168 s for 633 Myr of simulation
+
+ALL PASS (26 checks)

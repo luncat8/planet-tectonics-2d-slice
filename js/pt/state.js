@@ -88,23 +88,24 @@ var PTS = {
 	                                // no external source and no export, so it is the only net
 	                                // change H_total may show
 	// pool transaction counters (pool.js): what was admitted, split, merged, moved, intruded,
-	// recycled and refused since reset. A refused transaction is a capacity event and is never
-	// silent, so the block exists from load and reset zeroes it
-	tx: { admit: 0, split: 0, merge: 0, move: 0, intrude: 0, recycle: 0, refuse: 0,
+	// recycled, dehydrated and refused since reset. A refused transaction is a capacity event
+	// and is never silent, so the block exists from load and reset zeroes it
+	tx: { admit: 0, split: 0, merge: 0, move: 0, intrude: 0, recycle: 0, arc: 0, refuse: 0,
 		whole: 0, freeze: 0, vent: 0, block: 0, emit: 0, land: 0 },
 	// gross throughput, mass (km2) since reset: phase changes and each reservoir/phase leg.
 	// Dr/Cr pairs are matching debit and credit sides. Throughput is never inventory.
 	thr: { seg: 0, whole: 0, freeze: 0, intrDr: 0, intrCr: 0, ventDr: 0, ventCr: 0,
-		airDr: 0, airCr: 0, landDr: 0, landCr: 0, deepDr: 0, deepCr: 0 },
+		airDr: 0, airCr: 0, landDr: 0, landCr: 0, deepDr: 0, deepCr: 0,
+		arcDr: 0, arcCr: 0, arcMelt: 0 },
 	invN: null, invM: null,         // the stock inventory by phase: parcels, mass, m*H
 	invH: null,
 	invMTot: 0, invHTot: 0,         // and the totals, with composition and melt as mass: the
 	invFTot: 0, invWTot: 0,         // closure a fixture gates to 1e-9 (pool.js inventoryComp)
 	invLTot: 0, invErr: 0,
-	invChM: 0, invChL: 0,           // the chamber stock's mass and melt, split out of the
-	                                // totals so the HUD can show the intrusive store apart
-	invVM: 0, invVL: 0,             // the vent schedules' stock, split out the same way
-	invDpM: 0, invDpL: 0,           // and the deep inventory's (P4.1), split out the same way
+	invChM: 0, invChL: 0, invChW: 0, // the chamber stock's mass, melt and water, split out of
+	                                 // the totals so the HUD can show the intrusive store apart
+	invVM: 0, invVL: 0, invVW: 0,   // the vent schedules' stock, split out the same way
+	invDpM: 0, invDpL: 0, invDpW: 0, // and the deep inventory's (P4.1), split out the same way
 	invL0: 0,                       // invLTot right after the last reset: the latent heat a run
 	                                // has stored so far is meltLat * (invLTot - invL0)
 	// the intrusive store (P3.2, 0.3.0-p3-plan.md §1.2): fixed-capacity chamber records,
@@ -158,6 +159,10 @@ var PTS = {
 	ctCl: null, ctY: null, ctP: null, ctT: null, ctV: null, ctN: null,
 	ctConv: null, ctSite: null,
 	hgCl: null, hgX: null, hgS: null, hgC: null, hgN: 0,   // the bending bands of this frame
+	// P4.2's wedge candidate table (arc.js): up to P.arcTop warm mantle wedge parcels per
+	// column, ordered from smallest solidus gap, plus the column count and active slot. All of
+	// it is rebuilt per frame and none of it is state.
+	arcP: null, arcG: null, arcN: null, arcC: null,
 	// the contact pass's cumulative counters: km of convergence taken up by contact, the
 	// guard's position pushes, the momentum the brake injected (the subduction hold's
 	// unbalanced impulse -- an arrest pair cancels, so it contributes nothing) and the
@@ -171,7 +176,8 @@ var PTS = {
 		fluxTop: 0, fluxBot: 0, wallRate: 0, drift: 0, melt: 0, meltY: 0,
 		lid: 0, plates: 0, plV: 0, zMin: 0, zMax: 0,
 		contact: 0, contactC: 0, hold: 0, subduct: 0, push: 0, over: 0, resid: 0,
-		slab: 0, slabV: 0, slabBond: 0, deep: 0
+		slab: 0, slabV: 0, slabBond: 0, deep: 0,
+		arc: 0, arcW: 0, arcM: 0
 	},
 
 	// allocate for a mesh (idempotent: the quality switch can change the mesh size)
@@ -254,6 +260,11 @@ var PTS = {
 			this.hgCl = new Int32Array(P.ctHinge); this.hgX = new Float64Array(P.ctHinge);
 			this.hgS = new Int8Array(P.ctHinge); this.hgC = new Float64Array(P.ctHinge);
 		}
+		if (!this.arcP || this.arcP.length !== M.nx * P.arcTop) {
+			var nArc = M.nx * P.arcTop;
+			this.arcP = new Int32Array(nArc); this.arcG = new Float64Array(nArc);
+			this.arcN = new Int32Array(M.nx); this.arcC = new Int32Array(M.nx);
+		}
 		// Resolve the transaction field table at setup, not on the first live split or launch.
 		PTPOOL.fields(this);
 		// the compensation depth as a node row: the last row at or above P.yIso (the top
@@ -273,12 +284,18 @@ var PTS = {
 	// cold skin, 'hot' is the P2 cooling start (nearly uniform hot, the lid has to grow from
 	// the wall), 'blob' is one plume head under a conduction profile.
 	reset: function (M, phase) {
-		var nx = M.nx, ny = M.ny, i, j, k, p = 0, m, T, rnd = 12345, e, tx = this.tx;
+		var nx = M.nx, ny = M.ny, i, j, k, p = 0, m, T, w0, rnd = 12345, e, tx = this.tx;
 		var mpc = P.mpc, out;
 		this.band(phase);
 		for (j = 1; j < ny; j++) for (i = 0; i < nx; i++) {
 			m = M.dEta * M.jN[j] * M.dx / mpc;
 			T = this.icT(M, i, j, phase);
+			// P4.2: on the 'cool' planet the shallowest cold skin (rows up to P.yWet) starts
+			// with bound water P.slabW when P.arc is enabled. At those rows T <= 0.22 and the
+			// wet solidus is >= 0.68, so out.melt is 0 and out.h is T -- the initial thermal
+			// and phase state is bitwise identical to the dry start, and the bound water stays
+			// passive until a slab segment carries it into the dehydration window (arc.js).
+			w0 = (P.arc && P.ic === 'cool' && M.yN[j] <= P.yWet) ? P.slabW : 0;
 			for (k = 0; k < mpc; k++) {
 				// a deterministic sub-node offset: markers on a perfect lattice make the
 				// transfer's quadrature resonate with the grid, and the offsets are the cure
@@ -294,18 +311,18 @@ var PTS = {
 				this.m[p] = m;
 				this.vx[p] = 0; this.vy[p] = 0;
 				// A fresh planet is one phase: every parcel is mantle, carries no felsic
-				// material and no water, and its enthalpy is the equilibrium enthalpy of
-				// the initial temperature (phase.js). Below the solidus that is the
-				// identity H = T; where the initial geotherm is *above* its own solidus
-				// -- the shipped 'cool' start is mushy in a 250-700 km band, measured
-				// in experiments/pt-p3-enthalpy.js -- H = T + L*xi and the melt
-				// fraction comes with it. Either way T is the equilibrium reading
-				// of H from the first frame, so the first phase pass changes nothing.
-				// Ids are the slot order, so a reset planet's identity is its geometry
-				// and a replay reproduces both.
-				out = PTPHASE.byT(T, this.y[p], 0, 0);
+				// material, and its enthalpy is the equilibrium enthalpy of the initial
+				// temperature (phase.js). Below the solidus that is the identity H = T;
+				// where the initial geotherm is *above* its own solidus -- the shipped
+				// 'cool' start is mushy in a 250-700 km band, measured in
+				// experiments/pt-p3-enthalpy.js -- H = T + L*xi and the melt fraction
+				// comes with it. Either way T is the equilibrium reading of H from the
+				// first frame, so the first phase pass changes nothing. Ids are the slot
+				// order, so a reset planet's identity is its geometry and a replay
+				// reproduces both.
+				out = PTPHASE.byT(T, this.y[p], 0, w0);
 				this.id[p] = p; this.ph[p] = P.PH.mantle; this.H[p] = out.h;
-				this.cF[p] = 0; this.cW[p] = 0; this.melt[p] = out.melt;
+				this.cF[p] = 0; this.cW[p] = w0; this.melt[p] = out.melt;
 				p++;
 			}
 		}
@@ -313,12 +330,13 @@ var PTS = {
 		this.empty = 0; this.clamp = 0; this.ledger = 0; this.wall = 0; this.hLedger = 0;
 		this.moved = 0; this.redeals = 0; this.csN = 0; this.nSolid = 0;
 		tx.admit = 0; tx.split = 0; tx.merge = 0; tx.move = 0; tx.intrude = 0;
-		tx.recycle = 0; tx.refuse = 0;
+		tx.recycle = 0; tx.arc = 0; tx.refuse = 0;
 		tx.whole = 0; tx.freeze = 0; tx.vent = 0; tx.block = 0; tx.emit = 0; tx.land = 0;
 		this.thr.seg = 0; this.thr.whole = 0; this.thr.freeze = 0;
 		this.thr.intrDr = 0; this.thr.intrCr = 0; this.thr.ventDr = 0; this.thr.ventCr = 0;
 		this.thr.airDr = 0; this.thr.airCr = 0; this.thr.landDr = 0; this.thr.landCr = 0;
 		this.thr.deepDr = 0; this.thr.deepCr = 0;
+		this.thr.arcDr = 0; this.thr.arcCr = 0; this.thr.arcMelt = 0;
 		this.chN = 0;
 		this.chX.fill(0); this.chY.fill(0); this.chM.fill(0); this.chH.fill(0);
 		this.chL.fill(0); this.chF.fill(0); this.chW.fill(0);
@@ -339,10 +357,12 @@ var PTS = {
 		this.hinge.fill(0); this.hvx.fill(0); this.hvy.fill(0);
 		this.ctN.fill(0); this.ctConv.fill(0); this.ctSite.fill(0);
 		this.hgN = 0;
+		this.arcP.fill(-1); this.arcG.fill(0); this.arcN.fill(0); this.arcC.fill(0);
 		this.contactShort = 0; this.contactPush = 0; this.contactHold = 0; this.hgOver = 0;
 		this.d.contact = 0; this.d.contactC = 0; this.d.hold = 0;
 		this.d.subduct = 0; this.d.push = 0; this.d.over = 0; this.d.resid = 0;
 		this.d.slab = 0; this.d.slabV = 0; this.d.slabBond = 0; this.d.deep = 0;
+		this.d.arc = 0; this.d.arcW = 0; this.d.arcM = 0;
 		// the material state past the prefix is cleared, not merely unused: a phase or an id
 		// left behind by a bigger population would be a parcel a wrongly bounded pass could
 		// find. pool.js remove() keeps the same rule per transaction.
@@ -459,6 +479,7 @@ var PTS = {
 		a = mixHash(a, tx.move, HASH_PRIME_A); b = mixHash(b, tx.move, HASH_PRIME_B);
 		a = mixHash(a, tx.intrude, HASH_PRIME_A); b = mixHash(b, tx.intrude, HASH_PRIME_B);
 		a = mixHash(a, tx.recycle, HASH_PRIME_A); b = mixHash(b, tx.recycle, HASH_PRIME_B);
+		a = mixHash(a, tx.arc, HASH_PRIME_A); b = mixHash(b, tx.arc, HASH_PRIME_B);
 		a = mixHash(a, tx.refuse, HASH_PRIME_A); b = mixHash(b, tx.refuse, HASH_PRIME_B);
 		a = mixHash(a, tx.whole, HASH_PRIME_A); b = mixHash(b, tx.whole, HASH_PRIME_B);
 		a = mixHash(a, tx.freeze, HASH_PRIME_A); b = mixHash(b, tx.freeze, HASH_PRIME_B);
@@ -479,6 +500,9 @@ var PTS = {
 		a = mixHash(a, this.thr.landCr, HASH_PRIME_A); b = mixHash(b, this.thr.landCr, HASH_PRIME_B);
 		a = mixHash(a, this.thr.deepDr, HASH_PRIME_A); b = mixHash(b, this.thr.deepDr, HASH_PRIME_B);
 		a = mixHash(a, this.thr.deepCr, HASH_PRIME_A); b = mixHash(b, this.thr.deepCr, HASH_PRIME_B);
+		a = mixHash(a, this.thr.arcDr, HASH_PRIME_A); b = mixHash(b, this.thr.arcDr, HASH_PRIME_B);
+		a = mixHash(a, this.thr.arcCr, HASH_PRIME_A); b = mixHash(b, this.thr.arcCr, HASH_PRIME_B);
+		a = mixHash(a, this.thr.arcMelt, HASH_PRIME_A); b = mixHash(b, this.thr.arcMelt, HASH_PRIME_B);
 		// the contact pass's cumulative counters are state too: a run that reached the same
 		// parcels through a different contact history is not the same run (P4.0)
 		a = mixHash(a, this.contactShort, HASH_PRIME_A); b = mixHash(b, this.contactShort, HASH_PRIME_B);

@@ -53,9 +53,15 @@
 
 	var SLAB = {
 		// G4's tail. No-op at dt = 0 like every geological kernel: a paused frame reports
-		// nothing here and moves nothing.
+		// nothing here and moves nothing. When the pass is disabled mid-run, its per-frame
+		// diagnostics are cleared so a step with P.slab off never reports the previous frame's
+		// census.
 		run: function (M, S, dt) {
-			if (!P.slab || !(dt > 0) || !S.n) return;
+			if (!(dt > 0) || !S.n) return;
+			if (!P.slab) {
+				S.d.slab = 0; S.d.slabV = 0; S.d.slabBond = 0; S.d.deep = 0;
+				return;
+			}
 			this.background(M, S);
 			this.sink(M, S, dt);
 		},

@@ -202,20 +202,29 @@ check.ok('and names the sites the bending cap left unbent',
 	new RegExp('unbent 2/' + P.ctHinge).test(contactLine || ''), contactLine);
 // P4.1's slab line: the pass's own census, then the deep inventory's stock as a share of the
 // world with its throughput named apart -- what the records hold now is not what has ever
-// arrived, and the line says both. Seeded for the same reason the contact line is.
+// arrived, and the line says both. The records' melt is its own field on the line: the deep
+// inventory is cold rock (P4.2's arc reads its water), so a deep melt that is not zero is a
+// number a reader has to be able to see rather than one folded into the pool's own melt line.
+// Seeded for the same reason the contact line is.
 TS.d.slab = 7; TS.d.slabV = 25; TS.d.slabBond = 3;
-TS.dpN = 2; TS.invDpM = 1234; TS.thr.deepCr = 4321;
+TS.dpN = 2; TS.invDpM = 1234; TS.invDpL = 56; TS.invDpW = 78; TS.thr.deepCr = 4321;
+TS.d.arc = 5; TS.thr.arcCr = 321; TS.thr.arcMelt = 654; TS.invChW = 19;
 UI.updateHud(SIM);
 var slabLine = L.els.hud.textContent.split('\n').filter(function (x) { return /^slab /.test(x); })[0];
 var slabWant = 'slab 7 sinking  2.50 cm/yr  3 attached   deep 2/' + P.deepCap
 	+ ' records  1234 km2 (' + (1234 / TS.invMTot * 100).toFixed(2)
-	+ '% of mass)   recycled 4321 km2';
+	+ '% of mass)  melt 56 km2  water 78 km2   recycled 4321 km2';
 check.ok('the HUD slab line reports the pass, the deep stock and its throughput apart',
 	slabLine === slabWant, slabLine);
+var arcLine = L.els.hud.textContent.split('\n').filter(function (x) { return /^arc /.test(x); })[0];
+var arcWant = 'arc 5 dehydrating  321 km2 water released  654 km2 wedge melt   store 19 km2 water';
+check.ok('the HUD arc line reports the dehydration pass, its wedge melt and the chamber water stock',
+	arcLine === arcWant, arcLine);
 TS.d.contact = 0; TS.d.contactC = 0; TS.d.hold = 0; TS.d.subduct = 0; TS.d.push = 0; TS.d.over = 0;
 TS.contactShort = 0;
 TS.d.slab = 0; TS.d.slabV = 0; TS.d.slabBond = 0;
-TS.dpN = 0; TS.invDpM = 0; TS.thr.deepCr = 0;
+TS.dpN = 0; TS.invDpM = 0; TS.invDpL = 0; TS.invDpW = 0; TS.thr.deepCr = 0;
+TS.d.arc = 0; TS.thr.arcCr = 0; TS.thr.arcMelt = 0; TS.invChW = 0;
 UI.updateHud(SIM);
 // P3.4's phase census and two transfer legs. Seed only the diagnostics here; the material
 // path itself is exercised by pt-p3-flight.js, without spending seven simulated Myr in a UI test.

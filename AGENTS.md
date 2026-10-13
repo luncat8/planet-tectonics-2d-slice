@@ -65,6 +65,9 @@ and the P3 acceptance pass pt-p3-check.js (the integrated claims of 0.3.0-p3-pla
 the two books over a live run, welding, legibility, the replay and the reserve matrix; it
 delegates the eight owner harnesses as children and quotes their counts rather than re-measuring
 them),
+plus the 0.3.0 P4 owner harnesses (pt-p4-contact.js for inter-plate contact and underthrusting,
+pt-p4-slab.js for slab sinking and deep recycling, pt-p4-arc.js for slab dehydration and arc
+melt, sharing the two-plate fixture builder pt-p4-lib.js),
 and the cut in three: experiments/slice-cut.js (the walk, the pack, the resample),
 section-pack.js (the section page: transports, refusals, switches, HUD), section-seed.js (the
 mapping: the z identity, the ledger, the quiet start, the two run modes), checkpoint.js (the

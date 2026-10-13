@@ -1,0 +1,75 @@
+
+1. the shipped pipeline at 50 kyr/frame: the two books close
+PASS  global mass closes to 1e-9 on compensated summation over 50 Myr   worst relative residual 0.00e+0
+PASS  every parcel and reservoir is counted exactly once   an independent sum over parcels + chambers + vents disagrees with the compensated one by 6.77e-14
+PASS  global enthalpy changes only by the recorded intake   worst |dH - dH_book| / |dH_book| 6.55e-12
+PASS  latent heat is included: the two books differ by exactly L * dL   residual 1.08e-12 relative, 7.13e-9 km2*H absolute
+PASS  the marker intake is the wall flux the operator charged (adjoint coverage)   |intake/wall - 1| 2.65e-12
+PASS  no NaN and the temperature stays in range over 1000 frames   NaN 0   T -0.004..1.135
+PASS  every transfer leg is a matched debit/credit pair   vent 2.340216e+3  air 2.340216e+3  land 2.285172e+3  intrude 2.176617e+5
+PASS  the airborne stock is what the emission counter says is still up   rel 1.55e-15  got 2340.21574852366 km2  want 2340.2157485236635
+PASS  the landed stock is the landing throughput: deposits never leave the phase   rel 3.98e-16  got 2285.171681918462 km2  want 2285.171681918463
+PASS  the chambers filled without blocking a conduit   chambers 39/64   blocked 0
+INFO  the live census   1852 drains, 1852 emitted batches, 1737 landings, 1730 deposit merges, 1446 intrusions, 0 refusals
+INFO  throughput is not stock   the gross legs moved 4.438e+5 km2 against a 4.169e+7 km2 inventory
+INFO  the books   intake -2.359399e+5   wall -2.359399e+5   latent -6.624453e+3   sensible -2.293155e+5
+
+2. at the cap: every refusal is a deferral, and nothing is lost
+PASS  the leg really ran out of room   124523 refusals, peak 24024/24024 against a base of 23552
+PASS  and the mass still closes exactly   worst relative residual 0.00e+0
+PASS  and so does the enthalpy book   worst relative residual 6.51e-12
+PASS  a full pool counts every refusing transaction and keeps the material in its source   4 of 4 call sites refused, refusals 0 -> 4, inventory bitwise unchanged
+
+3. a landed edifice welds into the plate
+PASS  a deposit older than tauWeld is plate, not fluid   age 24.5 Myr, mu 0.707, cluster 0
+PASS  and it shares its cluster with the substrate it landed on   cluster 0, deposit y 4.15 km over substrate y 7.83 km
+PASS  and the landed population coalesces instead of spreading   1249 landings made 6 parcels, 1243 merges
+INFO  the welding state   6 deposits, 1249 landings, tauWeld 20 Myr, depositCoolTau 0.1 Myr
+
+4. legibility: one clast, one fountain, at every slider setting
+PASS  at 10 kyr/frame the arc lasts 0.5-1.5 s of wall clock   145 clasts, median 0.900 s, 10-90% 0.833..0.983, extreme 0.817..1.000 s
+PASS  at 50 kyr/frame the arc lasts 0.5-1.5 s of wall clock   203 clasts, median 0.900 s, 10-90% 0.833..0.983, extreme 0.817..1.000 s
+PASS  at 100 kyr/frame the arc lasts 0.5-1.5 s of wall clock   470 clasts, median 0.917 s, 10-90% 0.833..0.983, extreme 0.800..1.000 s
+PASS  at 500 kyr/frame the arc lasts 0.5-1.5 s of wall clock   346 clasts, median 0.867 s, 10-90% 0.567..0.967, extreme 0.483..1.000 s
+PASS  and the fountain stays visible for at least 2 s of wall clock at every setting   10 kyr/frame 3.33 s, 50 kyr/frame 3.33 s, 100 kyr/frame 3.33 s, 500 kyr/frame 3.33 s
+PASS  a dry chamber opens effusive, a water-bearing one explosive   effusive apex 5.20 km in 0.90 s, explosive 11.02 km in 1.28 s
+INFO  the arc the clasts actually flew, per slider   10 kyr/frame median 0.90 s (10-90% 0.83-0.98), 50 kyr/frame median 0.90 s (10-90% 0.83-0.98), 100 kyr/frame median 0.92 s (10-90% 0.83-0.98), 500 kyr/frame median 0.87 s (10-90% 0.57-0.97)
+
+5. 1000 frames of the same seed, clock and wall sequence replay exactly
+PASS  the long run replays to the same complete-state fingerprint   hash 6325832770243525 / 6325832770243525
+PASS  a fixed wall sequence replays too   hash 724377949419446 / 724377949419446
+PASS  and a different wall interval is state, not hidden nondeterminism   hash 1/60 724377949419446 against 1/45 8976271191558306
+PASS  a resumed tab caps the wall interval and teleports no clast through the ground   5 s suspension: 0 of 33 airborne parcels under the horizon, 0 landed in the frame
+PASS  and the frame keeps the mass and the intake it had   rel 0.00e+0  got 41688446.7024328 km2  want 41688446.7024328
+
+6. the slider matrix: every clock and seed closes, and the reserve holds
+  seed  kyr/f  Myr    peak n/cap      melt (%)     air (%)      dep (%)      window s  ms/frame
+  1     10     15     24950/28263     1398 (5.9)   113 (0.5)    2 (0.0)      14.12     12.54
+  1     50     15     24950/28263     1398 (5.9)   165 (0.7)    3 (0.0)      2.83      12.27
+  1     100    15     24950/28263     1398 (5.9)   156 (0.7)    3 (0.0)      1.42      26.05
+  1     500    15     24950/28263     1398 (5.9)   45 (0.2)     0 (0.0)      0.28      121.43
+  2     50     15     24828/28263     1276 (5.4)   223 (0.9)    4 (0.0)      2.88      12.41
+  3     50     15     24901/28263     1349 (5.7)   112 (0.5)    2 (0.0)      2.85      12.37
+  7     50     15     24804/28263     1252 (5.3)   330 (1.4)    7 (0.0)      3.08      14.47
+PASS  every cell of the matrix closes and takes every transfer leg exactly   worst mass 0.00e+0, enthalpy 7.11e-11, intake/wall 1.25e-11
+PASS  no cell lost material to the cap   refusals 1/10:0 1/50:0 1/100:0 1/500:0 2/50:0 3/50:0 7/50:0
+PASS  the reserve keeps its per-phase lines: melt   worst 5.9% of the base against the frozen resMelt 8%
+PASS  the reserve keeps its per-phase lines: air   worst 1.4% against the frozen resAir 3%
+PASS  the reserve keeps its per-phase lines: deposits   worst 0.0% against the frozen resDep 9%
+PASS  and every seed at the demonstration clock fits the 20 ms host gate   worst 14.47 ms/frame at 50 kyr/frame
+INFO  a heavier clock buys substeps with frame time, not a different trajectory   10 kyr/frame 12.5 ms, 50 kyr/frame 12.3 ms, 100 kyr/frame 26.0 ms, 500 kyr/frame 121.4 ms (the fluid substep stays dtFluidMax-bounded)
+INFO  the shipped reserve   resMelt 0.08 + resAir 0.03 + resDep 0.09 = resFrac 0.2 -> partCap 28263
+
+7. the owning harnesses stay green
+PASS  pt-check.js   ALL PASS (19 checks)
+PASS  pt-crust.js   ALL PASS (31 checks)
+PASS  pt-drift.js   ALL PASS (5 checks)
+PASS  pt-surface.js   ALL PASS (36 checks)
+PASS  pt-wrap.js   ALL PASS (24 checks)
+PASS  pt-ui.js   ALL PASS (52 checks)
+PASS  pt-p3-budget.js   ALL PASS (28 checks)
+PASS  pt-p3-pool.js   ALL PASS (72 checks)
+
+  total 678.0 s
+
+ALL PASS (42 checks)

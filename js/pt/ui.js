@@ -226,11 +226,20 @@ var PTUI = {
 			+ (d.over ? '   unbent ' + d.over + '/' + P.ctHinge : '')
 			// P4.1: the slab pass and the deep inventory it feeds. Stock and throughput apart,
 			// the way the melt line keeps the intrusive store apart from the pool's own melt:
-			// `deep` is what the records hold now, `recycled` is what has ever arrived.
+			// `deep` is what the records hold now, `recycled` is what has ever arrived, and
+			// the records' melt is named beside them rather than folded into the pool's own
+			// line, because what arrives at the deep boundary is cold rock (P4.2's arc reads
+			// the water, not the melt).
 			+ '\nslab ' + d.slab + ' sinking  ' + (d.slabV * P.cmYr).toFixed(2) + ' cm/yr  '
 			+ d.slabBond + ' attached   deep ' + S.dpN + '/' + P.deepCap + ' records  '
 			+ fmt(S.invDpM) + ' km2 (' + (S.invMTot > 0 ? (S.invDpM / S.invMTot * 100).toFixed(2) : '0.00')
-			+ '% of mass)   recycled ' + fmt(S.thr.deepCr) + ' km2'
+			+ '% of mass)  melt ' + fmt(S.invDpL) + ' km2  water ' + fmt(S.invDpW)
+			+ ' km2   recycled ' + fmt(S.thr.deepCr) + ' km2'
+			// P4.2: the slab dehydration pass in G5 and the water it moves into the wedge and
+			// the intrusive store. Released water and wedge melt are cumulative throughput;
+			// `store` is what the chambers hold now.
+			+ '\narc ' + d.arc + ' dehydrating  ' + fmt(S.thr.arcCr) + ' km2 water released  '
+			+ fmt(S.thr.arcMelt) + ' km2 wedge melt   store ' + fmt(S.invChW) + ' km2 water'
 			+ '\nsurface ' + d.zMin.toFixed(1) + '..' + d.zMax.toFixed(1) + ' km   (zero mean, drawn x' + P.kRelief + ')'
 			+ '\nledger ' + fmt(S.hLedger) + '   walls ' + fmt(S.wall) + '   gap ' + (S.wall ? (S.hLedger / S.wall).toFixed(2) + 'x' : '--')
 			+ '   latent ' + fmt(P.meltLat * (S.invLTot - S.invL0))

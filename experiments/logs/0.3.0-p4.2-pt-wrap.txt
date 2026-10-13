@@ -1,0 +1,43 @@
+  wrap: shift equivariance of the whole pipeline, 256x24, wrap 16000 km, shift 97 cells (6062.5 km)
+
+  spin-up to 200.0 Myr: plates 3, lid 13%, 57.9 s
+
+the shifted twin, shifted back, is the same run
+PASS  every marker ends at the same x (folded)   max 1.32e-9 km
+PASS  every marker ends at the same depth   max d(eta) 3.51e-13
+PASS  every marker carries the same T   max 4.01e-13
+PASS  every marker has the same strength   max 7.48e-10
+PASS  every marker has the same damage   max 9.71e-10
+
+the diagnostics do not see the shift
+PASS  same Nusselt number   rel 6.28e-15  got 23.20129507722263  want 23.201295077222483
+PASS  same peak speed   rel 1.23e-15  got 2.171008198444164  want 2.171008198444161
+PASS  same field heat   rel 1.89e-16  got 39497395.75511303  want 39497395.755113035
+PASS  same cluster count   A 20  B 20
+PASS  same plate count   A 3  B 3
+PASS  same lid fraction   rel 0.00e+0  got 0.11661795230228322  want 0.11661795230228322
+PASS  same heat ledger   rel 2.73e-16  got -853775.8257991765  want -853775.8257991767
+PASS  same surface profile   max d(zh) 1.69e-11 km
+
+the intrusive store and the conduits are the same in the twin
+INFO  the store at the end of the run   41 chambers, 20 conduits not closed, 2036 intrusions, 29024 vent drains
+PASS  the same number of chamber records   A 41  B 41
+PASS  every chamber sits at the same folded site   max d(x) 1.82e-12 km
+PASS  the same chamber stock and vent stock   max relative 1.18e-15
+PASS  the same conduit states and styles
+PASS  the same transactions and shift-equivalent throughputs   transactions true   max throughput relative 2.97e-16
+
+a plate across the seam is one plate
+INFO  biggest plate   1312 markers, centred at 15546 km, moved by 7 cells
+PASS  the seam cuts through it (plate markers on both sides of x = 0)   left 48  right 70
+PASS  and the markers at the seam carry one cluster id   1 ids
+PASS  the biggest plate is still whole after sitting on the seam   before 1312  on the seam 1311
+
+the view wraps: a camera centred on the seam draws both sides
+PASS  markers are drawn left and right of the seam   left 10525  right 10651
+PASS  panning round the planet keeps the camera in [0, wrap)   cx 0.000 km
+PASS  zooming out stops at one period across   16000 km across
+
+  total 60.6 s
+
+ALL PASS (24 checks)

@@ -1,0 +1,46 @@
+
+A. the controlled two-plate legs (both regimes, and the kernel-off control)
+INFO  arrest   (dT 0, kernel on)   sites 2  worst closing 1.440/Myr  subducting plate 0.27 cm/yr  override 0.27 cm/yr  weld at t=-1.0 Myr  shortening 864 km
+INFO  subduct. (dT 0.2, kernel on)   sites 4  worst closing 1.448/Myr  subducting plate 4.50 cm/yr  override -0.00 cm/yr  weld at t=-1.0 Myr  shortening 1089 km
+INFO  control  (kernel off)   sites 0  subducting plate 3.25 cm/yr  override -4.48 cm/yr  closing 7.73 cm/yr  weld at t=-1.0 Myr
+PASS  the control leg converges and is never answered   closing 7.73 cm/yr, 0 sites answered, shared ground 1 -> 7 columns
+PASS  the arrest leg answers the contact and keeps two plates   sites 2, no weld over 5 Myr (100/100 frames), shortening 864 km
+PASS  the subduction leg answers the contact and keeps two plates   sites 4, no weld over 5 Myr (100/100 frames), 243 hold-frames, 4618 bending markers
+PASS  arrest: the closing rate at the contact falls to zero   post-brake closing -0.000 cm/yr against the control 7.73
+PASS  subduction: the override is held   override -0.000 cm/yr against the control -4.48 (0.0% of it left), subducting plate keeps 4.50 cm/yr
+PASS  subduction: the subducting band ends up below the crust base   41 of 749 subducting markers below 250 km against 0 on the same leg with the kernel off, 4618 bending markers
+PASS  subduction: the override markers stay above the band   0 override markers below 250 km
+PASS  the control leg bends no material below the crust base   0 markers below 250 km with the kernel off
+PASS  no kernel-on leg leaves a hard overlap behind   worst frame residue 0 pairs on 0 of 300 frames, and the leg-end re-read finds 0 and leaves 0
+PASS  the subduction leg repeats bitwise   fingerprint 8681926924447526 twice over 5 Myr
+PASS  the controlled legs never run the bending cap out   0 unbent sites, ctHinge 32 against a worst frame of 4 sites
+
+B. the ledgers and the arrest impulse pair
+PASS  the kernel leaves the mass ledger bitwise unchanged   0 of 6 measured contact frames differ
+PASS  the kernel leaves the composition ledgers bitwise unchanged   felsic 0, water 0
+PASS  the kernel leaves the melt stock bitwise unchanged   0 frames differ
+PASS  the kernel leaves the enthalpy ledger bitwise unchanged   0 of 6 frames differ
+PASS  the arrest leg closes its mass ledger   residual 0.00e+0
+PASS  the subduction leg closes its mass ledger   residual 0.00e+0
+PASS  the arrest leg books no net momentum   S.contactHold 1.86e-9 against a plate momentum of 1.64e+6
+PASS  the subduction leg books the hold's unbalanced impulse   S.contactHold 1.40e+9 against a plate momentum of 1.33e+7, 243 hold-frames
+PASS  and the control leg books neither   impulse 0.00e+0, shortening 0 km
+PASS  the arrest brake leaves the combined momentum unchanged   dpx 0.00e+0 over 6 measured frames (px 6.018e+6)
+
+C. the live shipped planet
+INFO  kernel on   t 300 Myr, 26 sites in the worst frame, worst closing 2.053/Myr, 20061 hold-frames, 346095 bending markers, 1318 guard pushes on 922 frames, absorbed shortening 30775 km
+INFO  kernel on, the bounds   worst residual 0 hard pairs on 0 frames, 0 unbent sites against ctHinge 32, booked impulse -5.21e+9 against a plate momentum of 3.00e+6
+INFO  kernel off   t 300 Myr, no response, ledger drift 0.00e+0 km2, 0 km absorbed, 0 guard pushes -- the control books nothing because it answers nothing
+PASS  the live planet reaches contacts   26 sites in the worst frame
+PASS  the live planet answers its contacts   20061 hold-frames and 346095 bending markers over 6000 frames
+PASS  the controlled legs leave no hard overlap for the guard   0 pushes over 200 controlled frames
+PASS  the live leg leaves the guard a bounded minority of frames   1318 pushes on 922 of 6000 frames (15.4%), against 0 with the kernel off
+PASS  the live leg leaves no hard overlap behind either   worst frame residue 0 pairs on 0 of 6000 frames, and the leg-end re-read finds 0 and leaves 0
+PASS  and the bending cap answers every subducting site it reaches   0 unbent sites over 6000 frames, ctHinge 32 against a worst frame of 26 sites
+PASS  the live leg keeps every flow parcel inside the domain   0 mantle or melt parcels outside [eMin, eMax] with the kernel on, 0 off, over 6000 frames
+PASS  the live ledger still closes with the kernel on   mass residual 0.00e+0 km2 over 6000 frames
+PASS  the live leg is fingerprinted, and the kernel is in it   kernel on 8179095115453659, off 1427260937352981, 26 sites
+PASS  the contact pass costs under 2% of the frame   0.175 ms/frame for the pass against 12.04 ms/frame for the rest (1.45%)
+INFO  wall time   169 s for 640 Myr of simulation
+
+ALL PASS (31 checks)

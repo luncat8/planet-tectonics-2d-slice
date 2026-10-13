@@ -57,6 +57,9 @@ var L = require('./pt-p4-lib.js');
 var LIVE = +(process.argv[2] || 300);
 var t0 = Date.now();
 var CAP0 = P.deepCap, JOIN0 = P.deepJoin, YCRUST0 = P.yCrust, SINKMYR = 10;
+// P4.2's arc dehydration belongs to pt-p4-arc.js: this harness measures the slab drive and
+// the deep recycling transfer in isolation, the way pt-p4-contact.js isolates the contact pass.
+P.arc = false;
 
 // ------------------------------------------------------------------ the seeded slab
 function seed(i0, i1, y0, y1, T, cF, cW) {
@@ -286,9 +289,11 @@ check.ok('and the inventory did not move, for any of its five totals',
 	+ ', felsic ' + (bB.F - bA.F).toExponential(2) + ', water ' + (bB.W - bA.W).toExponential(2)
 	+ ', melt ' + (bB.L - bA.L).toExponential(2) + ' -- a transfer is internal to the stock');
 check.ok('what left the pool is what the records hold',
-	Math.abs(recM - refB.m) <= 1e-12 * recM && S.thr.deepDr === S.thr.deepCr,
+	Math.abs(recM - refB.m) <= 1e-12 * recM && S.thr.deepDr === S.thr.deepCr
+	&& S.invDpM === rB.m && S.invDpL === rB.melt,
 	'records took ' + recM.toFixed(9) + ' km2 of the ' + refB.m.toFixed(9)
-	+ ' km2 below the boundary, throughput dr ' + S.thr.deepDr.toFixed(9) + ' = cr '
+	+ ' km2 below the boundary, invDpM ' + S.invDpM.toFixed(9) + ', invDpL '
+	+ S.invDpL.toExponential(2) + ', throughput dr ' + S.thr.deepDr.toFixed(9) + ' = cr '
 	+ S.thr.deepCr.toFixed(9));
 check.ok('and its composition rode with it, melt and all',
 	Math.abs(rB.f - rA.f - refB.f) <= 1e-12 * Math.abs(rB.f) && rB.f - rA.f > 0

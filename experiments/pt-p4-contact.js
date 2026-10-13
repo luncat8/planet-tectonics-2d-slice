@@ -69,8 +69,8 @@ var t0 = Date.now();
 var L = require('./pt-p4-lib.js');
 
 function configure() {
+	P.slab = false; P.arc = false;
 	L.configure();
-	P.slab = false;
 }
 
 // The pairs a live table finds inside the guard's hard radius: the plan's "colliding plates
@@ -359,9 +359,10 @@ check.section('C. the live shipped planet');
 
 function live(on, myr) {
 	P.contact = on;
-	// P4.1's slab pass is pt-p4-slab.js's business: a live leg that ran both could not say
-	// which of them put a marker where it ended up, and this harness owns the contact kernel
-	P.slab = false;
+	// P4.1's slab pass and P4.2's arc pass are their own harnesses' business: a live leg that
+	// ran them could not say which pass put a marker where it ended up, and this harness owns
+	// the contact kernel
+	P.slab = false; P.arc = false;
 	L.livePlanet();
 	var o = { m0: S.invMTot, sites: 0, worst: 0, holds: 0, bends: 0, pushes: 0,
 		pushFrames: 0, short: 0, frames: 0, mass: 0, t: 0, hash: 0,
@@ -457,7 +458,7 @@ check.ok('the live leg is fingerprinted, and the kernel is in it',
 // the frame cost: the pass is O(markers + columns) and allocates nothing, so it is priced
 // against the frame it rides in. It is called once outside the step to time it in isolation,
 // which is the same work the frame itself asks of it
-L.livePlanet(); P.contact = true; P.slab = false;
+P.contact = true; P.slab = false; P.arc = false; L.livePlanet();
 var N = 400, tc = 0, tf = 0, a, bb;
 for (k = 0; k < N; k++) {
 	a = process.hrtime.bigint();

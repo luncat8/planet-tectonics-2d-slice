@@ -6,9 +6,9 @@
 // G4 is P3.1's equilibrium mapping (phase.js) followed by P2.1's crust law: age, strength,
 // plate clusters, P4.0's contact response and the rigid projection (solid.js), and then P4.1's
 // slab pass, which takes over the material the contact pass bent below its own scope (slab.js).
-// G5 is P3.2's segregation (melt.js), G6 is P3.3's conduits and metered eruption supply
-// (vent.js), followed by P3.4's conserved vent-to-air transfer, wall-clock flight, landing and
-// surface cooling (flight.js).
+// G5 is P4.2's slab dehydration into the wedge (arc.js) followed by P3.2's segregation
+// (melt.js); G6 is P3.3's conduits and metered eruption supply (vent.js), followed by P3.4's
+// conserved vent-to-air transfer, wall-clock flight, landing and surface cooling (flight.js).
 // Geological kernels no-op at dtGeo = 0; only an explicitly supplied wall interval may move
 // airborne material while geology is paused.
 'use strict';
@@ -18,6 +18,7 @@ var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js'
 var F = (typeof module !== 'undefined' && module.exports) ? require('./fluid.js') : window.PTF;
 var SC = (typeof module !== 'undefined' && module.exports) ? require('./solid.js') : window.PTSC;
 var SLAB = (typeof module !== 'undefined' && module.exports) ? require('./slab.js') : window.PTSLAB;
+var ARC = (typeof module !== 'undefined' && module.exports) ? require('./arc.js') : window.PTARC;
 var PHASE = (typeof module !== 'undefined' && module.exports) ? require('./phase.js') : window.PTPHASE;
 var MT = (typeof module !== 'undefined' && module.exports) ? require('./melt.js') : window.PTMELT;
 var VENT = (typeof module !== 'undefined' && module.exports) ? require('./vent.js') : window.PTVENT;
@@ -136,10 +137,14 @@ SIM.k[4] = function (M, S, dt) {
 	if (P.solid) SC.crust(M, S, dt);
 	SLAB.run(M, S, dt);
 };
-// G5: melt segregation and intrusive storage (melt.js, 0.3.0-p3-plan.md §3). The split
-// needs the equilibrium fraction G4 just read; the rise and the intrusion need the flow
-// map G2 solved, which is why the plan puts this at the end of the substep.
-SIM.k[5] = function (M, S, dt) { MT.run(M, S, dt); };
+// G5: P4.2's water release from the slab into the wedge (arc.js, 0.3.0-p4-plan.md §2, §3
+// P4.2), then melt segregation and intrusive storage (melt.js, 0.3.0-p3-plan.md §3). The
+// dehydration runs first so the solidus depression it produces in the wedge is immediately
+// separated and risen by the P3.2 path in the same substep.
+SIM.k[5] = function (M, S, dt) {
+	ARC.run(M, S, dt);
+	MT.run(M, S, dt);
+};
 // G6: conduits meter the chamber into vent schedules, while previously landed ejecta cools
 // against the surface wall on geological time. Vent stock becomes one airborne batch after
 // all fluid substeps, in step(), so a rendered frame cannot create ten overlapping clasts just

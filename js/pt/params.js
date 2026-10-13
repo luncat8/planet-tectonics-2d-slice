@@ -296,6 +296,36 @@ var PTP = {
 	                            // so a record is one pile of recycled material and not one
 	                            // parcel's worth -- chJoin's rule at the bottom of the mantle
 	deepCap: 32,                // deep records, allocated once; a full set defers the transfer
+	// P4.2, arc melt from the slab (0.3.0-p4-plan.md §3 P4.2). The cold surface skin of the
+	// 'cool' initial condition starts with bound water (slabW in rows up to yWet); while those
+	// parcels stay in the lid or sink as a slab (T <= slabT) their solidus is still well above
+	// their temperature, so a wet lid or a wet slab never melts on its own. Once a detached
+	// slab segment sinks into the dehydration window (yArcMin..yArcMax), a fraction of its
+	// water (kArc * dt, capped at arcFrac) leaves the slab for the warm mantle wedge above it
+	// (yCham..yArcMin within arcSpan), where it depresses the wedge's solidus through the
+	// existing meltWW term of the P3.1 phase law -- no new melt law. The P3.2 segregation,
+	// P3.3 conduit and P3.4 eruption path then run unchanged, and whatever water the slab keeps
+	// past yArcMax rides it down to yDeep for P4.1's deep records. Every constant here is a
+	// P4.4 freeze candidate measured by experiments/pt-p4-arc.js, not a claim.
+	arc: true,
+	yWet: 20,                   // km, depth of the hydrated cold surface skin at reset: rows 1..2
+	                            // on the shipped 256x24 mesh (yN 8.4 and 17.1 km, T <= 0.22)
+	slabW: 0.005,               // bound water mass fraction of the hydrated oceanic skin. With
+	                            // meltWW 20 this drops the solidus by 0.10, which leaves a cold
+	                            // slab (T <= 0.45) completely solid at every depth (Ts >= 0.68)
+	                            // while pushing a warm wedge parcel above its solidus
+	yArcMin: 250,               // km, top of the slab dehydration window (yCrust: above it is the
+	                            // cold lid / forearc; below it the slab is under the wedge)
+	yArcMax: 600,               // km, base of the dehydration window; water still in the slab
+	                            // below this line rides it to yDeep and into the deep records
+	arcSpan: 125,               // km, lateral reach of rising slab fluid into the wedge (2 columns
+	                            // either side on the shipped mesh)
+	arcTop: 4,                  // wedge candidates kept per column, ordered from smallest solidus
+	                            // gap: once the hottest reaches meltHold the next takes the rest
+	kArc: 0.25,                 // 1/Myr, fraction of a slab parcel's water released per Myr in
+	                            // the window (~83% over a 3 cm/yr transit of 250..600 km, leaving
+	                            // the rest for P4.1's deep records)
+	arcFrac: 0.25,              // per-substep cap on the released fraction (at 500 kyr/f slider)
 	// the view warps by kRelief * zh, damped with depth; zVisMax clips outlier relief before
 	// exaggeration so a deep rift cannot fill the lid camera with ocean.
 	yTaper: 120,                 // km, e-folding depth of the view's terrain warp
