@@ -237,26 +237,49 @@ var PTP = {
 	// The position guard is the discrete statement of the plan's gate: inter-cluster crust
 	// markers closer than contactHard of a cell are pushed apart along their separation, and
 	// the pushes are counted so the report can say how often the velocity-level response left
-	// work for it. Every constant here is a P4.4 freeze candidate measured by
-	// experiments/pt-p4-contact.js, not a claim.
+	// work for it. Frozen by P4.4 against experiments/pt-p4-contact.js and the integrated leg
+	// (experiments/pt-p4-check.js, 300 Myr of the shipped planet with every P4 pass on), each
+	// line above its own measured worst case. Two §4 decisions are recorded here too: the
+	// table carries NO plate-size threshold -- 25,563 of the leg's 25,664 answered pairs
+	// involve a cluster under plateMin (lid shrapnel), and this pass is what answers them, so
+	// a threshold would trade fragment-inflated shortening for fragments that interpenetrate
+	// -- and the brake corrects translation only: the hold's unbalanced impulse is booked
+	// signed (S.contactHold, -1.04e9 over the leg) and the closing translation-only leaves at
+	// a site is the guard's work, 1,257 pushes on 800 of 6,000 frames with residue 0.
 	contact: true,
 	contactYield: 0.03,         // 1/Myr: the closing rate below which a contact is not a
-	                            // collision, the same yardstick as collisionYield's
+	                            // collision, the same yardstick as collisionYield's. Frozen:
+	                            // the answered contacts of the integrated leg close
+	                            // 0.030..1.969 /Myr, so the yield sits an order below the
+	                            // slowest real collision and above the plate interiors'
+	                            // 0.003..0.02 /Myr gradients (experiments/pt-load-check.js)
 	contactdT: 0.08,            // the temperature contrast across a contact that makes the
-	                            // colder side dense enough to sink; below it, arrest
-	contactDip: 35,             // degrees, the slab's descent beneath the override
+	                            // colder side dense enough to sink; below it, arrest. Frozen:
+	                            // the leg's answered pairs span |dT| 0..0.452 with 4,940
+	                            // arrests and 20,724 subductions either side of it, and the
+	                            // controlled fixture prescribes 0.16 -- both regimes live
+	                            // well clear of the line
+	contactDip: 35,             // degrees, the slab's descent beneath the override. Frozen:
+	                            // the controlled band bends 41 of 749 markers to ~251 km,
+	                            // below the override's base, with the override's own markers
+	                            // 0 below it (experiments/pt-p4-contact.js)
 	contactBand: 300,           // km, the bending zone's reach into the subducting plate
-	contactHard: 0.55,          // cells, the no-penetration radius of the position guard
+	contactHard: 0.55,          // cells, the no-penetration radius of the position guard.
+	                            // Frozen: worst residue 0 pairs on every frame of the
+	                            // integrated leg (the rounding slop inside the radius is
+	                            // what makes the count honest, P4.0's review)
 	ctTop: 4,                   // clusters per column in the contact table: the shallowest
 	                            // crust marker of each, so a plate boundary is read where it
 	                            // reaches the surface
 	ctSweep: 3,                 // separation sweeps the guard may take in one frame: where
-	                            // several pairs share a marker, one sweep can leave a residue
+	                            // several pairs share a marker, one sweep can leave a residue.
+	                            // Frozen: two clear the live planet (P4.0's sweep scan), the
+	                            // third is margin -- 1,257 pushes on 800 of 6,000 frames
 	ctHinge: 32,                // bending bands per frame. A site the cap turns away is held
 	                            // without being bent, so it is counted (S.hgOver, S.d.over)
-	                            // rather than lost: 300 Myr of the shipped planet peaked at 15
-	                            // subducting sites in one frame, and the headroom costs four
-	                            // small arrays
+	                            // rather than lost. Frozen by P4.4: the integrated leg's
+	                            // worst frame is 19 subducting sites, 0 unbent over 6,000
+	                            // frames, and the headroom costs four small arrays
 	// P4.1, slab sinking and deep recycling (0.3.0-p4-plan.md §3 P4.1). A slab segment the
 	// contact pass bent below yCrust is out of that pass's scope (its §1.4) and into its own:
 	// it sinks under the same temperature-is-density proxy the buoyancy law uses, read as a
@@ -265,8 +288,13 @@ var PTP = {
 	// transfer, not a sink: mass, enthalpy, melt and composition debit the parcel and credit a
 	// fixed-capacity deep record set the inventory counts once, exactly as P3.2's chambers are
 	// counted. A full record set defers the transfer and counts the deferral; nothing is
-	// dropped. Every constant here is a P4.4 freeze candidate measured by
-	// experiments/pt-p4-slab.js, not a claim.
+	// dropped. Frozen by P4.4 against experiments/pt-p4-slab.js and the integrated leg: the
+	// drive's law and its exclusions are the harness's population table (contrast alone
+	// drains the deep mantle, slabT = TSoft is the line that keeps it a slab pass), and the
+	// record set's worst stock on the integrated leg is 6 of 32 with 0 refusals -- the
+	// deferral path exists for the fixture that fills it on purpose. One P4.4 bookkeeping
+	// line: a recycled parcel can be subducted sediment, so recycle() names the deposit
+	// phase's share of its debits (thr.deepDep) and the deposit identity gains a third term.
 	slab: true,
 	slabdT: 0.05,               // the contrast against the background of its depth below which
 	                            // material is not dense enough to sink on its own: a slab that
@@ -305,8 +333,12 @@ var PTP = {
 	// (yCham..yArcMin within arcSpan), where it depresses the wedge's solidus through the
 	// existing meltWW term of the P3.1 phase law -- no new melt law. The P3.2 segregation,
 	// P3.3 conduit and P3.4 eruption path then run unchanged, and whatever water the slab keeps
-	// past yArcMax rides it down to yDeep for P4.1's deep records. Every constant here is a
-	// P4.4 freeze candidate measured by experiments/pt-p4-arc.js, not a claim.
+	// past yArcMax rides it down to yDeep for P4.1's deep records. Frozen by P4.4 against
+	// experiments/pt-p4-arc.js's calibration (the window, the rate, the span) and the
+	// integrated leg's census: 559.9 km2 of water released in 300 Myr for 3,111.7 km2 of
+	// wedge melt, 36.7 km2 reaching the chambers, and the 13.4 km2 the slabs kept past yArcMax
+	// booked into the deep records -- the window takes most, the boundary is where it should
+	// be, and the capacity it defers against is not binding.
 	arc: true,
 	yWet: 20,                   // km, depth of the hydrated cold surface skin at reset: rows 1..2
 	                            // on the shipped 256x24 mesh (yN 8.4 and 17.1 km, T <= 0.22)
@@ -343,8 +375,12 @@ var PTP = {
 	// neighbour's. Per-frame demand is E_i * dt * dx km2. Every leg is a pool transaction
 	// (pool.js carry): mass, enthalpy, melt and composition move together, the inventory is
 	// invariant to round-off, and the deposit phase P3.4 already lands into is the sediment.
-	// Every constant here is a P4.4 freeze candidate measured by experiments/pt-p4-erosion.js
-	// and the sweep, not a claim.
+	// Frozen by P4.4: the law is the sweep's pick (experiments/pt-p4-transport-sweep.js --
+	// basin capture 100% against 4.9%, transport reach 96.3% against 0.0% at equal work), and
+	// the integrated leg moved 99,231 km2 of the weathering band in 300 Myr with 13.8 km2
+	// (0.01%) of demand unmet and 0 refusals, so eroTake, eroMinM and eroSlopeDep sit above
+	// their measured worst cases. The sediment is the P3 deposit stock, whose identity now
+	// reads landings + weathering - rework - what the slab pass recycles (thr.deepDep).
 	ero: true,
 	eroBand: 120,               // km, the weathering band: solid parcels above this depth are
 	                            // the surface law's population. The 'cool' start's hydrated skin

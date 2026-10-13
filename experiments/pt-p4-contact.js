@@ -65,11 +65,12 @@ var t0 = Date.now();
 // age-zero weak band, the 5 Myr legs, the failure law held at zero, the override's root) is
 // archive/0.3.0-p4.0-worklog.md. What this harness adds is its own isolation: these legs are
 // about the contact kernel, so P4.1's slab pass is off in every one of them and a number here
-// cannot be a number the sinking produced.
+// cannot be a number the sinking produced. P4.2's arc and P4.3's surface law likewise: each
+// later pass shifts the lid its own way, and the integrated census is P4.4's harness.
 var L = require('./pt-p4-lib.js');
 
 function configure() {
-	P.slab = false; P.arc = false;
+	P.slab = false; P.arc = false; P.ero = false;
 	L.configure();
 }
 
@@ -359,10 +360,10 @@ check.section('C. the live shipped planet');
 
 function live(on, myr) {
 	P.contact = on;
-	// P4.1's slab pass and P4.2's arc pass are their own harnesses' business: a live leg that
-	// ran them could not say which pass put a marker where it ended up, and this harness owns
-	// the contact kernel
-	P.slab = false; P.arc = false;
+	// P4.1's slab pass, P4.2's arc pass and P4.3's surface law are their own harnesses'
+	// business: a live leg that ran them could not say which pass put a marker where it
+	// ended up, and this harness owns the contact kernel
+	P.slab = false; P.arc = false; P.ero = false;
 	L.livePlanet();
 	var o = { m0: S.invMTot, sites: 0, worst: 0, holds: 0, bends: 0, pushes: 0,
 		pushFrames: 0, short: 0, frames: 0, mass: 0, t: 0, hash: 0,
@@ -458,7 +459,7 @@ check.ok('the live leg is fingerprinted, and the kernel is in it',
 // the frame cost: the pass is O(markers + columns) and allocates nothing, so it is priced
 // against the frame it rides in. It is called once outside the step to time it in isolation,
 // which is the same work the frame itself asks of it
-P.contact = true; P.slab = false; P.arc = false; L.livePlanet();
+P.contact = true; P.slab = false; P.arc = false; P.ero = false; L.livePlanet();
 var N = 400, tc = 0, tf = 0, a, bb;
 for (k = 0; k < N; k++) {
 	a = process.hrtime.bigint();

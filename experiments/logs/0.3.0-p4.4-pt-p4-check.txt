@@ -1,0 +1,61 @@
+
+1. the four legs together, 300 Myr at 50 kyr/frame: both books close and every P4 transfer is a pair
+PASS  global mass closes to 1e-9 on compensated summation over 300 Myr   worst relative residual 0.00e+0
+PASS  every parcel, chamber, vent and deep record is counted exactly once   an independent sum over all four stocks disagrees with the compensated one by 6.92e-14
+PASS  global enthalpy changes only by the recorded intake   worst |dH - dH_book| / |dH_book| 9.42e-12
+PASS  latent heat is included: the two books differ by exactly L * dL   residual 1.09e-13 relative
+PASS  the marker intake tracks the wall flux the operator charged   |intake/wall - 1| 4.89e-5 over the leg (the adjoint identity closes to 1e-9 at matrix length, section 3; the long-horizon drift is what pt-crust.js has always bounded at 0.8..1.2)
+PASS  no NaN and the temperature stays in range over 6000 frames   NaN 0   T -0.250..1.388 (the -0.5..1.5 bound is pt-crust.js's 300 Myr wall; the cold tail is the hydrated skin markers the T = 0 wall overshoots by a node's flux)
+PASS  nothing the P4 passes moved sits outside the domain   0 parcels outside [eMin, eMax]
+PASS  every transfer leg of the integrated frame is a matched debit/credit pair   deep 9.177972e+4  arc 5.599413e+2  ero 9.923112e+4
+PASS  the deposit stock is the landings plus the surface law less what left it, through booked transfers only   deposits 352435.204934 against 352435.204934 = 277495.925386 landed + 99231.123524 weathered - 23049.644451 reworked - 1242.199525 subducted and recycled
+PASS  the deep records hold what the slab pass credited them   9.177972492e+4 km2 in 6 records against a booked 9.177972492e+4 (compensated re-sum against a running total)
+PASS  the guard left no hard pair on any frame of the leg   0 of 6000 frames with a residue, 1257 pushes on 800 frames
+INFO  the live census   25664 answered contacts (worst frame 22 sites, 19 subducting), 28839 km of shortening taken up, 375786 bending markers, -1.044e+9 of hold impulse booked, fingerprint 3426360007996525 (the P4.3 report's leg read 2960640650489454 before thr.deepDep joined the state)
+PASS  all four legs actually moved material on this leg   contacts 25664 answered pairs, slab 91779.7 km2 transferred, arc 559.9 km2 released, erosion 99231 km2 moved
+INFO  the four legs' throughput against the stock   contacts 25664 sites, slab 1204729 driven-parcel-frames -> 9.178e+4 km2 into 6 deep records, arc 559.941342190884 releases -> 559.9 km2 water and 3111.7 km2 wedge melt (36.7 km2 in the chambers), erosion 99231.12352449482 transfers -> 99231 km2 of sediment in 763 parcels, against a stock of 4.169e+7 km2
+
+2. the contact census: what the pass answered, and the two open decisions
+PASS  the census reproduces the kernel's own site count on every frame   0 of 6000 one-substep frames disagree with S.d.contact
+PASS  the live planet answered sub-plate fragments too, so a plate-size threshold on the table would open them   25563 of 25664 answered pairs involve a cluster under plateMin 64 (99.6%): the pass is what answers them, and a threshold would leave them to interpenetrate
+PASS  the yield sits between the interior gradients and the boundary signal   answered closings 0.030..1.969 /Myr against contactYield 0.03 (the interiors carry 0.003..0.02 /Myr, experiments/pt-load-check.js)
+INFO  the contrast the regime rule saw   |dT| at the answered pairs: min 0.000, max 0.452, contactdT 0.08; subduction 20724, arrest 4940; bins <0.02: 2816, 0.02-0.04: 631, 0.04-0.08: 1493, 0.08-0.16: 2904, 0.16-0.32: 14728, >=0.32: 3092
+INFO  the brake stays translation-only, and what that leaves is measured   the hold's unbalanced impulse -1.044e+9 is booked, not hidden; the closing it leaves at a site is the guard's work, 1257 pushes on 800 of 6000 frames (13.3%), and its residue is 0
+
+3. the slider matrix: every clock and seed closes with P4 shipped on
+  seed  kyr/f  Myr    ms/frame  sites  resid  pushes  deep  arc km2   ero km2
+  1     10     15     13.61     0      0      0       0     0.0     381
+  1     50     15     13.61     0      0      0       0     0.0     387
+  1     100    15     27.83     0      0      0       0     0.0     194
+  1     500    15     137.30    0      0      0       0     0.0     39
+  2     50     15     14.18     0      0      0       0     0.0     354
+  3     50     15     13.81     0      0      0       0     0.0     354
+  7     50     15     14.17     0      0      0       0     0.0     465
+PASS  every cell of the matrix closes and takes every transfer leg exactly   worst mass 0.00e+0, enthalpy 7.11e-11, intake/wall 1.25e-11
+PASS  no cell refused a transaction or lost one to the cap   refusals 1/10:0 1/50:0 1/100:0 1/500:0 2/50:0 3/50:0 7/50:0
+PASS  no cell saw a NaN, a domain escape or a guard residue   NaN 0, outside-domain 0, residue frames 0
+PASS  every seed at the demonstration clock fits the 20 ms host gate   worst 14.18 ms/frame at 50 kyr/frame
+INFO  a heavier clock buys substeps with frame time, not a different engine   10 kyr/frame 13.6 ms, 50 kyr/frame 13.6 ms, 100 kyr/frame 27.8 ms, 500 kyr/frame 137.3 ms
+
+4. the freeze: each line above its own measured worst case
+PASS  ctHinge carries the worst subducting frame with room to spare   worst frame 19 subducting sites against ctHinge 32, unbent 0
+PASS  deepCap carries the worst deep stock with room to spare   worst 6 of 32 records, 0 refusals
+PASS  the surface law's unmet demand is a rounding of its throughput   1.38e+1 km2 unmet of 9.923e+4 km2 moved (0.01%), 0 refusals
+INFO  frozen: contactYield 0.03 /Myr, contactdT 0.08, contactDip 35 deg, contactBand 300 km, contactHard 0.55 cells, ctSweep 3, ctTop 4 -- answered closings run to 1.969 /Myr, 28839 km of shortening taken up, the guard leaves 0 hard pairs on every frame
+INFO  frozen: no plate-size threshold on the contact table -- 25563 of 25664 answered pairs are sub-plate (99.6%); the brake corrects translation only and books its unbalanced impulse (-1.044e+9)
+INFO  frozen: slabdT 0.05, slabT 0.45, kSink 60, vSinkMax 30, yDeep 2400, deepJoin 500 -- the integrated leg drove 1204729 parcel-frames at a worst attached 0 and booked 9.178e+4 km2 into the records
+INFO  frozen: yArcMin 250, yArcMax 600, kArc 0.25, arcFrac 0.25, arcSpan 125 km, arcTop 4 -- the integrated leg released 559.9 km2 of water for 3111.7 km2 of wedge melt, the deep records took 13.4 km2
+INFO  frozen: eroTake 0.25, eroMinM 50, eroSlopeDep 0.0001, the runoff/stream-power law of the sweep -- 99231 km2 moved, 459 deposit parcels admitted, 0.01% of the demand unmet
+PASS  the integrated frame itself fits the 20 ms host gate   the 300 Myr leg runs 16.08 ms/frame at 50 kyr/frame with every P4 pass in it
+INFO  frozen: the demonstration frame is 14.18 ms at 50 kyr/frame (the integrated leg 16.08 ms) against the 20 ms host gate
+
+5. the owners stay green
+PASS  pt-p4-contact.js   ALL PASS (31 checks)
+PASS  pt-p4-slab.js   ALL PASS (27 checks)
+PASS  pt-p4-arc.js   ALL PASS (26 checks)
+PASS  pt-p4-erosion.js   ALL PASS (33 checks)
+PASS  pt-p4-transport-sweep.js   ALL PASS (37 checks)
+PASS  pt-p3-check.js   ALL PASS (42 checks)
+\n  total 1955.7 s
+
+ALL PASS (29 checks)

@@ -1126,3 +1126,34 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
 - **A `share > 0.25` gate on the top decile was 0.4 points under the measured 25.4%** — a
   restatement, not a concentration claim. Twice uniform (0.20) still has teeth; gate sqrt(A)
   itself on a linear flank where the slope is shared and only area ranks the demand.
+
+## 0.3.0 P4.4 acceptance/freeze (archive/0.3.0-p4.4-worklog.md)
+
+- **When a new pass ships, re-isolate every earlier owner harness's live legs.** Each P4 owner
+  sets the later passes off (`P.slab = false`, then `P.arc = false`, then `P.ero = false`) so
+  its live numbers stay its own report's. P4.3 shipped without adding `P.ero = false` to the
+  P4.0/P4.1/P4.2 owners, and `pt-p4-contact`'s zero-residue gate rotted: sediment welds into
+  the lid, the fragment population shifts, and a marginal pair lands one ulp inside the hard
+  radius once in 6,000 frames. A pass that changes the planet invalidates every live number
+  measured before it; the integration census belongs to the acceptance pass, not to the
+  owners.
+- **A phase-stock identity must enumerate every pass that debits it, and passes that move
+  material are phase-blind by design.** The deposit identity P4.3 wrote (`land + ero - eroDep`)
+  was true only while nothing subducted: the slab pass recycles detached cold lithosphere
+  whatever its phase, and subducted sediment is exactly that (1,242 km2 of 353,677 in 300 Myr,
+  22 parcels). Fix is a named counter per pass/phase pair (`thr.deepDep`), read BEFORE
+  `remove()` compacts the tail into the slot. When a phase identity fails at long horizons,
+  wrap the suspect transaction and diff the gap before touching anything else.
+- **Cumulative counters in `hash()` move every published fingerprint.** Adding a diagnostic
+  counter is right (the plan's rule) but it makes all pre-change fingerprints stop
+  reproducing. Record the cross-check in the worklog (same leg, old tree, old hash) so the
+  lineage stays verifiable, and keep in-repo gates within-run replays only.
+- **Module-level sim state poisons later sections of a harness.** `S` is one object: after
+  the slider matrix re-runs the sim, `S.thr.*` is the last cell's, not the integrated leg's.
+  Capture the readings into the accumulator before moving to the next leg.
+- **A kernel's decisions can be re-derived from its own snapshots without touching it.**
+  `contact.detect` stores per-column `(ctV, ctT)` before the brake and its site walk is one
+  comparison over adjacent columns, so a harness re-running the walk at frame end reproduces
+  the decisions bitwise and reads what the kernel never recorded (contrast, cluster sizes) --
+  no engine change, no fingerprint move, and the census-vs-`S.d.contact` cross-check gives it
+  teeth.

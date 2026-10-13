@@ -58,6 +58,11 @@ function restore() {
 	P.kArc = KARC0; P.arcFrac = FRAC0; P.arcSpan = SPAN0;
 	P.yWet = YWET0; P.slabW = SLABW0;
 }
+// P4.3's surface law is pt-p4-erosion.js's business, and it shipped after this harness's
+// legs were measured: sediment welds into the lid and every leg here drifts off its report
+// planet. Off the whole file the way P4.1's slab is, so these numbers stay this harness's
+// own; the integrated census is P4.4's (pt-p4-check.js).
+P.ero = false;
 
 function seedBox(i0, i1, y0, y1, T, cF, cW) {
 	var nx = SIM.M.nx, dx = SIM.M.dx, p, i, tag = {};

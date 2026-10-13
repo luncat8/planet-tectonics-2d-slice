@@ -96,7 +96,7 @@ var PTS = {
 	// Dr/Cr pairs are matching debit and credit sides. Throughput is never inventory.
 	thr: { seg: 0, whole: 0, freeze: 0, intrDr: 0, intrCr: 0, ventDr: 0, ventCr: 0,
 		airDr: 0, airCr: 0, landDr: 0, landCr: 0, deepDr: 0, deepCr: 0,
-		arcDr: 0, arcCr: 0, arcMelt: 0, eroDr: 0, eroCr: 0, eroDep: 0 },
+		arcDr: 0, arcCr: 0, arcMelt: 0, eroDr: 0, eroCr: 0, eroDep: 0, deepDep: 0 },
 	invN: null, invM: null,         // the stock inventory by phase: parcels, mass, m*H
 	invH: null,
 	invMTot: 0, invHTot: 0,         // and the totals, with composition and melt as mass: the
@@ -359,6 +359,7 @@ var PTS = {
 	this.thr.deepDr = 0; this.thr.deepCr = 0;
 	this.thr.arcDr = 0; this.thr.arcCr = 0; this.thr.arcMelt = 0;
 	this.thr.eroDr = 0; this.thr.eroCr = 0; this.thr.eroDep = 0;
+	this.thr.deepDep = 0;
 		this.chN = 0;
 		this.chX.fill(0); this.chY.fill(0); this.chM.fill(0); this.chH.fill(0);
 		this.chL.fill(0); this.chF.fill(0); this.chW.fill(0);
@@ -538,6 +539,7 @@ var PTS = {
 		a = mixHash(a, this.thr.eroDr, HASH_PRIME_A); b = mixHash(b, this.thr.eroDr, HASH_PRIME_B);
 		a = mixHash(a, this.thr.eroCr, HASH_PRIME_A); b = mixHash(b, this.thr.eroCr, HASH_PRIME_B);
 		a = mixHash(a, this.thr.eroDep, HASH_PRIME_A); b = mixHash(b, this.thr.eroDep, HASH_PRIME_B);
+		a = mixHash(a, this.thr.deepDep, HASH_PRIME_A); b = mixHash(b, this.thr.deepDep, HASH_PRIME_B);
 		// the contact pass's cumulative counters are state too: a run that reached the same
 		// parcels through a different contact history is not the same run (P4.0)
 		a = mixHash(a, this.contactShort, HASH_PRIME_A); b = mixHash(b, this.contactShort, HASH_PRIME_B);

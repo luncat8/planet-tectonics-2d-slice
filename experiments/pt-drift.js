@@ -34,6 +34,11 @@ var MIN_PLATE = 64;                  // the HUD's own threshold for calling a cl
 // the shipped draw, pinned
 P.ic = 'cool'; P.icMode = 4; P.icAmp = 0.02; P.icBand = 0.6; P.icBandMax = 12; P.seed = 1;
 P.solid = true; P.sl.kyr = 50;
+// P4.3's surface law is not this fixture's business, and it shipped after the gate below was
+// calibrated: sediment welds into the lids and shifts the drift statistics (P4.4's first full
+// run caught this harness red at 2.6x where its own planet reads above 3x). Off, the same way
+// the P4 owners isolate the passes that postdate them; the integrated planet is pt-p4-check's.
+P.ero = false;
 SIM.init(); SIM.reset(); SIM.dt = 0.05;
 var M = SIM.M;
 

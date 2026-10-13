@@ -241,9 +241,19 @@
 			S.dpL[best] += m * S.melt[p];
 			S.dpF[best] += m * S.cF[p];
 			S.dpW[best] += m * S.cW[p];
+			// the phase has to be read before remove(): the removal compacts the pool's
+			// tail into this slot, and the slot then names a different parcel
+			var dep = S.ph[p] === P.PH.dep;
 			this.remove(S, p);
 			S.tx.recycle++;
 			S.thr.deepDr += m; S.thr.deepCr += m;
+			// the debit side of a recycling is mantle unless the parcel was sediment: the
+			// slab pass drives any detached cold lithosphere below yDeep, and subducted
+			// sediment is exactly that. Counting the phase apart is what keeps the deposit
+			// inventory's identity exact at the integrated scale (P4.4's 300 Myr leg found
+			// the gap):
+			//   invM[dep] = thr.landCr + thr.eroCr - thr.eroDep - thr.deepDep
+			if (dep) S.thr.deepDep += m;
 			return best;
 		},
 
@@ -277,8 +287,9 @@
 			S.tx.ero++; S.thr.eroDr += d; S.thr.eroCr += d;
 			// the credit side of every erode transfer is a deposit parcel; the debit side is
 			// rock unless the donor was itself sediment. Counting that apart is what lets the
-			// deposit inventory's identity stay exact with the surface law running:
-			//   invM[dep] = thr.landCr + thr.eroCr - thr.eroDep
+			// deposit inventory's identity stay exact with the surface law running (recycle()
+			// books the phase's third debit the same way):
+			//   invM[dep] = thr.landCr + thr.eroCr - thr.eroDep - thr.deepDep
 			if (S.ph[src] === P.PH.dep) S.thr.eroDep += d;
 			return dst;
 		},

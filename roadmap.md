@@ -15,7 +15,7 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | 0.1.8 | collision arrest: the absorbed-shortening brake (`S.edgeShort`, checkpoint v4) closes R4; R1/R2/R5 left open only as measurement definitions on one 100 kyr leg | `archive/0.1.8-plan.md`, `archive/0.1.8-worklog.md` | 0.1.7 flow laws and corrected audit |
 | 0.1.9 | the two contact measurements: R1's site window anchored at the event and its background taken from the quiet-frame yardstick, R2's needle shoulder read over the belt's own neighbourhood | `0.1.9-plan.md`, `archive/0.1.9-worklog.md` | 0.1.8's M3 matrix |
 | 0.2.x | column engine: eruptives, deposits, extraction; page chrome (pause/step/reset) uses E1/E3 — **closed at M5** | `archive/0.2.0-plan.md` | — |
-| 0.3.x | particle engine P3+ (melt, eruptions, contact). **P3 closed at P3.5**: conserved pool/routing, phase and enthalpy, segregation/storage, conduits, conserved wall-clock flight through landing/cooling/welding, and the integrated acceptance pass with the reserve frozen — `archive/0.3.0-p3.5-report.md`. **P4.0 landed**: the inter-plate contact kernel — `archive/0.3.0-p4.0-report.md` | `0.3.0-plan.md`, `0.3.0-p3-plan.md`, `0.3.0-p4-plan.md` | — |
+| 0.3.x | particle engine P3+ (melt, eruptions, contact). **P3 closed at P3.5**: conserved pool/routing, phase and enthalpy, segregation/storage, conduits, conserved wall-clock flight through landing/cooling/welding, and the integrated acceptance pass with the reserve frozen — `archive/0.3.0-p3.5-report.md`. **P4 closed at P4.4**: contact/underthrusting, slab sinking and deep recycling, arc melt from the slab, particle erosion/deposition, and the integrated acceptance pass with the P4 constants frozen — `archive/0.3.0-p4.4-report.md` | `0.3.0-plan.md`, `0.3.0-p3-plan.md`, `0.3.0-p4-plan.md` | — |
 | 0.4.0 | sync/exchange: provenance, deposits core, water, checkpoint, section pack | `0.4.0-sync-plan.md` | — |
 | 0.4.1 | the cut: draw a line on the globe, copy/save, paste/load, reconstruct a section | `0.4.1-plan.md` | 0.4.0's format (`port/slice-format.js`, M0 done) |
 | 0.9.0 | globe page hosts the section as a library; live sync is C3+C4 | `0.9.0-draft-sync.md`, `0.4.1-plan.md` §8 | 0.4.1 M1–M2; C1 on the column engine |
@@ -188,8 +188,25 @@ remains in the slab below `P.yArcMax` rides it down to `P.yDeep` for P4.1's deep
 calibration under a fixed wedge, the full P3 arc eruption path, and the 300 Myr live planet
 (112,774 dehydration transfers releasing 478.03 km² of water, 320.1 km² of wedge melt, 7.26 km² of
 chamber water against 0.00 km² with the pass off, and 7.25 km² of deep-record water against 42.28
-km² with the pass off; 18 processes, 693 quoted checks / 685 distinct, all green). P4.3 (particle
-weathering, erosion and sedimentation chosen by `pt-p4-transport-sweep.js`) is next.
+km² with the pass off; 18 processes, 693 quoted checks / 685 distinct, all green).
+
+0.3.0 P4.3 (`archive/0.3.0-p4.3-report.md`) lands particle weathering, erosion and sedimentation
+(`js/pt/erode.js`, `PTERODE`): the runoff/stream-power law `pt-p4-transport-sweep.js` chose over a
+conservative hillslope rule (basin capture 100.0% against 4.9%, transport reach 96.3% against 0.0%
+at equal work) moves the 120 km weathering band's material down `zh`'s own drainage into P3.4's
+deposit stock — 1,432,033 transfers moved 99,231 km² in 300 Myr, the world ends with 352,435 km²
+of sediment in 763 parcels, the profile `zh` itself untouched, unmet demand 0.01% of throughput,
+0.446 ms/frame of the pass's own work.
+
+0.3.0 P4.4 (`archive/0.3.0-p4.4-report.md`) closes P4: `experiments/pt-p4-check.js` runs the four
+P4 legs together — the configuration no owner harness runs — over 300 Myr at the demonstration
+clock and a slider matrix, delegates the six owners with counts quoted, and freezes the P4
+constants each above its own measured worst case. The integrated leg decided the two open §4
+questions (no plate-size threshold on the contact table — 99.6% of the answered pairs are sub-plate
+fragments the pass answers; the brake stays translation-only), found the deposit book's missing
+third debit (`thr.deepDep`: subducted sediment is recycled by the slab pass like any detached cold
+lithosphere), and its first full run caught the earlier P4 owners' live legs having drifted off
+their own planets when P4.3 shipped without isolating `P.ero` in them.
 
 A release may pull a milestone out of 0.2 or 0.3 when it is the piece that makes a page usable;
 it never re-specifies a kernel.

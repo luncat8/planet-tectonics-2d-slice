@@ -159,9 +159,12 @@ check.near('the airborne stock is what the emission counter says is still up',
 // P4.3 gives the deposit phase a second source: the surface law credits weathered rock into the
 // same parcels (P3.4's landings and P4.3's sediment are one stock, not two), and it can rework a
 // deposit that has a slope under it -- what leaves a deposit parcel lands in another one, so the
-// phase still never loses material. The stock is therefore the landings plus everything the
-// erosion pass credited, less what it took back out of the phase.
-var depWant = S.thr.landCr + S.thr.eroCr - S.thr.eroDep;
+// phase still never loses material. P4.4 adds the phase's third debit: the slab pass recycles
+// detached cold lithosphere below yDeep whatever its phase, and sediment subducted with a plate
+// is exactly that (thr.deepDep, zero on this leg -- nothing reaches yDeep in 50 Myr). The stock
+// is therefore the landings plus everything the erosion pass credited, less what the erosion and
+// recycling passes took back out of the phase.
+var depWant = S.thr.landCr + S.thr.eroCr - S.thr.eroDep - S.thr.deepDep;
 check.ok('the deposit stock is the landings plus the surface law, and the phase never shrinks',
 	Math.abs(S.invM[P.PH.dep] - depWant) <= 1e-9 * Math.abs(depWant) && S.thr.eroDr === S.thr.eroCr,
 	'deposits ' + S.invM[P.PH.dep].toFixed(6) + ' km2 against ' + depWant.toFixed(6) + ' = '

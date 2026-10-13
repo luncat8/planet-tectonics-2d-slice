@@ -69,7 +69,16 @@ plus the 0.3.0 P4 owner harnesses (pt-p4-contact.js for inter-plate contact and 
 pt-p4-slab.js for slab sinking and deep recycling, pt-p4-arc.js for slab dehydration and arc
 melt, pt-p4-erosion.js for particle weathering/erosion/sedimentation and
 pt-p4-transport-sweep.js for the surface-law comparison, sharing the fixture builder
-pt-p4-lib.js),
+pt-p4-lib.js; each owner isolates the later P4 passes so its live numbers stay its own
+report's -- pt-p4-contact and pt-p4-slab run with `P.arc` and `P.ero` off, pt-p4-arc with
+`P.ero` off, and the same convention puts `P.ero` off in pt-drift.js -- because the
+integrated census is the acceptance pass's),
+and the P4 acceptance pass pt-p4-check.js (the integrated claims of 0.3.0-p4-plan.md §3/§4
+P4.4: the four P4 legs together over a 300 Myr live run with everything shipped on, the
+contact census re-derived from the kernel's own table that decided the two open §4 questions
+(no plate-size threshold; translation-only brake), the slider matrix, and the P4 freeze; it
+delegates the five P4 owner harnesses and pt-p3-check.js as children and quotes their counts
+rather than re-measuring them),
 and the cut in three: experiments/slice-cut.js (the walk, the pack, the resample),
 section-pack.js (the section page: transports, refusals, switches, HUD), section-seed.js (the
 mapping: the z identity, the ledger, the quiet start, the two run modes), checkpoint.js (the

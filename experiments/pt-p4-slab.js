@@ -59,7 +59,9 @@ var t0 = Date.now();
 var CAP0 = P.deepCap, JOIN0 = P.deepJoin, YCRUST0 = P.yCrust, SINKMYR = 10;
 // P4.2's arc dehydration belongs to pt-p4-arc.js: this harness measures the slab drive and
 // the deep recycling transfer in isolation, the way pt-p4-contact.js isolates the contact pass.
+// P4.3's surface law likewise (pt-p4-check.js owns the integrated census).
 P.arc = false;
+P.ero = false;
 
 // ------------------------------------------------------------------ the seeded slab
 function seed(i0, i1, y0, y1, T, cF, cW) {
