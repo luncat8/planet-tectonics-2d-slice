@@ -87,15 +87,15 @@ var PTS = {
 	                                // is the P3 heat invariant's Q_wall (P3 plan §1.2): P3 has
 	                                // no external source and no export, so it is the only net
 	                                // change H_total may show
-	// pool transaction counters (pool.js): what was admitted, split, merged, moved, intruded
-	// and refused since reset. A refused transaction is a capacity event and is never silent,
-	// so the block exists from load and reset zeroes it
-	tx: { admit: 0, split: 0, merge: 0, move: 0, intrude: 0, refuse: 0,
+	// pool transaction counters (pool.js): what was admitted, split, merged, moved, intruded,
+	// recycled and refused since reset. A refused transaction is a capacity event and is never
+	// silent, so the block exists from load and reset zeroes it
+	tx: { admit: 0, split: 0, merge: 0, move: 0, intrude: 0, recycle: 0, refuse: 0,
 		whole: 0, freeze: 0, vent: 0, block: 0, emit: 0, land: 0 },
 	// gross throughput, mass (km2) since reset: phase changes and each reservoir/phase leg.
 	// Dr/Cr pairs are matching debit and credit sides. Throughput is never inventory.
 	thr: { seg: 0, whole: 0, freeze: 0, intrDr: 0, intrCr: 0, ventDr: 0, ventCr: 0,
-		airDr: 0, airCr: 0, landDr: 0, landCr: 0 },
+		airDr: 0, airCr: 0, landDr: 0, landCr: 0, deepDr: 0, deepCr: 0 },
 	invN: null, invM: null,         // the stock inventory by phase: parcels, mass, m*H
 	invH: null,
 	invMTot: 0, invHTot: 0,         // and the totals, with composition and melt as mass: the
@@ -104,6 +104,7 @@ var PTS = {
 	invChM: 0, invChL: 0,           // the chamber stock's mass and melt, split out of the
 	                                // totals so the HUD can show the intrusive store apart
 	invVM: 0, invVL: 0,             // the vent schedules' stock, split out the same way
+	invDpM: 0, invDpL: 0,           // and the deep inventory's (P4.1), split out the same way
 	invL0: 0,                       // invLTot right after the last reset: the latent heat a run
 	                                // has stored so far is meltLat * (invLTot - invL0)
 	// the intrusive store (P3.2, 0.3.0-p3-plan.md §1.2): fixed-capacity chamber records,
@@ -118,6 +119,17 @@ var PTS = {
 	// extensive stock waiting in its schedule. Vent k exists exactly while chamber k does
 	vState: null, vStyle: null,     // conduit: VENT.CLOSED / OPEN / BLOCKED; style: EFFUSIVE / EXPLOSIVE
 	vM: null, vH: null, vL: null, vF: null, vW: null,
+	// the deep inventory (P4.1, 0.3.0-p4-plan.md §1.2): fixed-capacity records of the slab
+	// material that reached yDeep and left the plate population. It is the ledger's first new
+	// line since P3.0 and it is stock, not a sink -- pool.js recycle debits a parcel and
+	// credits a record with the same mass, enthalpy, melt and composition, the inventory
+	// counts the records exactly once, and a full set defers the transfer instead of dropping
+	// mass. dpX/dpY are the mass-weighted mean of what the record has eaten.
+	dpN: 0,                         // deep records in use
+	dpX: null, dpY: null, dpM: null, dpH: null, dpL: null, dpF: null, dpW: null,
+	Trow: null,                     // the background temperature of each mesh row, which is what
+	                                // a slab's cold is dense against (slab.js rebuilds it per
+	                                // frame from Tg, so it is workspace and not a field)
 	moved: 0, redeals: 0,           // markers the last repair moved; lattice re-deals since reset
 	nSolid: 0,                      // parcels the crust pass may bond this frame (PH_SOLID):
 	                                // the lid fraction's denominator, so airborne material
@@ -145,17 +157,21 @@ var PTS = {
 	// convergence to the slab instead, and its belt comes from the arc, not from this proxy.
 	ctCl: null, ctY: null, ctP: null, ctT: null, ctV: null, ctN: null,
 	ctConv: null, ctSite: null,
-	hgCl: null, hgX: null, hgS: null, hgC: null, hgN: 0, hgOver: 0,   // the bending bands
-	contactShort: 0, contactPush: 0, contactHold: 0,   // cumulative: km of convergence taken up by
-	                                  // contact, the guard's position pushes, and the subduction hold's
-	                                  // unbalanced impulse -- the one place P4 adds momentum (all three
-	                                  // are in the fingerprint)
+	hgCl: null, hgX: null, hgS: null, hgC: null, hgN: 0,   // the bending bands of this frame
+	// the contact pass's cumulative counters: km of convergence taken up by contact, the
+	// guard's position pushes, the momentum the brake injected (the subduction hold's
+	// unbalanced impulse -- an arrest pair cancels, so it contributes nothing) and the
+	// subducting sites the ctHinge cap left without a bending band. All four are in the
+	// fingerprint: a run that reached the same parcels through a different contact history
+	// is not the same run.
+	contactShort: 0, contactPush: 0, contactHold: 0, hgOver: 0,
 	// per-frame diagnostics, mutated in place: the HUD formats them at 2 Hz
 	d: {
 		nu: 0, uMax: 0, vMax: 0, wells: 0, heat: 0, mHeat: 0, tMin: 0, tMax: 0,
 		fluxTop: 0, fluxBot: 0, wallRate: 0, drift: 0, melt: 0, meltY: 0,
 		lid: 0, plates: 0, plV: 0, zMin: 0, zMax: 0,
-		contact: 0, contactC: 0, hold: 0, subduct: 0, push: 0
+		contact: 0, contactC: 0, hold: 0, subduct: 0, push: 0, over: 0, resid: 0,
+		slab: 0, slabV: 0, slabBond: 0, deep: 0
 	},
 
 	// allocate for a mesh (idempotent: the quality switch can change the mesh size)
@@ -205,8 +221,15 @@ var PTS = {
 			this.vL = new Float64Array(P.chCap); this.vF = new Float64Array(P.chCap);
 			this.vW = new Float64Array(P.chCap);
 		}
+		if (!this.dpM || this.dpM.length !== P.deepCap) {
+			this.dpX = new Float64Array(P.deepCap); this.dpY = new Float64Array(P.deepCap);
+			this.dpM = new Float64Array(P.deepCap); this.dpH = new Float64Array(P.deepCap);
+			this.dpL = new Float64Array(P.deepCap); this.dpF = new Float64Array(P.deepCap);
+			this.dpW = new Float64Array(P.deepCap);
+		}
 		if (!this.Tg || this.Tg.length !== M.n) {
 			this.Tg = new Float64Array(M.n);
+			this.Trow = new Float64Array(M.ny + 1);
 			this.mug = new Float64Array(M.n);
 			this.Mg = new Float64Array(M.n);
 			this.u = new Float64Array(M.ny * M.nx);
@@ -289,17 +312,23 @@ var PTS = {
 		this.n = p; this.nextId = p;
 		this.empty = 0; this.clamp = 0; this.ledger = 0; this.wall = 0; this.hLedger = 0;
 		this.moved = 0; this.redeals = 0; this.csN = 0; this.nSolid = 0;
-		tx.admit = 0; tx.split = 0; tx.merge = 0; tx.move = 0; tx.intrude = 0; tx.refuse = 0;
+		tx.admit = 0; tx.split = 0; tx.merge = 0; tx.move = 0; tx.intrude = 0;
+		tx.recycle = 0; tx.refuse = 0;
 		tx.whole = 0; tx.freeze = 0; tx.vent = 0; tx.block = 0; tx.emit = 0; tx.land = 0;
 		this.thr.seg = 0; this.thr.whole = 0; this.thr.freeze = 0;
 		this.thr.intrDr = 0; this.thr.intrCr = 0; this.thr.ventDr = 0; this.thr.ventCr = 0;
 		this.thr.airDr = 0; this.thr.airCr = 0; this.thr.landDr = 0; this.thr.landCr = 0;
+		this.thr.deepDr = 0; this.thr.deepCr = 0;
 		this.chN = 0;
 		this.chX.fill(0); this.chY.fill(0); this.chM.fill(0); this.chH.fill(0);
 		this.chL.fill(0); this.chF.fill(0); this.chW.fill(0);
 		this.vState.fill(0); this.vStyle.fill(0);
 		this.vM.fill(0); this.vH.fill(0); this.vL.fill(0); this.vF.fill(0); this.vW.fill(0);
-		this.Tg.fill(0); this.mug.fill(0); this.Mg.fill(0);
+		// the deep inventory restarts with the planet: a fresh world has recycled nothing
+		this.dpN = 0;
+		this.dpX.fill(0); this.dpY.fill(0); this.dpM.fill(0); this.dpH.fill(0);
+		this.dpL.fill(0); this.dpF.fill(0); this.dpW.fill(0);
+		this.Tg.fill(0); this.mug.fill(0); this.Mg.fill(0); this.Trow.fill(0);
 		this.age.fill(0); this.mu.fill(0); this.dmg.fill(0); this.cl.fill(-1);
 		this.csN = 0;                             // the cluster table is rebuilt by crust()
 		this.pLoad.fill(0); this.pCnt.fill(0);
@@ -309,10 +338,11 @@ var PTS = {
 		this.csBX.fill(0); this.csBN.fill(0);
 		this.hinge.fill(0); this.hvx.fill(0); this.hvy.fill(0);
 		this.ctN.fill(0); this.ctConv.fill(0); this.ctSite.fill(0);
-		this.hgN = 0; this.hgOver = 0;
-		this.contactShort = 0; this.contactPush = 0; this.contactHold = 0;
+		this.hgN = 0;
+		this.contactShort = 0; this.contactPush = 0; this.contactHold = 0; this.hgOver = 0;
 		this.d.contact = 0; this.d.contactC = 0; this.d.hold = 0;
-		this.d.subduct = 0; this.d.push = 0;
+		this.d.subduct = 0; this.d.push = 0; this.d.over = 0; this.d.resid = 0;
+		this.d.slab = 0; this.d.slabV = 0; this.d.slabBond = 0; this.d.deep = 0;
 		// the material state past the prefix is cleared, not merely unused: a phase or an id
 		// left behind by a bigger population would be a parcel a wrongly bounded pass could
 		// find. pool.js remove() keeps the same rule per transaction.
@@ -428,6 +458,7 @@ var PTS = {
 		a = mixHash(a, tx.merge, HASH_PRIME_A); b = mixHash(b, tx.merge, HASH_PRIME_B);
 		a = mixHash(a, tx.move, HASH_PRIME_A); b = mixHash(b, tx.move, HASH_PRIME_B);
 		a = mixHash(a, tx.intrude, HASH_PRIME_A); b = mixHash(b, tx.intrude, HASH_PRIME_B);
+		a = mixHash(a, tx.recycle, HASH_PRIME_A); b = mixHash(b, tx.recycle, HASH_PRIME_B);
 		a = mixHash(a, tx.refuse, HASH_PRIME_A); b = mixHash(b, tx.refuse, HASH_PRIME_B);
 		a = mixHash(a, tx.whole, HASH_PRIME_A); b = mixHash(b, tx.whole, HASH_PRIME_B);
 		a = mixHash(a, tx.freeze, HASH_PRIME_A); b = mixHash(b, tx.freeze, HASH_PRIME_B);
@@ -446,11 +477,14 @@ var PTS = {
 		a = mixHash(a, this.thr.airCr, HASH_PRIME_A); b = mixHash(b, this.thr.airCr, HASH_PRIME_B);
 		a = mixHash(a, this.thr.landDr, HASH_PRIME_A); b = mixHash(b, this.thr.landDr, HASH_PRIME_B);
 		a = mixHash(a, this.thr.landCr, HASH_PRIME_A); b = mixHash(b, this.thr.landCr, HASH_PRIME_B);
+		a = mixHash(a, this.thr.deepDr, HASH_PRIME_A); b = mixHash(b, this.thr.deepDr, HASH_PRIME_B);
+		a = mixHash(a, this.thr.deepCr, HASH_PRIME_A); b = mixHash(b, this.thr.deepCr, HASH_PRIME_B);
 		// the contact pass's cumulative counters are state too: a run that reached the same
 		// parcels through a different contact history is not the same run (P4.0)
 		a = mixHash(a, this.contactShort, HASH_PRIME_A); b = mixHash(b, this.contactShort, HASH_PRIME_B);
 		a = mixHash(a, this.contactPush, HASH_PRIME_A); b = mixHash(b, this.contactPush, HASH_PRIME_B);
-	a = mixHash(a, this.contactHold, HASH_PRIME_A); b = mixHash(b, this.contactHold, HASH_PRIME_B);
+		a = mixHash(a, this.contactHold, HASH_PRIME_A); b = mixHash(b, this.contactHold, HASH_PRIME_B);
+		a = mixHash(a, this.hgOver, HASH_PRIME_A); b = mixHash(b, this.hgOver, HASH_PRIME_B);
 		// the intrusive store is state: a run that reached the same parcels by a different
 		// chamber history is not the same run (P3.2)
 		a = mixHash(a, this.chN, HASH_PRIME_A); b = mixHash(b, this.chN, HASH_PRIME_B);
@@ -469,6 +503,18 @@ var PTS = {
 			a = mixHash(a, this.vL[i], HASH_PRIME_A); b = mixHash(b, this.vL[i], HASH_PRIME_B);
 			a = mixHash(a, this.vF[i], HASH_PRIME_A); b = mixHash(b, this.vF[i], HASH_PRIME_B);
 			a = mixHash(a, this.vW[i], HASH_PRIME_A); b = mixHash(b, this.vW[i], HASH_PRIME_B);
+		}
+		// the deep inventory is state the same way (P4.1): a run that recycled a different
+		// slab into a different set of records is not the same run
+		a = mixHash(a, this.dpN, HASH_PRIME_A); b = mixHash(b, this.dpN, HASH_PRIME_B);
+		for (i = 0; i < this.dpN; i++) {
+			a = mixHash(a, this.dpX[i], HASH_PRIME_A); b = mixHash(b, this.dpX[i], HASH_PRIME_B);
+			a = mixHash(a, this.dpY[i], HASH_PRIME_A); b = mixHash(b, this.dpY[i], HASH_PRIME_B);
+			a = mixHash(a, this.dpM[i], HASH_PRIME_A); b = mixHash(b, this.dpM[i], HASH_PRIME_B);
+			a = mixHash(a, this.dpH[i], HASH_PRIME_A); b = mixHash(b, this.dpH[i], HASH_PRIME_B);
+			a = mixHash(a, this.dpL[i], HASH_PRIME_A); b = mixHash(b, this.dpL[i], HASH_PRIME_B);
+			a = mixHash(a, this.dpF[i], HASH_PRIME_A); b = mixHash(b, this.dpF[i], HASH_PRIME_B);
+			a = mixHash(a, this.dpW[i], HASH_PRIME_A); b = mixHash(b, this.dpW[i], HASH_PRIME_B);
 		}
 		return a * 2097152 + (b & 0x1fffff);
 	}

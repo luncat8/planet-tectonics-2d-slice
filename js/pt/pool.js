@@ -8,6 +8,8 @@
 //   merge    combine two same-phase parcels into one, keeping the older id
 //   remove   close a slot by compacting the last active parcel into it
 //   move     carry *every* per-parcel field from one slot to another (what remove rides on)
+//   recycle  P4.1's transfer out of the plate population: a slab parcel that reached the deep
+//            inventory's boundary credits a deep record and closes its slot
 //
 // The two rules the plan makes non-negotiable are the reasons this is one file. A removal
 // compacts the final active slot into the hole and the moved parcel keeps its id and every
@@ -205,6 +207,44 @@
 			return best;
 		},
 
+		// P4.1's deep recycling (0.3.0-p4-plan.md §3 P4.1): a slab parcel that reached
+		// P.yDeep transfers its whole stock into a deep record -- mass, enthalpy, melt and
+		// composition move and the parcel slot closes, so the transfer is internal to the
+		// inventory either way and the ledger cannot see it as a leak. It is intrude's rule at
+		// the bottom of the mantle: two arrivals within deepJoin of each other share one
+		// record (a record is one pile of recycled material, not one parcel's worth) and its
+		// position is the mass-weighted mean of what it has eaten. A full record set defers the
+		// transfer and counts the deferral: the slab waits at the boundary, nothing is dropped.
+		recycle: function (M, S, p) {
+			var x = S.x[p], best = -1, bd = P.deepJoin, k, dx, w, m = S.m[p];
+			for (k = 0; k < S.dpN; k++) {
+				dx = S.dpX[k] - x;
+				dx -= Math.floor(dx / M.wrap + 0.5) * M.wrap;
+				if (Math.abs(dx) < bd) { bd = Math.abs(dx); best = k; }
+			}
+			if (best < 0) {
+				if (S.dpN >= P.deepCap) { S.tx.refuse++; return -1; }
+				best = S.dpN++;
+				S.dpX[best] = x; S.dpY[best] = S.y[p];
+			} else {
+				w = m / (S.dpM[best] + m);
+				dx = x - S.dpX[best];
+				dx -= Math.floor(dx / M.wrap + 0.5) * M.wrap;
+				S.dpX[best] += w * dx;
+				if (S.dpX[best] < 0) S.dpX[best] += M.wrap; else if (S.dpX[best] >= M.wrap) S.dpX[best] -= M.wrap;
+				S.dpY[best] += w * (S.y[p] - S.dpY[best]);
+			}
+			S.dpM[best] += m;
+			S.dpH[best] += m * S.H[p];
+			S.dpL[best] += m * S.melt[p];
+			S.dpF[best] += m * S.cF[p];
+			S.dpW[best] += m * S.cW[p];
+			this.remove(S, p);
+			S.tx.recycle++;
+			S.thr.deepDr += m; S.thr.deepCr += m;
+			return best;
+		},
+
 		// A merge is a material operation, so matching a transport phase is not enough: unlike
 		// compositions remain separate parcels. The tolerances are settings because P3.4's
 		// landed batches need a reproducible, captureable compatibility rule.
@@ -271,13 +311,21 @@
 			// the chambers are stock too (P3 plan §1.2): reservoir mass sums into the same
 			// totals exactly once, or an intrusion would read as a leak
 			// a record's stock is its chamber's and its vent's: both are reservoirs, both count once
-			var cm = 0, cl = 0, vm = 0, vl = 0;
+			var cm = 0, cl = 0, vm = 0, vl = 0, dm = 0, dl = 0;
 			for (p = 0; p < S.chN; p++) {
 				cm += S.chM[p]; cl += S.chL[p]; vm += S.vM[p]; vl += S.vL[p];
 				tm += S.chM[p] + S.vM[p]; th += S.chH[p] + S.vH[p];
 				tf += S.chF[p] + S.vF[p]; tw += S.chW[p] + S.vW[p]; tl += S.chL[p] + S.vL[p];
 			}
+			// the deep inventory (P4.1): recycled slab material is still in the world, so it
+			// is stock exactly once, the same rule the chambers and the vent schedules have
+			for (p = 0; p < S.dpN; p++) {
+				dm += S.dpM[p]; dl += S.dpL[p];
+				tm += S.dpM[p]; th += S.dpH[p];
+				tf += S.dpF[p]; tw += S.dpW[p]; tl += S.dpL[p];
+			}
 			S.invChM = cm; S.invChL = cl; S.invVM = vm; S.invVL = vl;
+			S.invDpM = dm; S.invDpL = dl;
 			S.invMTot = tm; S.invHTot = th;
 			S.invFTot = tf; S.invWTot = tw; S.invLTot = tl;
 		},
@@ -300,12 +348,18 @@
 				tm += m; th += m * S.H[p];
 			}
 			S.invChM = 0; S.invChL = 0; S.invVM = 0; S.invVL = 0;
+			S.invDpM = 0; S.invDpL = 0;
 			for (p = 0; p < S.chN; p++) {
 				stock(S.chM[p], S.chH[p], S.chF[p], S.chW[p], S.chL[p]);
 				stock(S.vM[p], S.vH[p], S.vF[p], S.vW[p], S.vL[p]);
 				tm += S.chM[p] + S.vM[p]; th += S.chH[p] + S.vH[p];
 				S.invChM += S.chM[p]; S.invChL += S.chL[p];
 				S.invVM += S.vM[p]; S.invVL += S.vL[p];
+			}
+			for (p = 0; p < S.dpN; p++) {
+				stock(S.dpM[p], S.dpH[p], S.dpF[p], S.dpW[p], S.dpL[p]);
+				tm += S.dpM[p]; th += S.dpH[p];
+				S.invDpM += S.dpM[p]; S.invDpL += S.dpL[p];
 			}
 			for (ph = 0; ph < P.PH_N; ph++) {
 				invM[ph] = fin(A_PH + 2 * ph);

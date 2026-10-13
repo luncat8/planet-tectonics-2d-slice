@@ -336,7 +336,7 @@ function kinematics(M, S, dt) {
 			else if (push < -P.vPushMax) push = -P.vPushMax;
 			csVX[c] += push;
 		}
-		if (csCnt[c] >= 64) {
+		if (csCnt[c] >= P.plateMin) {
 			plates++;
 			var sp = csVX[c] * csVX[c] + csVY[c] * csVY[c];
 			if (sp > plV) plV = sp;

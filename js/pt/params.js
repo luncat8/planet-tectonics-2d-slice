@@ -156,6 +156,10 @@ var PTP = {
 	tauWeld: 20,                 // Myr to weld a seam; mu reaches 0.63 at one tau
 	muLo: 0.35, muHi: 0.85,      // the strength window: heat = smoothstep(muLo, muHi, T)
 	clusterMin: 0.25,            // below this a marker is fluid; at it, it is plate
+	plateMin: 64,                // markers that make a cluster a plate: the census solid.js
+	                             // reports as `plates`, and the size above which P4.1's slab
+	                             // pass leaves attached lithosphere to its plate's rigid motion
+	                             // instead of dragging a root down from under it
 	// failure (plan §4.2's damage, in rate form): a loaded bond is elastic below its own
 	// yield strain rate, yieldRate * mu, and accumulates damage above it at kDamage per unit
 	// of *mean* excess per Myr -- the mean over the pairs that contact the marker, not the
@@ -246,7 +250,52 @@ var PTP = {
 	ctTop: 4,                   // clusters per column in the contact table: the shallowest
 	                            // crust marker of each, so a plate boundary is read where it
 	                            // reaches the surface
-	ctHinge: 16,                // bending bands per frame
+	ctSweep: 3,                 // separation sweeps the guard may take in one frame: where
+	                            // several pairs share a marker, one sweep can leave a residue
+	ctHinge: 32,                // bending bands per frame. A site the cap turns away is held
+	                            // without being bent, so it is counted (S.hgOver, S.d.over)
+	                            // rather than lost: 300 Myr of the shipped planet peaked at 15
+	                            // subducting sites in one frame, and the headroom costs four
+	                            // small arrays
+	// P4.1, slab sinking and deep recycling (0.3.0-p4-plan.md §3 P4.1). A slab segment the
+	// contact pass bent below yCrust is out of that pass's scope (its §1.4) and into its own:
+	// it sinks under the same temperature-is-density proxy the buoyancy law uses, read as a
+	// downward drive against the background of its own depth rather than as the horizontal
+	// pull of P2.2. At yDeep the material leaves the plate population, and it leaves as a
+	// transfer, not a sink: mass, enthalpy, melt and composition debit the parcel and credit a
+	// fixed-capacity deep record set the inventory counts once, exactly as P3.2's chambers are
+	// counted. A full record set defers the transfer and counts the deferral; nothing is
+	// dropped. Every constant here is a P4.4 freeze candidate measured by
+	// experiments/pt-p4-slab.js, not a claim.
+	slab: true,
+	slabdT: 0.05,               // the contrast against the background of its depth below which
+	                            // material is not dense enough to sink on its own: a slab that
+	                            // has warmed to its depth is the flow's again, not this pass's
+	slabT: 0.45,                // and this cold in absolute terms, because the contrast test
+	                            // alone selects the flow's whole cold half rather than a slab:
+	                            // it is TSoft, the line above which strength() stops letting rock
+	                            // age, i.e. where it stops being lithosphere. Measured over 300
+	                            // Myr of the shipped planet (experiments/scratch/p4-slabT.js):
+	                            // with the contrast test only the pass drives 1811 parcels a frame
+	                            // at a mean 15.6 km/Myr, books 8159 transfers, parks 9.68% of the
+	                            // world's mass in the records and shrinks the pool 23,552 -> 17,367,
+	                            // because the ambient cold boundary circulation crosses yDeep too
+	                            // and never comes back. With this ceiling the same run drives 177 a
+	                            // frame at the 30 km/Myr cap, books 439 transfers, parks 0.21% and
+	                            // the pool grows to 25,017. TLock (0.35) starves it instead: 48
+	                            // transfers, 0.02%.
+	kSink: 60,                  // km/Myr of descent per unit of negative buoyancy (background - T)
+	vSinkMax: 30,               // km/Myr (3 cm/yr), the descent cap: a slab's own speed and not a
+	                            // free fall, the same yardstick vSlabMax uses for the pull
+	yDeep: 2400,                // km, the deep inventory's boundary. The shipped mesh's last
+	                            // marker row is at 2354 and a marker reflects at 2614
+	                            // (yLin*sinh(eMax)), so the boundary is below the deepest row and
+	                            // above the reflection: what reaches it is booked before the wall
+	                            // can turn it back
+	deepJoin: 500,              // km, catchment: slabs arriving within this of a record share it,
+	                            // so a record is one pile of recycled material and not one
+	                            // parcel's worth -- chJoin's rule at the bottom of the mantle
+	deepCap: 32,                // deep records, allocated once; a full set defers the transfer
 	// the view warps by kRelief * zh, damped with depth; zVisMax clips outlier relief before
 	// exaggeration so a deep rift cannot fill the lid camera with ocean.
 	yTaper: 120,                 // km, e-folding depth of the view's terrain warp

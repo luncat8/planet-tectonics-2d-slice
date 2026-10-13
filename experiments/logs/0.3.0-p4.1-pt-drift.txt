@@ -1,0 +1,32 @@
+  drift diagnostic: the shipped run, 256x24, wrap 16000 km, 50 kyr/f, 400 Myr
+
+   t/Myr  plate  markers   plate depth    |vPlate|   |vOwn|   |vBase|   |v150|   |v300|
+     100      0    4939        4..89 km       0.02     0.01     0.01    0.01    0.01
+     200      0    1378       4..115 km       4.68     0.25     0.25    0.25    0.32
+     200      6     746        4..57 km       0.24     0.02     0.04    0.15    0.29
+     200      4     745        4..74 km       1.43     0.08     0.09    0.17    0.31
+     300      7     289      10..257 km       1.65     0.34     0.33    0.36    0.41
+     300      5     265        4..69 km       0.00     0.18     0.18    0.25    0.41
+     300      0     158        4..35 km       0.14     0.40     0.40    0.41    0.54
+     400      5     179        4..28 km       1.45     0.39     0.39    0.40    0.52
+     400      3     150        4..78 km       5.16     0.04     0.05    0.16    0.31
+
+  every plate at the last sample (>= 64 markers):
+   plate 5: 179 markers   drift 1.45 cm/yr   own 0.39   base 0.39   at 150 km 0.40   at 300 km 0.52 (mean speed there 0.59)
+   plate 3: 150 markers   drift 5.16 cm/yr   own 0.04   base 0.05   at 150 km 0.16   at 300 km 0.31 (mean speed there 0.54)
+
+the diagnostic is sane
+PASS  plates were found at every sample   100.04999999999646, 200.00000000001123, 300.00000000003394, 400.0000000000567
+PASS  every number is finite
+PASS  an unbroken planet-wrapping lid is not pulled sideways   t 100 Myr drift 0.00 cm/yr
+PASS  slab pull drives mean plate drift above the cancelled net flow   plate 1.64 vs own 0.19 cm/yr (8.7x)
+PASS  slab-bearing plates reach the 3-10 cm/yr demonstration scale   peak 5.16 cm/yr
+INFO  mean plate drift over all samples   1.64 cm/yr
+INFO  mean own-marker flow   0.19 cm/yr
+INFO  mean base flow under the plates   0.19 cm/yr
+INFO  mean flow at 150 km under the plates   0.24 cm/yr
+INFO  mean flow at 300 km under the plates   0.35 cm/yr
+INFO  mean speed (not net) at 300 km   0.59 cm/yr
+INFO  ratio net-300km/plate   0.21x
+
+ALL PASS (5 checks)

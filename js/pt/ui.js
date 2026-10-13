@@ -223,6 +223,14 @@ var PTUI = {
 			+ '   plate drift ' + d.plV.toFixed(1) + ' cm/yr'
 			+ '\ncontact ' + d.contact + ' sites  ' + d.hold + ' subducting  ' + d.subduct
 			+ ' bending  ' + d.push + ' pushed  ' + fmt(S.contactShort) + ' km taken up'
+			+ (d.over ? '   unbent ' + d.over + '/' + P.ctHinge : '')
+			// P4.1: the slab pass and the deep inventory it feeds. Stock and throughput apart,
+			// the way the melt line keeps the intrusive store apart from the pool's own melt:
+			// `deep` is what the records hold now, `recycled` is what has ever arrived.
+			+ '\nslab ' + d.slab + ' sinking  ' + (d.slabV * P.cmYr).toFixed(2) + ' cm/yr  '
+			+ d.slabBond + ' attached   deep ' + S.dpN + '/' + P.deepCap + ' records  '
+			+ fmt(S.invDpM) + ' km2 (' + (S.invMTot > 0 ? (S.invDpM / S.invMTot * 100).toFixed(2) : '0.00')
+			+ '% of mass)   recycled ' + fmt(S.thr.deepCr) + ' km2'
 			+ '\nsurface ' + d.zMin.toFixed(1) + '..' + d.zMax.toFixed(1) + ' km   (zero mean, drawn x' + P.kRelief + ')'
 			+ '\nledger ' + fmt(S.hLedger) + '   walls ' + fmt(S.wall) + '   gap ' + (S.wall ? (S.hLedger / S.wall).toFixed(2) + 'x' : '--')
 			+ '   latent ' + fmt(P.meltLat * (S.invLTot - S.invL0))

@@ -1,0 +1,50 @@
+
+A. the drive: cold lithosphere below the crust base sinks, and only it
+INFO  cold slab, pass on   58 parcels seeded at 990 km, mean depth now 1450 km (46.0 km/Myr), 11600 driven-parcel-frames, mean descent 3.00 cm/yr, deepest tagged 1580 km
+INFO  cold slab, pass off   mean depth 1154 km (16.4 km/Myr) -- the flow alone, 0 driven
+INFO  warm slab, pass on   mean depth 979 km (-1.1 km/Myr), 0 driven
+PASS  a cold slab below the crust base sinks   460 km of descent in 10 Myr, 11600 driven-parcel-frames over 200 frames
+PASS  and it sinks at the drive the law prescribes   mean 30.00 km/Myr, max 30.00, the law allows 3.00..30.00 (3.00 cm/yr mean, 3.00 cm/yr max)
+PASS  the pass is what adds the descent   46.0 km/Myr against the flow alone at 16.4 km/Myr, the same seed and the same frames
+PASS  warm material at the same depth is not driven   0 driven parcels, mean depth 990 -> 979 km: the drive answers a density anomaly, not a depth
+PASS  the lid above the scope line is not this pass's   9508 parcels above 150 km, 0 of them moved by a hand call of the pass
+PASS  and attached lithosphere below it rides its plate instead   749 parcels in plate-sized clusters below the line, 0 moved, and the pass reported all 749 of them as attached and left alone
+PASS  while detached cold material at the same depth sinks   100 of 13295 detached parcels below the line moved, which is the 100 the pass reported, at 0.60 cm/yr
+
+B. the transfer: the deep inventory is a debit and a credit, never a sink
+INFO  one call of the pass   12 parcels of 91649.6 km2 below 2400 km, 12 transfers into 1 records holding 91649.6 km2, 91649.6 km2 of it new
+PASS  the transfer happened   12 parcels debited of the 12 below the boundary, 1 records credited
+PASS  and the inventory did not move, for any of its five totals   mass 0.00e+0, enthalpy 0.00e+0, felsic 0.00e+0, water 1.14e-13, melt 0.00e+0 -- a transfer is internal to the stock
+PASS  what left the pool is what the records hold   records took 91649.615501438 km2 of the 91649.615501438 km2 below the boundary, throughput dr 91649.615501438 = cr 91649.615501438
+PASS  and its composition rode with it, melt and all   felsic 18329.9231 of 18329.9231 km2, water 458.2481 of 458.2481 km2, melt 0.00e+0 of 0.00e+0 km2 -- a slab that reaches this depth is cold, so what P4.2 needs from the record is its water, not its melt
+PASS  the pool is lighter by exactly the record's stock   pool 41688446.7024 -> 41596797.0869 km2 (down 91649.6155), records 0.0000 -> 91649.6155 km2
+PASS  the records are state, so the fingerprint moves   2426794019595527 before the transfer, 4782421098654402 after it
+PASS  a full record set defers the transfer   10 refusals against 11 parcels below the boundary, the second window 8500 km from the record that took the first and its catchment is 1 km, 1 of 1 records in use
+PASS  and the deferred material is still in the world   420 parcels still below 2400 km, mass 0.00e+0 km2 -- deferred, never sunk
+INFO  the arrival leg   150 Myr of the shipped planet, then 33 parcels seeded at 2198 km; first tagged transfer at t 151.9 Myr, 33 of them booked for 252036.4 km2 in 400 frames, 0 tagged parcels left at a mean 0 km, deepest 0 km, max descent 3.00 cm/yr
+PASS  a sinking slab reaches the boundary and is booked   33 of the 33 tagged parcels crossed 2400 km under their own drive and were booked for 252036.4 km2, of 33 transfers the planet made in those frames
+PASS  and the records hold it   records 0.0 -> 252036.4 km2 in 2 of 32, at least the 252036.4 km2 the tagged slab brought, throughput cr 252036.4 = dr 252036.4
+PASS  the mass ledger closes across the arrival leg   mass residual 2.72e-6 km2 over 400 frames, enthalpy drift -2.94e+5 (the leg prescribes the slab's temperature, so enthalpy is what it writes and not what it owes)
+PASS  the arrival leg repeats bitwise   fingerprint 5874311294955692 both times, 33 tagged transfers against 33, records 2 against 2
+
+C. the hand-over: what P4.0 puts below the crust base is what this pass takes
+INFO  slab + contact   t 300 Myr, 1060438 driven-parcel-frames (509 in the worst frame, 0.71% of the pool per frame), mean descent 3.00 cm/yr, 395 attached-parcel-frames, deepest slab parcel 2401 km
+INFO  slab + contact: the inventory   6 records holding 86272.6 km2 (0.207% of the world), 439 transfers from t 193 Myr, 0 refusals; at the leg's end 421 parcels of 84679 km2 are still this pass's population, mean 910 km, deepest 2389 km; pool 23552 -> 25017 parcels
+INFO  contact only   t 300 Myr, 0 driven-parcel-frames (0 in the worst frame, 0.00% of the pool per frame), mean descent 0.00 cm/yr, 0 attached-parcel-frames, deepest slab parcel 2046 km
+INFO  contact only: the inventory   0 records holding 0.0 km2 (0.000% of the world), 0 transfers, 0 refusals; at the leg's end 506 parcels of 98561 km2 are still this pass's population, mean 493 km, deepest 2046 km; pool 23552 -> 25494 parcels
+PASS  with the drive off the bent material stays in the band   506 parcels of 98561 km2 below 250 km are cold lithosphere at the leg's end, mean 493 km, deepest 2046 km, and nothing drove or transferred them
+PASS  and with the drive on the same planet takes them to the boundary   439 transfers from t 193 Myr, deepest slab parcel 2401 km against 2046 km with the drive off over the same frames, 1060438 driven-parcel-frames against 0
+
+D. the live shipped planet
+INFO  slab without contact   t 300 Myr, 1076091 driven-parcel-frames (694 in the worst frame, 0.71% of the pool per frame), mean descent 3.00 cm/yr, 0 attached-parcel-frames, deepest slab parcel 2401 km
+INFO  slab without contact: the inventory   3 records holding 65568.8 km2 (0.157% of the world), 335 transfers from t 193 Myr, 0 refusals; at the leg's end 637 parcels of 122946 km2 are still this pass's population, mean 950 km, deepest 2393 km; pool 23552 -> 25131 parcels
+PASS  the live planet drives its own slabs   1060438 driven-parcel-frames over 6000 frames, worst frame 509, mean descent 3.00 cm/yr, 439 transfers, deepest 2401 km against a boundary at 2400
+INFO  the §4 split, measured   395 attached-parcel-frames against 1060438 driven over 6000 frames (worst frame 10 attached, 509 driven): below yCrust the live planet has no plate-sized cluster, so every cold parcel the pass finds is detached and keeps sinking
+PASS  the live ledger still closes across a run that recycles   mass residual 0.00e+0 km2 over 6000 frames with 439 transfers and 86272.6 km2 in the records, throughput 86272.6 = dr 86272.6
+PASS  and the world is not drained by it   pool 23552 -> 25017 parcels, the records hold 0.207% of the world's mass after 300 Myr -- the drive's contrast test alone parks 9.68% and shrinks the pool to 17,367, which is what P.slabT exists to stop
+PASS  nothing was refused while the record set held   0 refusals against 6 of 32 records in use
+PASS  the live legs are fingerprinted and both passes are in them   slab + contact 3574735090507565, contact only 2394862740042747, slab alone 6646355796227462
+PASS  the slab pass costs under 2% of the frame   0.1142 ms/frame for the pass against 11.34 ms/frame for the rest of it (1.007%)
+INFO  wall time   310 s for 983 Myr of simulation
+
+ALL PASS (27 checks)

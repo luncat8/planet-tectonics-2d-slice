@@ -2,11 +2,13 @@
 // inline (clocks and the slider); the rest sit in slots so the later milestones can fill
 // them without touching this file:
 //   G1 markers -> grid      G2 buoyancy + Stokes      G3 conduction + advection
-//   G4 phase equilibrium + solid   G5 segregation   G6 eruptions   G7 surface   G8 diag
+//   G4 equilibrium + solid + slab   G5 segregation   G6 eruptions   G7 surface   G8 diag
 // G4 is P3.1's equilibrium mapping (phase.js) followed by P2.1's crust law: age, strength,
-// plate clusters and the rigid projection (solid.js). G5 is P3.2's segregation (melt.js), G6 is
-// P3.3's conduits and metered eruption supply (vent.js), followed by P3.4's conserved
-// vent-to-air transfer, wall-clock flight, landing and surface cooling (flight.js).
+// plate clusters, P4.0's contact response and the rigid projection (solid.js), and then P4.1's
+// slab pass, which takes over the material the contact pass bent below its own scope (slab.js).
+// G5 is P3.2's segregation (melt.js), G6 is P3.3's conduits and metered eruption supply
+// (vent.js), followed by P3.4's conserved vent-to-air transfer, wall-clock flight, landing and
+// surface cooling (flight.js).
 // Geological kernels no-op at dtGeo = 0; only an explicitly supplied wall interval may move
 // airborne material while geology is paused.
 'use strict';
@@ -15,6 +17,7 @@ var G = (typeof module !== 'undefined' && module.exports) ? require('./grid.js')
 var S = (typeof module !== 'undefined' && module.exports) ? require('./state.js') : window.PTS;
 var F = (typeof module !== 'undefined' && module.exports) ? require('./fluid.js') : window.PTF;
 var SC = (typeof module !== 'undefined' && module.exports) ? require('./solid.js') : window.PTSC;
+var SLAB = (typeof module !== 'undefined' && module.exports) ? require('./slab.js') : window.PTSLAB;
 var PHASE = (typeof module !== 'undefined' && module.exports) ? require('./phase.js') : window.PTPHASE;
 var MT = (typeof module !== 'undefined' && module.exports) ? require('./melt.js') : window.PTMELT;
 var VENT = (typeof module !== 'undefined' && module.exports) ? require('./vent.js') : window.PTVENT;
@@ -123,10 +126,15 @@ SIM.k[3] = function (M, S, dt) { F.move(M, S, dt, P.kappa, P.flip); };
 // substep's conduction delivered back to temperature and melt fraction, which is what the
 // strength law, the clusters and the rigid projection then read (0.3.0-p3-plan.md §3). Both
 // halves no-op at dt = 0: a paused frame reports, it does not melt or weld.
+// G4's tail is P4.1's slab pass: it needs the contact result the crust pass just produced
+// (the bending band is what puts material below yCrust, the line the contact pass owns) and
+// it has to run before G5, so a parcel that left for the deep inventory cannot also shed melt
+// this frame (0.3.0-p4-plan.md §2).
 SIM.k[4] = function (M, S, dt) {
 	if (!(dt > 0) || !S.n) return;
 	PHASE.equil(M, S);
 	if (P.solid) SC.crust(M, S, dt);
+	SLAB.run(M, S, dt);
 };
 // G5: melt segregation and intrusive storage (melt.js, 0.3.0-p3-plan.md §3). The split
 // needs the equilibrium fraction G4 just read; the rise and the intrusion need the flow

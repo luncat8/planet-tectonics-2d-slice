@@ -182,6 +182,41 @@ check.ok('the HUD conduit line counts the vent records', conduitLine !== null
 check.ok('and it reports the drained total the transfer book holds, to the printed digits',
 	conduitLine !== null && Math.abs(+conduitLine[4] - TS.thr.ventCr) <= Math.abs(TS.thr.ventCr) * 0.005 + 1e-9,
 	conduitLine ? 'printed ' + conduitLine[4] + ' vs book ' + TS.thr.ventCr.toFixed(1) : 'no conduit line in the HUD');
+// P4.0's contact line: the sites, the regime, the bending markers, the guard's pushes and
+// the convergence taken up, read back from the same diagnostics the kernel writes. Seeded
+// here because a fresh page has no convergent boundary yet; the response itself is
+// pt-p4-contact.js's business.
+TS.d.contact = 3; TS.d.hold = 1; TS.d.subduct = 12; TS.d.push = 2; TS.contactShort = 45.6;
+UI.updateHud(SIM);
+var contactLine = L.els.hud.textContent.split('\n').filter(function (x) { return /^contact /.test(x); })[0];
+check.ok('the HUD contact line reports the pass it rides with',
+	/contact 3 sites  1 subducting  12 bending  2 pushed  46 km taken up/.test(contactLine || ''),
+	contactLine);
+check.ok('and stays quiet while the bending cap holds', !/unbent/.test(contactLine || ''),
+	'ctHinge ' + P.ctHinge);
+// the cap is a bound, not a silence: a frame that left a subducting site unbent says so
+TS.d.over = 2;
+UI.updateHud(SIM);
+contactLine = L.els.hud.textContent.split('\n').filter(function (x) { return /^contact /.test(x); })[0];
+check.ok('and names the sites the bending cap left unbent',
+	new RegExp('unbent 2/' + P.ctHinge).test(contactLine || ''), contactLine);
+// P4.1's slab line: the pass's own census, then the deep inventory's stock as a share of the
+// world with its throughput named apart -- what the records hold now is not what has ever
+// arrived, and the line says both. Seeded for the same reason the contact line is.
+TS.d.slab = 7; TS.d.slabV = 25; TS.d.slabBond = 3;
+TS.dpN = 2; TS.invDpM = 1234; TS.thr.deepCr = 4321;
+UI.updateHud(SIM);
+var slabLine = L.els.hud.textContent.split('\n').filter(function (x) { return /^slab /.test(x); })[0];
+var slabWant = 'slab 7 sinking  2.50 cm/yr  3 attached   deep 2/' + P.deepCap
+	+ ' records  1234 km2 (' + (1234 / TS.invMTot * 100).toFixed(2)
+	+ '% of mass)   recycled 4321 km2';
+check.ok('the HUD slab line reports the pass, the deep stock and its throughput apart',
+	slabLine === slabWant, slabLine);
+TS.d.contact = 0; TS.d.contactC = 0; TS.d.hold = 0; TS.d.subduct = 0; TS.d.push = 0; TS.d.over = 0;
+TS.contactShort = 0;
+TS.d.slab = 0; TS.d.slabV = 0; TS.d.slabBond = 0;
+TS.dpN = 0; TS.invDpM = 0; TS.thr.deepCr = 0;
+UI.updateHud(SIM);
 // P3.4's phase census and two transfer legs. Seed only the diagnostics here; the material
 // path itself is exercised by pt-p3-flight.js, without spending seven simulated Myr in a UI test.
 TS.invN[P.PH.air] = 3; TS.invN[P.PH.dep] = 2; TS.thr.airCr = 125; TS.thr.landCr = 75;

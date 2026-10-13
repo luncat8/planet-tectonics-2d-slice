@@ -14,7 +14,9 @@
 //               along P.contactDip beneath the override, whose approach is held. The band's
 //               velocity blends from the plate's rigid velocity at its inner edge to the slab
 //               velocity at the trench, so the bend rotates the velocity instead of stretching
-//               it, and the slab speed is the convergence rate the contact measured.
+//               it: the slab speed is the subducting plate's own approach, because the hold has
+//               just made the trench stationary, and the closing rate is what the shortening
+//               counter books.
 //   arrest      no usable contrast. Both clusters take a mass-weighted share of the correction
 //               that cancels the closing -- a balanced impulse pair -- and nothing bends. The
 //               convergence is recorded in S.ctConv for the relief terms, because a locked
@@ -25,7 +27,8 @@
 // Momentum is not a conserved quantity in this engine (the mantle advection itself moves
 // markers by an interpolated flow), and the subduction brake's hold is deliberately
 // unbalanced -- the reaction a real override carries is mantle traction the one-way Stokes
-// coupling does not model -- so the hold is reported as a diagnostic rather than hidden.
+// coupling does not model -- so brake() books the momentum it injects in S.contactHold
+// rather than hiding it.
 //
 // The order inside G4 (solid.js) is: fit, detect, brake, projection, hinge, guard. The brake
 // has to correct the cluster's rigid velocity before the projection moves markers with it,
@@ -50,7 +53,7 @@
 			var csVX = S.csVX, csVY = S.csVY, csW = S.csW, csX = S.csX, csY = S.csY, csM = S.csM;
 			var hinge = S.hinge, hgCl = S.hgCl, hgX = S.hgX, S_ = S.hgS, hgC = S.hgC;
 			var hvx = S.hvx, hvy = S.hvy;
-			var p, i, ip, k, a, b, c, n, base, v, t, sites = 0, worst = 0, hold = 0, hgN = 0;
+			var p, i, ip, k, a, b, c, n, base, v, t, sites = 0, worst = 0, hold = 0, hgN = 0, over = 0;
 			var ca, cb, closing, dT, sub, xh, u, mA, mB, mt, vrx, vry, rx, ry;
 
 			// the bending-band workspace is consumed by hinge() in the same frame: clear it
@@ -118,7 +121,7 @@
 					// direction and nothing else -- it may roll back, it may not advance --
 					// so the rule is idempotent and the convergence the slab takes up is the
 					// subducting plate's own speed. The impulse is not balanced (see the
-					// header) and is counted in S.d.hold, not hidden.
+					// header): brake() books it in S.contactHold and S.d.hold counts the sites.
 					hold++;
 					xh = (i + 0.5) * dx;
 					if (sub === 0) {
@@ -130,13 +133,21 @@
 						hgCl[hgN] = sub === 0 ? ca : cb;
 						hgX[hgN] = xh;
 						S_[hgN] = sub === 0 ? 1 : -1;             // the direction into the trench
-						hgC[hgN] = closing * dx;                  // the slab's speed
+						// the slab's speed is the subducting plate's own approach, not the
+						// closing rate. The hold has just made the override stationary, so the
+						// trench does not migrate and the plate arrives at the trench at its own
+						// speed -- which is also what makes the bend a rotation of that velocity
+						// rather than a stretch: at t = 1 the marker's speed is the plate's. The
+						// closing rate is what S.contactShort books, and the two differ by the
+						// override's cancelled approach.
+						v = sub === 0 ? ctV[i * K + a] : -ctV[ip * K + b];
+						hgC[hgN] = v > 0 ? v : 0;
 						hgN++;
-					} else S.hgOver++;
+					} else over++;                                // a site the cap left unbent
 				}
 			}
-			S.hgN = hgN;
-			S.d.contact = sites; S.d.contactC = worst; S.d.hold = hold;
+			S.hgN = hgN; S.hgOver += over;
+			S.d.contact = sites; S.d.contactC = worst; S.d.hold = hold; S.d.over = over;
 
 			// the bending bands. A marker belongs to the band of the subducting cluster when
 			// it is on that cluster's side of a site, inside the band's reach, and still in
@@ -159,11 +170,11 @@
 					ry = y[p] - csY[c];
 					vrx = csVX[c] - csW[c] * ry;
 					vry = csVY[c] + csW[c] * rx;
-						// u measures the distance behind the hinge, so the blend runs the other way
-						// round: t = 0 at the band's inner edge (the plate behind, no
-						// discontinuity) and t = 1 at the trench, where the marker takes the
-						// slab's own velocity and the bend is a rotation, not a stretch
-						t = 1 - u / band;
+					// u measures the distance behind the hinge, so the blend runs the other
+					// way round: t = 0 at the band's inner edge (the plate behind, no
+					// discontinuity) and t = 1 at the trench, where the marker takes the
+					// slab's own velocity and the bend is a rotation, not a stretch
+					t = 1 - u / band;
 					hvx[p] = vrx + t * (S_[k] * hgC[k] * cos - vrx);
 					hvy[p] = vry + t * (hgC[k] * sin - vry);
 					hinge[p] = 1;
@@ -175,18 +186,27 @@
 		// the mean of each cluster's demanded corrections. A cluster pressed at several
 		// boundaries takes the average, which never over-corrects into separation; what the
 		// average leaves closing is the guard's business and is counted there.
+		//
+		// This is also where the momentum the pass injects is booked. An arrest pair cancels
+		// inside this loop by construction, so what survives in S.contactHold is the subduction
+		// hold's unbalanced impulse -- the one place P4 adds momentum (plan §1.2). It is booked
+		// signed, because two trenches holding opposite ways really do cancel in the plate
+		// population's momentum, and the cancellation is a fact about the run rather than a
+		// reason to hide one of them.
 		brake: function (M, S) {
-			var c, n = S.csBN, bx = S.csBX, vx = S.csVX;
+			var c, n = S.csBN, bx = S.csBX, vx = S.csVX, m = S.csM, dv;
 			for (c = 0; c < S.csN; c++) {
 				if (!n[c]) continue;
-				vx[c] += bx[c] / n[c];
+				dv = bx[c] / n[c];
+				vx[c] += dv;
+				S.contactHold += m[c] * dv;
 				bx[c] = 0; n[c] = 0;
 			}
 		},
 
 		// the bending band's own motion: the projection skipped these markers, so this is
-		// where they move. The slab speed is the convergence rate the contact measured, which
-		// is the rate material is delivered to the trench whichever plate delivers it.
+		// where they move. The slab speed detect() wrote is the subducting plate's own approach
+		// to the trench the hold is holding still.
 		hinge: function (M, S, dt) {
 			var p, dy, ym, n = 0, hvx = S.hvx, hvy = S.hvy, hinge = S.hinge;
 			for (p = 0; p < S.n; p++) {
@@ -206,39 +226,73 @@
 
 		// the no-penetration guard: the discrete statement of the plan's gate. Inter-cluster
 		// crust markers closer than P.contactHard of a cell are pushed apart along their
-		// separation, half each, so neither plate is preferred. It is the last step of the
-		// frame and it moves positions only -- mass, enthalpy and every other field ride the
-		// parcel and are untouched.
+		// separation, half each, so neither plate is preferred. It is the last step of the frame
+		// and it moves positions only -- mass, enthalpy and every other field ride the parcel
+		// and are untouched.
+		//
+		// One sweep is not always enough: where several pairs share a marker, separating p from
+		// q can push p into r. The sweep therefore repeats while it finds work, so a frame ends
+		// with nothing inside its own hard radius instead of a residue the next frame has to
+		// find again (measured: a single sweep left up to three pairs on 10% of the live
+		// planet's frames). P.ctSweep bounds it; the count it reports is every push, not every
+		// pair, so a pair two sweeps needed is booked twice -- which is what "how often the
+		// velocity-level response left work for it" asks.
 		guard: function (M, S) {
-			var nx = M.nx, dx = M.dx, wrap = M.wrap, K = P.ctTop;
-			var hard = P.contactHard * dx, h2 = hard * hard;
-			var i, ip, a, b, p, q, ddx, ddy, d2, d, push, ux, uy, pushed = 0;
-			for (i = 0; i < nx; i++) {
-				ip = i + 1 === nx ? 0 : i + 1;
-				for (a = 0; a < S.ctN[i]; a++) for (b = 0; b < S.ctN[ip]; b++) {
-					if (S.ctCl[i * K + a] === S.ctCl[ip * K + b]) continue;
-					p = S.ctP[i * K + a]; q = S.ctP[ip * K + b];
-					ddx = S.x[q] - S.x[p];
-					ddx -= Math.floor(ddx / wrap + 0.5) * wrap;
-					ddy = S.y[q] - S.y[p];
-					d2 = ddx * ddx + ddy * ddy;
-					if (d2 >= h2 || d2 < 1e-6) continue;
-					d = Math.sqrt(d2);
-					push = 0.5 * (hard - d);
-					ux = ddx / d; uy = ddy / d;
-					S.x[p] -= ux * push; S.y[p] -= uy * push;
-					S.x[q] += ux * push; S.y[q] += uy * push;
-					S.x[p] -= Math.floor(S.x[p] / wrap) * wrap;
-					S.x[q] -= Math.floor(S.x[q] / wrap) * wrap;
-					S.e[p] = Math.asinh(S.y[p] / M.yLin);
-					S.e[q] = Math.asinh(S.y[q] / M.yLin);
-					pushed++;
-				}
+			var hard = P.contactHard * M.dx, s, n = 0, pushed = 0;
+			for (s = 0; s < P.ctSweep; s++) {
+				n = sweep(M, S, hard, true);
+				pushed += n;
+				if (!n) break;
 			}
+			// What the sweeps left is the plan's gate as a number: "colliding plates do not
+			// interpenetrate" is this being zero. It is read here, where the table is live,
+			// because a frame's later kernels move parcels the table names -- a wholly molten
+			// one leaves for the melt pass, and every removal compacts the pool's tail into the
+			// hole it made -- so a re-read at the end of the frame is not this number.
+			S.d.resid = n ? sweep(M, S, hard, false) : 0;
 			S.d.push = pushed;
 			S.contactPush += pushed;
 		}
 	};
+
+	// One pass over the table the frame built: every inter-cluster pair inside the hard radius
+	// is separated along its own direction, half each, so neither plate is preferred. With
+	// `move` false it only counts them, which is how the guard reports what it left.
+	//
+	// The radius is squared with a rounding slop because a separation the push has already
+	// achieved *is* a separation: it lands the pair on the radius to within an ulp, and a
+	// strict test then finds it still inside and chases the rounding for as many sweeps as it
+	// is given (measured: pairs at d/hard = 1.000 survived twenty extra sweeps, and every one
+	// of the live planet's residues was such a pair).
+	function sweep(M, S, hard, move) {
+		var nx = M.nx, wrap = M.wrap, K = P.ctTop, h2 = hard * hard * (1 - 1e-12);
+		var i, ip, a, b, p, q, ddx, ddy, d2, d, push, ux, uy, n = 0;
+		for (i = 0; i < nx; i++) {
+			ip = i + 1 === nx ? 0 : i + 1;
+			for (a = 0; a < S.ctN[i]; a++) for (b = 0; b < S.ctN[ip]; b++) {
+				if (S.ctCl[i * K + a] === S.ctCl[ip * K + b]) continue;
+				p = S.ctP[i * K + a]; q = S.ctP[ip * K + b];
+				ddx = S.x[q] - S.x[p];
+				ddx -= Math.floor(ddx / wrap + 0.5) * wrap;
+				ddy = S.y[q] - S.y[p];
+				d2 = ddx * ddx + ddy * ddy;
+				if (d2 >= h2 || d2 < 1e-6) continue;
+				n++;
+				if (!move) continue;
+				d = Math.sqrt(d2);
+				push = 0.5 * (hard - d);
+				ux = ddx / d; uy = ddy / d;
+				S.x[p] -= ux * push; S.y[p] -= uy * push;
+				S.x[q] += ux * push; S.y[q] += uy * push;
+				// the push is a move like any other, so it ends the same way: eta rebuilt from
+				// y, then the domain's own rule for a marker the move took outside it, which
+				// also folds x through the seam (grid.js keepInside)
+				S.e[p] = Math.asinh(S.y[p] / M.yLin); G.keepInside(M, S, p);
+				S.e[q] = Math.asinh(S.y[q] / M.yLin); G.keepInside(M, S, q);
+			}
+		}
+		return n;
+	}
 
 	if (typeof module !== 'undefined' && module.exports) module.exports = CONTACT; else window.PTCONTACT = CONTACT;
 }());
