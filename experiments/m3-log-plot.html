@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>0.3.2 M3 logs — inventory and what they contain</title>
+<style>
+	:root { --bg: #14171c; --card: #1c2128; --ink: #d8dee7; --dim: #8a94a3; --line: #2c333d;
+		--acc: #5ec8b7; --warn: #e8a33d; --bad: #d96459; --ok: #6fbf73; }
+	* { box-sizing: border-box; }
+	body { margin: 0; background: var(--bg); color: var(--ink);
+		font: 14px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+	header { padding: 18px 22px 6px; }
+	h1 { font-size: 17px; margin: 0 0 4px; font-weight: 600; }
+	header p { margin: 0 0 6px; color: var(--dim); max-width: 1080px; }
+	header code { color: var(--acc); }
+	.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
+		gap: 14px; padding: 14px 22px 30px; }
+	.card { background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+		padding: 12px 14px; min-width: 0; }
+	.card h2 { font-size: 13px; margin: 0 0 2px; font-weight: 600; }
+	.card .cap { color: var(--dim); font-size: 12px; margin: 0 0 8px; }
+	.card .cap b { color: var(--ink); font-weight: 600; }
+	canvas { display: block; width: 100%; }
+	.kpis { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 22px 0; }
+	.kpi { background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+		padding: 8px 14px; }
+	.kpi .v { font-size: 19px; font-weight: 600; }
+	.kpi .k { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+	.kpi.bad .v { color: var(--bad); } .kpi.acc .v { color: var(--acc); }
+	.bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 8px; }
+	.bar label { color: var(--dim); font-size: 12px; }
+	select { background: #262c35; color: var(--ink); border: 1px solid var(--line);
+		border-radius: 5px; padding: 3px 7px; font: inherit; font-size: 12px; }
+	table { border-collapse: collapse; width: 100%; font-size: 11.5px; margin-top: 6px; }
+	th, td { text-align: right; padding: 2px 7px; border-bottom: 1px solid var(--line);
+		white-space: nowrap; }
+	th { color: var(--dim); font-weight: 500; }
+	td:first-child, th:first-child { text-align: left; }
+	.legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--dim); font-size: 11.5px;
+		margin-top: 6px; }
+	.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+		margin-right: 5px; vertical-align: -1px; }
+	#err { color: var(--bad); padding: 20px 22px; display: none; }
+</style>
+</head>
+<body>
+<header>
+	<h1>0.3.2 M3 melt-depletion logs — the inventory, and the physics inside it</h1>
+	<p>Source: <code>experiments/logs/0.3.2-M3-*</code> from commit <code>dc465f4</code>, reduced by
+	<code>experiments/m3-log-plot.js</code> into <code>logs/m3-plot-data.json</code>. The page needs an
+	http origin for <code>fetch</code> (this is a test task): from the repo root run
+	<code>python3 -m http.server 8000</code> and open
+	<code>http://localhost:8000/experiments/m3-log-plot.html</code>.</p>
+</header>
+<div class="kpis" id="kpis"></div>
+<div class="grid">
+	<div class="card" style="grid-column: 1 / -1">
+		<h2>1 · inventory — 44 files, 11 trajectories</h2>
+		<p class="cap">One row per cell (a fingerprint). Segments are its files, sized by bytes:
+		<b>kept</b> (the richest json of the cell — watch data where the cell was watched),
+		<b>byte-identical twin</b> (the harness writes one file; the worklog simply re-ran each
+		command under a second name), <b>re-run</b> (same trajectory, a different purpose: the
+		serial clock read, the assert, the composition record, the pre-fix observer). No harness
+		reads any of these files — they are evidence, and the <code>.txt</code> halves are
+		evidence of nothing.</p>
+		<canvas id="c-inv"></canvas>
+		<div class="legend">
+			<span><i style="background:var(--acc)"></i>kept json</span>
+			<span><i style="background:#5a6472"></i>txt twin (md5-identical)</span>
+			<span><i style="background:var(--warn)"></i>same-trajectory re-run</span>
+		</div>
+	</div>
+	<div class="card">
+		<h2>2 · frame cost per cell, against the 20 ms gate</h2>
+		<p class="cap"><code>msFrame</code> of the serial timed re-run where the worklog made one,
+		else the batch run. The five 600 Myr seed-5 cells all sit under the gate (the serial reads
+		the worklog quotes: 15.78 / 15.00 / 14.21 / 13.97 / 14.46 ms); the seed-2 mobile-melt
+		cells at 100 and 500 kyr do not — 28.1 and 139.7 ms/frame, the coarse clock is what
+		costs.</p>
+		<canvas id="c-time"></canvas>
+	</div>
+	<div class="card" style="grid-column: 1 / -1">
+		<h2>3 · the cold tail — the global mantle minimum over time</h2>
+		<p class="cap">Each break is a new all-run minimum of <code>T</code> (the <code>--watch</code>
+		observer). The plain baseline bottoms at <b>−0.489</b> by frame 7827; the sub-grid row's
+		minimum arrives late — frame 10927 of 12000 — but shallower at <b>−0.419</b>. The
+		water-stripping probes go far colder still (−1.069 at dpart 0.01, −1.137 with the budget
+		on top), which is why they are probes and not shipping changes: their temperature gate is
+		red. The seed-2 500 kyr cell finds its minimum in the first 5 Myr; the 50 kyr cell not
+		until frame 5534.</p>
+		<canvas id="c-cold"></canvas>
+		<div class="legend" id="lg-cold"></div>
+	</div>
+	<div class="card">
+		<h2>4 · per-depth-band temperature extrema</h2>
+		<p class="cap">The band table of one <code>--watch</code> cell: minimum <code>T</code> per
+		phase per depth band. The melt phase never gets cold (its job is the opposite), the deposit
+		phase only exists near the surface, air only in the top band.</p>
+		<div class="bar"><label for="s-band">cell</label><select id="s-band"></select></div>
+		<canvas id="c-band"></canvas>
+	</div>
+	<div class="card">
+		<h2>5 · the mobile-melt face — parcels above T = 1.5</h2>
+		<p class="cap">The excursion observer's samples for the seed-2 cells: every frame a melt
+		parcel is above the 1.5 bound, dots; the excursions themselves, bars at their entry
+		temperature. All three crossings happen while the parcel <b>rises</b> (210→81, 186→87,
+		314→299 km deep) with an entry gap near −1.4 — the transit carries the excess, not the
+		gather. The seed-5 600 Myr cells never cross.</p>
+		<canvas id="c-ex"></canvas>
+		<table id="t-ex"></table>
+	</div>
+	<div class="card">
+		<h2>6 · G5 transfer events — where melt re-routed</h2>
+		<p class="cap">Every G5 candidate event of one cell, by position (km across the 16 000 km
+		map) and time, coloured by the routing margin <code>field − solidus</code> — the parcel's
+		head above the solidus it must beat. Water depletion (<code>--dpart</code>) collapses the
+		count 8 559 → 75 and shifts the whole population to hotter margins; the mass budget
+		(<code>--cap</code>) leaves the count near the control's but delivers only 50 of its
+		6 604 candidates.</p>
+		<div class="bar"><label for="s-ev">cell</label><select id="s-ev"></select></div>
+		<canvas id="c-ev"></canvas>
+		<div class="legend"><span>margin, cold → hot over this cell's own range</span></div>
+	</div>
+	<div class="card">
+		<h2>7 · the routing margin population</h2>
+		<p class="cap">Histogram of <code>field − solidus</code> over all G5 candidates of the
+		sub-grid cells (wet margins; every candidate clears the solidus it is routed on). The
+		composition re-run asked the dry question separately: strip the water outright and
+		<b>4 509 of 8 559 candidates (52.7%)</b> still sit above the fully dry solidus — drying
+		alone closes less than half of the row.</p>
+		<canvas id="c-hist"></canvas>
+		<div class="legend" id="lg-hist"></div>
+	</div>
+</div>
+<div id="err"></div>
+<script>
+'use strict';
+var C = { ink: '#d8dee7', dim: '#8a94a3', line: '#2c333d', acc: '#5ec8b7', warn: '#e8a33d',
+	bad: '#d96459', ok: '#6fbf73', twin: '#5a6472' };
+
+function el(id) { return document.getElementById(id); }
+function canvas(id, hCss) {
+	var c = el(id), dpr = window.devicePixelRatio || 1, w = c.clientWidth;
+	c.width = Math.round(w * dpr); c.height = Math.round(hCss * dpr);
+	c.style.height = hCss + 'px';
+	var x = c.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+	x.font = '11px ui-monospace, Menlo, Consolas, monospace';
+	return { x: x, w: w, h: hCss };
+}
+function ticks(lo, hi, n) {
+	var span = hi - lo, step = Math.pow(10, Math.floor(Math.log(span / n) / Math.LN10));
+	var m = span / n / step;
+	step *= m > 5 ? 10 : m > 2 ? 5 : m > 1 ? 2 : 1;
+	var out = [], v = Math.ceil(lo / step) * step;
+	for (; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10));
+	return out;
+}
+// axes: pad = [top, right, bottom, left]; returns {px, py} maps
+function axes(g, pad, xdom, ydom, xfmt, yfmt) {
+	var x = g.x, L = pad[3], R = g.w - pad[1], T = pad[0], B = g.h - pad[2];
+	function px(v) { return L + (v - xdom[0]) / (xdom[1] - xdom[0]) * (R - L); }
+	function py(v) { return B - (v - ydom[0]) / (ydom[1] - ydom[0]) * (B - T); }
+	x.strokeStyle = C.line; x.fillStyle = C.dim; x.lineWidth = 1;
+	x.beginPath();
+	ticks(ydom[0], ydom[1], 5).forEach(function (v) {
+		var y = py(v); x.moveTo(L, y); x.lineTo(R, y); x.fillText(yfmt(v), 4, y - 3);
+	});
+	ticks(xdom[0], xdom[1], 7).forEach(function (v) {
+		var p = px(v); x.moveTo(p, B); x.lineTo(p, B + 4); x.fillText(xfmt(v), p + 3, B + 13);
+	});
+	x.moveTo(L, T); x.lineTo(L, B); x.lineTo(R, B); x.stroke();
+	return { px: px, py: py, L: L, R: R, T: T, B: B };
+}
+function series(g, ax, pts, color, width) {
+	g.x.strokeStyle = color; g.x.lineWidth = width || 1.4; g.x.beginPath();
+	pts.forEach(function (p, i) { var X = ax.px(p[0]), Y = ax.py(p[1]);
+		i ? g.x.lineTo(X, Y) : g.x.moveTo(X, Y); });
+	g.x.stroke();
+}
+function text(g, x, y, s, color, align) {
+	g.x.fillStyle = color || C.dim; g.x.textAlign = align || 'left';
+	g.x.fillText(s, x, y); g.x.textAlign = 'left';
+}
+function mb(n) { return (n / 1048576).toFixed(2) + ' MB'; }
+var f1 = function (v) { return v.toFixed(1); }, f2 = function (v) { return v.toFixed(2); };
+
+fetch('logs/m3-plot-data.json').then(function (r) {
+	if (!r.ok) throw new Error('HTTP ' + r.status + ' for logs/m3-plot-data.json — serve the experiments dir over http');
+	return r.json();
+}).then(draw).catch(function (e) {
+	el('err').style.display = 'block';
+	el('err').textContent = 'load failed: ' + e.message;
+});
+
+function draw(D) {
+	var cells = D.cells, watch = D.watch, events = D.events;
+
+	// --- KPI strip -----------------------------------------------------------------
+	var kept = D.inventory.filter(function (f) { return f.role === 'kept'; });
+	var twins = D.inventory.filter(function (f) { return f.role === 'twin'; });
+	var reruns = D.inventory.filter(function (f) { return f.role === 'rerun'; });
+	var sum = function (a) { return a.reduce(function (s, f) { return s + f.bytes; }, 0); };
+	el('kpis').innerHTML = [
+		[D.meta.trajectories + ' / ' + D.meta.files, 'trajectories / files', 'acc'],
+		[mb(D.meta.bytes), 'on disk', ''],
+		[mb(sum(twins)), 'byte-identical twins', 'bad'],
+		[mb(sum(reruns)), 'same-trajectory re-runs', 'bad'],
+		[mb(sum(kept)), 'the richest json per cell', 'acc']
+	].map(function (k) {
+		return '<div class="kpi ' + k[2] + '"><div class="v">' + k[0] + '</div><div class="k">' + k[1] + '</div></div>';
+	}).join('');
+
+	// --- 1 · inventory: one row per trajectory, its files as byte-sized segments ------
+	(function () {
+		var byFp = {};
+		D.inventory.forEach(function (f) {
+			var cell = cells.filter(function (c) { return c.files.indexOf(f.name) >= 0; })[0];
+			(byFp[cell ? cell.fp : '?'] = byFp[cell ? cell.fp : '?'] || []).push({ f: f, cell: cell });
+		});
+		var rows = Object.keys(byFp).map(function (fp) {
+			var fs = byFp[fp].slice().sort(function (a, b) {
+				return a.f.name < b.f.name ? -1 : 1;
+			});
+			return { fp: fp, label: fs[0].cell ? fs[0].cell.label : '?', files: fs };
+		}).sort(function (a, b) {
+			return sum(b.files.map(function (r) { return r.f; })) - sum(a.files.map(function (r) { return r.f; }));
+		});
+		var rowH = 30, g = canvas('c-inv', rows.length * rowH + 46), x = g.x;
+		var L = 300, maxB = 0;
+		rows.forEach(function (r) { maxB = Math.max(maxB, sum(r.files.map(function (e) { return e.f.bytes; }))); });
+		var W = g.w - L - 90, k = W / maxB;
+		x.strokeStyle = C.line; x.beginPath(); x.moveTo(L, 20); x.lineTo(L, g.h - 26); x.stroke();
+		rows.forEach(function (r, i) {
+			var y = 26 + i * rowH, p = L;
+			text(g, 0, y + 15, r.label.length > 44 ? r.label.slice(0, 43) + '…' : r.label, C.ink);
+			r.files.forEach(function (e) {
+				var w = e.f.bytes * k;
+				x.fillStyle = e.f.role === 'kept' ? C.acc : e.f.role === 'twin' ? C.twin : C.warn;
+				x.fillRect(p, y + 4, Math.max(w, 1.5), 14);
+				if (w > 46) text(g, p + 4, y + 15, /^0\.3\.2-M3-(.*)\.(json|txt)$/.exec(e.f.name)[1], '#10131a');
+				p += w;
+			});
+			text(g, p + 6, y + 15, mb(sum(r.files.map(function (e) { return e.f.bytes; }))));
+		});
+		text(g, L, 14, 'bytes per file (segments, left to right = the files of one cell)');
+	})();
+
+	// --- 2 · ms/frame vs the gate ----------------------------------------------------
+	(function () {
+		var rows = cells.slice().sort(function (a, b) { return a.msFrame - b.msFrame; });
+		var rowH = 26, g = canvas('c-time', rows.length * rowH + 44);
+		var L = 300, W = g.w - L - 60, hi = 22, k = W / hi;
+		var ax = axes(g, [18, 40, 22, L], [0, hi], [0, rows.length], f1, f1);
+		rows.forEach(function (c, i) {
+			var y = ax.py(i), w = c.msFrame * k;
+			g.x.fillStyle = c.msFrame < 20 ? C.ok : C.bad;
+			g.x.fillRect(L, y - 7, w, 13);
+			text(g, L + w + 6, y + 4, c.msFrame.toFixed(2) + ' ms');
+			text(g, 0, y + 4, c.label.length > 44 ? c.label.slice(0, 43) + '…' : c.label, C.ink);
+		});
+		var gx = ax.px(20);
+		g.x.strokeStyle = C.bad; g.x.setLineDash([4, 3]); g.x.beginPath();
+		g.x.moveTo(gx, ax.T); g.x.lineTo(gx, ax.B); g.x.stroke(); g.x.setLineDash([]);
+		text(g, gx + 4, ax.T + 10, '20 ms frame gate', C.bad);
+	})();
+
+	// --- 3 · cold tail ---------------------------------------------------------------
+	(function () {
+		var keys = Object.keys(watch);
+		var pal = [C.acc, '#7aa5d9', C.warn, '#c98bd0', '#8fbf6f', '#d98080'];
+		var legend = [];
+		var maxMyr = 0, minT = 1, maxT = -1;
+		keys.forEach(function (k) {
+			maxMyr = Math.max(maxMyr, watch[k].cold[watch[k].cold.length - 1][0]);
+			watch[k].cold.forEach(function (p) { minT = Math.min(minT, p[1]); maxT = Math.max(maxT, p[1]); });
+		});
+		var g = canvas('c-cold', 300);
+		var ax = axes(g, [14, 16, 30, 46], [0, maxMyr], [minT - 0.02, maxT + 0.02], f1, f2);
+		keys.forEach(function (k, i) {
+			series(g, ax, watch[k].cold, pal[i % pal.length]);
+			var last = watch[k].cold[watch[k].cold.length - 1];
+			text(g, ax.px(last[0]) - 5, ax.py(last[1]) + 4, watch[k].coldMeta.T.toFixed(3), pal[i % pal.length], 'right');
+			legend.push('<span><i style="background:' + pal[i % pal.length] + '"></i>' +
+				cells.filter(function (c) { return c.key === k; })[0].label + '</span>');
+		});
+		text(g, ax.px(maxMyr * 0.6), ax.T + 10, 'new global minimum of T, mantle phase (Myr →)');
+		el('lg-cold').innerHTML = legend.join('');
+	})();
+
+	// --- 4 · band extrema -------------------------------------------------------------
+	var bandCell = el('s-band');
+	Object.keys(watch).forEach(function (k) {
+		var o = document.createElement('option');
+		o.value = k; o.textContent = cells.filter(function (c) { return c.key === k; })[0].label;
+		bandCell.appendChild(o);
+	});
+	function bands() {
+		var k = bandCell.value, b = watch[k].bands, g = canvas('c-band', 260);
+		var ph = D.meta.phases, groups = [], lo = 1, hi = -1;
+		ph.forEach(function (name, p) {
+			var row = { name: name, v: [] };
+			for (var i = 0; i < b.y.length - 1; i++) {
+				var v = b.min[p * b.y.length + i];
+				row.v.push(v === null ? null : v);
+				if (v !== null) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+			}
+			if (row.v.some(function (v) { return v !== null; })) groups.push(row);
+		});
+		var ax = axes(g, [14, 10, 40, 46], [-0.6, groups.length - 0.4],
+			[Math.floor(lo * 10) / 10 - 0.05, Math.ceil(hi * 10) / 10 + 0.05], f1, f2);
+		var bw = (ax.R - ax.L) / groups.length;
+		groups.forEach(function (row, gi) {
+			row.v.forEach(function (v, bi) {
+				if (v === null) return;
+				var X = ax.px(gi) + bi * (bw / (b.y.length - 1)) + 3;
+				g.x.fillStyle = [C.acc, C.warn, '#7aa5d9', '#c98bd0'][gi % 4];
+				g.x.fillRect(X, ax.py(v), bw / (b.y.length - 1) - 6, ax.B - ax.py(v));
+			});
+			text(g, ax.px(gi), ax.B + 15, row.name, C.dim, 'center');
+		});
+		b.y.slice(0, -1).forEach(function (edge, i) {
+			text(g, ax.L + i * ((ax.R - ax.L) / (b.y.length - 1)), ax.B + 29, edge + '–' + b.y[i + 1] + ' km', C.dim);
+		});
+		text(g, 0, ax.T + 4, 'minimum T per phase per depth band (km)');
+	}
+	bandCell.onchange = bands; bands();
+
+	// --- 5 · excursions ---------------------------------------------------------------
+	(function () {
+		var keys = Object.keys(watch).filter(function (k) {
+			return watch[k].excursions.length || watch[k].exlog.length;
+		});
+		var pal = [C.acc, C.warn, '#c98bd0'], legend = [];
+		var maxMyr = 0, lo = 1.4, hi = 1.6;
+		keys.forEach(function (k) {
+			maxMyr = Math.max(maxMyr, watch[k].exlog.length ? watch[k].exlog[watch[k].exlog.length - 1][0] : 0);
+			watch[k].exlog.forEach(function (p) { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); });
+		});
+		var g = canvas('c-ex', 250);
+		var ax = axes(g, [16, 14, 30, 46], [0, maxMyr], [lo - 0.01, hi + 0.01], f1, f2);
+		var gate = ax.py(1.5);
+		g.x.strokeStyle = C.dim; g.x.setLineDash([4, 3]); g.x.beginPath();
+		g.x.moveTo(ax.L, gate); g.x.lineTo(ax.R, gate); g.x.stroke(); g.x.setLineDash([]);
+		keys.forEach(function (k, i) {
+			var col = pal[i % pal.length], cell = cells.filter(function (c) { return c.key === k; })[0];
+			var mpf = cell.myr / cell.frames;
+			watch[k].exlog.forEach(function (p) {
+				g.x.fillStyle = col; g.x.fillRect(ax.px(p[0]) - 1.5, ax.py(p[1]) - 1.5, 3, 3);
+			});
+			watch[k].excursions.forEach(function (e) {
+				var y = ax.py(e.T0);
+				g.x.fillStyle = col; g.x.globalAlpha = 0.35;
+				g.x.fillRect(ax.px(e.frame0 * mpf), y, Math.max(ax.px(e.frame1 * mpf) - ax.px(e.frame0 * mpf), 2), 3);
+				g.x.globalAlpha = 1;
+			});
+			legend.push('<span><i style="background:' + col + '"></i>' +
+				cells.filter(function (c) { return c.key === k; })[0].label + '</span>');
+		});
+		text(g, ax.R - 60, gate - 5, 'T = 1.5 bound', C.dim);
+		var rows = [];
+		keys.forEach(function (k) {
+			var cell = cells.filter(function (c) { return c.key === k; })[0];
+			watch[k].excursions.forEach(function (e) {
+				rows.push('<tr><td>' + cell.label + '</td><td>' + e.id + '</td><td>' +
+					(e.frame0 * cell.myr / cell.frames).toFixed(2) + '–' + (e.frame1 * cell.myr / cell.frames).toFixed(2) +
+					'</td><td>' + e.frames + '</td><td>' + e.T0.toFixed(3) + ' → ' + e.maxT.toFixed(3) +
+					'</td><td>' + e.y0.toFixed(0) + ' → ' + e.maxY.toFixed(0) + ' km</td><td>' +
+					e.entryGap.toFixed(3) + '</td></tr>');
+			});
+		});
+		el('t-ex').innerHTML = '<tr><th>cell</th><th>parcel</th><th>Myr in–out</th><th>frames</th>' +
+			'<th>T in → max</th><th>depth in → max</th><th>entry gap</th></tr>' + rows.join('');
+		if (!rows.length) el('t-ex').innerHTML = '<tr><td>no excursion above T = 1.5 in these cells</td></tr>';
+	})();
+
+	// --- 6 · G5 events ----------------------------------------------------------------
+	var evCell = el('s-ev');
+	Object.keys(events).forEach(function (k) {
+		var o = document.createElement('option');
+		o.value = k; o.textContent = cells.filter(function (c) { return c.key === k; })[0].label +
+			' (' + events[k].frame.length + ')';
+		evCell.appendChild(o);
+	});
+	function evScatter() {
+		var k = evCell.value, e = events[k], cell = cells.filter(function (c) { return c.key === k; })[0];
+		var g = canvas('c-ev', 300);
+		var maxF = cell.frames, maxX = 0, mLo = Infinity, mHi = -Infinity;
+		e.x.forEach(function (v) { maxX = Math.max(maxX, v); });
+		e.margin.forEach(function (v) { mLo = Math.min(mLo, v); mHi = Math.max(mHi, v); });
+		var ax = axes(g, [16, 14, 30, 46], [0, cell.myr], [0, Math.ceil(maxX / 1000) * 1000],
+			f1, function (v) { return (v / 1000).toFixed(0) + 'k'; });
+		var span = Math.max(mHi - mLo, 1e-6);
+		var n = e.frame.length;
+		for (var i = 0; i < n; i++) {
+			var t = (e.margin[i] - mLo) / span;
+			g.x.fillStyle = 'rgb(' + Math.round(46 + t * 200) + ',' + Math.round(74 + t * 74) + ',' +
+				Math.round(102 - t * 30) + ',0.6)';
+			g.x.fillRect(ax.px(e.frame[i] * cell.myr / cell.frames) - 1.5, ax.py(e.x[i]) - 1.5, 3, 3);
+		}
+		text(g, 0, ax.T + 10, n + ' candidates · margin ' + mLo.toFixed(3) + ' … ' + mHi.toFixed(3) +
+			' (cold → hot)', C.ink);
+		text(g, g.w, ax.T + 10, 'x (km) vs time (Myr)', C.dim, 'right');
+	}
+	evCell.onchange = evScatter; evScatter();
+
+	// --- 7 · margin histogram -----------------------------------------------------------
+	(function () {
+		var keys = Object.keys(events).filter(function (k) {
+			return cells.filter(function (c) { return c.key === k; })[0].kind === 'subgrid';
+		}), pal = [C.acc, C.warn, '#c98bd0', '#7aa5d9', '#8fbf6f'];
+		var lo = Infinity, hi = -Infinity;
+		keys.forEach(function (k) {
+			events[k].margin.forEach(function (m) { lo = Math.min(lo, m); hi = Math.max(hi, m); });
+		});
+		var bins = 46, bw = (hi - lo) / bins, counts = keys.map(function (k) {
+			var c = new Array(bins).fill(0);
+			events[k].margin.forEach(function (m) {
+				var i = Math.floor((m - lo) / bw);
+				if (i >= 0 && i < bins) c[i]++;
+			});
+			return c;
+		});
+		var maxC = 0;
+		counts.forEach(function (c) { c.forEach(function (v) { maxC = Math.max(maxC, v); }); });
+		var g = canvas('c-hist', 260);
+		var ax = axes(g, [14, 10, 30, 46], [lo, hi], [0, maxC * 1.08], f2, function (v) { return v.toFixed(0); });
+		keys.forEach(function (k, ki) {
+			g.x.fillStyle = pal[ki % pal.length]; g.x.globalAlpha = 0.55;
+			counts[ki].forEach(function (v, i) {
+				g.x.fillRect(ax.px(lo + i * bw) + 1, ax.py(v), ax.px(lo + (i + 1) * bw) - ax.px(lo + i * bw) - 2, ax.B - ax.py(v));
+			});
+			g.x.globalAlpha = 1;
+		});
+		var legend = keys.map(function (k, i) {
+			return '<span><i style="background:' + pal[i % pal.length] + '"></i>' +
+				cells.filter(function (c) { return c.key === k; })[0].label + '</span>';
+		});
+		el('lg-hist').innerHTML = legend.join('');
+		text(g, 0, ax.T + 4, 'candidates per margin bin (field − solidus)');
+	})();
+}
+</script>
+</body>
+</html>

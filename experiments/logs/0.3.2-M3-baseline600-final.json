@@ -20,7 +20,7 @@
 	"meltBook": 6.934897101018578e-10,
 	"intakeWallWorst": 0.0015455009947860088,
 	"intakeWallEnd": 0.0015269485201950816,
-	"msFrame": 14.77784778983322,
+	"msFrame": 12.538676916166613,
 	"minT": [
 		-0.48872371593994096,
 		0.4992331776406663,
@@ -106,6 +106,35 @@
 			"solidus": 0.839771170524249
 		}
 	],
+	"census": {
+		"split": 5086,
+		"whole": 0,
+		"freeze": 0,
+		"seg": 1350267.8465653034,
+		"wholeMass": 0,
+		"freezeMass": 0,
+		"intrDr": 1346440.319507284,
+		"intrCr": 1346440.319507284,
+		"landDr": 967824.1331033871,
+		"landCr": 967824.1331033871,
+		"ventDr": 970100.5974599158,
+		"chambers": 51,
+		"meltM": 3837.257216116884,
+		"depN": 989750.0533343126,
+		"nMelt": 38,
+		"nDep": 1350
+	},
+	"depletion": {
+		"dpart": 0,
+		"cap": 0,
+		"riseMax": 0,
+		"riseSum": 0,
+		"rises": 0,
+		"capParcels": 0,
+		"capBlocked": 0,
+		"capWholeBlocked": 0,
+		"capSpent": 0
+	},
 	"gates": {
 		"mass": true,
 		"enthalpy": true,

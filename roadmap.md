@@ -312,8 +312,42 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   flux. The M2 clock/seed matrix holds the latent identity at ≤ 3.3e-12 of its books on all
   21 cells and finds the concentration in mobile melt too (seed 2 above 1.5 at three of four
   clocks). The shipped tree passes every owner harness serially (15 legs, 617 checks; 14.78
-  and 16.82 ms/frame at 50 kyr) and stays red on that per-phase bound. Next: a melt-depletion law for the split residue, then the
-  deposit-scope relaxation re-measured on it; the mobile-melt face measured on its own.
+  and 16.82 ms/frame at 50 kyr) and stays red on that per-phase bound. **M3 measured the melt
+  depletion the sub-grid row was missing, and read both faces with instruments of their own
+  (`archive/0.3.2-M3-depletion-report.md`); it selects nothing, and no row would be eligible.**
+  Water-flux depletion of the split (`--dpart 0.01`, the residue's solidus rising by what the melt
+  took) closes the degenerate route at its source — that row goes from 8,559 transfers / 7,876
+  bleeding / smallest host 5e-324 km² to **75 / 3 / 1.2e-4**, and its frozen P3.2 census from
+  13,273 splits back to **5,017** against the bank cell's own 5,086 — with every book, the wall
+  (2.680e-3), zero refusals and 15.002 ms/frame serially intact. What rejects it is the other end
+  of the same bound: **no M3 row holds −0.5..1.5**, the crossings move to the cold side in the
+  mantle (814 samples at −1.069 for `--dpart`, 217 at −0.872 for a refractory `--cap 0.25`, 3,484
+  and −1.137..1.519 for both together, i.e. both ends in one phase), and they are carried by 1–3
+  individual parcels of 36–154 km² at 4–23 km — at or near `eroMinM` 50, the weathering front's
+  own floor — sitting 0.55–1.26 of T *below* the field they are in. The bank cell's own global
+  mantle minimum is already that signature without crossing (a 191 km² parcel at 4.2 km, 0.548
+  below its field, 0.011 inside the wall), so **the concentration is two-sided and one mechanism:
+  the adjoint gain amplifies whatever increment a light parcel's stencil carries, and the
+  increment is not always positive.** Drying alone closes less than half the row (4,509 of 8,559
+  candidates still above the fully dry solidus; median excess over a parcel's own solidus
+  +0.0217), which is what the refractory budget is for, and the cap does stop the bleed by force
+  (50 delivered of 6,604 candidates, zero bleed) at 178,181 blocked candidates and 176,087 mantle
+  re-presentations. The mobile-melt face is one excursion per clock: a 16–21 km² fully molten
+  parcel *rising* through a field 1.4–1.7 of T below itself with `dT = dH` exactly, born inside
+  the bound (its own dry liquidus at 186–314 km is 1.08–1.12) and overshooting by 0.011 / 0.016 /
+  0.027 at 50 / 100 / 500 kyr — a per-frame gather intake, not a transit law. The cold-side band
+  table also reads the deposit quench's reaction path: quenched deposits are the coldest material
+  in every band of the bank cell, one holding −0.2941 → −0.2925 while it sinks from the 250–500 km
+  band to the 1,000–2,000 km band over 36 Myr (0.0016 of T), the same no-restoring-force effect on
+  the cold side; the
+  deposit-scope relaxation removes it and **inverts** the ordering (deep deposit minima +0.317 and
+  +0.399 against the same bands' mantle −0.086 and −0.075), a scope consequence no gate currently
+  reads. Next: bound the distribution on both sides at once, on top of depletion, with the bound
+  the parcel's own field rather than a constant; measure the adjoint gain at the excursion samples
+  and the cold minima (`pt-buried-deposit-melt.js` already has the reader) so §3's mechanism is
+  measured rather than inferred; split the per-phase outside count into its two ends; and decide
+  whether a descending cold anomaly is geology to protect, the way the route protects its three
+  transfers, or the same artifact as the hot tail.
 - **The crust kernel's ×1000 (found in 0.4.1 M2): settled by `0.1.7-plan.md`.** Both
   flow laws now read `1/Myr` on metre excesses, in a backward-Euler form that is stable
   at every slider leg, with the belt's receiver capped to the ceiling headroom and the

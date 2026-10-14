@@ -284,6 +284,88 @@ if (kind === 'minimum') {
 		transfer(M, S);
 	};
 }
+// 0.3.2 M3 (step 1): melt depletion of the split residue, measured as a probe on the P3.2
+// source law -- the residue's solidus has to move with what has been extracted, or a
+// restoring exchange re-melts the same residue every frame for ever. Two independent
+// channels, both off by default, neither one in the engine state:
+//
+//   --dpart D  the extracted melt carries the parcel's water and felsic material at the
+//              batch-melting partition D: c_melt = c / (D + F (1 - D)), c_res = c D / (D +
+//              F (1 - D)), F the split's own melt fraction. The residue's solidus rises by
+//              meltWW * dcW + meltWF * dcF; the residue is left at its old solidus with H
+//              unchanged and nothing booked (it is simply subsolidus now), and the melt child
+//              keeps its own H, reading back as superheated melt (xi = 1). Both children stay
+//              exactly on the law's manifold, so the "a split moves material, it does not melt
+//              it" identity and the P3.1 latent identity are untouched. This is the water-flux
+//              reading of depletion: the flux leaves with the melt.
+//   --cap PHI  a parcel may shed at most a fraction PHI of its own mass over its life (probe
+//              map by material id, never engine state); the first split of a parcel is
+//              unaffected, later ones stop once the inventory is spent, and a spent parcel
+//              never routes again however warm its field is. This is the refractory-residue
+//              limit the water budget alone cannot reach: the banked M2 subgrid row's bleed
+//              residues sit a median 0.022 of T above their own solidus and 4,509 of the row's
+//              8,559 candidates still sit above the residue's DRY solidus (the water removed
+//              outright), so drying alone closes less than half of them.
+var dpartD = flag('--dpart', 0), capPhi = flag('--cap', 0);
+var dpSt = { splits: 0, dw: 0, tsMax: 0, tsSum: 0, wetLost: 0 };
+if (dpartD > 0 || capPhi > 0) {
+	if (!(dpartD >= 0 && dpartD <= 1) || !(capPhi >= 0 && capPhi <= 1)) throw new Error('invalid --dpart or --cap');
+}
+if (dpartD > 0) {
+	var srcS = POOL.separate.toString();
+	srcS = replaceOnce(srcS, '\t\t\tS.cF[q] = S.cF[p]; S.cW[q] = S.cW[p];',
+		'\t\t\tvar den = dpart + xi * (1 - dpart), wq = S.cW[p] / den, fq = S.cF[p] / den, cW0 = S.cW[p], cF0 = S.cF[p];\n' +
+		'\t\t\tif (wq > 1) wq = 1;\n' +
+		'\t\t\tif (fq > 1) fq = 1;\n' +
+		'\t\t\tS.cF[q] = fq; S.cW[q] = wq;\n' +
+		'\t\t\tS.cW[p] = (cW0 - xi * wq) / (1 - xi); if (S.cW[p] < 0) S.cW[p] = 0;\n' +
+		'\t\t\tS.cF[p] = (cF0 - xi * fq) / (1 - xi); if (S.cF[p] < 0) S.cF[p] = 0;\n' +
+		'\t\t\tDP.rise(P.meltWW * (cW0 - S.cW[p]) + P.meltWF * (cF0 - S.cF[p]));');
+	POOL.separate = new Function('P', 'PHASE', 'dpart', 'DP', 'return ' + srcS)(P, PHASE, dpartD, dpSt);
+}
+var capSt = { parcels: 0, blocked: 0, whole: 0, spent: 0 };
+if (capPhi > 0) {
+	var budget = new Map();
+	var detSrc = MT.detach.toString();
+	detSrc = replaceOnce(detSrc, 'var ph = S.ph, ml = S.melt, hold = P.meltHold, p, xi, dep;',
+		'var ph = S.ph, ml = S.melt, hold = P.meltHold, p, xi, dep, q0;');
+	detSrc = replaceOnce(detSrc, '\t\t\t\tif (xi < 1) { POOL.separate(S, p, dep); continue; }',
+		'\t\t\t\tif (xi < 1) {\n' +
+		'\t\t\t\t\tif (!capOk(S, p)) { capSt.blocked++; continue; }\n' +
+		'\t\t\t\t\tq0 = POOL.separate(S, p, dep);\n' +
+		'\t\t\t\t\tif (q0 >= 0) capTake(S, p, S.m[q0]);\n' +
+		'\t\t\t\t\tcontinue;\n' +
+		'\t\t\t\t}');
+	detSrc = replaceOnce(detSrc, '\t\t\t\tph[p] = P.PH.melt;',
+		'\t\t\t\tif (!capOk(S, p)) { capSt.blocked++; capSt.whole++; continue; }\n' +
+		'\t\t\t\tcapTake(S, p, S.m[p]);\n' +
+		'\t\t\t\tph[p] = P.PH.melt;');
+	// melt.js's fieldHolds is private to that file; the harness's own copy is the same test
+	// (the node field the parcel sits in reaches the parcel's solidus), so the rewritten detach
+	// can take it as a parameter like the rest of the kernel's helpers.
+	detSrc = replaceOnce(detSrc, 'fieldHolds(M, S, p)', 'fHolds(M, S, p)');
+	MT.detach = new Function('P', 'POOL', 'fHolds', 'capOk', 'capTake', 'capSt', 'return ' + detSrc)(
+		P, POOL, fHolds, capOk, capTake, capSt);
+}
+function fHolds(M, S, p) {
+	return G.sampleAt(M, S.Tg, S.x[p], S.e[p]) >= PHASE.solidus(S.y[p], S.cF[p], S.cW[p]);
+}
+function capOk(S, p) {
+	var id = S.id[p], b = budget.get(id);
+	if (b === undefined) { b = capPhi * S.m[p]; budget.set(id, b); capSt.parcels++; }
+	return b > 0;
+}
+function capTake(S, p, amount) {
+	var id = S.id[p], b = budget.get(id) - amount;
+	budget.set(id, b > 0 ? b : 0);
+	if (b <= 0) capSt.spent++;
+}
+dpSt.rise = function (rise) {
+	dpSt.splits++;
+	if (rise > dpSt.tsMax) dpSt.tsMax = rise;
+	dpSt.tsSum += rise;
+};
+
 var events = [], frame = 0, sampleMs = 0, heldTime = 0, heldMeltTime = 0, heldSamples = 0;
 var heldGap = -Infinity, mantleRoutes = 0, detach = MT.detach;
 // Allocation here is observation only, subtracted from the step timer. State is read-only.
@@ -302,7 +384,8 @@ MT.detach = function (M, S) {
 			continue;
 		}
 		events.push({ frame: frame, id: S.id[p], x: S.x[p], y: S.y[p], host: S.m[p],
-			melt: S.m[p] * S.melt[p], T: S.T[p], field: tg, solidus: ts });
+			melt: S.m[p] * S.melt[p], T: S.T[p], field: tg, solidus: ts,
+			cF: S.cF[p], cW: S.cW[p] });
 	}
 	sampleMs += performance.now() - start;
 	detach(M, S);
@@ -318,6 +401,24 @@ var outFrames = 0, hot = { T: -Infinity, frame: 0, ph: -1, y: 0, m: 0, field: 0 
 var ms = 0, frames = Math.round(myr / SIM.dt);
 var mins = [Infinity, Infinity, Infinity, Infinity], maxs = [-Infinity, -Infinity, -Infinity, -Infinity];
 var outside = [0, 0, 0, 0], nonfinite = 0;
+// 0.3.2 M3 (steps 2 and 3), --watch: read-only observation of the two faces the M2 matrix
+// opened. The band table reads the cold side as its own quantity -- per-depth extrema per
+// phase, with the frame and the material id that set each one, and the path of every new
+// global mantle minimum -- instead of one minT scalar per phase. The excursion table watches
+// mobile melt above the 1.5 bound by itself: each excursion records the entry reading, the
+// frame the parcel was hottest in it, the field it crossed and the parcel's own state there,
+// and the close, so the report can separate "the gather heated a light parcel" from "the
+// parcel's own transit carries the excess".
+var watch = process.argv.includes('--watch');
+var BANDS = [0, 50, 120, 250, 500, 1000, 2000, 3000];
+var NB = BANDS.length;
+function bandOf(y) { for (var b = NB - 1; b > 0; b--) if (y >= BANDS[b]) return b; return 0; }
+var bndMin = new Float64Array(4 * NB), bndFrame = new Int32Array(4 * NB), bndId = new Int32Array(4 * NB);
+for (var kb = 0; kb < 4 * NB; kb++) { bndMin[kb] = Infinity; bndId[kb] = -1; }
+var cold = { T: Infinity, frame: 0, id: -1, y: 0, m: 0, field: 0, H: 0 };
+var coldPath = [];
+var xruns = new Map(), excur = [], xsamples = [], exSamples = 0, meltSeen = 0;
+function gapAt(S, p) { return PHASE.byT(G.sampleAt(M, S.Tg, S.x[p], S.e[p]), S.y[p], S.cF[p], S.cW[p]).h - S.H[p]; }
 for (frame = 1; frame <= frames; frame++) {
 	var t = performance.now();
 	SIM.step();
@@ -340,10 +441,53 @@ for (frame = 1; frame <= frames; frame++) {
 		mins[ph] = Math.min(mins[ph], T); maxs[ph] = Math.max(maxs[ph], T);
 		if (T < -0.5 || T > 1.5) outside[ph]++;
 		if (T > hot.T) { hot.T = T; hot.frame = frame; hot.ph = ph; hot.y = S.y[p]; hot.m = S.m[p]; hot.x = S.x[p]; }
+		if (!watch) continue;
+		var kb = ph * NB + bandOf(S.y[p]);
+		if (T < bndMin[kb]) { bndMin[kb] = T; bndFrame[kb] = frame; bndId[kb] = S.id[p]; }
+		if (ph === P.PH.mantle && T < cold.T) {
+			cold.T = T; cold.frame = frame; cold.id = S.id[p]; cold.y = S.y[p]; cold.m = S.m[p];
+			cold.H = S.H[p]; cold.field = G.sampleAt(M, S.Tg, S.x[p], S.e[p]);
+			coldPath.push({ frame: frame, id: S.id[p], y: S.y[p], m: S.m[p], T: T, H: S.H[p],
+				field: cold.field, melt: S.melt[p], hm: cold.field - cold.T });
+		}
+		if (ph === P.PH.melt) {
+			meltSeen++;
+			var r = xruns.get(S.id[p]);
+			if (T > 1.5) {
+				exSamples++;
+				if (xsamples.length < 2000) xsamples.push({ frame: frame, id: S.id[p], T: T, y: S.y[p], m: S.m[p],
+					H: S.H[p], melt: S.melt[p], field: G.sampleAt(M, S.Tg, S.x[p], S.e[p]),
+					cF: S.cF[p], cW: S.cW[p], gap: gapAt(S, p) });
+				if (r === undefined) xruns.set(S.id[p], { frame0: frame, m0: S.m[p], H0: S.H[p], y0: S.y[p], T0: T,
+					maxT: T, maxFrame: frame, n: 1, seen: frame, entryGap: gapAt(S, p), cF: S.cF[p], cW: S.cW[p],
+					maxM: S.m[p], maxY: S.y[p], maxField: G.sampleAt(M, S.Tg, S.x[p], S.e[p]), maxMelt: S.melt[p], maxH: S.H[p] });
+				else {
+					r.n++; r.seen = frame;
+					if (T > r.maxT) {
+						r.maxT = T; r.maxFrame = frame; r.maxM = S.m[p]; r.maxY = S.y[p]; r.maxMelt = S.melt[p];
+						r.maxH = S.H[p]; r.maxField = G.sampleAt(M, S.Tg, S.x[p], S.e[p]);
+					}
+				}
+			}
+		}
 	}
+	if (watch) xruns.forEach(function (r, id) {
+		if (r.seen === frame) return;
+		excur.push({ id: id, frame0: r.frame0, frame1: frame, frames: r.n, m0: r.m0, H0: r.H0, y0: r.y0, T0: r.T0,
+			maxT: r.maxT, maxFrame: r.maxFrame, maxM: r.maxM, maxY: r.maxY, maxMelt: r.maxMelt, maxField: r.maxField,
+			cF: r.cF, cW: r.cW, entryGap: r.entryGap });
+		xruns.delete(id);
+	});
 	if (outside[0] + outside[1] + outside[2] + outside[3] > outBefore) outFrames++;
 	if (hot.frame === frame) hot.field = G.sampleAt(M, S.Tg, hot.x, Math.asinh(hot.y / M.yLin));
 }
+// Excursion runs still open at the last frame are closed here, so a crossing in the final
+// frame is recorded rather than dropped.
+if (watch) xruns.forEach(function (r, id) {
+	excur.push({ id: id, frame0: r.frame0, frame1: frames, frames: r.n, m0: r.m0, H0: r.H0, y0: r.y0, T0: r.T0,
+		maxT: r.maxT, maxFrame: r.maxFrame, maxM: r.maxM, maxY: r.maxY, maxMelt: r.maxMelt, maxField: r.maxField,
+		cF: r.cF, cW: r.cW, entryGap: r.entryGap, open: true });
+});
 var result = { kind: kind, value: value, scope: kind === 'relaxw' || kind === 'subgrid' ? scope : null,
 	seed: seed, kyr: kyr, myr: myr, frames: frames,
 	fingerprint: S.hash(), mass: mass, enthalpy: enth, latent: latent,
@@ -363,13 +507,80 @@ var result = { kind: kind, value: value, scope: kind === 'relaxw' || kind === 's
 	spreadShortN: spSt.shortN, spreadShortH: spSt.shortH,
 	relaxSource: rlSt.R, relaxGross: rlSt.gross, relaxReaction: rlSt.react, relaxResidMax: rlSt.resid,
 	relaxSourceOverWall: rlSt.R / (S.wall - w0), intakeWallOperatorWorst: wallOp,
-	outsideFrames: outFrames, hottest: hot, events: events };
+	outsideFrames: outFrames, hottest: hot, events: events,
+	// the frozen P3.2 census, for the depletion probes' own gate (M3 step 1)
+	census: { split: S.tx.split, whole: S.tx.whole, freeze: S.tx.freeze, seg: S.thr.seg,
+		wholeMass: S.thr.whole, freezeMass: S.thr.freeze, intrDr: S.thr.intrDr, intrCr: S.thr.intrCr,
+		landDr: S.thr.landDr, landCr: S.thr.landCr, ventDr: S.thr.ventDr, chambers: S.chN,
+		meltM: S.invM[P.PH.melt], depN: S.invM[P.PH.dep], nMelt: countPhase(S, P.PH.melt), nDep: countPhase(S, P.PH.dep) },
+	depletion: { dpart: dpartD, cap: capPhi, riseMax: dpSt.tsMax, riseSum: dpSt.tsSum, rises: dpSt.splits,
+		capParcels: capSt.parcels, capBlocked: capSt.blocked, capWholeBlocked: capSt.whole, capSpent: capSt.spent } };
+function countPhase(S, ph) { var n = 0, p; for (p = 0; p < S.n; p++) if (S.ph[p] === ph) n++; return n; }
+if (watch) {
+	result.bands = { y: BANDS.slice(0), min: Array.prototype.slice.call(bndMin), frame: Array.prototype.slice.call(bndFrame),
+		id: Array.prototype.slice.call(bndId) };
+	result.cold = cold;
+	result.coldPath = coldPath;
+	result.excursions = excur;
+	result.exSamples = exSamples;
+	result.exSampleLog = xsamples;
+}
 result.gates = { mass: mass < 1e-9, enthalpy: enth < 1e-9, latent: latent < 1e-10, latentBook: latentBook < 1e-10,
 	intakeWallP4: wall < 0.01, intakeWallReference: wall < 5e-5,
 	frame: result.msFrame < 20, temperature: nonfinite === 0 && outside.every(function (n) { return n === 0; }) };
-console.log(JSON.stringify(result, null, '\t'));
+// The bank file is the record; stdout is the console record a run's `.txt` log keeps. Printing
+// the whole bank to both made every `> logs/x.txt` redirect a byte-identical twin of
+// `logs/x.json` (0.3.2 M3: 21 MB of twins for 21 MB of banks), so with HEAT_TAIL_OUT set the
+// console gets this summary and the bank keeps the detail. Without it stdout stays the full
+// bank, so an ad-hoc `node pt-heat-tail.js ... | jq` still reads everything.
+function summary(r) {
+	var names = ['mantle', 'melt', 'air', 'dep'], g = r.gates, out = [], i, t;
+	// a metric no sample ever set (-Infinity) reads as 'none', not as a number
+	function e(x, d) { return Number.isFinite(x) ? Number(x).toExponential(d === undefined ? 3 : d) : 'none'; }
+	function f(x, d) { return Number.isFinite(x) ? Number(x).toFixed(d === undefined ? 3 : d) : 'none'; }
+	out.push('pt-heat-tail ' + r.kind + ' ' + r.value + (r.scope ? ' scope ' + r.scope : '') + ' seed ' + r.seed
+		+ ' at ' + r.kyr + ' kyr/frame over ' + r.myr + ' Myr, ' + r.frames + ' frames');
+	out.push('fingerprint ' + r.fingerprint + '   ' + f(r.msFrame) + ' ms/frame'
+		+ (process.env.HEAT_TAIL_OUT ? '   bank ' + process.env.HEAT_TAIL_OUT : ''));
+	out.push('gates: mass ' + (g.mass ? 'ok' : 'FAIL') + ', enthalpy ' + (g.enthalpy ? 'ok' : 'FAIL')
+		+ ', latent identity ' + (g.latentBook ? 'ok' : 'FAIL') + ', wall (P4 < 0.01) ' + (g.intakeWallP4 ? 'ok' : 'FAIL')
+		+ ', frame (< 20 ms) ' + (g.frame ? 'ok' : 'FAIL') + ', per-phase T bound ' + (g.temperature ? 'ok' : 'FAIL')
+		+ ', refusals ' + r.refuse);
+	out.push('wall |intake/wall - 1| worst ' + e(r.intakeWallWorst) + ', end ' + e(r.intakeWallEnd)
+		+ ', operator-only ' + e(r.intakeWallOperatorWorst) + ', R/wall ' + e(r.relaxSourceOverWall, 2));
+	for (i = 0; i < 4; i++) {
+		out.push('T ' + names[i] + ' ' + f(r.minT[i], 4) + '..' + f(r.maxT[i], 4) + ' (' + r.outsideSamples[i]
+			+ ' outside -0.5..1.5)');
+	}
+	out.push('hottest parcel T ' + f(r.hottest.T, 4) + ' in a field of ' + f(r.hottest.field, 4) + ' at '
+		+ f(r.hottest.y, 1) + ' km, ' + f(r.hottest.m, 2) + ' km2, phase ' + names[r.hottest.ph] + ', frame ' + r.hottest.frame);
+	out.push('route: ' + r.events.length + ' field-supported candidates, ' + r.depTx + ' delivered transfers, '
+		+ r.events.filter(function (v) { return v.host < 1e-3; }).length + ' bleeding (host < 1e-3 km2), '
+		+ f(r.depMelt, 6) + ' km2 shed, ' + r.mantleRoutes + ' mantle routings, ' + r.refuse + ' refusals');
+	out.push('held back by field support: ' + r.heldSamples + ' samples, ' + f(r.heldMassTime, 4) + ' km2*Myr of host, '
+		+ f(r.heldMeltTime, 4) + ' of melt-equivalent, worst T-field gap ' + f(r.heldGapMax, 4));
+	t = r.census;
+	out.push('P3.2 census: split ' + t.split + ', whole ' + t.whole + ', freeze ' + t.freeze + ', chambers ' + t.chambers
+		+ ', seg ' + f(t.seg, 1) + ', intrDr ' + f(t.intrDr, 1) + ', landCr ' + f(t.landCr, 1) + ', ventDr ' + f(t.ventDr, 1)
+		+ ', meltM ' + f(t.meltM, 1) + ', depN ' + f(t.depN, 1) + ', nMelt ' + t.nMelt + ', nDep ' + t.nDep);
+	t = r.depletion;
+	out.push('depletion: --dpart ' + t.dpart + ' (' + t.rises + ' rises, max ' + f(t.riseMax, 4) + ', sum ' + f(t.riseSum, 4)
+		+ '), --cap ' + t.cap + ' (' + t.capParcels + ' parcels budgeted, ' + t.capBlocked + ' split candidates blocked, '
+		+ t.capWholeBlocked + ' whole blocked, ' + t.capSpent + ' spent)');
+	out.push('books: mass ' + e(r.mass, 2) + ', enthalpy ' + e(r.enthalpy, 2) + ', latent ' + e(r.latentAbsMax, 2)
+		+ ' km2*H (' + e(r.latentBook, 2) + ' of its books), deposit ' + e(r.depositBook, 2) + ', melt ' + e(r.meltBook, 2));
+	if (r.cold) out.push('global mantle minimum T ' + f(r.cold.T, 4) + ' at frame ' + r.cold.frame + ', id ' + r.cold.id
+		+ ', ' + f(r.cold.y, 1) + ' km, ' + f(r.cold.m, 1) + ' km2, field ' + f(r.cold.field, 4)
+		+ ' (parcel ' + f(r.cold.field - r.cold.T, 4) + ' below its own field); ' + r.coldPath.length + ' new minima');
+	if (r.excursions) out.push('mobile melt above 1.5: ' + r.excursions.length + ' excursion(s) over ' + r.exSamples
+		+ ' parcel-frames' + (r.excursions.some(function (v) { return v.open; }) ? ', at least one still open at the last frame' : ''));
+	return out.join('\n');
+}
 if (process.argv.includes('--assert-baseline') && (kind !== 'baseline' || myr !== 600 || seed !== 5 || kyr !== 50
 	|| result.fingerprint !== 8261233554728015 || result.depTx !== 3)) process.exitCode = 1;
 if (process.argv.includes('--assert-m2') && (kind !== 'baseline' || myr !== 600 || seed !== 5 || kyr !== 50
 	|| result.fingerprint !== 6191250240167390 || result.depTx !== 3)) process.exitCode = 1;
-if (process.env.HEAT_TAIL_OUT) fs.writeFileSync(process.env.HEAT_TAIL_OUT, JSON.stringify(result, null, '\t') + '\n');
+if (process.env.HEAT_TAIL_OUT) {
+	fs.writeFileSync(process.env.HEAT_TAIL_OUT, JSON.stringify(result, null, '\t') + '\n');
+	console.log(summary(result));
+} else console.log(JSON.stringify(result, null, '\t'));

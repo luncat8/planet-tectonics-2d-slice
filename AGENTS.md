@@ -97,12 +97,24 @@ redistribution (spread, stencil) and sub-grid relaxation toward the field, wall-
 zero-sum through the adjoint (relaxw, subgrid; `--scope dep|solid`) probes on seed 5 at
 50 kyr/frame for 600 Myr, or any `--seed`/`--kyr` cell;
 reports every-frame books, per-phase temperature bounds, wall intake, timed kernel frames and
-individual G5 deposit transfers; no shipping parameter changes), with pt-heat-tail-check.js
-validating its saved baseline replays and candidate banks -- the M0 bank, and the M2 re-bank
-whose grid-coupled readings must equal M0's bitwise (rejected candidates are outcomes, not
+individual G5 deposit transfers; no shipping parameter changes. M3 adds two melt-depletion
+probes that wrap the melt path's own kernel text rather than the engine state -- `--dpart D`,
+water-flux partitioning of the split (the residue's solidus rises by what the melt took, so it is
+left subsolidus and nothing is booked) and `--cap PHI`, a probe-local per-material-id shed budget
+that counts a blocked candidate apart from a delivered transfer -- the frozen P3.2 census printed
+beside every cell so a rule's cost to the pipeline is read, and `--watch` observation of the two
+faces the M2 matrix opened: per-phase temperature extrema by depth band with the frame and
+material id that set each one, the path of every new global mantle minimum, and a per-excursion
+table for mobile melt above T = 1.5 that closes a run still open at the last frame instead of
+dropping it. With HEAT_TAIL_OUT set the bank file keeps the whole record and stdout prints a
+summary, so a `> logs/x.txt` redirect is a console record and not a second copy of the bank),
+with pt-heat-tail-check.js validating its saved baseline replays and candidate banks -- the M0 bank, the M2 re-bank
+whose grid-coupled readings must equal M0's bitwise, and the M3 rows, whose fingerprints, books,
+census, serial timings, dry-solidus percentiles, excursion tables and cold paths are asserted so
+a report cannot drift from its own evidence (rejected candidates are outcomes, not
 successful remedies; specification 0.3.2-plan.md, reports archive/0.3.2-M0-heat-tail-report.md,
-archive/0.3.2-M1-localization-report.md, archive/0.3.2-M2-launch-air-report.md and
-archive/0.3.2-M2-tail-matrix-report.md), experiments/pt-heat-matrix.js (the M2 clock/seed
+archive/0.3.2-M1-localization-report.md, archive/0.3.2-M2-launch-air-report.md,
+archive/0.3.2-M2-tail-matrix-report.md and archive/0.3.2-M3-depletion-report.md), experiments/pt-heat-matrix.js (the M2 clock/seed
 matrix: seeds 1,2,3,5,7 at 10/50/100/500 kyr over 300 Myr plus the 600 Myr seed-5 cell, each a
 fresh pt-heat-tail.js child, gated on every frame's books, the latent identity, the wall and
 the per-phase temperature bound; the first cell repeated bitwise; `--cells seed:kyr:myr,...`
@@ -166,7 +178,22 @@ findings-pitfalls-skills.md - notes and pitfalls for LLM agents. write here if f
 archive/ - for implemented plans
 
 experiments/ - measurement scripts (node), not loaded by the page.
-experiments/logs/ - keep useful;
+experiments/logs/ - keep useful. A bank is written once, to the harness's own output variable
+(HEAT_TAIL_OUT and friends), and its `.txt` neighbour is the console record, not a copy of it:
+0.3.2 M3 spent 21 MB on `.txt` files byte-identical to the `.json` beside them before
+pt-heat-tail.js started printing a summary when the bank file carries the detail. One bank per
+world -- a world is its fingerprint, so a batch, a `--watch` and a serially timed re-run of one
+cell are one world and the survivor is the bank with the most recorded fields (and the serial one
+where a report quotes a frame time). What stays is what a checker reads or a report quotes, and
+`pt-heat-tail-check.js` naming a bank is what makes deleting it fail loudly; a bank no harness
+reads and no report cites is scratch, and `0.3.2-trace-latent.json` is the counterexample that
+settles it -- its runner reproduces only on the M1 tree, so it cannot be regenerated at all.
+One file per content across the whole directory, banks or older `.txt` runs: a re-run that
+reproduces a log byte for byte is recorded in the identity map
+(`archive/log-hygiene-worklog.md`), not on disk -- but a sweep a table tool parses keeps one
+file per tag and leg even where the bytes repeat (each name is a row's source), a frozen
+snapshot directory like `0.3.0-p3.4-review/` stays whole, and a wall-clock-only re-run is
+scratch. Prune at the end of a milestone and say what went and why in that milestone's worklog.
 
 ## sandbox
 
