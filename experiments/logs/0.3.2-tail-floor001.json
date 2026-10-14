@@ -1,0 +1,71 @@
+{
+	"kind": "floor",
+	"value": 0.01,
+	"seed": 5,
+	"kyr": 50,
+	"myr": 600,
+	"frames": 12000,
+	"fingerprint": 2325941531217601,
+	"mass": 0,
+	"enthalpy": 8.106670761026425e-12,
+	"latent": 0.0029095263417658218,
+	"latentWorstFrame": 11983,
+	"latentWorstAbs": 46.333720901297056,
+	"latentEnd": 0.0028726418064145844,
+	"depositBook": 1.7462298274040222e-9,
+	"meltBook": 6.311893230304122e-10,
+	"intakeWallWorst": 0.04606537679452605,
+	"intakeWallEnd": 0.0333115523437284,
+	"msFrame": 15.968940271916592,
+	"minT": [
+		-0.9869312646641639,
+		0.5556714366860293,
+		1.0095772389177806,
+		-1.3199586422242315
+	],
+	"maxT": [
+		1.032718886713017,
+		1.2867215670336036,
+		1.1136486020218412,
+		1.5820574008780472
+	],
+	"outsideSamples": [
+		1525,
+		0,
+		0,
+		1169
+	],
+	"nonfinite": 0,
+	"heldSamples": 5267,
+	"heldMassTime": 29208.77638288088,
+	"heldMeltTime": 7675.646140603104,
+	"heldGapMax": 1.2701962427952427,
+	"mantleRoutes": 4691,
+	"depMelt": 8.286614533762753,
+	"depTx": 1,
+	"refuse": 0,
+	"merged": 0,
+	"strandedAttempts": 0,
+	"events": [
+		{
+			"frame": 11328,
+			"id": 198237,
+			"x": 14562.159752659061,
+			"y": 363.3815058457646,
+			"host": 23.505485687785317,
+			"melt": 8.286614533762753,
+			"T": 1.025418678683703,
+			"field": 0.9805098625706143,
+			"solidus": 0.9725377386097721
+		}
+	],
+	"gates": {
+		"mass": true,
+		"enthalpy": true,
+		"latent": false,
+		"intakeWallP4": false,
+		"intakeWallReference": false,
+		"frame": true,
+		"temperature": false
+	}
+}

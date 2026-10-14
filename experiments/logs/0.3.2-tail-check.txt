@@ -1,0 +1,10 @@
+PASS baseline fingerprint, individual transfers and untimed diagnostics replay exactly
+candidate       wall worst   ms/frame   dep T range       held km2 Myr  tx    melt km2   exact old events  decision
+baseline        1.546e-3     15.82      -0.791..2.267     68140.14      3     9.730158   3                 NOT ACCEPTED
+cap2            1.456e-2     16.41      -0.773..1.576     38736.89      12    42.228485  0                 NOT ACCEPTED
+floor001        4.607e-2     15.97      -1.320..1.582     29208.78      1     8.286615   0                 NOT ACCEPTED
+relax999        4.774e-2     16.03      -0.900..1.692     10152.72      17    15.402341  0                 NOT ACCEPTED
+minimum1        1.039e-3     16.08      -0.779..1.636     54814.81      1     30.390631  0                 NOT ACCEPTED
+baseline-repeat 1.546e-3     17.07      -0.791..2.267     68140.14      3     9.730158   3                 NOT ACCEPTED
+PASS six complete cells; events reconcile to actual transfers, field support and global books
+Candidate rejections are measurement outcomes, not a failing measurement harness.
