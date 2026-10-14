@@ -20,6 +20,7 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | 0.3.2 | the light-parcel heat concentration: a parcel carrying a small share of its stencil's marker mass takes an amplified specific increment from the adjoint gather, so buried deposits reach T 2.267 in a field of 0.288 — outside the engine's own −0.5..1.5 wall — and 0.3.1's 300 Myr intake stays held back until that is answered | `0.3.2-draft.md` | 0.3.1 M2's routing-event columns |
 | 0.4.0 | sync/exchange: provenance, deposits core, water, checkpoint, section pack | `0.4.0-sync-plan.md` | — |
 | 0.4.1 | the cut: draw a line on the globe, copy/save, paste/load, reconstruct a section | `0.4.1-plan.md` | 0.4.0's format (`port/slice-format.js`, M0 done) |
+| 0.4.2 | the `pgt-slice-pack` v2 cutover: Phase A (staleness ledger, one decode entry, bake retirement), Phase B (one coordinated port bump, no v1 reader), Phase C gated/not started (core-log return, live bridge — topology-rebuild gate open) | `0.4.2-plan.md` | globe 0.8.0–0.8.2 handoff (`port/` v2 codec + fixture); globe 0.8.3 gates for Phase C |
 | 0.9.0 | globe page hosts the section as a library; live sync is C3+C4 | `0.9.0-draft-sync.md`, `0.4.1-plan.md` §8 | 0.4.1 M1–M2; C1 on the column engine |
 
 0.2.0 status: **closed.** M0 (the headless toy box), M1 (vent lifecycle / second clock),

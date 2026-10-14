@@ -141,7 +141,8 @@ deposit remelting: measurement, cooling eligibility, conservative G5 routing, M2
 term and the ledger gates -- closed at M2, `archive/0.3.1-M2-acceptance-report.md` and
 `archive/0.3.1-M2-acceptance-worklog.md`),
 0.4.0-sync-plan.md (what is exchanged with the reference project, in which direction), 0.4.1-plan.md (the cut: a line on
-the globe's map -> a section here), 0.9.0-draft-sync.md (the integrated globe, later). The
+the globe's map -> a section here), 0.4.2-plan.md (the pgt-slice-pack v2 cutover, slice side of the globe's
+0.8.0-0.8.2 handoff; Phase C/live bridge gated in the globe's 0.8.3), 0.9.0-draft-sync.md (the integrated globe, later). The
 completed 0.1.8 plan is `archive/0.1.8-plan.md` (collision arrest and orogen memory) and the
 completed 0.2.0 plan is `archive/0.2.0-plan.md` (eruptives, deposits, save/load; the series
 is accepted at M5, `archive/0.2.0-m5-worklog.md`). Drafts are
