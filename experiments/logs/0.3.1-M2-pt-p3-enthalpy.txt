@@ -1,0 +1,97 @@
+  enthalpy: 256x24, 4 markers/node, Ra 1e+6, dt 0.050 Myr/frame
+
+
+the solidus and the liquidus
+PASS  the solidus starts at the surface solidus   rel 0.00e+0  got 0.77  want 0.77
+PASS  and material at the CMB temperature meets it exactly at meltOnset   Ts(700 km) = 1
+PASS  the deep curve keeps the calibrated margin over the CMB temperature   Ts(depth) 1.01811  margin 0.02
+PASS  above the surface the curve is flat   both read Ts(0) 0.77
+PASS  the curve is monotone in depth (one melting window per parcel)   largest step 1.00e+9
+PASS  the liquidus is the solidus plus the mush gap, everywhere   rel 5.55e-16  got 0.1499999999999999  want 0.15
+PASS  cF 0.10, cW 0.001: the solidus drops by meltWF*cF + meltWW*cW   rel 0.00e+0  got 0.9383124631546346  want 0.9383124631546346
+PASS     and the mushy interval is unchanged   rel 1.85e-16  got 0.15000000000000002  want 0.15
+PASS  cF 0.20, cW 0.002: the solidus drops by meltWF*cF + meltWW*cW   rel 0.00e+0  got 0.8983124631546345  want 0.8983124631546345
+PASS     and the mushy interval is unchanged   rel 1.85e-16  got 0.15000000000000002  want 0.15
+PASS  cF 0.30, cW 0.003: the solidus drops by meltWF*cF + meltWW*cW   rel 0.00e+0  got 0.8583124631546346  want 0.8583124631546346
+PASS     and the mushy interval is unchanged   rel 5.55e-16  got 0.1499999999999999  want 0.15
+PASS  water is the potent flux by orders of magnitude per unit mass   per unit mass: water moves Ts 100x as far as felsic material
+INFO  curve   Ts(0) 0.77   Ts(700 km) 1.0   Ts(2900 km) 1.01811   gap 0.15   L 0.25
+
+heating, partial melt, full melt and freezing
+PASS  byH and byT invert each other over the state space (50000 samples)   worst relative H round trip 3.69e-16   worst |dxi| 8.88e-16
+PASS  the surface: heating runs solid -> partial -> full melt   solid to 0.770, mushy 0.772 to 1.172, molten above 1.174
+PASS  the surface: temperature and melt fraction both rise with H   T 0.570 -> 1.120 over H +0.80
+PASS  the surface: crossing the mush costs (1 + L/gap) times the heat per kelvin   rel 1.48e-13  got 2.6666666666670613  want 2.666666666666667
+PASS  the surface: the same H always reads the same state, heating or cooling   
+PASS  300 km: heating runs solid -> partial -> full melt   solid to 0.963, mushy 0.965 to 1.365, molten above 1.367
+PASS  300 km: temperature and melt fraction both rise with H   T 0.763 -> 1.313 over H +0.80
+PASS  300 km: crossing the mush costs (1 + L/gap) times the heat per kelvin   rel 2.59e-13  got 2.6666666666673575  want 2.666666666666667
+PASS  300 km: the same H always reads the same state, heating or cooling   
+PASS  the CMB: heating runs solid -> partial -> full melt   solid to 1.018, mushy 1.020 to 1.420, molten above 1.422
+PASS  the CMB: temperature and melt fraction both rise with H   T 0.818 -> 1.368 over H +0.80
+PASS  the CMB: crossing the mush costs (1 + L/gap) times the heat per kelvin   rel 2.59e-13  got 2.6666666666673575  want 2.666666666666667
+PASS  the CMB: the same H always reads the same state, heating or cooling   
+PASS  at exactly H = Ts the parcel is solid and T is that H   Ts(300 km) 0.96258
+PASS  one step above the solidus it is just barely mushy   xi 2.50e-9
+PASS  at H = Ts + gap + L the parcel is molten   xi 0.9999999999999998   T 1.112583   Ts + gap 1.112583
+PASS  half-way through the mush reads xi = 1/2   rel 2.22e-16  got 0.4999999999999999  want 0.5
+PASS     and the sensible reading is H minus the latent part   rel 0.00e+0  got 1.0375833679663051  want 1.0375833679663051
+
+the pool pass writes T and melt out of H, and books the sensible part
+PASS  every parcel reads exactly the state its H implies   worst |dT| 0.00e+0   worst |dxi| 0.00e+0
+PASS  the pass changes no parcel enthalpy and no parcel mass   enthalpy 0   mass 0 of 23552
+PASS  and books exactly the temperature change it read   1.390137e+7 over 23552 coupled parcels
+PASS  a stale melt field is restored from H by the next pass (23552 parcels overwritten)   23552 of 23552 parcels
+PASS  and the melt inventory is unchanged by the round trip   7.012859e+6 vs 7.012859e+6
+
+G3 delivers to H, G4 maps it back
+PASS  the marker enthalpy changed by exactly the booked intake   dH 4.0805e+2   hLedger 4.0805e+2
+PASS  the booked intake is the operator's own wall flux   rel 4.42e-10  got 408.0545837986936 km2*H  want 408.05458397912173
+PASS  the sensible book and the enthalpy book differ by exactly the latent heat the melt stores   enthalpy 4.081e+2   sensible 4.081e+2   latent 0.000e+0
+INFO  conduction only   H_total moved 4.081e+2 of 1.872e+7 (0.0022%)   latent share of the intake 0.000%
+PASS  every row of the x operator sums to zero: the wrap creates nothing   worst row sum 2.85e-19   scale 2.91e-4
+PASS  and each row's second moment falls by exactly its Dirichlet energy   worst rel 1.65e-17   smallest row energy 6.31e-3
+PASS  a cold shallow parcel and a hot deep one   y 55/1411 km
+PASS  permuting enthalpy between them leaves the total bitwise unchanged   1.87175019649037123e+7
+PASS  the phase pass reads the new state without moving the total   
+PASS  and the deep parcel's heat sitting shallow is now mush   xi 0.3839 at 55 km, from 1411 km
+PASS  100 frames with the flow and the conduction off leave every parcel's H and m alone   0 of 23552 moved
+PASS  and leave every parcel's equilibrium reading of it exactly where it was   0 of 23552 changed
+PASS  with the surface law on, everything that moves is inside the weathering band   472 of 23780 parcels moved (244 mantle weathered, 228 sediment carried and 228 of those cooled), none below 120 km, 24.545 km2 weathered, 24 parcels added by the carries
+PASS  the mass it moves stays inside the parcels: weathering is a carry, not a source   residual 5.36e-16 of 41688446.702 km2
+PASS  and the heat the sediment loses is the heat the flight cooling booked   dH -2.350110e+0 km2*H against the booked -2.350110e+0, residual 4.52e-9 = 1.12e-16 of the 4.042e+7 inventory, which is the resolution the sum has left at this book's size (1.92e-9 of the book itself)
+PASS  the shipped initial condition is already the equilibrium state of its own H   0 of 23552 disagree   worst |dT| 0.00e+0   worst |dxi| 2.78e-16
+PASS  the shipped start is mushy in the shallow mantle, not everywhere   xi mass 1.033%   deepest 700 km   max xi 0.195
+INFO  t = 0   H_total 4.0424e+7 km2*H   latent stock 1.077e+5 km2*H
+
+the live run (the shipped pipeline, 150 Myr)
+INFO  t 25 Myr   melt 0.998% of mass (store 0.507%)   max xi 1.000   deepest 708 km   mean depth 443 km   lid 18%   Nu 25.7
+INFO  t 50 Myr   melt 0.969% of mass (store 0.516%)   max xi 1.000   deepest 710 km   mean depth 450 km   lid 19%   Nu 22.7
+INFO  t 75 Myr   melt 0.953% of mass (store 0.525%)   max xi 1.000   deepest 728 km   mean depth 451 km   lid 21%   Nu 20.8
+INFO  t 100 Myr   melt 0.953% of mass (store 0.531%)   max xi 1.000   deepest 759 km   mean depth 444 km   lid 22%   Nu 19.4
+INFO  t 125 Myr   melt 0.972% of mass (store 0.542%)   max xi 1.000   deepest 793 km   mean depth 431 km   lid 22%   Nu 18.7
+INFO  t 150 Myr   melt 1.013% of mass (store 0.558%)   max xi 1.000   deepest 879 km   mean depth 410 km   lid 21%   Nu 18.3
+PASS  150 Myr of the shipped planet carry real melt   peak 1.013% of mass
+PASS  the melt stays in the shallow window, never the deep mantle   deepest melting parcel 879 km of 2900
+PASS  and stays a mush zone, not a magma ocean   peak 1.013% of mass
+PASS  no NaN in 150 Myr   0 of 24416
+PASS  the field stays in range   T -0.135..1.134
+PASS  the marker enthalpy still closes against the booked intake   dH -5.9269e+5   hLedger -5.9269e+5
+PASS  which closes against the operator's wall flux   intake/wall 1.000..1.000
+PASS  and the sensible/latent split accounts for the whole intake   enthalpy -5.927e+5   sensible -5.906e+5   latent -2.096e+3
+INFO  the phase change over the run   latent stock -2.096e+3 km2*H of 3.983e+7 km2*H of stored enthalpy
+
+melt weakening at G4
+PASS  the shipped dry mantle cannot melt and hold a welding age at once   Ts(0) 0.770 vs TSoft 0.45
+PASS  while water pushes this parcel's solidus below it   Ts(200 km, cW 0.05) -0.0641
+PASS  the fixture built xi = 0, 1/2 and 1   0/0.5/1
+PASS  a solid parcel is exactly as strong as the P2.1 law says   rel 0.00e+0  got 0.9935906665537436  want 0.9935906665537436
+PASS  a half-melted parcel keeps half its cohesion   rel 0.00e+0  got 0.4967953332768718  want 0.4967953332768718
+PASS  a fully molten parcel has no cohesion left   mu 0 against 0.9936 without the factor
+PASS  and a stale melt reading cannot fake a strong parcel   mu 0.4968 with xi 0.500 against 0.9936 if the stale zero had counted
+PASS  cold dry rock keeps the P2.1 strength exactly   mu 0.993591
+INFO  cost   23552 parcels: 0.140 ms per pass
+
+  total 55.0 s
+
+ALL PASS (68 checks)

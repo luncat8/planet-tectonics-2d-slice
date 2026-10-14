@@ -16,7 +16,8 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | 0.1.9 | the two contact measurements: R1's site window anchored at the event and its background taken from the quiet-frame yardstick, R2's needle shoulder read over the belt's own neighbourhood | `0.1.9-plan.md`, `archive/0.1.9-worklog.md` | 0.1.8's M3 matrix |
 | 0.2.x | column engine: eruptives, deposits, extraction; page chrome (pause/step/reset) uses E1/E3 — **closed at M5** | `archive/0.2.0-plan.md` | — |
 | 0.3.0 | particle engine P3+ (melt, eruptions, contact). **P3 closed at P3.5**: conserved pool/routing, phase and enthalpy, segregation/storage, conduits, conserved wall-clock flight through landing/cooling/welding, and the integrated acceptance pass with the reserve frozen — `archive/0.3.0-p3.5-report.md`. **P4 closed at P4.4**: contact/underthrusting, slab sinking and deep recycling, arc melt from the slab, particle erosion/deposition, and the integrated acceptance pass with the P4 constants frozen — `archive/0.3.0-p4.4-report.md` | `0.3.0-plan.md`, `0.3.0-p3-plan.md`, `0.3.0-p4-plan.md` | — |
-| 0.3.1 | buried-deposit remelting: **M1 landed** — the shallow-quench certificate, the depth-plus-threshold G5 gate, the source-aware equilibrium split and the `thr.depMelt`/`tx.depMelt` books, with the live 300 Myr cells closing both identities at zero refusals; the route runs on two of eight seeds (intake 5–35 km²) | `0.3.1-plan.md`, `archive/0.3.1-M1-remelt-worklog.md` | 0.3.0 P4.4 baseline |
+| 0.3.1 | buried-deposit remelting: **closed at M2** — the shallow-quench certificate, the G5 deposit gate (depth, threshold, certificate and M2's field support), the source-aware equilibrium split and the `thr.depMelt`/`tx.depMelt` books. Every cell closes both identities at zero refusals. At 300 Myr the field term holds the whole intake back — the deposits that reach `meltHold` there get there by the pairing's own concentration, 0.21–0.31 of T above the field they sit in; at 600 Myr it admits 9.730 km² in 3 transfers, at a field support of +0.0005..+0.0419 and a gain of 0.68–1.88, which is sediment the interior warmed | `0.3.1-plan.md`, `archive/0.3.1-M2-acceptance-report.md` | 0.3.0 P4.4 baseline |
+| 0.3.2 | the light-parcel heat concentration: a parcel carrying a small share of its stencil's marker mass takes an amplified specific increment from the adjoint gather, so buried deposits reach T 2.267 in a field of 0.288 — outside the engine's own −0.5..1.5 wall — and 0.3.1's 300 Myr intake stays held back until that is answered | `0.3.2-draft.md` | 0.3.1 M2's routing-event columns |
 | 0.4.0 | sync/exchange: provenance, deposits core, water, checkpoint, section pack | `0.4.0-sync-plan.md` | — |
 | 0.4.1 | the cut: draw a line on the globe, copy/save, paste/load, reconstruct a section | `0.4.1-plan.md` | 0.4.0's format (`port/slice-format.js`, M0 done) |
 | 0.9.0 | globe page hosts the section as a library; live sync is C3+C4 | `0.9.0-draft-sync.md`, `0.4.1-plan.md` §8 | 0.4.1 M1–M2; C1 on the column engine |
@@ -243,30 +244,44 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   conditions.
 - **C1 on the column engine** (one global per file, `start(host)`): prerequisite of 0.9, not of
   the cut. New files do not add a second global.
-- **Remelting buried deposits (`0.3.1-plan.md`):** G5 still segregates mantle only, and the
-  0.3.1 matrix now says the route is *exercised*, not hypothetical. The seed-1 baseline's zero
-  did not generalize: over eight 300 Myr seeds at the shipped 50 kyr/frame clock, two carry
-  buried deposit mass at or above `meltHold` below the 30 km mask (seed 6: 1.36e4 km²·Myr of
-  eligible host exposure, the closest sample at xi 0.54 near 1,869 km and T 0.997; seed 8:
-  4.6e1 km²·Myr, closest xi 0.50 at 2,291 km), and seed 6 fires at 10 and 500 kyr/frame as well.
-  The six zero seeds are not far from it either — their closest approaches sit 0.03–0.23 of H
-  short of a threshold budget of only 0.04 — so the deferral looks like a race between where the
-  deposits are carried and how fast they cool, not a structural bound. That reading landed M1
-  (`archive/0.3.1-M1-remelt-worklog.md`): G5 now routes a deposit only when it is past the 30 km
-  mask, carries the new shallow-quench certificate (`depQ`, earned by a positive-time pass that
-  leaves the parcel below `meltHold`, conjunctive through merges and carries) and is at the
-  threshold, through the existing equilibrium split and with its own `thr.depMelt`/`tx.depMelt`
-  books. Six live 300 Myr cells (seeds 1, 2, 3, 6, 7, 8 at 50 kyr/frame and seed 6 at 500 kyr)
-  close mass, enthalpy, the deposit identity and the melt book at zero refusals, and the route
-  runs on seeds 6 and 8 — but its intake is small, 35.2 km² in 6 transfers and 5.08 km² in 7,
-  against M0's counterfactual exposure integral of 1.361e4 and 4.557e1 km²·Myr. The two are not
-  comparable: the exposure integral is a resident population that only exists while nothing
-  consumes it, and with the route on the harness samples the crossing itself (closest xi 0.1003,
-  margin −1e-4). One reading stays open: every crossing the route takes sits 0.1–0.3 of T above
-  the node field it is embedded in, the same adjoint-concentration signature M0 measured, so
-  whether eligibility should also test the local field is the next measurement — the same caution
-  applies to the 600 Myr leg, whose hottest parcel in the world was itself a buried deposit at
-  T 2.267, H ≈ 2.5, 74 km deep in a field of 0.288 (`archive/0.3.1-buried-deposit-matrix-worklog.md`).
+- **Remelting buried deposits (`0.3.1-plan.md`): closed at M2, with the intake filtered rather
+  than closed.** G5 routes a deposit only when it is past the 30 km cooling mask, carries the
+  shallow-quench certificate (`depQ`, earned by a positive-time pass that leaves the parcel
+  below `meltHold`, conjunctive through merges and carries), is at the threshold, and — M2 —
+  sits in a node field that reaches its own solidus; the transfer is the existing equilibrium
+  split with its own `thr.depMelt`/`tx.depMelt` books. The first four terms ran on two of eight
+  seeds (35.2 km² in 6 transfers on seed 6, 5.08 km² in 7 on seed 8) and the fifth holds all of
+  that back, because every crossing the four-term gate took was the pairing's light tail rather
+  than sediment the interior had warmed: 0.222–0.305 of T above the local field, at 0.5% of the
+  stencil's marker mass and an adjoint gain of 1.12–1.29 — against a mantle segregation that
+  routes 3221 parcels at a mean gap of +0.004 in the same leg, and a buried-deposit population
+  that sits 0.126 *below* its field. On the 600 Myr cell (seed 5) the same term lets the route
+  run: 9.730 km² in 3 transfers at a field support of +0.0005..+0.0419, a T-field gap of
+  +0.020..+0.063 and a gain of 0.683..1.878, which is the mantle's own routed signature, while
+  it holds back 6.814e4 km²·Myr of the other population at gaps up to +1.328 and gains up to
+  11.880. What the term holds back at 300 Myr is exactly M0's exposure (seed 6:
+  1.361e4 km²·Myr of certified, buried, threshold-molten host mass-time, its field 0.127–0.291
+  of T below the parcels' own solidus), so the population is measured rather than lost. Both
+  identities close on every cell at zero refusals and no constant moved
+  (`archive/0.3.1-M2-acceptance-report.md`, `archive/0.3.1-M1-remelt-worklog.md`).
+- **The light-parcel heat concentration (0.3.2, `0.3.2-draft.md`): open, and it is what closed
+  0.3.1's intake.** `grid.js` renormalizes the gather by `cw = mu_k / W_k` so the domain's whole
+  intake equals the operator's own wall flux, which `pt-p4-check.js` gates at
+  |intake/wall − 1| < 5e-5; the distributional price is that a parcel's *specific* increment
+  scales with that same `cw`, so the light tail of the cloud is heated past the field it sits
+  in. Measured: a buried deposit reaches T 2.267, H ≈ 2.5 at 74 km in a field of 0.288 on the
+  600 Myr matrix leg — outside the engine's own −0.5..1.5 temperature wall — and the crossings
+  0.3.1's four-term gate took carried gains of 1.12–1.29 at 0.5% of their stencil's mass, while
+  the mantle population's own gain is 1.05 mean at 9% share. On that same 600 Myr cell the
+  population 0.3.1's field term holds back runs to a gain of 11.880 and a T-field gap of +1.328
+  over 6.814e4 km²·Myr, beside the 3 transfers it admits at a gain of 0.683..1.878 and a
+  positive field support. A remedy is measured against the intake gates and not against a
+  routing count, and it has to leave those three transfers alone; the candidates are a
+  mass-share floor on the
+  gather, a phase-scoped relaxation toward the field (`flip < 1` for deposits only), and a
+  minimum parcel mass below which a deposit is merged rather than carried
+  (`archive/0.3.1-buried-deposit-matrix-worklog.md`, `experiments/pt-buried-deposit-melt.js`'s
+  routing-event columns).
 - **The crust kernel's ×1000 (found in 0.4.1 M2): settled by `0.1.7-plan.md`.** Both
   flow laws now read `1/Myr` on metre excesses, in a backward-Euler form that is stable
   at every slider leg, with the belt's receiver capped to the ceiling headroom and the

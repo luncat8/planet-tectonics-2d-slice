@@ -1157,3 +1157,62 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   the decisions bitwise and reads what the kernel never recorded (contrast, cluster sizes) --
   no engine change, no fingerprint move, and the census-vs-`S.d.contact` cross-check gives it
   teeth.
+
+## 0.3.1 M2 — the field term, and how to measure an adjoint pairing's tail
+(archive/0.3.1-M2-acceptance-worklog.md, experiments/pt-buried-deposit-melt.js)
+
+- **Read a gate's intake at the moment the kernel decides, per source.** M1 could only compare
+  an exposure integral (a resident population) with an intake (a flow), and the two are not
+  comparable, so "the intake is small" stayed unread. Sampling every routing candidate at the
+  G5 boundary — its own T, its own solidus, the node field, the pairing's gain and its mass
+  share of the stencil — turned it into "the intake is the light tail", which is what decided
+  M2. The wrapper costs nothing: it is the same O(n) scan the exposure reading already made.
+- **The adjoint renormalization is exact in total and unbounded per parcel.** `cw = mu_k / W_k`
+  keeps `sum_p m_p a_pk = mu_k`, so the intake/wall gate cannot see the distribution at all: a
+  parcel carrying 0.5% of its stencil's marker mass took a 1.2x amplified specific increment and
+  sat 0.24 of T above the field it was embedded in, while the domain's whole intake still closed
+  at 5e-5. Gate the total *and* report the per-parcel tail; only the tail says whether a phase
+  change is physics or quadrature.
+- **Compare the suspect population against the shipped one, in the same leg.** Mantle
+  segregation routes 3221 parcels at a mean T-field gap of +0.004 (94% of its mass within
+  0..0.05); the deposit gate took 6 at +0.244. Same boundary, same threshold, same run — the
+  contrast is the evidence, and neither number means much alone.
+- **A fixture that reads a field has to own the field.** Section A places probes by hand while
+  `S.Tg` still holds scatterT's initial condition, so the field-support fixtures would have been
+  judged by a planet they were never part of. `S.Tg.fill(t)` makes the term testable, and the
+  section's default has to sit above every solidus in the domain (1.5 does) so the older
+  fixtures keep testing exactly their own terms.
+- **A term that closes a live intake is a decision, not a failure — if the population it holds
+  back stays measured.** The held-back accumulator reports precisely M0's exposure (seed 6:
+  1.361e4 km2 Myr, field 0.13..0.29 below the parcels' solidus), so the zero is documented with
+  the mass-time it declined instead of with a count of zero. A resident population has to be
+  integrated over `dt`; an event population must not be, or the same parcel is counted on every
+  frame it stays eligible.
+- **`===` on a phase-law round-trip fails.** `PHASE.byT(ts + 0.5 * meltGap)` returns melt
+  0.4999999999999997, and a split books `m * xi`, so both the fraction and the transferred mass
+  need a tolerance. Assert the *shape* exactly (phase, slot count, counters) and the arithmetic
+  to 1e-9.
+- **A "nothing moves" gate rots the day a later release adds a mover.** `pt-p3-enthalpy.js`
+  asserted that 100 quiescent frames leave every parcel's H and m alone; it was green through
+  P4.2 and read 472 parcels moved on the M2 tree. Nothing in `melt.js` could be implicated
+  (`SIM.k[5]` is null in that configuration) — P4.3's weathering moves mass into sediment and
+  P3.4's flight cooling then takes that sediment's heat. Isolate a mover by disabling passes
+  through their own params, one at a time: `P.ero = false` alone took the count to 0, and no
+  other combination of `P.slab`, `P.contact`, `P.arc`, `k[6]` or `k[7]` changed it. Then fix the
+  measurement rather than the pass — the gate runs the mover off, and a second gate runs it on
+  and books what it moves (472 of 23780 parcels, none below `P.eroBand`, parcel mass conserved
+  to 5.4e-16 relative, dH −2.350110e+0 against the −2.350110e+0 `flight.js` wrote into
+  `S.hLedger`). An assumption that went stale becomes a gate that cannot.
+- **A route that is silent at one horizon is not a dead route.** All seven 300 Myr cells take
+  zero transfers, and the same engine on M0's 600 Myr cell takes three: 9.730 km2 of melt at a
+  field support of +0.0005..+0.0419, a T-field gap of +0.020..+0.063 and an adjoint gain of
+  0.683..1.878 — the mantle's own routed signature. Before writing "the mechanism never fires"
+  into a plan, run the longest cell the bank already has; the acceptance of a filter needs both
+  of its populations in view, and the shorter horizon only showed one.
+- **Scope a new term to the population whose measurement produced it.** The field-support term
+  reads on deposits as a filter with a decisive contrast, but the mantle branch's own routed
+  samples run −0.7714..+0.3625 of field support at a mean of +0.0017: the same condition there
+  would veto part of the frozen P3.2 segregation law rather than refine it. The harness gates the
+  scoping claim by reading the mantle's T-field gap beside the deposits' (+0.0150 against
+  +0.2152 on the 600 Myr cell), so a future reader can see why the term is deposit-only and what
+  re-scoping it would cost.

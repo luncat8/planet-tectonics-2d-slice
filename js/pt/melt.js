@@ -10,7 +10,10 @@
 //            mask and reached the same threshold sheds through the same split, debited to
 //            thr.depMelt instead of thr.seg. Uncertified deposits are not routed: a
 //            newly landed or carried-past-30 km hot parcel stays a deposit, which is the
-//            difference between remelting and bypassing the surface quench.
+//            difference between remelting and bypassing the surface quench. M2 adds the
+//            field term -- the node field the parcel sits in has to reach the parcel's own
+//            solidus -- because the light-parcel tail of the marker<->grid pairing reaches
+//            meltHold by concentration alone (see fieldHolds below).
 //   transit  mobile melt rises on the flow map plus its own buoyant speed (grid.js velAt
 //            plus vMelt downward-in-y terms: y is depth, so rising is -vy). Below
 //            meltHold the parcel is frozen residue: it becomes mantle again and rides the
@@ -32,11 +35,30 @@
 	var P = (typeof module !== 'undefined' && module.exports) ? require('./params.js') : window.PTP;
 	var G = (typeof module !== 'undefined' && module.exports) ? require('./grid.js') : window.PTG;
 	var POOL = (typeof module !== 'undefined' && module.exports) ? require('./pool.js') : window.PTPOOL;
+	var PHASE = (typeof module !== 'undefined' && module.exports) ? require('./phase.js') : window.PTPHASE;
+
+	// 0.3.1 M2's fifth term on the deposit gate: the parcel's own reading has to be supported
+	// by the node field it sits in. The gather is the adjoint of the deposit (grid.js
+	// renormalizes by cw = mu_k / W_k), so a parcel's *specific* increment scales with that
+	// factor and the light tail of the cloud is heated past the field around it: the deposits
+	// the four-term gate took sat 0.22..0.31 of T above their field at 0.5% of their stencil's
+	// mass, while the mantle segregation beside them routed 3221 parcels at a mean gap of
+	// +0.004. Those parcels reached meltHold by concentration, not because the mantle there was
+	// warm, so the gate asks the field the question the phase law asks the parcel. The mantle
+	// branch carries no such term: P3.2 is frozen, and the same condition there would veto part
+	// of it rather than refine it -- the mantle's own routed samples run -0.77..+0.36 of field
+	// support at a mean of +0.0017, against the -0.80..-0.03 of the deposits this term holds
+	// back. What experiments/pt-buried-deposit-melt.js gates on the mantle side is the scoping
+	// reading: that its routed mass sits at its own field (mean gap +0.004..+0.015 across the
+	// cells) while the held-back deposits sit +0.21 above theirs.
+	function fieldHolds(M, S, p) {
+		return G.sampleAt(M, S.Tg, S.x[p], S.e[p]) >= PHASE.solidus(S.y[p], S.cF[p], S.cW[p]);
+	}
 
 	var MELT = {
 		run: function (M, S, dt) {
 			if (!(dt > 0) || !S.n) return;
-			this.detach(S);
+			this.detach(M, S);
 			this.transit(M, S, dt);
 		},
 
@@ -44,16 +66,17 @@
 		// already at the end of the buoyant path; keeping it in the deposit phase lets the
 		// surface exchange cool it instead of sending hot ejecta straight back to a chamber.
 		// 0.3.1 M1 routes the deposits that cleared that exchange: cert, buried past the
-		// cooling mask, and at the threshold. The cert test sits before any state changes,
-		// so a full pool leaves the certificate exactly where it was.
-		detach: function (S) {
+		// cooling mask, at the threshold, and -- M2 -- in a field that itself reaches the
+		// parcel's solidus. Every test sits before any state change, so a full pool leaves
+		// the certificate exactly where it was.
+		detach: function (M, S) {
 			var ph = S.ph, ml = S.melt, hold = P.meltHold, p, xi, dep;
 			for (p = 0; p < S.n; p++) {
 				dep = ph[p] === P.PH.dep;
 				if (!dep && ph[p] !== P.PH.mantle) continue;
 				xi = ml[p];
 				if (xi < hold) continue;
-				if (dep && !(S.depQ[p] && S.y[p] > P.depositCoolDepth)) continue;
+				if (dep && !(S.depQ[p] && S.y[p] > P.depositCoolDepth && fieldHolds(M, S, p))) continue;
 				if (xi < 1) { POOL.separate(S, p, dep); continue; }
 				// wholly molten: one whole-parcel phase change (P3.1's rule), and a parcel
 				// that is not solid carries no bond state at all (§1.3). A converted deposit

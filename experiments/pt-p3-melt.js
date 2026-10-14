@@ -130,7 +130,7 @@ S.age[2] = 5 * P.tauWeld; S.dmg[2] = 0.5; S.mu[2] = 0.9;
 mush(3, 400, 0.5, 0, 0);                        // melt-phase mushy transit: detach leaves it
 S.ph[3] = P.PH.melt;
 var nA = S.n, mTrap = S.m[0], hTrap = S.H[0], mWhole = S.m[2];
-MT.detach(S);
+MT.detach(M, S);
 check.ok('trapped melt stays in its source parcel',
 	S.m[0] === mTrap && S.H[0] === hTrap && S.melt[0] === P.meltHold - 0.01,
 	'xi ' + S.melt[0] + '   m ' + S.m[0]);

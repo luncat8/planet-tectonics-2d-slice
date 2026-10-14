@@ -228,7 +228,9 @@ check.ok('every transfer leg of the integrated frame is a matched debit/credit p
 // The deposit phase has three debits and two credits: P3.4's landings, P4.3's weathering
 // credits, the surface law's rework of its own deposits, and -- found by this leg at the
 // integrated scale -- the slab pass recycling subducted sediment below yDeep, which is
-// detached cold lithosphere whatever its phase (thr.deepDep names it).
+// detached cold lithosphere whatever its phase (thr.deepDep names it). 0.3.1's route is the
+// third debit: a certified deposit buried past the cooling mask, at the threshold and in a
+// field that reaches its own solidus, sheds through the P3.2 split (thr.depMelt).
 var depWant = S.thr.landCr + S.thr.eroCr - S.thr.eroDep - S.thr.deepDep - S.thr.depMelt;
 check.ok('the deposit stock is the landings plus the surface law less what left it,'
 	+ ' through booked transfers only',
@@ -236,7 +238,17 @@ check.ok('the deposit stock is the landings plus the surface law less what left 
 	'deposits ' + S.invM[P.PH.dep].toFixed(6) + ' against ' + depWant.toFixed(6)
 	+ ' = ' + S.thr.landCr.toFixed(6) + ' landed + ' + S.thr.eroCr.toFixed(6)
 	+ ' weathered - ' + S.thr.eroDep.toFixed(6) + ' reworked - '
-	+ S.thr.deepDep.toFixed(6) + ' subducted and recycled');
+	+ S.thr.deepDep.toFixed(6) + ' subducted and recycled - '
+	+ S.thr.depMelt.toFixed(6) + ' remelted');
+// The two deposit debits side by side, which is what 0.3.1-plan.md §5 asks this configuration
+// to report: the slab's cold recycling and the route's certified remelt are different
+// transfers and the second is the one whose live intake the decision was read from. On this
+// seed the route takes nothing -- the cells that exercise it are the 0.3.1 harness's own
+// (experiments/logs/0.3.1-M2-remelt-*.txt), because a first crossing needs ~250 Myr.
+check.info('the deposit debits beside each other',
+	'thr.deepDep ' + S.thr.deepDep.toFixed(3) + ' km2 of cold sediment recycled below yDeep; '
+	+ 'thr.depMelt ' + S.thr.depMelt.toExponential(3) + ' km2 in ' + S.tx.depMelt
+	+ ' certified remelt transfers');
 check.ok('the deep records hold what the slab pass credited them',
 	Math.abs(S.invDpM - S.thr.deepCr) <= 1e-12 * Math.abs(S.thr.deepCr),
 	S.invDpM.toExponential(9) + ' km2 in ' + S.dpN + ' records against a booked '
@@ -249,7 +261,9 @@ check.info('the live census',
 	+ ' subducting), ' + S.contactShort.toFixed(0) + ' km of shortening taken up, '
 	+ A.subduct + ' bending markers, ' + S.contactHold.toExponential(3)
 	+ ' of hold impulse booked, fingerprint ' + A.hash
-	+ ' (the P4.3 report\'s leg read 2960640650489454 before thr.deepDep joined the state)');
+	+ ' (the P4.4 baseline was 3426360007996525; 0.3.1 moved every fingerprint when depQ and'
+	+ ' the depMelt counters joined the hash, and this leg\'s own path is unchanged by the'
+	+ ' route -- seed 1 never routes a deposit)');
 check.ok('all four legs actually moved material on this leg',
 	A.pairs > 0 && S.thr.deepCr > 0 && S.thr.arcCr > 0 && S.thr.eroCr > 0,
 	'contacts ' + A.pairs + ' answered pairs, slab ' + S.thr.deepCr.toFixed(1)

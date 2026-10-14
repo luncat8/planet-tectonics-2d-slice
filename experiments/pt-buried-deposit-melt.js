@@ -1,14 +1,14 @@
 // pt-buried-deposit-melt.js — the 0.3.1 harness: the G5 deposit-routing boundary and the live
 // measurement of the buried-deposit population it routes.
 //
-// Section A is the routing fixture: it pins the M1 gate (certificate plus depth plus meltHold),
-// the certificate's arithmetic, both transfer shapes and the capacity rule, all on the kernel
-// itself. Sections B and C are report-only measurement: a read-only wrapper samples deposits at
-// the G5 melt-detach boundary, after the G4 phase and slab passes have completed, and measures
-// the deposits below the shallow cooling mask whose G4-updated S.melt field is at or above
-// meltHold. Per-frame stock and time-integral are the robust readings; parcel IDs provide
-// sampled residence episodes, not unique material tracers (merges retain one ID and erosion
-// changes parcel grouping).
+// Section A is the routing fixture: it pins the gate term by term (certificate, depth,
+// meltHold and M2's field support), the certificate's arithmetic, both transfer shapes and
+// the capacity rule, all on the kernel itself. Sections B and C are report-only measurement:
+// a read-only wrapper samples deposits at the G5 melt-detach boundary, after the G4 phase and
+// slab passes have completed, and measures the deposits below the shallow cooling mask whose
+// G4-updated S.melt field is at or above meltHold. Per-frame stock and time-integral are the
+// robust readings; parcel IDs provide sampled residence episodes, not unique material tracers
+// (merges retain one ID and erosion changes parcel grouping).
 //
 // Two readings bound the deferred feature, because a zero can mean two different things:
 //
@@ -20,10 +20,13 @@
 //              zero with a 0.4-of-H margin is a different finding from a zero sitting one
 //              sample below the line, and only the margin says which one was measured.
 //
-// With M1 live, section A's readings also show what the route does to the metric: eligible
-// mass-time becomes the crossing events themselves (the route consumes them inside the same G5
-// call), so the live leg reports the shed stock (`thr.depMelt`) beside the exposure it came
-// from, and the same books close on both sides.
+// With the route live, the same boundary also reports what it takes: every routing candidate
+// is read at the moment the kernel decides, per source, with its own temperature against its
+// solidus and against the node field it sits in, plus the marker<->grid pairing's gain
+// (cw = mu_k / W_k over the parcel's stencil) and the parcel's mass share of that stencil.
+// Those columns are M2's decision evidence -- the mantle source routes at its own field while
+// the light deposit tail sits above it -- and the third accumulator reports the population the
+// field term holds back, which is the intake the certificate-and-threshold gate alone took.
 //
 // Run: node experiments/pt-buried-deposit-melt.js [liveMyr=300] [seed=1]
 //      node experiments/pt-buried-deposit-melt.js [liveMyr=300] --cells seed:kyr:myr,...
@@ -47,6 +50,15 @@ var DEP_BINS = ['30-250 km', '250-600 km', '600-2400 km', '>2400 km'];
 // A "cell" is one live leg: a seed, a clock and a duration. The seed matrix is one clock over
 // many seeds; the clock and duration axes are the other way round.
 var XI_EDGE = [0.005, 0.01, 0.02, 0.05, P.meltHold];
+// The field-gap histogram's edges, in T: a parcel's own temperature minus the node field it
+// sits in. The negative bins are the parcel colder than its field, the top one the
+// concentration the adjoint pairing can hand a light parcel (the M1 worklog's §4 reading).
+var GAP_EDGE = [-0.05, 0, 0.05, 0.1, 0.2, 0.3, 0.5];
+// The population yardstick is a stride sample of the two populations the gate draws from:
+// every eighth grid-coupled parcel at every G5 call, mass-weighted, so its means are the
+// populations' own and not the routed tail's.
+var POP_STRIDE = 8;
+var EVENT_CAP = 32;
 var t0 = Date.now();
 
 // ------------------------------------------------------------------ arguments
@@ -163,6 +175,151 @@ function xiBin(xi) {
 	return i;
 }
 
+// grid.js's own quadratic B-spline, copied so this harness can walk the same 3x3 stencil
+// scatterT deposits over and read back the cw = mu_k / W_k that pass left behind.
+function spl(d) {
+	var a = d < 0 ? -d : d;
+	return a <= 0.5 ? 0.75 - d * d : a < 1.5 ? 0.5 * (1.5 - a) * (1.5 - a) : 0;
+}
+
+var RG = { gain: 0, share: 0 };
+
+// What the marker<->grid pairing handed this parcel in the substep now closing. gatherDT
+// gives parcel p the specific increment sum_q W_pq * cw_q * inc_q, so cw = mu/W is exactly
+// the factor between the node increments' plain interpolation and what the parcel took:
+// above 1 the quadrature concentrated heat into this parcel, below 1 it diluted it. `share`
+// is the parcel's own fraction of the marker weight its stencil deposited, the light-parcel
+// reading that goes with a gain above 1. cw and w are G1's, i.e. the deposit that produced
+// this substep's delivery; the parcel has moved one substep's advection since, so the pair
+// is a sample of the mechanism and not a reconstruction of the parcel's whole history.
+function routeGain(p) {
+	var nx = M.nx, ny = M.ny, cw = M.cw, w = M.w, m = S.m[p];
+	var px = S.x[p] / M.dx, ic = Math.round(px), pe = S.e[p] / M.dEta, jc = Math.round(pe);
+	var num = 0, den = 0, part = 0, di, dj, ii, jj, wx, we, ww, q;
+	px -= ic; pe -= jc;
+	var wxm = spl(-1 - px), wx0 = spl(-px), wxp = spl(1 - px);
+	var wem = spl(-1 - pe), we0 = spl(-pe), wep = spl(1 - pe);
+	for (dj = -1; dj <= 1; dj++) {
+		jj = jc + dj;
+		if (jj < 1 || jj > ny - 1) continue;
+		we = dj === -1 ? wem : dj === 0 ? we0 : wep;
+		for (di = -1; di <= 1; di++) {
+			ii = ic + di; ii -= Math.floor(ii / nx) * nx;
+			wx = di === -1 ? wxm : di === 0 ? wx0 : wxp;
+			ww = wx * we;
+			if (!(ww > 0)) continue;
+			q = jj * nx + ii;
+			num += ww * cw[q]; den += ww;
+			if (w[q] > 0) part += ww * (ww * m / w[q]);
+		}
+	}
+	RG.gain = den > 0 ? num / den : 0;
+	RG.share = den > 0 ? part / den : 0;
+}
+
+function gapBin(gap) {
+	var i = 0;
+	while (i < GAP_EDGE.length && gap >= GAP_EDGE[i]) i++;
+	return i;
+}
+
+// One accumulator of (parcel temperature against its own field) readings, mass-weighted.
+// Three of them sit at the same boundary under the same `xi >= meltHold` test, so their
+// gaps and gains are directly comparable -- which is what decides whether the deposit route
+// is picking up a concentration the mantle route does not (M1 worklog §4, M2's decision):
+//
+//   0  the mantle segregation G5 has always run;
+//   1  the deposits M1's gate takes, i.e. the route's live intake;
+//   2  the deposits the field term holds back -- certified, buried, threshold-molten, in a
+//      field below their own solidus. They are not consumed, so this one is a resident
+//      population and `time` is the reading to quote from it.
+//
+// The same shape accumulates the stride-sampled populations the sources are drawn from,
+// where `shed` reads as the population's melt-equivalent mass instead.
+function routeAcc() {
+	return { n: 0, host: 0, shed: 0, time: 0, meltTime: 0, gap: 0, sup: 0, gain: 0, share: 0,
+		gapMin: Infinity, gapMax: -Infinity, gainMin: Infinity, gainMax: -Infinity,
+		fsMin: Infinity, fsMax: -Infinity,
+		hist: new Float64Array(GAP_EDGE.length + 1) };
+}
+
+function noteRoute(a, p, xi, ts, tg) {
+	var m = S.m[p], gap = S.T[p] - tg, fs = tg - ts;
+	a.n++;
+	a.host += m; a.shed += m * xi;
+	a.time += m * TRACK.dt; a.meltTime += m * xi * TRACK.dt;
+	a.gap += m * gap; a.sup += m * (S.T[p] - ts);
+	a.gain += m * RG.gain; a.share += m * RG.share;
+	if (gap < a.gapMin) a.gapMin = gap;
+	if (gap > a.gapMax) a.gapMax = gap;
+	// field support, the M2 term's own reading: the node field minus the parcel's solidus.
+	// Its extremes over the routed and the held-back accumulators are the bilateral gate --
+	// nothing routes below zero and nothing is held back above it.
+	if (fs < a.fsMin) a.fsMin = fs;
+	if (fs > a.fsMax) a.fsMax = fs;
+	if (RG.gain < a.gainMin) a.gainMin = RG.gain;
+	if (RG.gain > a.gainMax) a.gainMax = RG.gain;
+	a.hist[gapBin(gap)] += m;
+}
+
+// One routing event, read at the boundary the kernel is about to act on: its own temperature
+// against its own solidus and against the node field it sits in, plus the pairing's gain.
+function eventRec() {
+	return { myr: 0, y: 0, m: 0, xi: 0, T: 0, Ts: 0, tg: 0, gain: 0, share: 0, routed: 0 };
+}
+
+function eventRecords() {
+	var a = [], k;
+	for (k = 0; k < EVENT_CAP; k++) a.push(eventRec());
+	return a;
+}
+
+function noteEvent(o, p, myr, xi, ts, tg, routed) {
+	var rec = o.eventN < o.events.length ? o.events[o.eventN] : null;
+	o.eventN++;
+	if (!rec) return;
+	rec.myr = myr; rec.y = S.y[p]; rec.m = S.m[p]; rec.xi = xi; rec.T = S.T[p];
+	rec.Ts = ts; rec.tg = tg; rec.gain = RG.gain; rec.share = RG.share; rec.routed = routed;
+}
+
+// The kernel's own gate, term for term: phase, threshold, and -- for a deposit -- the
+// certificate, the depth and M2's field support. With zero refusals (the cell gate below) a
+// candidate the kernel takes is a transfer and its shed mass is m * xi; a deposit the field
+// term holds back is not consumed, so it is sampled again on every call it stays eligible
+// and its accumulator reads as a resident population, the way M0's exposure does.
+function sampleRoute(p, myr) {
+	var ph = S.ph[p], dep = ph === P.PH.dep, xi = S.melt[p], y, ts, tg, held;
+	if (!dep && ph !== P.PH.mantle) return;
+	if (xi < P.meltHold) return;
+	if (dep && !(S.depQ[p] && S.y[p] > P.depositCoolDepth)) return;
+	y = S.y[p];
+	ts = PHASE.solidus(y, S.cF[p], S.cW[p]);
+	tg = G.sampleAt(M, S.Tg, S.x[p], S.e[p]);
+	routeGain(p);
+	held = dep && tg < ts;
+	noteRoute(TRACK.route[held ? 2 : dep ? 1 : 0], p, xi, ts, tg);
+	if (!dep) return;
+	// one itemized record per transfer, and one per held-back parcel id: the population a
+	// term excludes is the same parcel on every frame it stays eligible
+	if (!held) { noteEvent(TRACK, p, myr, xi, ts, tg, 1); return; }
+	if (TRACK.held.has(S.id[p])) return;
+	TRACK.held.add(S.id[p]);
+	noteEvent(TRACK, p, myr, xi, ts, tg, 0);
+}
+
+// The stride-sampled yardstick: the same two readings over the populations the gate draws
+// from, so a routed parcel's gap can be read against its own population's rather than
+// against nothing. Buried deposits only, which is the population M1's gate admits.
+function samplePop(p) {
+	var ph = S.ph[p], dep = ph === P.PH.dep, ts, tg;
+	if (!dep && ph !== P.PH.mantle) return;
+	if (dep && !(S.y[p] > P.depositCoolDepth)) return;
+	ts = PHASE.solidus(S.y[p], S.cF[p], S.cW[p]);
+	tg = G.sampleAt(M, S.Tg, S.x[p], S.e[p]);
+	routeGain(p);
+	noteRoute(TRACK.pop[dep ? 1 : 0], p, S.melt[p], ts, tg);
+}
+
 function closeEpisode(rec, censored) {
 	var duration = rec.frames * TRACK.dt;
 	TRACK.episodes++;
@@ -200,6 +357,10 @@ function sampleDeposits(frame) {
 	for (p = 0; p < S.n; p++) {
 		if (S.T[p] > TRACK.hotAny.T) snapshot(TRACK.hotAny, p, myr, S.ph[p]);
 		if (S.H[p] > TRACK.hotH.H) snapshot(TRACK.hotH, p, myr, S.ph[p]);
+		// both routing readings are taken before the kernel acts, on the state G4 and the
+		// slab pass left: the events it is about to take, and the populations they came from
+		sampleRoute(p, myr);
+		if (p % POP_STRIDE === 0) samplePop(p);
 		if (S.ph[p] !== P.PH.dep) {
 			if (S.y[p] > P.yDeep && S.T[p] > TRACK.hotDeep.T) snapshot(TRACK.hotDeep, p, myr, 3);
 			continue;
@@ -307,15 +468,17 @@ function measure(liveMyr, cell) {
 		meltByDepth: new Float64Array(4), buriedTimeByDepth: new Float64Array(4),
 		eligibleTimeByDepth: new Float64Array(4), meltTimeByDepth: new Float64Array(4),
 		xiHist: new Float64Array(XI_EDGE.length + 1),
+		route: [routeAcc(), routeAcc(), routeAcc()], pop: [routeAcc(), routeAcc()],
+		events: eventRecords(), eventN: 0, held: new Set(),
 		dt: SIM.dt
 	};
 	TRACK = o;
 	frames = Math.round(liveMyr / SIM.dt);
 	detach = MT.detach;
 	sampled = 0;
-	MT.detach = function (state) {
+	MT.detach = function (mesh, state) {
 		sampleDeposits(++sampled);
-		return detach.call(MT, state);
+		return detach.call(MT, mesh, state);
 	};
 	try {
 		for (f = 0; f < frames; f++) SIM.step();
@@ -421,6 +584,114 @@ function logMargin(o) {
 		+ ' sampled IDs; ' + o.mushyTime.toExponential(3) + ' km2 Myr above a zero melt fraction');
 }
 
+// ---------------------------------------------------------------- the routing field reading
+// What each source's own transfers carried against the field they sat in, beside the
+// populations they were drawn from. This is the M1 worklog's §4 question measured rather
+// than argued, and M2's decision is read off it: the mantle source routes at the field it
+// sits in, the deposit population sits below its field, and the parcels M1's gate took were
+// above it by the pairing's own concentration -- so the gate now asks the field the question
+// the phase law asks the parcel, and the third accumulator reports what that term holds back.
+function meanOf(sum, host) { return host > 0 ? sum / host : 0; }
+
+// The common tail of every reading below: the field gap, the field's support of the parcel's
+// own solidus, and the pairing's gain and mass share, all mass-weighted over the population
+// the accumulator was fed.
+function thermalPart(a) {
+	var gap = meanOf(a.gap, a.host);
+	return 'T-field gap ' + gap.toFixed(4) + ' mean (' + a.gapMin.toFixed(3) + '..'
+		+ a.gapMax.toFixed(3) + '), own reading above its solidus '
+		+ meanOf(a.sup, a.host).toFixed(4) + ', field against that solidus '
+		+ a.fsMin.toFixed(4) + '..' + a.fsMax.toFixed(4) + ' (mean '
+		+ (meanOf(a.sup, a.host) - gap).toFixed(4) + '); adjoint gain '
+		+ meanOf(a.gain, a.host).toFixed(3) + ' (' + a.gainMin.toFixed(3) + '..'
+		+ a.gainMax.toFixed(3) + '), mass share of its stencil '
+		+ meanOf(a.share, a.host).toFixed(4);
+}
+
+function accLine(a) {
+	if (!a.n) return 'none';
+	return a.n + ' samples, ' + a.host.toExponential(4) + ' km2 of host mass, '
+		+ a.shed.toExponential(4) + ' km2 melt-equivalent, ' + a.time.toExponential(4)
+		+ ' km2 Myr of sampled mass-time; ' + thermalPart(a);
+}
+
+// The held-back accumulator is a resident population -- nothing consumes it, so the same
+// parcel is sampled on every call it stays eligible and the mass-time is the reading.
+function heldLine(a) {
+	if (!a.n) return 'none';
+	return a.n + ' samples of a population nothing consumes, ' + a.time.toExponential(4)
+		+ ' km2 Myr of host mass-time, ' + a.meltTime.toExponential(4)
+		+ ' km2 Myr melt-equivalent; ' + thermalPart(a);
+}
+
+// The compact form the matrix's one-line-per-cell report carries.
+function gapOf(a) {
+	return a.n ? meanOf(a.gap, a.host).toFixed(3) + ' (n ' + a.n + ', gain '
+		+ meanOf(a.gain, a.host).toFixed(2) + ')' : 'none';
+}
+
+function gapHistLine(a) {
+	var i, out = [], tot = a.host;
+	for (i = 0; i <= GAP_EDGE.length; i++) {
+		out.push((i === 0 ? 'gap<' + GAP_EDGE[0]
+			: i === GAP_EDGE.length ? 'gap>=' + GAP_EDGE[GAP_EDGE.length - 1]
+				: 'gap ' + GAP_EDGE[i - 1] + '..' + GAP_EDGE[i])
+			+ ' ' + (tot > 0 ? (100 * a.hist[i] / tot).toFixed(2) : '0.00') + '%');
+	}
+	return out.join('; ');
+}
+
+function logRoute(o) {
+	var k, rec, shown = Math.min(o.eventN, o.events.length);
+	check.info('mantle segregation at the same boundary', accLine(o.route[0]));
+	check.info('deposit remelt the gate takes', accLine(o.route[1]));
+	check.info('deposits the field term holds back', heldLine(o.route[2]));
+	check.info('the mantle population the seg source is drawn from, 1/' + POP_STRIDE
+		+ ' stride', accLine(o.pop[0]));
+	check.info('the buried-deposit population the remelt source is drawn from, 1/'
+		+ POP_STRIDE + ' stride', accLine(o.pop[1]));
+	check.info('field-gap histogram of the sampled host mass', 'mantle ' + gapHistLine(o.route[0])
+		+ ' || routed deposits ' + gapHistLine(o.route[1])
+		+ ' || held-back deposits ' + gapHistLine(o.route[2]));
+	for (k = 0; k < shown; k++) {
+		rec = o.events[k];
+		check.info((rec.routed ? 'deposit routing transfer ' : 'deposit held back by the field term ')
+			+ (k + 1) + ' of ' + o.eventN,
+			't=' + rec.myr.toFixed(2) + ' Myr, y ' + rec.y.toFixed(1) + ' km, '
+			+ rec.m.toFixed(3) + ' km2 host carrying ' + (rec.m * rec.xi).toFixed(3)
+			+ ' km2 of melt at xi ' + rec.xi.toFixed(4) + '; T ' + rec.T.toFixed(4)
+			+ ' against its own solidus ' + rec.Ts.toFixed(4) + ' and a node field of '
+			+ rec.tg.toFixed(4) + ' (gap ' + (rec.T - rec.tg).toFixed(4) + ', field support '
+			+ (rec.tg - rec.Ts).toFixed(4) + '); adjoint gain ' + rec.gain.toFixed(3)
+			+ ', mass share of its stencil ' + rec.share.toFixed(4));
+	}
+	if (o.eventN > shown) {
+		check.info('deposit routing records past the cap',
+			(o.eventN - shown) + ' of ' + o.eventN + ' not itemized (cap ' + EVENT_CAP + ')');
+	}
+}
+
+// The two gates the field reading decides. The first is bilateral and exact: the harness's
+// mirror of the term has to agree with the kernel's own decision on every sample of the live
+// leg, or the report above is describing a route the engine does not run. The second is the
+// measured asymmetry the term exists for -- the mantle source's own routed mass sits at its
+// field, two orders inside the deposits' gap, so the term binds only where the concentration
+// is. 0.05 is more than ten times the worst mean any cell has read.
+function routeChecks(o, label) {
+	check.ok(label + ' routes nothing the field does not support, and holds back nothing it does',
+		(o.route[1].n === 0 || o.route[1].fsMin >= 0)
+			&& (o.route[2].n === 0 || o.route[2].fsMax < 0),
+		'routed field-minus-solidus ' + (o.route[1].n ? o.route[1].fsMin.toFixed(4) + '..'
+			+ o.route[1].fsMax.toFixed(4) : 'no transfer') + '; held-back '
+		+ (o.route[2].n ? o.route[2].fsMin.toFixed(4) + '..' + o.route[2].fsMax.toFixed(4)
+			: 'nothing held back'));
+	check.ok(label + ' keeps the mantle source at its own field, so the term binds only on deposits',
+		o.route[0].n === 0 || Math.abs(meanOf(o.route[0].gap, o.route[0].host)) < 0.05,
+		'mantle gap mean ' + (o.route[0].n ? meanOf(o.route[0].gap, o.route[0].host).toFixed(4)
+			: 'no transfer') + ' against the held-back deposits\' '
+		+ (o.route[2].n ? meanOf(o.route[2].gap, o.route[2].host).toFixed(4) : 'none'));
+}
+
 function cellLine(o) {
 	var rec = o.closest;
 	return 'buried peak ' + o.peakBuried.toFixed(1) + ' km2 (end ' + o.depositStock.toFixed(1)
@@ -434,6 +705,8 @@ function cellLine(o) {
 		+ '; hottest parcel T ' + o.hotAny.T.toFixed(3) + ' / H ' + o.hotH.H.toFixed(3)
 		+ '; deepDep ' + o.deepDep.toFixed(2) + ' km2; depMelt '
 		+ o.depMelt.toExponential(3) + ' km2 in ' + o.depMeltTx + ' transfers'
+		+ '; held back by the field term ' + o.route[2].time.toExponential(3) + ' km2 Myr'
+		+ '; T-field gap mantle ' + gapOf(o.route[0]) + ' / held deposits ' + gapOf(o.route[2])
 		+ '; fingerprint ' + o.fingerprint + '; ' + o.secs.toFixed(1) + ' s';
 }
 
@@ -450,6 +723,7 @@ function cellCheck(o, label) {
 		+ o.meltRel.toExponential(2) + ' rel, ' + o.depMeltTx + ' deposits shed); threshold band '
 		+ 'against eligible mass-time ' + o.histThreshold.toExponential(2) + ' / '
 		+ o.eligibleMassTime.toExponential(2));
+	routeChecks(o, label);
 }
 
 // The duration a cell runs: its own if it declares one, else the invocation's argument.
@@ -469,8 +743,17 @@ function labelOf(o) { return label({ seed: o.seed, kyr: o.kyr, myr: o.live }); }
 // (earned by cooling, kept through burial, conjunctive through merges and carries), the two
 // transfer shapes (the P3.2 equilibrium split and the in-place whole change) and the capacity
 // rule (a refused split defers; a whole change needs no slot).
-check.section('A. the routing boundary: certificate plus depth plus meltHold, and nothing less');
+check.section('A. the routing boundary: certificate plus depth plus meltHold plus the field, '
+	+ 'and nothing less');
 M = configure(CELLS[0].seed, CELLS[0].kyr);
+
+// The fixtures own the node field M2's term reads: a probe placed by hand has no business
+// being judged by scatterT's initial-condition field, so section A holds it flat and above
+// every solidus in the domain. The certificate, depth and threshold fixtures below then test
+// exactly the terms they were written for, and the field block at the end moves this one.
+var FIELD_HOT = 1.5;
+function setField(t) { S.Tg.fill(t); }
+setField(FIELD_HOT);
 
 // one builder for the fixtures below: a deposit whose equilibrium state is exactly what the G5
 // kernel reads, with an explicit certificate
@@ -488,7 +771,7 @@ var p30 = addProbe(P.depositCoolDepth, 2000, 100, 0.2, 0);
 var p31 = addProbe(P.depositCoolDepth + 1, 3000, 100, 0.2, 0);
 var n0 = S.n, split0 = S.tx.split, whole0 = S.tx.whole, depTx0 = S.tx.depMelt;
 var h29 = S.H[p29], h30 = S.H[p30], h31 = S.H[p31], xi31 = S.melt[p31];
-MT.detach(S);
+MT.detach(M, S);
 check.ok('the probe starts with molten deposits on both sides of the cutoff',
 	S.melt[p29] >= P.meltHold && S.melt[p30] >= P.meltHold && S.melt[p31] >= P.meltHold,
 	'xi ' + S.melt[p29].toFixed(3) + '/' + S.melt[p30].toFixed(3) + '/' + S.melt[p31].toFixed(3));
@@ -508,13 +791,13 @@ check.ok('the pass certifies the deposits it quenched below the threshold',
 check.ok('cool() leaves the deposit just below the mask unchanged and uncertified',
 	S.H[p31] === h31 && S.melt[p31] === xi31 && S.melt[p31] >= P.meltHold && S.depQ[p31] === 0,
 	'y ' + S.y[p31] + ' km, xi ' + S.melt[p31].toFixed(3));
-MT.detach(S);
+MT.detach(M, S);
 check.ok('the quenched shallow deposit is still not routed at the mask boundary',
 	S.n === n0 && S.ph[p30] === P.PH.dep && S.melt[p30] < P.meltHold,
 	'phase ' + P.PH_NAME[S.ph[p30]] + ', xi ' + S.melt[p30].toFixed(3));
 S.depQ[p31] = 1;
 var seg0 = S.thr.seg, dep0 = S.thr.depMelt;
-MT.detach(S);
+MT.detach(M, S);
 check.ok('a certified deposit past the mask sheds its melt through the P3.2 split',
 	S.ph[p31] === P.PH.dep && S.melt[p31] === 0 && S.depQ[p31] === 1
 		&& Math.abs(S.thr.depMelt - (dep0 + xi31 * 100)) < 1e-9 && S.thr.seg === seg0
@@ -529,7 +812,7 @@ check.ok('and the child is mobile melt with no certificate of its own',
 // certificate and the mantle's whole book behind
 var pWhole = addProbe(1200, 4000, 100, 1.0, 1);
 var wholeTx0 = S.tx.whole, whThr0 = S.thr.whole, whDep0 = S.thr.depMelt;
-MT.detach(S);
+MT.detach(M, S);
 check.ok('a wholly molten certified deposit converts in place, not through the mantle book',
 	S.ph[pWhole] === P.PH.melt && S.depQ[pWhole] === 0 && S.thr.whole === whThr0
 		&& S.tx.whole === wholeTx0 + 1 && S.thr.depMelt === whDep0 + 100,
@@ -539,7 +822,7 @@ check.ok('a wholly molten certified deposit converts in place, not through the m
 // the certificate is earned by cooling, never by depth, and it is checked even when the pass
 // has no enthalpy delta to apply
 var pFresh = addProbe(20, 5000, 100, 1.0, 0);
-MT.detach(S);
+MT.detach(M, S);
 check.ok('fresh hot ejecta inside the mask is not routed and not certified',
 	S.ph[pFresh] === P.PH.dep && S.depQ[pFresh] === 0 && S.melt[pFresh] >= P.meltHold,
 	'xi ' + S.melt[pFresh].toFixed(3));
@@ -557,7 +840,7 @@ S.y[pFresh] = 1200; S.e[pFresh] = Math.asinh(1200 / M.yLin);
 var warm = PHASE.byT(PHASE.solidus(1200, S.cF[pFresh], S.cW[pFresh]) + 0.5 * P.meltGap,
 	1200, S.cF[pFresh], S.cW[pFresh]);
 S.H[pFresh] = warm.h; S.T[pFresh] = warm.t; S.melt[pFresh] = warm.melt;
-MT.detach(S);
+MT.detach(M, S);
 check.ok('the certificate survives burial, and the parcel remelts at depth',
 	S.ph[pFresh] === P.PH.dep && S.melt[pFresh] === 0 && S.depQ[pFresh] === 1,
 	'residue xi ' + S.melt[pFresh].toFixed(3) + ', still certified');
@@ -593,7 +876,7 @@ var wFull = addProbe(1200, 2000, 100, 1.0, 1), wM = S.m[wFull];
 var refuse0 = S.tx.refuse;
 S.n = P.partCap;
 S.melt.fill(0, 2); S.ph.fill(P.PH.mantle, 2); S.depQ.fill(0, 2); S.H.fill(0, 2);
-MT.detach(S);
+MT.detach(M, S);
 check.ok('a full pool defers the split and leaves the source exactly as it was',
 	S.n === P.partCap && S.H[qFull] === qKeep && S.melt[qFull] === qMelt && S.depQ[qFull] === 1
 		&& S.tx.refuse === refuse0 + 1,
@@ -601,6 +884,44 @@ check.ok('a full pool defers the split and leaves the source exactly as it was',
 check.ok('a whole-parcel conversion needs no spare slot', S.ph[wFull] === P.PH.melt
 	&& S.thr.depMelt >= wM && S.tx.refuse === refuse0 + 1,
 	'phase ' + P.PH_NAME[S.ph[wFull]] + ', ' + (S.tx.refuse - refuse0) + ' refusal');
+
+// M2's field term: the node field a deposit sits in has to reach the parcel's own solidus
+// before the other three terms can route it. The block holds those three fixed and moves the
+// field, so it pins the comparison's direction (1e-9 of T either side of the solidus) and
+// that the mantle branch does not read the field at all -- P3.2 is frozen, and its own routed
+// mass is field-supported in fact (the live leg's second route gate measures that).
+S.n = 0;
+setField(0);
+var fHold = addProbe(1200, 1000, 100, 0.5, 1);
+var mField = addProbe(1200, 2000, 100, 0.5, 0);
+S.ph[mField] = P.PH.mantle;
+var fTs = PHASE.solidus(1200, S.cF[fHold], S.cW[fHold]);
+var fN = S.n, fDep = S.thr.depMelt, fTx = S.tx.depMelt, fSeg = S.thr.seg;
+MT.detach(M, S);
+check.ok('the mantle branch ignores the field: a frozen P3.2 shed in a field of zero',
+	S.ph[mField] === P.PH.mantle && xiIs(mField, 0) && S.n === fN + 1
+		&& Math.abs(S.thr.seg - (fSeg + 50)) < 1e-9,
+	'thr.seg +' + (S.thr.seg - fSeg).toFixed(3) + ' km2 at y 1200 km, its solidus '
+		+ fTs.toFixed(4) + ', the node field 0');
+check.ok('a certified, buried, threshold-molten deposit is held by a cold field',
+	S.ph[fHold] === P.PH.dep && xiIs(fHold, 0.5) && S.depQ[fHold] === 1
+		&& S.thr.depMelt === fDep && S.tx.depMelt === fTx,
+	'field 0 against the parcel solidus ' + fTs.toFixed(4) + ', depMelt tx ' + S.tx.depMelt
+		+ ', xi ' + S.melt[fHold].toFixed(6) + ' intact');
+setField(fTs - 1e-9);
+MT.detach(M, S);
+check.ok('a field 1e-9 of T below the parcel solidus still holds it',
+	S.ph[fHold] === P.PH.dep && xiIs(fHold, 0.5) && S.tx.depMelt === fTx && S.n === fN + 1,
+	'field ' + (fTs - 1e-9).toFixed(9) + ' against ' + fTs.toFixed(9));
+setField(fTs + 1e-9);
+MT.detach(M, S);
+check.ok('a field 1e-9 of T above it routes the same parcel through the same split',
+	S.ph[fHold] === P.PH.dep && S.melt[fHold] === 0 && S.depQ[fHold] === 1 && S.n === fN + 2
+		&& Math.abs(S.thr.depMelt - (fDep + 50)) < 1e-9 && S.tx.depMelt === fTx + 1
+		&& Math.abs(S.thr.seg - (fSeg + 50)) < 1e-9,
+	'residue xi ' + S.melt[fHold].toFixed(3) + ' at its solidus, depMelt +'
+		+ (S.thr.depMelt - fDep).toFixed(3) + ' km2, the mantle seg book untouched');
+setField(FIELD_HOT);
 
 // The margin reading has to be the kernel's own statement, or a cell's "closest approach" line
 // would be measuring something else: a deposit equilibrated exactly at meltHold sits on the
@@ -623,7 +944,8 @@ check.ok('an unfilled record reads as never sampled, not as cold', record().xi <
 	'xi ' + record().xi);
 
 // ------------------------------------------------------------------ B. the live burden
-var A, AGAIN, ROWS = [], i, worst, elig = 0, buriedTime = 0, frames = 0, shed = 0, shedTx = 0;
+var A, AGAIN, ROWS = [], i, worst, elig = 0, buriedTime = 0, frames = 0, shed = 0, shedTx = 0,
+	held = 0;
 
 // One positional seed is the canonical single leg with the full reading. The detail block's
 // per-frame statistics assume one G5 call per rendered frame, which is exactly the shipped
@@ -671,6 +993,7 @@ if (!REPEAT && CELLS[0].kyr <= P.dtFluidMax * 1000) {
 			<= 1e-9 * Math.max(A.eligibleMassTime, 1),
 		'threshold band ' + A.histThreshold.toExponential(2) + ' km2 Myr against eligible '
 		+ A.eligibleMassTime.toExponential(2) + ' km2 Myr, summed over the four depth bands');
+	routeChecks(A, 'the live leg');
 	check.info('buried deposit stock', 'peak ' + A.peakBuried.toFixed(3) + ' km2; at end '
 		+ A.depositStock.toFixed(3) + ' km2 in ' + A.depositCount + ' parcels; subducted deposit '
 		+ A.deepDep.toFixed(3) + ' km2; shed by certified deposits (M1) '
@@ -695,6 +1018,7 @@ if (!REPEAT && CELLS[0].kyr <= P.dtFluidMax * 1000) {
 	check.info('mean depth of eligible mass-time', A.meanEligibleDepth.toFixed(1) + ' km');
 	logBands(A);
 	logMargin(A);
+	logRoute(A);
 	check.info('time', ((Date.now() - t0) / 1000).toFixed(1) + ' s');
 } else {
 	check.section('B. the cell matrix: ' + CELLS.length + ' cells of ' + LIVE
@@ -708,7 +1032,7 @@ if (!REPEAT && CELLS[0].kyr <= P.dtFluidMax * 1000) {
 		cellCheck(A, 'cell ' + (i + 1) + ' ' + label(CELLS[i]));
 		elig += A.eligibleMassTime;
 		buriedTime += A.buriedMassTime;
-		shed += A.depMelt; shedTx += A.depMeltTx;
+		shed += A.depMelt; shedTx += A.depMeltTx; held += A.route[2].time;
 		frames += A.sampledFrames;
 		if (!worst || A.closest.margin < worst.closest.margin) worst = A;
 	}
@@ -737,22 +1061,29 @@ if (!REPEAT && CELLS[0].kyr <= P.dtFluidMax * 1000) {
 			: 'xi ' + worst.closest.xi.toFixed(4) + ' (' + labelOf(worst)
 				+ ', ' + DEP_BINS[worst.closest.band] + ', y ' + worst.closest.y.toFixed(1)
 				+ ' km, margin ' + worst.closest.margin.toFixed(4) + ' of H)'));
-	// Three readings, not two: the route being live is a third state, and the difference
-	// between "exposure exists" and "exposure exists and was consumed" is the whole point of
-	// the 0.3.1 measurement (the route removes the population it routes, so M0's exposure
-	// integral is a counterfactual once M1 is on).
+	// Four readings, not two, because *which* term closed the intake is part of the verdict:
+	// a route that ran, a route the field term holds back, a route the latch holds back and a
+	// population that never reached the threshold are four different findings, and the first
+	// two are the ones 0.3.1's decision turned on (the route consumes the population it takes,
+	// so M0's exposure integral is a counterfactual whenever shed > 0).
 	check.info('matrix verdict', shed > 0
-		? 'the M1 route ran: ' + shed.toExponential(3) + ' km2 shed in ' + shedTx
+		? 'the route ran: ' + shed.toExponential(3) + ' km2 shed in ' + shedTx
 			+ ' transfers, against ' + elig.toExponential(3) + ' km2 Myr of sampled exposure'
-		: elig > 0
-			? 'exposure exists and nothing was routed: the route is deferred, which is the case '
-				+ 'M1 was written for'
-			: 'no cell observed a threshold-qualified buried deposit; the deferred route stays '
-				+ 'closed and the margin line above is what the next decision reads');
+		: held > 0
+			? 'the route is live and takes nothing: ' + held.toExponential(3) + ' km2 Myr of '
+				+ 'certified, buried, threshold-molten deposit mass-time sits in a field below '
+				+ 'its own solidus, so condition 5 holds the whole intake back -- the '
+				+ 'concentration behind it is 0.3.2\'s, not a gate to loosen'
+			: elig > 0
+				? 'exposure exists and nothing was certified: the latch holds it, which is the '
+					+ 'case it exists for -- no un-quenched ejecta reaches the chambers'
+				: 'no cell observed a threshold-qualified buried deposit; the route stays '
+					+ 'closed and the margin line above is what the next decision reads');
 	check.info('closest cell in full ' + labelOf(worst),
 		'buried peak ' + worst.peakBuried.toFixed(3) + ' km2; eligible '
 		+ worst.eligibleMassTime.toExponential(3) + ' km2 Myr; fingerprint ' + worst.fingerprint);
 	logMargin(worst);
+	logRoute(worst);
 	check.info('time', ((Date.now() - t0) / 1000).toFixed(1) + ' s');
 }
 check.done();

@@ -298,9 +298,12 @@ SIM.k[2] = kFlow; SIM.k[3] = kMove;
 
 // (c) with flow, conduction and segregation disabled the mapping is idempotent (the gate is
 // the P3.1 mapping's own; P3.2's split moves m and H between parcels by design and is
-// gated as its own transaction in pt-p3-melt.js)
+// gated as its own transaction in pt-p3-melt.js). P4.3's surface law is a third mover in
+// this configuration -- it weathers the top of the column into sediment, and P3.4's flight
+// cooling then takes that sediment's heat -- so it runs off here, as the P4 owners run it,
+// and (c2) measures what it moves and whether the movement is booked.
 configure('cool', [256, 24], 0);
-SIM.k[2] = null; SIM.k[3] = null; SIM.k[5] = null;
+SIM.k[2] = null; SIM.k[3] = null; SIM.k[5] = null; P.ero = false;
 SIM.run(1);
 var hs = new Float64Array(S.n), ms = new Float64Array(S.n);
 var ts0 = new Float64Array(S.n), xs = new Float64Array(S.n), hMove = 0, readMoved = 0;
@@ -316,6 +319,50 @@ check.ok('100 frames with the flow and the conduction off leave every parcel\'s 
 	hMove === 0, hMove + ' of ' + S.n + ' moved');
 check.ok('and leave every parcel\'s equilibrium reading of it exactly where it was',
 	readMoved === 0, readMoved + ' of ' + S.n + ' changed');
+SIM.k[2] = kFlow; SIM.k[3] = kMove; SIM.k[5] = kMelt; P.ero = true;
+
+// (c2) the same 100 quiescent frames with the surface law on. It and the flight cooling it
+// feeds are the only passes left that move anything, so this is where their books are read
+// without the flow to hide behind: everything that moves is inside the weathering band, the
+// mass stays inside the parcels, and the heat the sediment loses is the heat the cooling
+// booked. (The erosion's own law is pt-p4-erosion.js's subject; this is what it does to the
+// enthalpy book the rest of this harness is about.)
+configure('cool', [256, 24], 0);
+SIM.k[2] = null; SIM.k[3] = null; SIM.k[5] = null;
+SIM.run(1);
+var mTot = 0, hTot = invH(), led0 = S.hLedger, ero0 = S.thr.eroCr + S.thr.eroDep;
+var nQ = S.n, cMove = 0, cH = 0, cDeep = 0, cMan = 0, cDep = 0;
+for (i = 0; i < S.n; i++) mTot += S.m[i];
+hs = new Float64Array(S.n); ms = new Float64Array(S.n);
+for (i = 0; i < S.n; i++) { hs[i] = S.H[i]; ms[i] = S.m[i]; }
+SIM.run(100);
+for (i = 0; i < nQ; i++) {
+	if (S.m[i] !== ms[i]) cMove++;
+	if (S.H[i] !== hs[i]) cH++;
+	if (S.m[i] !== ms[i] || S.H[i] !== hs[i]) {
+		if (S.y[i] > P.eroBand) cDeep++;
+		if (S.ph[i] === P.PH.dep) cDep++; else if (S.ph[i] === P.PH.mantle) cMan++;
+	}
+}
+var mTot1 = 0, dHQ = invH() - hTot, dLed = S.hLedger - led0;
+for (i = 0; i < S.n; i++) mTot1 += S.m[i];
+check.ok('with the surface law on, everything that moves is inside the weathering band',
+	cDeep === 0 && cMove > 0 && S.thr.eroCr + S.thr.eroDep > ero0,
+	cMove + ' of ' + nQ + ' parcels moved (' + cMan + ' mantle weathered, ' + cDep
+	+ ' sediment carried and ' + cH + ' of those cooled), none below ' + P.eroBand + ' km, '
+	+ (S.thr.eroCr + S.thr.eroDep - ero0).toFixed(3) + ' km2 weathered, ' + (S.n - nQ)
+	+ ' parcels added by the carries');
+check.ok('the mass it moves stays inside the parcels: weathering is a carry, not a source',
+	rel(mTot1, mTot) < 1e-12, 'residual ' + rel(mTot1, mTot).toExponential(2) + ' of '
+	+ mTot.toFixed(3) + ' km2');
+check.ok('and the heat the sediment loses is the heat the flight cooling booked',
+	cH > 0 && Math.abs(dHQ - dLed) < 1e-12 * Math.abs(hTot),
+	'dH ' + dHQ.toExponential(6) + ' km2*H against the booked ' + dLed.toExponential(6)
+	+ ', residual ' + Math.abs(dHQ - dLed).toExponential(2) + ' = '
+	+ (Math.abs(dHQ - dLed) / Math.abs(hTot)).toExponential(2) + ' of the '
+	+ hTot.toExponential(3) + ' inventory, which is the resolution the sum has left at this '
+	+ 'book\'s size (' + (Math.abs(dHQ - dLed) / Math.abs(dLed)).toExponential(2)
+	+ ' of the book itself)');
 SIM.k[2] = kFlow; SIM.k[3] = kMove; SIM.k[5] = kMelt;
 
 // (d) the reset seeds a state the very first phase pass cannot change

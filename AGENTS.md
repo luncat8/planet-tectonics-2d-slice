@@ -79,14 +79,18 @@ contact census re-derived from the kernel's own table that decided the two open 
 (no plate-size threshold; translation-only brake), the slider matrix, and the P4 freeze; it
 delegates the five P4 owner harnesses and pt-p3-check.js as children and quotes their counts
 rather than re-measuring them),
-experiments/pt-buried-deposit-melt.js (the 0.3.1 harness: section A is the M1 routing fixture --
-the certificate, the depth and threshold terms of the G5 deposit gate, both transfer shapes and
-the capacity rule, all on the kernel; sections B/C are report-only measurement of the buried,
+experiments/pt-buried-deposit-melt.js (the 0.3.1 harness: section A is the routing fixture --
+the certificate, the depth, the threshold and M2's field-support terms of the G5 deposit gate
+one at a time, both transfer shapes and the capacity rule, all on the kernel and with the node
+field the fixtures own; sections B/C are report-only measurement of the buried,
 threshold-molten deposit stock, frame-sampled residence, the shallow-cooling boundary, the margin
-reading that says how far the buried population sits from the threshold, the local node field's
-temperature beside each sample's own, and the live `thr.depMelt` intake the route takes; it runs
-one live leg or a cell matrix -- `--cells seed:kyr:myr,...`, each cell a seed with its own clock
-and duration, the first repeated for a fingerprint check -- and changes no routing itself),
+reading that says how far the buried population sits from the threshold, the live `thr.depMelt`
+intake the route takes, and -- per source, at the boundary the kernel decides on -- every routing
+candidate's own temperature against its solidus and against the node field, the adjoint pairing's
+gain (`cw = mu_k / W_k` over its stencil) and its mass share of that stencil, beside the same
+readings for the populations they were drawn from and for the deposits the field term holds back;
+it runs one live leg or a cell matrix -- `--cells seed:kyr:myr,...`, each cell a seed with its own
+clock and duration, the first repeated for a fingerprint check -- and changes no routing itself),
 and the cut in three: experiments/slice-cut.js (the walk, the pack, the resample),
 section-pack.js (the section page: transports, refusals, switches, HUD), section-seed.js (the
 mapping: the z identity, the ledger, the quiet start, the two run modes), checkpoint.js (the
@@ -121,13 +125,17 @@ that columns.html loads every js/*.js exactly once, and a shared format is not a
 
 plans: 0.1.7-plan.md (crust flow-law units and the honest ceiling), 0.1.9-plan.md (the two
 contact measurements: R1's site and background, R2's needle shoulder), 0.3.1-plan.md (buried-
-deposit remelting: measurement, cooling eligibility, conservative G5 routing and ledger gates),
+deposit remelting: measurement, cooling eligibility, conservative G5 routing, M2's field-support
+term and the ledger gates -- closed at M2, `archive/0.3.1-M2-acceptance-report.md` and
+`archive/0.3.1-M2-acceptance-worklog.md`),
 0.4.0-sync-plan.md (what is exchanged with the reference project, in which direction), 0.4.1-plan.md (the cut: a line on
 the globe's map -> a section here), 0.9.0-draft-sync.md (the integrated globe, later). The
 completed 0.1.8 plan is `archive/0.1.8-plan.md` (collision arrest and orogen memory) and the
 completed 0.2.0 plan is `archive/0.2.0-plan.md` (eruptives, deposits, save/load; the series
 is accepted at M5, `archive/0.2.0-m5-worklog.md`). Drafts are
-0.3.0-draft.md and 0.4.1-draft.md.
+0.3.0-draft.md, 0.3.2-draft.md (the light-parcel heat concentration 0.3.1 M2 measured, which
+holds that release's 300 Myr intake back and is what its 600 Myr cell separates) and
+0.4.1-draft.md.
 roadmap.md — which release owns what, the runtime-authority table, what is deferred; each
 release's own plan is still the authority for its milestones.
 
