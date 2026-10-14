@@ -299,9 +299,21 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   off-manifold inside its horizon). The node-wise conservative bounded redistribution
   preserves the wall (1.309e-3) but is rejected: 3,118 of its placements find no local
   capacity in a ~4-parcel bucket and its out-of-bound count equals its giveback count —
-  the constraint is local heat capacity, not local energy. Next: remedy the launch/air
-  booking (M2 candidate, wall ledger untouched, per-frame gate on the extended cell), then
-  re-measure the tail against a green identity.
+  the constraint is local heat capacity, not local energy. **M2 remedied the launch/air
+  booking (`archive/0.3.2-M2-launch-air-report.md`)** — the identity closes to 9.63e-9 km²·H on
+  the extended cell, every grid-coupled reading of which is bitwise unchanged — **and
+  re-measured the tail on that green identity, selecting nothing
+  (`archive/0.3.2-M2-tail-matrix-report.md`):** stencil-scale bounded placement is feasible
+  but clips the light deposits at T = 1.500 while they stay 0.72 above their field, and the
+  held-back concentration grows; a zero-sum sub-grid relaxation toward the field removes the
+  concentration and holds the bound, wall and books on deposits, but re-melts P3.2's
+  undepleted residue every frame (8,559 transfers from 40 parcels, hosts to 5e-324 km²; over
+  the mantle, a saturated pool); booked against the wall instead, it is −7.5% of the wall
+  flux. The M2 clock/seed matrix holds the latent identity at ≤ 3.3e-12 of its books on all
+  21 cells and finds the concentration in mobile melt too (seed 2 above 1.5 at three of four
+  clocks). The shipped tree passes every owner harness serially (15 legs, 617 checks; 14.78
+  and 16.82 ms/frame at 50 kyr) and stays red on that per-phase bound. Next: a melt-depletion law for the split residue, then the
+  deposit-scope relaxation re-measured on it; the mobile-melt face measured on its own.
 - **The crust kernel's ×1000 (found in 0.4.1 M2): settled by `0.1.7-plan.md`.** Both
   flow laws now read `1/Myr` on metre excesses, in a backward-Euler form that is stable
   at every slider leg, with the belt's receiver capped to the ceiling headroom and the

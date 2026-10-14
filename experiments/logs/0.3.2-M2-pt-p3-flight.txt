@@ -1,0 +1,69 @@
+
+1. vent stock becomes one conserved airborne batch on geological time
+PASS  the effusive rate emits min(stock, emitEff * dt)   air 50   vent 50
+PASS  the admitted parcel is airborne and starts above its local horizon   phase 2   y -0.050
+PASS  mass closes over vent -> air   rel 0.00e+0  got 41688546.7024328 km2  want 41688546.7024328
+PASS  enthalpy closes   rel 0.00e+0  got 40423766.59167913 km2*H  want 40423766.59167913
+PASS  melt closes   rel 0.00e+0  got 430837.85072922654 km2  want 430837.85072922654
+PASS  felsic material closes   rel 0.00e+0  got 10 km2  want 10
+PASS  water closes   rel 0.00e+0  got 1399.8504464348505 km2  want 1399.8504464348505
+PASS  the flight debit and credit match exactly   50/50 in 1 emissions
+PASS  zero geological time emits nothing
+PASS  the explosive schedule uses its own geological transfer rate   air 200   vent 100
+PASS  a full pool leaves the material staged in its vent   vent 100   refusals 1
+
+2. ballistic motion uses bounded wall time, not the geology slider
+PASS  x follows constant wall-speed motion   rel 0.00e+0  got 3999.850174972054 km  want 3999.850174972054
+PASS  y follows the closed-form constant-gravity arc   rel 0.00e+0  got -0.376075304117537 km  want -0.376075304117537
+PASS  and vy gains gravity times wall dt   rel 0.00e+0  got -15.903765205876848 km/s  want -15.903765205876848
+PASS  a suspended-tab interval is capped at flightDtMax   y -0.835188/-0.835188
+PASS  the same wall interval gives the same flight at both geology-slider extremes
+PASS  an effusive clast stays legible for the calibrated sub-second arc   0.842 s, peak 3.54 km
+PASS  an explosive clast has the taller, longer calibrated arc   1.400 s, peak 9.74 km
+PASS  a continuously supplied fountain remains legible for the planned 2-4 seconds   3.47 s from first airborne batch through the last arc
+PASS  a UI-pause wall step moves flight without advancing geology   t 0   dy -0.785
+
+3. landing returns the same material to one deposit parcel
+PASS  the clast lands as a young, bond-free deposit   phase 3   age 0
+PASS  it lands on the physical (unexaggerated) terrain horizon   rel 0.00e+0  got -3 km  want -3
+PASS  collision does not use the renderer's relief exaggeration   landed y -3 km
+PASS  landing changes phase without making a renderer-only copy   n 23553   mass 50
+PASS  landing debit and credit match exactly   50/50
+PASS  a compatible landing coalesces through the pool merge, once   merge 1   n 23553
+PASS  the coalesced deposit carries both masses   rel 0.00e+0  got 60 km2  want 60
+PASS  incompatible deposit compositions remain separate
+
+4. landed lava cools on geological time and closes the heat books
+PASS  the surface exchange cools and crystallises the deposit   H 1.200 -> 0.003   melt 0.000
+PASS  the inventory enthalpy change is the booked surface-wall flux to the global gate   rel 1.09e-10  got -59.851274862885475 km2*H  want -59.851274869400015
+PASS  the operator-side wall book carries the same exchange   -59.851275
+PASS  sensible plus latent cooling is the same enthalpy change   residual 0.00e+0
+PASS  cooled ejecta stays a deposit instead of recycling into its source chamber   phase 3   chambers 1
+PASS  zero geological time does not cool a deposit
+PASS  surface exchange also restores an overcooled deposit toward ambient   H -0.100 -> -0.061
+PASS  that restoring heat is booked by the same wall transaction   rel 7.90e-16  got 1.9673467014368313 km2*H  want 1.9673467014368329
+
+5. a landed deposit joins the local plate by tauWeld
+PASS  after tauWeld the deposit is strong enough to bond   age 20   mu 0.632
+PASS  and belongs to the same cluster as the cold substrate   clusters 0/0/0
+
+6. the shipped geometry opens and completes the material path
+PASS  the default lower-crustal geometry opens a conduit in the demonstration run   first ejecta 6.55 Myr   drains 674
+PASS  vent stock reaches flight and the terrain   emit 674   land 575   air peak 168   deposits 262
+PASS  the live global mass inventory closes   rel 0.00e+0  got 41688446.7024328 km2  want 41688446.7024328
+PASS  the live enthalpy inventory closes against conduction plus surface cooling   relative residual -1.99e-16
+PASS  every transfer pair matches   vent 1597.3 air 1597.3 land 1588.2
+PASS  drained chamber mass is either in a vent or credited to flight   rel 0.00e+0  got 1597.2716826575056 km2  want 1597.2716826575056
+PASS  emitted mass is either airborne or debited by landing   rel 9.96e-16  got 1597.2716826575056 km2  want 1597.271682657504
+PASS  landed and weathered mass is the current deposit stock despite coalescence   rel 2.58e-15  got 2117.3117640818355 km2  want 2117.311764081841
+PASS  the shared reserve holds the active eruption without a dropped transfer   peak 25200/28263   refusals 0
+PASS  the latent identity survives flight, landing and cooling   residual 6.71e-9
+INFO  the default eruption census at 20 Myr   39 chambers, 674 drains, 674 batches, 575 landings, 571 deposit merges, 0 blocked
+
+7. a fixed geological and wall-time sequence replays exactly
+PASS  the same wall sequence has the same complete-state fingerprint   hash 1328298315032869/1328298315032869
+PASS  a different wall sequence is state, not hidden nondeterminism   hash 1328298315032869/263531226738749
+
+  total 6.7 s
+
+ALL PASS (50 checks)

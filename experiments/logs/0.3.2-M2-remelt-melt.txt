@@ -1,0 +1,72 @@
+
+A. the routing boundary: certificate plus depth plus meltHold plus the field, and nothing less
+PASS  the probe starts with molten deposits on both sides of the cutoff   xi 0.200/0.200/0.200
+PASS  an uncertified deposit is not re-phased, however deep and however molten   parcels 3, split 0, whole 0, depMelt tx 0
+PASS  the cooling mask includes y = depositCoolDepth   H shallow/boundary 0.755/0.757 -> 0.278/0.278
+PASS  the pass certifies the deposits it quenched below the threshold   depQ shallow/boundary/deep 1/1/0
+PASS  cool() leaves the deposit just below the mask unchanged and uncertified   y 31 km, xi 0.200
+PASS  the quenched shallow deposit is still not routed at the mask boundary   phase dep, xi 0.000
+PASS  a certified deposit past the mask sheds its melt through the P3.2 split   residue xi 0.000 at its solidus, depMelt +20.000 km2, the mantle seg book untouched
+PASS  and the child is mobile melt with no certificate of its own   phase melt, xi 1.0000
+PASS  a wholly molten certified deposit converts in place, not through the mantle book   phase melt, thr.whole 0.000, depMelt +100.000 km2
+PASS  fresh hot ejecta inside the mask is not routed and not certified   xi 1.000
+PASS  zero geological time certifies nothing   depQ 0
+PASS  a single short pass does not certify material still above the threshold   xi 0.9736
+PASS  positive-time passes certify it once its own reading is below meltHold   42 passes, xi 0.0889
+PASS  the certificate survives burial, and the parcel remelts at depth   residue xi 0.000, still certified
+PASS  a merge with uncertified material clears the certificate   depQ 0
+PASS  material carried into an uncertified deposit cannot certify it   depQ 0
+PASS  a certified donation cannot certify a receiver that was not   depQ 0
+PASS  a transfer between two certified deposits keeps the certificate   depQ 1
+PASS  a fresh parcel of a certified deposit keeps the certificate   phase dep, depQ 1
+PASS  a full pool defers the split and leaves the source exactly as it was   refuse +1, certificate intact
+PASS  a whole-parcel conversion needs no spare slot   phase melt, 1 refusal
+PASS  the mantle branch ignores the field: a frozen P3.2 shed in a field of zero   thr.seg +50.000 km2 at y 1200 km, its solidus 0.8713, the node field 0
+PASS  a certified, buried, threshold-molten deposit is held by a cold field   field 0 against the parcel solidus 0.8713, depMelt tx 4, xi 0.500000 intact
+PASS  a field 1e-9 of T below the parcel solidus still holds it   field 0.871254596 against 0.871254597
+PASS  a field 1e-9 of T above it routes the same parcel through the same split   residue xi 0.000 at its solidus, depMelt +50.000 km2, the mantle seg book untouched
+PASS  the margin is the kernel threshold: zero at xi = meltHold, linear below it   xi 0.050000 margin 2.00e-2; xi 0.100000 margin 0.00e+0; the threshold is 0.0400 of H
+PASS  an unfilled record reads as never sampled, not as cold   xi -1
+
+B. live buried-deposit exposure: 300 Myr requested, seed 6, 50 kyr/frame, all shipped P4 passes enabled
+PASS  every requested geological frame was sampled once   6000 samples over 6000 frames at 50 kyr/frame
+PASS  exposure metrics are finite and non-negative   host mass-time 1.361e+4 km2 Myr; melt-equivalent 2.046e+3 km2 Myr
+PASS  threshold-qualified deposit stock is a subset of the buried deposit stock   peak eligible 351.240 km2 against peak buried 96047.624 km2
+PASS  the global mass and enthalpy books still close   mass residual 0.00e+0 km2 (0.00e+0 rel); enthalpy residual -4.21e-8 (2.49e-14 rel)
+PASS  the existing deposit inventory identity closes, including deep recycling   dep 385771.652144 = land 307660.277596 + erosion 102970.531166 - rework 24150.208877 - deep 708.947742 - remelted 0.000000; residual 5.94e-9
+PASS  the melt book closes across both sources (M1 included)   seg 6.172e+5 + whole 0.000e+0 + depMelt 0.000e+0 - freeze 0.000e+0 = intruded 6.064e+5 + pool melt 1.089e+4; gap 2.33e-10 km2
+PASS  the live leg has no capacity refusal   0 refused transactions; fingerprint 614310596570131
+PASS  the depth bands add up to the eligible mass-time   threshold band 1.36e+4 km2 Myr against eligible 1.36e+4 km2 Myr, summed over the four depth bands
+PASS  the live leg routes nothing the field does not support, and holds back nothing it does   routed field-minus-solidus no transfer; held-back -0.2908..-0.1272
+PASS  the live leg keeps the mantle source at its own field, so the term binds only on deposits   mantle gap mean 0.0044 against the held-back deposits' 0.2096
+INFO  buried deposit stock   peak 96047.624 km2; at end 385771.652 km2 in 695 parcels; subducted deposit 708.948 km2; shed by certified deposits (M1) 0.000e+0 km2 in 0 transfers
+INFO  melt-eligible buried deposit stock   peak 351.240 km2 host mass (2 parcels) at t=261.30 Myr; peak equilibrium melt 59.889 km2; first exposure t=253.25 Myr
+INFO  sampled burden   13610.735 km2 Myr eligible host-mass; 2045.617 km2 Myr melt-equivalent; mean simultaneous eligible stock 290.828 km2 over 936 exposed frames; 85.550 parcel-Myr
+INFO  continuous residence by parcel id   2 exposure episodes, 2 IDs ever observed; mean 42.775 Myr, longest 46.800 Myr, 2 right-censored at run end; sample resolution 0.050 Myr. ID counts and entry-mass snapshots are not unique conserved material because merges/rework change parcel grouping.
+INFO  entry-event snapshots   2 qualifying episodes, 351.240 km2 host mass and 35.195 km2 melt-equivalent at their first sampled frame (re-entry may count again)
+INFO  mean depth of eligible mass-time   2164.3 km
+INFO  eligible deposits at 30-250 km   0.000 km2 Myr host-mass exposure; 0.000 km2 Myr melt-equivalent exposure; 2417415.469 km2 Myr total buried-deposit exposure
+INFO  eligible deposits at 250-600 km   0.000 km2 Myr host-mass exposure; 0.000 km2 Myr melt-equivalent exposure; 399845.762 km2 Myr total buried-deposit exposure
+INFO  eligible deposits at 600-2400 km   11626.345 km2 Myr host-mass exposure; 1709.418 km2 Myr melt-equivalent exposure; 2198895.394 km2 Myr total buried-deposit exposure
+INFO  eligible deposits at >2400 km   1984.390 km2 Myr host-mass exposure; 336.199 km2 Myr melt-equivalent exposure; 518618.368 km2 Myr total buried-deposit exposure
+INFO  closest approach in 30-250 km   xi 0.0000 against the threshold 0.1 at y 249.5 km, t=228.70 Myr; T 0.587 against its own solidus 0.851, local field T 0.380; H 0.5871 against the threshold enthalpy 0.8910; margin 0.3039 of H (0.1000 of melt fraction) on 0.0 km2 of host, cF 0.000 cW 0.0050
+INFO  closest approach in 250-600 km   xi 0.0215 against the threshold 0.1 at y 599.9 km, t=248.70 Myr; T 0.898 against its own solidus 0.895, local field T 0.581; H 0.9038 against the threshold enthalpy 0.9352; margin 0.0314 of H (0.0785 of melt fraction) on 0.0 km2 of host, cF 0.000 cW 0.0050
+INFO  closest approach in 600-2400 km   xi 0.5412 against the threshold 0.1 at y 1869.0 km, t=300.00 Myr; T 0.997 against its own solidus 0.916, local field T 0.721; H 1.1323 against the threshold enthalpy 0.9559; margin -0.1765 of H (-0.4412 of melt fraction) on 0.0 km2 of host, cF 0.000 cW 0.0050
+INFO  closest approach in >2400 km   xi 0.1705 against the threshold 0.1 at y 2470.1 km, t=300.00 Myr; T 0.979 against its own solidus 0.954, local field T 0.827; H 1.0220 against the threshold enthalpy 0.9938; margin -0.0282 of H (-0.0705 of melt fraction) on 351.2 km2 of host, cF 0.000 cW 0.0032
+INFO  hottest buried deposit   T 0.997 at y 1869.0 km, xi 0.5412, Ts 0.916, local field T 0.721, cF 0.000 cW 0.0050, t=300.00 Myr
+INFO  melt-fraction mass-time histogram   xi<0.005 5.517e+6 km2 Myr (99.673%); xi 0.005-0.01 1.756e+2 km2 Myr (0.003%); xi 0.01-0.02 3.864e+2 km2 Myr (0.007%); xi 0.02-0.05 1.247e+3 km2 Myr (0.023%); xi 0.05-0.1 2.687e+3 km2 Myr (0.049%); xi>=0.1 (eligible) 1.361e+4 km2 Myr (0.246%)
+INFO  hottest parcel in the world   T 1.373 at y 38.7 km in phase melt, H 1.623, local field T 0.032, t=295.95 Myr -- above the CMB wall temperature
+INFO  highest parcel enthalpy   H 1.623 (T 1.373, xi 1.000) at y 38.7 km in phase melt, cF 0.000 cW 0.0007, t=295.95 Myr; deep source rock's own liquidus sits above the CMB wall by the meltSup margin plus meltGap, so a melt leaf of it may carry H above the surface-anchored 1.25
+INFO  deep interior yardstick   the hottest non-deposit parcel below 2400 km reached T 1.024 at y 2613.7 km, t=300.00 Myr, against the buried deposit population's peak T 0.997
+INFO  buried deposits ever above xi = 0   3 of 259 sampled IDs; 1.828e+4 km2 Myr above a zero melt fraction
+INFO  mantle segregation at the same boundary   3221 samples, 5.6914e+6 km2 of host mass, 6.1724e+5 km2 melt-equivalent, 2.8457e+5 km2 Myr of sampled mass-time; T-field gap 0.0044 mean (-0.175..0.664), own reading above its solidus 0.0163, field against that solidus -0.6486..0.1902 (mean 0.0119); adjoint gain 1.013 (0.402..2.212), mass share of its stencil 0.1771
+INFO  deposit remelt the gate takes   none
+INFO  deposits the field term holds back   1711 samples of a population nothing consumes, 1.3611e+4 km2 Myr of host mass-time, 2.0456e+3 km2 Myr melt-equivalent; T-field gap 0.2096 mean (0.153..0.313), own reading above its solidus 0.0225, field against that solidus -0.2908..-0.1272 (mean -0.1870); adjoint gain 1.164 (1.104..1.285), mass share of its stencil 0.0047
+INFO  the mantle population the seg source is drawn from, 1/8 stride   17590900 samples, 3.1001e+10 km2 of host mass, 1.5720e+8 km2 melt-equivalent, 1.5500e+9 km2 Myr of sampled mass-time; T-field gap -0.0007 mean (-0.576..0.509), own reading above its solidus -0.0449, field against that solidus -0.8000..0.2619 (mean -0.0442); adjoint gain 1.052 (0.132..12.964), mass share of its stencil 0.0892
+INFO  the buried-deposit population the remelt source is drawn from, 1/8 stride   39889 samples, 1.3411e+7 km2 of host mass, 0.0000e+0 km2 melt-equivalent, 6.7054e+5 km2 Myr of sampled mass-time; T-field gap -0.1260 mean (-0.473..0.090), own reading above its solidus -0.5806, field against that solidus -0.8012..-0.0962 (mean -0.4546); adjoint gain 1.079 (0.440..9.620), mass share of its stencil 0.0919
+INFO  field-gap histogram of the sampled host mass   mantle gap<-0.05 0.12%; gap -0.05..0 5.45%; gap 0..0.05 94.33%; gap 0.05..0.1 0.04%; gap 0.1..0.2 0.00%; gap 0.2..0.3 0.03%; gap 0.3..0.5 0.01%; gap>=0.5 0.01% || routed deposits gap<-0.05 0.00%; gap -0.05..0 0.00%; gap 0..0.05 0.00%; gap 0.05..0.1 0.00%; gap 0.1..0.2 0.00%; gap 0.2..0.3 0.00%; gap 0.3..0.5 0.00%; gap>=0.5 0.00% || held-back deposits gap<-0.05 0.00%; gap -0.05..0 0.00%; gap 0..0.05 0.00%; gap 0.05..0.1 0.00%; gap 0.1..0.2 21.93%; gap 0.2..0.3 78.06%; gap 0.3..0.5 0.00%; gap>=0.5 0.00%
+INFO  deposit held back by the field term 1 of 2   t=253.25 Myr, y 700.7 km, 0.021 km2 host carrying 0.002 km2 of melt at xi 0.1003; T 0.9151 against its own solidus 0.9000 and a node field of 0.6103 (gap 0.3048, field support -0.2898); adjoint gain 1.285, mass share of its stencil 0.0000
+INFO  deposit held back by the field term 2 of 2   t=261.30 Myr, y 1772.8 km, 351.219 km2 host carrying 35.192 km2 of melt at xi 0.1002; T 0.9668 against its own solidus 0.9518 and a node field of 0.7229 (gap 0.2440, field support -0.2289); adjoint gain 1.200, mass share of its stencil 0.0051
+INFO  time   100.9 s
+
+ALL PASS (37 checks)

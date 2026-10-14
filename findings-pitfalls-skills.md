@@ -1259,3 +1259,46 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   (gains to 11.9) exceeds what three neighbours can absorb inside the bounds; the remedy
   family that remains is a wider feasible set or a wall-booked correction, not a tighter
   local split.
+
+## 0.3.2 M2 — the tail family on a green identity (archive/0.3.2-M2-tail-matrix-worklog.md)
+
+- **A remedy that passes the gate list can still be a clip.** Stencil-scale bounded placement
+  was the first probe to hold T, wall, books and frame together on the 600 Myr cell (0
+  infeasible placements against node scale's 3,118) — by parking the light deposits *at*
+  T = 1.500 while they stayed 0.72 above their field, and the held-back concentration grew 38%.
+  When a gate is a bound, also read the population's distance from what it should track (here
+  T − field and the held-back census); a bound that a pile of parcels sits exactly on is
+  measuring the remedy's own cap.
+- **A booking makes a source visible, not conservative.** The relaxation booked as an
+  explicit source beside the wall read 2.1e-3 on the operator-only ratio and −7.48% of the
+  wall as its own term; folding it into `S.wall` would have "passed" P4 at 2e-3. Keep a
+  non-operator term separate, gate the uncompensated ratio, and print the source's share.
+- **Restoring light parcels reaches physics pure FLIP never exercised.** The zero-sum
+  sub-grid relaxation removed the held-back concentration (0 samples against 30,906) and then
+  found that P3.2's split residue is undepleted: in a supporting field it re-melts every frame
+  (8,559 transfers from 40 parcels, hosts down to 5e-324 km²; over the whole mantle 850,098
+  routings and a saturated pool). Grid conduction had been rate-limiting the reheating, which hid the missing depletion
+  law. Before adopting any faster parcel–field coupling, check what each kernel downstream
+  assumed about the old rate.
+- **A margin of 0.011 is not a pass, it is the next failure.** The baseline's coldest mantle
+  parcel is −0.489 against a −0.5 bound; the M0 floor, relaxation and merge probes and the M2
+  wall-booked relaxation crossed it, and the zero-sum one crossed or did not depending on
+  round-off. Report the closest approach to a bound beside the violation count, per phase.
+- **Commit probe code before banking from it, and treat a "pure" refactor of it as a new
+  measurement.** Folding two stencil loops into one helper reassociated a few floating-point
+  sums; on a leg whose route bleeds (a residue re-split every frame) that moved 521 transfers
+  to 8,559 and a 21-sample bound violation to none. The pre-refactor code had never been
+  committed, so its banks could not be reproduced and were re-measured. A chaotic reading
+  that a reassociation moves by an order of magnitude is itself evidence of the degeneracy;
+  but only conclusions that survive both banks may stand in the report.
+- **A per-phase gate across a matrix finds what one cell's whole-cloud reading cannot.** The
+  M2 matrix found mobile melt above 1.5 on seed 2 at three clocks; the only prior T gate on a
+  300 Myr leg read seed 1 (melt peak 1.388) and the tail probes excluded mobile melt by design.
+- **Editing a runner while a matrix spawns children from it changes later cells.** Each
+  matrix cell is a fresh process that reads the runner file at spawn time; hold edits until
+  the matrix is done (or copy the runner to a frozen path first).
+- **Verify a booking remedy by bitwise invariance of everything it should not touch.** The
+  launch/air re-bank reproduced every grid-coupled reading of the M0 bank bitwise — held
+  census, extrema, wall, books, the three protected events — while only the latent residual
+  and the hash moved. That is survival by identity, a stronger claim than any event
+  correspondence argument, and the checker now asserts it.

@@ -1,0 +1,24 @@
+PASS baseline fingerprint, individual transfers and untimed diagnostics replay exactly
+candidate       wall worst   ms/frame   dep T range       held km2 Myr  tx    melt km2   exact old events  decision
+baseline        1.546e-3     15.82      -0.791..2.267     68140.14      3     9.730158   3                 NOT ACCEPTED
+cap2            1.456e-2     16.41      -0.773..1.576     38736.89      12    42.228485  0                 NOT ACCEPTED
+floor001        4.607e-2     15.97      -1.320..1.582     29208.78      1     8.286615   0                 NOT ACCEPTED
+relax999        4.774e-2     16.03      -0.900..1.692     10152.72      17    15.402341  0                 NOT ACCEPTED
+minimum1        1.039e-3     16.08      -0.779..1.636     54814.81      1     30.390631  0                 NOT ACCEPTED
+spread15        1.309e-3     11.51      -2.441..2.046     69179.82      1     18.878268  0                 NOT ACCEPTED
+  spread: 4451 parcel deliveries capped, 3222 bucket absorptions, 3118 infeasible givebacks on 3118 short nodes, 4268.959406 km2*H returned
+baseline-repeat 1.546e-3     17.07      -0.791..2.267     68140.14      3     9.730158   3                 NOT ACCEPTED
+PASS seven complete cells; events reconcile to actual transfers, field support and global books
+PASS M2 re-bank 6191250240167390: every grid-coupled reading and all three protected events equal the M0 bank bitwise; latent 6.44e-8 km2*H, 6.19e-13 of its books (M0 bank: 9.66e-3 relative)
+M2 row             wall worst   R/wall      dep T range       mantle out  held km2 Myr  tx    bleed  melt km2     refusals  same-id  decision
+m2-baseline        1.546e-3     0.00e+0     -0.791..2.267     0           68140.14      3     0      9.730158     0         3        NOT ACCEPTED
+m2-stencil15       7.238e-4     0.00e+0     -0.500..1.500     0           94080.79      1     0      0.118160     0         0        NOT ACCEPTED
+  stencil: 4688 capped, 101544 absorptions, 0 infeasible givebacks on 0 short nodes; hottest deposit T 1.500 in a field of 0.776 at 186.6 km
+m2-subgrid1-dep    1.488e-3     3.84e-5     -0.109..1.114     0           0.00          8559  7876   224.612437   0         0        NOT ACCEPTED
+  relax (subgrid, scope dep): gross exchange 4.190e+5 km2*H, booked net -1.782e+2, smallest routed host 4.94e-324 km2
+m2-subgrid1-solid  3.796e-3     1.32e-4     -0.140..1.101     0           183.80        203   1583   22.004123    876932    0        NOT ACCEPTED
+  relax (subgrid, scope solid): gross exchange 7.072e+6 km2*H, booked net -5.395e+2, smallest routed host 1.31e-59 km2
+m2-relaxw1-dep     7.688e-2     -7.48e-2    -0.103..1.114     395         5.82          2777  2600   73.430784    0         0        NOT ACCEPTED
+  relax (relaxw, scope dep): gross exchange 4.385e+5 km2*H, booked net 3.583e+5, smallest routed host 0.00e+0 km2
+PASS M2 rows; every row closes mass, enthalpy, deposit, melt and latent books on every frame
+Candidate rejections are measurement outcomes, not a failing measurement harness.

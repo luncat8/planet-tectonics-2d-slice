@@ -1,0 +1,193 @@
+0.3.2 M2 clock/seed matrix: 21 cells + one repeat, candidate baseline, 2 concurrent, all shipped P3/P4 passes, pure FLIP
+INFO  seed 1 at 10 kyr/frame over 300 Myr   fingerprint 3615495381622019; 30000 frames; T dep -0.092..1.115, mantle -0.220..1.033; held back 4647 samples / 6492.43 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 3252; 16.09 ms/frame (concurrent, not gated); 513 s
+PASS  seed 1 at 10 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 7.11e-11, deposit -7.86e-9 km2, melt -4.46e-10 km2
+PASS  seed 1 at 10 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 2.61e-12 of its books at frame 1, largest residual 8.55e-8 km2*H; plan floor-1 metric 1.09e-8 (frame 15388)
+PASS  seed 1 at 10 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 1.35e-5, end 6.56e-6 (historical 5e-5 reference met)
+PASS  seed 1 at 10 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.220..1.033, 0 parcel-frame samples outside
+PASS  seed 1 at 10 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.574..1.376, 0 parcel-frame samples outside
+PASS  seed 1 at 10 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.081..1.115, 0 parcel-frame samples outside
+PASS  seed 1 at 10 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.092..1.115, 0 parcel-frame samples outside
+PASS  seed 1 at 10 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 2 at 10 kyr/frame over 300 Myr   fingerprint 5488525365180713; 30000 frames; T dep -0.088..1.114, mantle -0.220..1.033; held back 0 samples / 0.00 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 2786; 16.33 ms/frame (concurrent, not gated); 519 s
+PASS  seed 2 at 10 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 3.28e-11, deposit 8.82e-9 km2, melt -2.53e-10 km2
+PASS  seed 2 at 10 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 5.02e-13 of its books at frame 1, largest residual 4.25e-8 km2*H; plan floor-1 metric 9.01e-9 (frame 20515)
+PASS  seed 2 at 10 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 1.22e-5, end 1.07e-5 (historical 5e-5 reference met)
+PASS  seed 2 at 10 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.220..1.033, 0 parcel-frame samples outside
+PASS  seed 2 at 10 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.586..1.370, 0 parcel-frame samples outside
+PASS  seed 2 at 10 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.086..1.114, 0 parcel-frame samples outside
+PASS  seed 2 at 10 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.088..1.114, 0 parcel-frame samples outside
+PASS  seed 2 at 10 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 3 at 10 kyr/frame over 300 Myr   fingerprint 159151274053989; 30000 frames; T dep -0.197..1.114, mantle -0.295..1.033; held back 0 samples / 0.00 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 2949; 16.50 ms/frame (concurrent, not gated); 528 s
+PASS  seed 3 at 10 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 1.37e-11, deposit 6.72e-9 km2, melt -6.13e-10 km2
+PASS  seed 3 at 10 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 5.42e-13 of its books at frame 1, largest residual 5.83e-8 km2*H; plan floor-1 metric 1.08e-8 (frame 19393)
+PASS  seed 3 at 10 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 2.37e-5, end 2.27e-5 (historical 5e-5 reference met)
+PASS  seed 3 at 10 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.295..1.033, 0 parcel-frame samples outside
+PASS  seed 3 at 10 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.581..1.173, 0 parcel-frame samples outside
+PASS  seed 3 at 10 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.084..1.114, 0 parcel-frame samples outside
+PASS  seed 3 at 10 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.197..1.114, 0 parcel-frame samples outside
+PASS  seed 3 at 10 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 5 at 10 kyr/frame over 300 Myr   fingerprint 5698558540525760; 30000 frames; T dep -0.120..1.114, mantle -0.187..1.033; held back 1569 samples / 0.17 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 2864; 16.54 ms/frame (concurrent, not gated); 526 s
+PASS  seed 5 at 10 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 8.28e-11, deposit -1.86e-9 km2, melt 3.35e-10 km2
+PASS  seed 5 at 10 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 3.29e-12 of its books at frame 1, largest residual 5.25e-8 km2*H; plan floor-1 metric 3.81e-9 (frame 18576)
+PASS  seed 5 at 10 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 3.29e-5, end 2.85e-5 (historical 5e-5 reference met)
+PASS  seed 5 at 10 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.187..1.033, 0 parcel-frame samples outside
+PASS  seed 5 at 10 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.568..1.440, 0 parcel-frame samples outside
+PASS  seed 5 at 10 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.070..1.114, 0 parcel-frame samples outside
+PASS  seed 5 at 10 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.120..1.114, 0 parcel-frame samples outside
+PASS  seed 5 at 10 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 7 at 10 kyr/frame over 300 Myr   fingerprint 2874693105150574; 30000 frames; T dep -0.295..1.114, mantle -0.360..1.033; held back 0 samples / 0.00 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 3171; 16.23 ms/frame (concurrent, not gated); 519 s
+PASS  seed 7 at 10 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 3.72e-11, deposit 8.27e-9 km2, melt 1.20e-10 km2
+PASS  seed 7 at 10 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 2.53e-12 of its books at frame 1, largest residual 3.66e-8 km2*H; plan floor-1 metric 1.20e-8 (frame 15679)
+PASS  seed 7 at 10 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 8.46e-5, end 3.32e-5 (historical 5e-5 reference not met)
+PASS  seed 7 at 10 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.360..1.033, 0 parcel-frame samples outside
+PASS  seed 7 at 10 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.575..1.343, 0 parcel-frame samples outside
+PASS  seed 7 at 10 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.071..1.114, 0 parcel-frame samples outside
+PASS  seed 7 at 10 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.295..1.114, 0 parcel-frame samples outside
+PASS  seed 7 at 10 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 1 at 50 kyr/frame over 300 Myr   fingerprint 7959153446654571; 6000 frames; T dep -0.217..1.115, mantle -0.250..1.016; held back 0 samples / 0.00 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 3292; 16.75 ms/frame (concurrent, not gated); 107 s
+PASS  seed 1 at 50 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 9.42e-12, deposit 1.98e-9 km2, melt -4.86e-10 km2
+PASS  seed 1 at 50 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 4.04e-13 of its books at frame 1, largest residual 2.09e-8 km2*H; plan floor-1 metric 6.73e-10 (frame 3154)
+PASS  seed 1 at 50 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 4.89e-5, end 3.57e-5 (historical 5e-5 reference met)
+PASS  seed 1 at 50 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.250..1.016, 0 parcel-frame samples outside
+PASS  seed 1 at 50 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.579..1.388, 0 parcel-frame samples outside
+PASS  seed 1 at 50 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.082..1.115, 0 parcel-frame samples outside
+PASS  seed 1 at 50 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.217..1.115, 0 parcel-frame samples outside
+PASS  seed 1 at 50 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 2 at 50 kyr/frame over 300 Myr   fingerprint 2285870507950569; 6000 frames; T dep -0.104..1.114, mantle -0.273..1.032; held back 0 samples / 0.00 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 2799; 17.46 ms/frame (concurrent, not gated); 111 s
+PASS  seed 2 at 50 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 2.31e-12, deposit 1.54e-9 km2, melt -1.27e-11 km2
+PASS  seed 2 at 50 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 1.12e-13 of its books at frame 1, largest residual 8.37e-9 km2*H; plan floor-1 metric 1.40e-9 (frame 4221)
+PASS  seed 2 at 50 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 1.73e-5, end 1.36e-5 (historical 5e-5 reference met)
+PASS  seed 2 at 50 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.273..1.032, 0 parcel-frame samples outside
+FAIL  seed 2 at 50 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.528..1.510, 8 parcel-frame samples outside
+PASS  seed 2 at 50 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.082..1.114, 0 parcel-frame samples outside
+PASS  seed 2 at 50 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.104..1.114, 0 parcel-frame samples outside
+PASS  seed 2 at 50 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 3 at 50 kyr/frame over 300 Myr   fingerprint 3850002754143152; 6000 frames; T dep -0.138..1.114, mantle -0.180..1.032; held back 0 samples / 0.00 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 2928; 17.49 ms/frame (concurrent, not gated); 112 s
+PASS  seed 3 at 50 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 9.96e-12, deposit 2.59e-9 km2, melt 2.42e-10 km2
+PASS  seed 3 at 50 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 1.08e-13 of its books at frame 49, largest residual 3.40e-8 km2*H; plan floor-1 metric 1.26e-9 (frame 3840)
+PASS  seed 3 at 50 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 8.30e-5, end 7.40e-5 (historical 5e-5 reference not met)
+PASS  seed 3 at 50 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.180..1.032, 0 parcel-frame samples outside
+PASS  seed 3 at 50 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.561..1.307, 0 parcel-frame samples outside
+PASS  seed 3 at 50 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.085..1.114, 0 parcel-frame samples outside
+PASS  seed 3 at 50 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.138..1.114, 0 parcel-frame samples outside
+PASS  seed 3 at 50 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 5 at 50 kyr/frame over 300 Myr   fingerprint 517863012074027; 6000 frames; T dep -0.089..1.114, mantle -0.292..1.033; held back 0 samples / 0.00 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 2914; 17.54 ms/frame (concurrent, not gated); 112 s
+PASS  seed 5 at 50 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 5.31e-12, deposit 1.11e-9 km2, melt 1.38e-10 km2
+PASS  seed 5 at 50 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 6.19e-13 of its books at frame 1, largest residual 2.54e-8 km2*H; plan floor-1 metric 6.69e-9 (frame 3616)
+PASS  seed 5 at 50 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 1.03e-5, end 8.78e-6 (historical 5e-5 reference met)
+PASS  seed 5 at 50 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.292..1.033, 0 parcel-frame samples outside
+PASS  seed 5 at 50 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.558..1.394, 0 parcel-frame samples outside
+PASS  seed 5 at 50 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.071..1.114, 0 parcel-frame samples outside
+PASS  seed 5 at 50 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.089..1.114, 0 parcel-frame samples outside
+PASS  seed 5 at 50 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 7 at 50 kyr/frame over 300 Myr   fingerprint 2227980682959221; 6000 frames; T dep -0.111..1.114, mantle -0.310..1.032; held back 0 samples / 0.00 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 3188; 16.90 ms/frame (concurrent, not gated); 108 s
+PASS  seed 7 at 50 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 7.23e-12, deposit -3.14e-9 km2, melt 2.86e-10 km2
+PASS  seed 7 at 50 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 3.53e-13 of its books at frame 1, largest residual 1.85e-8 km2*H; plan floor-1 metric 5.35e-10 (frame 3263)
+PASS  seed 7 at 50 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 2.46e-5, end 1.34e-5 (historical 5e-5 reference met)
+PASS  seed 7 at 50 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.310..1.032, 0 parcel-frame samples outside
+PASS  seed 7 at 50 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.560..1.412, 0 parcel-frame samples outside
+PASS  seed 7 at 50 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.070..1.114, 0 parcel-frame samples outside
+PASS  seed 7 at 50 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.111..1.114, 0 parcel-frame samples outside
+PASS  seed 7 at 50 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 1 at 100 kyr/frame over 300 Myr   fingerprint 670523374406912; 3000 frames; T dep -0.193..1.115, mantle -0.267..1.031; held back 1052 samples / 2630.00 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 3332; 33.02 ms/frame (concurrent, not gated); 103 s
+PASS  seed 1 at 100 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 9.42e-12, deposit -3.49e-10 km2, melt -6.91e-11 km2
+PASS  seed 1 at 100 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 2.28e-13 of its books at frame 1, largest residual 1.88e-8 km2*H; plan floor-1 metric 2.72e-10 (frame 1569)
+PASS  seed 1 at 100 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 2.17e-5, end 2.04e-5 (historical 5e-5 reference met)
+PASS  seed 1 at 100 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.267..1.031, 0 parcel-frame samples outside
+PASS  seed 1 at 100 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.566..1.425, 0 parcel-frame samples outside
+PASS  seed 1 at 100 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.082..1.115, 0 parcel-frame samples outside
+PASS  seed 1 at 100 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.193..1.115, 0 parcel-frame samples outside
+PASS  seed 1 at 100 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 2 at 100 kyr/frame over 300 Myr   fingerprint 8170195309801269; 3000 frames; T dep -0.147..1.114, mantle -0.205..1.033; held back 1571 samples / 6398.35 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 2791; 32.75 ms/frame (concurrent, not gated); 102 s
+PASS  seed 2 at 100 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 8.60e-13, deposit -3.78e-10 km2, melt -2.91e-11 km2
+PASS  seed 2 at 100 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 7.17e-14 of its books at frame 24, largest residual 9.66e-9 km2*H; plan floor-1 metric 4.34e-10 (frame 2098)
+PASS  seed 2 at 100 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 2.05e-5, end 1.37e-5 (historical 5e-5 reference met)
+PASS  seed 2 at 100 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.205..1.033, 0 parcel-frame samples outside
+FAIL  seed 2 at 100 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.561..1.516, 28 parcel-frame samples outside
+PASS  seed 2 at 100 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.082..1.114, 0 parcel-frame samples outside
+PASS  seed 2 at 100 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.147..1.114, 0 parcel-frame samples outside
+PASS  seed 2 at 100 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 3 at 100 kyr/frame over 300 Myr   fingerprint 5001945654308059; 3000 frames; T dep -0.090..1.114, mantle -0.310..1.033; held back 0 samples / 0.00 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 2848; 33.12 ms/frame (concurrent, not gated); 103 s
+PASS  seed 3 at 100 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 2.62e-12, deposit -1.80e-9 km2, melt 5.44e-10 km2
+PASS  seed 3 at 100 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 1.08e-13 of its books at frame 22, largest residual 1.19e-8 km2*H; plan floor-1 metric 3.70e-10 (frame 1913)
+PASS  seed 3 at 100 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 3.68e-5, end 3.47e-5 (historical 5e-5 reference met)
+PASS  seed 3 at 100 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.310..1.033, 0 parcel-frame samples outside
+PASS  seed 3 at 100 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.578..1.309, 0 parcel-frame samples outside
+PASS  seed 3 at 100 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.087..1.114, 0 parcel-frame samples outside
+PASS  seed 3 at 100 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.090..1.114, 0 parcel-frame samples outside
+PASS  seed 3 at 100 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 5 at 100 kyr/frame over 300 Myr   fingerprint 451192419788115; 3000 frames; T dep -0.065..1.114, mantle -0.333..1.033; held back 0 samples / 0.00 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 2838; 32.78 ms/frame (concurrent, not gated); 102 s
+PASS  seed 5 at 100 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 3.21e-12, deposit -3.99e-9 km2, melt 2.09e-10 km2
+PASS  seed 5 at 100 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 3.42e-13 of its books at frame 1, largest residual 4.48e-8 km2*H; plan floor-1 metric 1.48e-11 (frame 1)
+PASS  seed 5 at 100 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 5.52e-6, end 9.79e-7 (historical 5e-5 reference met)
+PASS  seed 5 at 100 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.333..1.033, 0 parcel-frame samples outside
+PASS  seed 5 at 100 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.570..1.277, 0 parcel-frame samples outside
+PASS  seed 5 at 100 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.069..1.114, 0 parcel-frame samples outside
+PASS  seed 5 at 100 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.065..1.114, 0 parcel-frame samples outside
+PASS  seed 5 at 100 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 7 at 100 kyr/frame over 300 Myr   fingerprint 316235455003699; 3000 frames; T dep -0.129..1.114, mantle -0.283..1.033; held back 0 samples / 0.00 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 3188; 32.09 ms/frame (concurrent, not gated); 100 s
+PASS  seed 7 at 100 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 2.39e-12, deposit -1.69e-9 km2, melt -1.71e-10 km2
+PASS  seed 7 at 100 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 1.46e-13 of its books at frame 1, largest residual 3.58e-8 km2*H; plan floor-1 metric 5.48e-10 (frame 1626)
+PASS  seed 7 at 100 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 2.83e-5, end 2.13e-5 (historical 5e-5 reference met)
+PASS  seed 7 at 100 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.283..1.033, 0 parcel-frame samples outside
+PASS  seed 7 at 100 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.563..1.369, 0 parcel-frame samples outside
+PASS  seed 7 at 100 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.066..1.114, 0 parcel-frame samples outside
+PASS  seed 7 at 100 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.129..1.114, 0 parcel-frame samples outside
+PASS  seed 7 at 100 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 1 at 500 kyr/frame over 300 Myr   fingerprint 3145147777217964; 600 frames; T dep -0.304..1.115, mantle -0.313..1.032; held back 722 samples / 8951.62 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 3317; 154.53 ms/frame (concurrent, not gated); 94 s
+PASS  seed 1 at 500 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 5.69e-13, deposit 4.31e-9 km2, melt 3.07e-10 km2
+PASS  seed 1 at 500 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 2.18e-13 of its books at frame 4, largest residual 1.26e-8 km2*H; plan floor-1 metric 8.25e-11 (frame 307)
+PASS  seed 1 at 500 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 1.79e-5, end 1.01e-5 (historical 5e-5 reference met)
+PASS  seed 1 at 500 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.313..1.032, 0 parcel-frame samples outside
+PASS  seed 1 at 500 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.568..1.349, 0 parcel-frame samples outside
+PASS  seed 1 at 500 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.079..1.115, 0 parcel-frame samples outside
+PASS  seed 1 at 500 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.304..1.115, 0 parcel-frame samples outside
+PASS  seed 1 at 500 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 2 at 500 kyr/frame over 300 Myr   fingerprint 5447636561361740; 600 frames; T dep -0.097..1.114, mantle -0.256..1.033; held back 465 samples / 0.18 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 2804; 162.09 ms/frame (concurrent, not gated); 99 s
+PASS  seed 2 at 500 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 4.14e-13, deposit 2.24e-9 km2, melt -1.02e-10 km2
+PASS  seed 2 at 500 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 7.16e-14 of its books at frame 5, largest residual 1.62e-8 km2*H; plan floor-1 metric 7.05e-10 (frame 405)
+PASS  seed 2 at 500 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 3.02e-5, end 2.02e-5 (historical 5e-5 reference met)
+PASS  seed 2 at 500 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.256..1.033, 0 parcel-frame samples outside
+FAIL  seed 2 at 500 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.578..1.527, 6 parcel-frame samples outside
+PASS  seed 2 at 500 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.083..1.114, 0 parcel-frame samples outside
+PASS  seed 2 at 500 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.097..1.114, 0 parcel-frame samples outside
+PASS  seed 2 at 500 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 3 at 500 kyr/frame over 300 Myr   fingerprint 304973666336156; 600 frames; T dep -0.126..1.114, mantle -0.183..1.030; held back 0 samples / 0.00 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 2876; 160.15 ms/frame (concurrent, not gated); 98 s
+PASS  seed 3 at 500 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 2.44e-13, deposit 1.14e-9 km2, melt 2.22e-10 km2
+PASS  seed 3 at 500 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 1.07e-13 of its books at frame 5, largest residual 2.25e-8 km2*H; plan floor-1 metric 1.30e-10 (frame 371)
+PASS  seed 3 at 500 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 6.26e-5, end 5.55e-5 (historical 5e-5 reference not met)
+PASS  seed 3 at 500 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.183..1.030, 0 parcel-frame samples outside
+PASS  seed 3 at 500 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.562..1.197, 0 parcel-frame samples outside
+PASS  seed 3 at 500 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.087..1.114, 0 parcel-frame samples outside
+PASS  seed 3 at 500 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.126..1.114, 0 parcel-frame samples outside
+PASS  seed 3 at 500 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 5 at 500 kyr/frame over 300 Myr   fingerprint 8141042608835226; 600 frames; T dep -0.110..1.114, mantle -0.180..1.033; held back 0 samples / 0.00 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 2841; 158.39 ms/frame (concurrent, not gated); 96 s
+PASS  seed 5 at 500 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 6.79e-13, deposit -1.46e-10 km2, melt 3.91e-10 km2
+PASS  seed 5 at 500 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 1.01e-13 of its books at frame 1, largest residual 1.63e-8 km2*H; plan floor-1 metric 3.90e-10 (frame 352)
+PASS  seed 5 at 500 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 1.47e-5, end 1.74e-6 (historical 5e-5 reference met)
+PASS  seed 5 at 500 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.180..1.033, 0 parcel-frame samples outside
+PASS  seed 5 at 500 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.579..1.407, 0 parcel-frame samples outside
+PASS  seed 5 at 500 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.070..1.114, 0 parcel-frame samples outside
+PASS  seed 5 at 500 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.110..1.114, 0 parcel-frame samples outside
+PASS  seed 5 at 500 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 7 at 500 kyr/frame over 300 Myr   fingerprint 4117827600476166; 600 frames; T dep -0.097..1.114, mantle -0.283..1.032; held back 0 samples / 0.00 km2 Myr; deposit transfers 0 / 0.000000 km2; mantle routings 3130; 155.70 ms/frame (concurrent, not gated); 95 s
+PASS  seed 7 at 500 kyr/frame over 300 Myr closes its books on every frame   mass 0.00e+0, enthalpy 6.92e-13, deposit -2.91e-10 km2, melt 1.31e-10 km2
+PASS  seed 7 at 500 kyr/frame over 300 Myr holds the P3.1 latent identity on every frame   worst 1.05e-13 of its books at frame 4, largest residual 2.53e-8 km2*H; plan floor-1 metric 1.19e-10 (frame 318)
+PASS  seed 7 at 500 kyr/frame over 300 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 3.28e-5, end 2.05e-5 (historical 5e-5 reference met)
+PASS  seed 7 at 500 kyr/frame over 300 Myr keeps every mantle parcel inside -0.5..1.5   T -0.283..1.032, 0 parcel-frame samples outside
+PASS  seed 7 at 500 kyr/frame over 300 Myr keeps every melt parcel inside -0.5..1.5   T 0.560..1.233, 0 parcel-frame samples outside
+PASS  seed 7 at 500 kyr/frame over 300 Myr keeps every air parcel inside -0.5..1.5   T 1.058..1.114, 0 parcel-frame samples outside
+PASS  seed 7 at 500 kyr/frame over 300 Myr keeps every dep parcel inside -0.5..1.5   T -0.097..1.114, 0 parcel-frame samples outside
+PASS  seed 7 at 500 kyr/frame over 300 Myr routes deposits only with field support, all accounted   0 transfers, 0.000000 km2 against thr.depMelt 0.000000, 0 without support, 0 refusals
+INFO  seed 5 at 50 kyr/frame over 600 Myr   fingerprint 6191250240167390; 12000 frames; T dep -0.791..2.267, mantle -0.489..1.033; held back 30906 samples / 68140.14 km2 Myr; deposit transfers 3 / 9.730158 km2; mantle routings 5083; 15.02 ms/frame (concurrent, not gated); 193 s
+PASS  seed 5 at 50 kyr/frame over 600 Myr closes its books on every frame   mass 0.00e+0, enthalpy 5.31e-12, deposit 5.82e-9 km2, melt 6.93e-10 km2
+PASS  seed 5 at 50 kyr/frame over 600 Myr holds the P3.1 latent identity on every frame   worst 6.19e-13 of its books at frame 1, largest residual 6.44e-8 km2*H; plan floor-1 metric 6.69e-9 (frame 3616)
+PASS  seed 5 at 50 kyr/frame over 600 Myr keeps the intake on the operator's wall flux   worst |intake/wall - 1| 1.55e-3, end 1.53e-3 (historical 5e-5 reference not met)
+PASS  seed 5 at 50 kyr/frame over 600 Myr keeps every mantle parcel inside -0.5..1.5   T -0.489..1.033, 0 parcel-frame samples outside
+PASS  seed 5 at 50 kyr/frame over 600 Myr keeps every melt parcel inside -0.5..1.5   T 0.499..1.481, 0 parcel-frame samples outside
+PASS  seed 5 at 50 kyr/frame over 600 Myr keeps every air parcel inside -0.5..1.5   T 0.992..1.114, 0 parcel-frame samples outside
+FAIL  seed 5 at 50 kyr/frame over 600 Myr keeps every dep parcel inside -0.5..1.5   T -0.791..2.267, 2856 parcel-frame samples outside
+PASS  seed 5 at 50 kyr/frame over 600 Myr routes deposits only with field support, all accounted   3 transfers, 9.730158 km2 against thr.depMelt 9.730158, 0 without support, 0 refusals
+PASS  the first cell repeats bitwise, so no cell depends on its neighbours   fingerprint 3615495381622019 / 3615495381622019
+INFO  matrix   worst latent 3.29e-12 of its books, worst intake/wall 1.55e-3, deposit T -0.791..2.267, 2478 s
+FAIL (4 of 169)

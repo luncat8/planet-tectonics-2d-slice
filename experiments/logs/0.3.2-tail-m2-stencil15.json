@@ -1,0 +1,93 @@
+{
+	"kind": "stencil",
+	"value": 1.5,
+	"scope": null,
+	"seed": 5,
+	"kyr": 50,
+	"myr": 600,
+	"frames": 12000,
+	"fingerprint": 1801640955271693,
+	"mass": 0,
+	"enthalpy": 5.314990222202203e-12,
+	"latent": 6.689828543799673e-9,
+	"latentWorstFrame": 3616,
+	"latentWorstAbs": 9.633367881178856e-9,
+	"latentEnd": 3.311539405366229e-12,
+	"depositBook": 1.234002411365509e-8,
+	"meltBook": 6.184563972055912e-11,
+	"intakeWallWorst": 0.0007237665371739865,
+	"intakeWallEnd": 0.0007195358822182918,
+	"msFrame": 15.77206557583336,
+	"minT": [
+		-0.48872371593994096,
+		0.4992331776406663,
+		0.9939083709736103,
+		-0.5
+	],
+	"maxT": [
+		1.0327178561065065,
+		1.4969540228054405,
+		1.1136448501619007,
+		1.5
+	],
+	"outsideSamples": [
+		0,
+		0,
+		0,
+		0
+	],
+	"nonfinite": 0,
+	"heldSamples": 43057,
+	"heldMassTime": 94080.79254970628,
+	"heldMeltTime": 27951.822501638362,
+	"heldGapMax": 1.3867528342071123,
+	"mantleRoutes": 5079,
+	"depMelt": 0.11816016205548982,
+	"depTx": 1,
+	"refuse": 0,
+	"merged": 0,
+	"strandedAttempts": 0,
+	"spreadCapped": 4688,
+	"spreadGiven": 101544,
+	"spreadGiveback": 0,
+	"spreadShortN": 0,
+	"spreadShortH": 0,
+	"relaxSource": 0,
+	"relaxGross": 0,
+	"relaxReaction": 0,
+	"relaxResidMax": 0,
+	"relaxSourceOverWall": 0,
+	"intakeWallOperatorWorst": 0.0007237665371739865,
+	"outsideFrames": 0,
+	"hottest": {
+		"T": 1.5,
+		"frame": 8620,
+		"ph": 3,
+		"y": 186.60527912767944,
+		"m": 5.020917448110567,
+		"field": 0.7755298556342762,
+		"x": 7553.9769471687105
+	},
+	"events": [
+		{
+			"frame": 11491,
+			"id": 198972,
+			"x": 14448.96369383594,
+			"y": 78.06113123313855,
+			"host": 0.11816016205548982,
+			"melt": 0.11816016205548982,
+			"T": 1.4969540228054405,
+			"field": 0.9350653822859848,
+			"solidus": 0.8678600289057408
+		}
+	],
+	"gates": {
+		"mass": true,
+		"enthalpy": true,
+		"latent": false,
+		"intakeWallP4": true,
+		"intakeWallReference": false,
+		"frame": true,
+		"temperature": true
+	}
+}
