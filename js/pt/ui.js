@@ -249,6 +249,7 @@ var PTUI = {
 			+ '\nsurface ' + d.zMin.toFixed(1) + '..' + d.zMax.toFixed(1) + ' km   (zero mean, drawn x' + P.kRelief + ')'
 			+ '\nledger ' + fmt(S.hLedger) + '   walls ' + fmt(S.wall) + '   gap ' + (S.wall ? (S.hLedger / S.wall).toFixed(2) + 'x' : '--')
 			+ '   latent ' + fmt(P.meltLat * (S.invLTot - S.invL0))
+			+ '   resid ' + (d.latent ? d.latent.toExponential(1) : '0')
 			+ '\nT ' + d.tMin.toFixed(3) + '..' + d.tMax.toFixed(3) + '   heat ' + fmt(d.heat)
 			+ '\nmelt ' + (S.invMTot > 0 ? (S.invLTot / S.invMTot * 100).toFixed(2) : '0.00') + '% of mass'
 			+ '   max ' + d.melt.toFixed(3) + '   depth ' + d.meltY.toFixed(0) + ' km'

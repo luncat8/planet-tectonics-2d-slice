@@ -200,6 +200,7 @@ var PTS = {
 		nu: 0, uMax: 0, vMax: 0, wells: 0, heat: 0, mHeat: 0, tMin: 0, tMax: 0,
 		fluxTop: 0, fluxBot: 0, wallRate: 0, drift: 0, melt: 0, meltY: 0,
 		lid: 0, plates: 0, plV: 0, zMin: 0, zMax: 0,
+		latent: 0, latentAbs: 0,                    // P3.1 identity per frame (diag)
 		contact: 0, contactC: 0, hold: 0, subduct: 0, push: 0, over: 0, resid: 0,
 		slab: 0, slabV: 0, slabBond: 0, deep: 0,
 		arc: 0, arcW: 0, arcM: 0,
@@ -407,6 +408,7 @@ var PTS = {
 		if (this.erList) this.erList.fill(-1);
 		this.contactShort = 0; this.contactPush = 0; this.contactHold = 0; this.hgOver = 0;
 		this.eroShort = 0;
+		this.d.latent = 0; this.d.latentAbs = 0;
 		this.d.contact = 0; this.d.contactC = 0; this.d.hold = 0;
 		this.d.subduct = 0; this.d.push = 0; this.d.over = 0; this.d.resid = 0;
 		this.d.slab = 0; this.d.slabV = 0; this.d.slabBond = 0; this.d.deep = 0;

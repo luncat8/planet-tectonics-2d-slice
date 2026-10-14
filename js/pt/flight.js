@@ -37,6 +37,18 @@
 
 		// Vent k -> one airborne material batch. Admission happens before the debit, so a full
 		// pool leaves every extensive quantity in the vent and counts the refusal in pool.js.
+		//
+		// The parcel leaves the vent on-manifold and stock-consistent: the vent is debited at
+		// the stock split (f*d* of every extensive field), but a clast that reaches the surface
+		// equilibrates at pressure y=0 against its own enthalpy -- the solidus there sits below
+		// the chamber's, so specific melt rises from the vent's aggregate xiStock to xiEq at
+		// the surface. That adiabatic decompression melting is physically real: the parcel's
+		// H is unchanged and T drops to TEq to fund the extra latent. The (T, melt) pair is set
+		// to the equilibrium reading directly, and the sensible drop m * (TEq - T_stock) that
+		// funds the latent is booked against S.ledger (never S.wall -- no heat crossed the
+		// surface). That keeps hLedger - ledger = L * (invLTot - invL0) across the launch, and
+		// no later equilibrium pass has to snap an off-manifold air parcel with nothing against
+		// it (0.3.2 M1).
 		launch: function (M, S, k, dt) {
 			var stock = S.vM[k];
 			if (!(stock > 0) || !(dt > 0)) return -1;
@@ -47,11 +59,19 @@
 			if (p < 0) return -1;
 			var f = d / stock;
 			var dH = f * S.vH[k], dL = f * S.vL[k], dF = f * S.vF[k], dW = f * S.vW[k];
+			var xiStock = dL / d;
+			// Stock-consistent on the manifold: debit extensive fields, then equilibrate the
+			// clast's intensive state at surface pressure.
 			S.vM[k] -= d; S.vH[k] -= dH; S.vL[k] -= dL; S.vF[k] -= dF; S.vW[k] -= dW;
-			S.m[p] = d; S.H[p] = dH / d; S.melt[p] = dL / d;
+			S.m[p] = d; S.H[p] = dH / d;
 			S.cF[p] = dF / d; S.cW[p] = dW / d;
 			PHASE.byH(S.H[p], 0, S.cF[p], S.cW[p]);
-			S.T[p] = PHASE.out.t;
+			S.T[p] = PHASE.out.t; S.melt[p] = PHASE.out.melt;
+			// Book the air snap where it happens: S.wall stays untouched; the sensible drop
+			// S.m * (TEq - T_stock) = -L * d * (xiEq - xiStock) is what funds the extra latent
+			// invLTot sees. Adding it to S.ledger keeps the P3.1 identity closed at the launch
+			// boundary instead of waiting for equil to snap an unbooked air parcel.
+			S.ledger += d * (S.T[p] - (S.H[p] - P.meltLat * xiStock));
 			S.x[p] = wrapX(S.chX[k], M.wrap);
 			S.y[p] = this.surfaceY(M, S, S.x[p]) - P.flightLift;
 			S.e[p] = Math.asinh(S.y[p] / M.yLin);

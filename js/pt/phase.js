@@ -86,20 +86,25 @@
 
 		// G4's first half, one pass over the whole pool. Every parcel is mapped, including
 		// airborne and landed material, so "T is the equilibrium reading of H" holds for the
-		// whole pool and not only for the coupled set; only grid-coupled parcels book the
-		// sensible ledger, because only they received -- and booked -- a conduction increment.
-		// Keeping the two books over the same parcel set is what makes their gap exactly the
-		// latent heat the grid-coupled material has taken up.
+		// whole pool and not only for the coupled set. The sensible ledger S.ledger is summed
+		// over *every* parcel whose T changes, including airborne material, so hLedger - ledger
+		// = L * (invLTot - invL0) holds for the whole pool (parcels + reservoirs) rather than
+		// breaking on adiabatic decompression/cooling snaps of unbooked phases. Grid-coupled
+		// parcels received -- and booked to hLedger -- their conduction increment in gatherDT;
+		// air parcels received no wall intake but may have changed y (and thus solidus) since
+		// the last equil, which is an internal repartition of their own enthalpy between
+		// sensible and latent, and is booked the same way so invLTot's corresponding delta
+		// does not register as a leak. The wall ledger S.wall is never touched here.
 		equil: function (M, S) {
 			var byH = PHASE.byH;
-			var n = S.n, p, m, grid = P.PH_GRID, ph = S.ph, H = S.H, T = S.T, ml = S.melt;
+			var n = S.n, p, m, ph = S.ph, H = S.H, T = S.T, ml = S.melt;
 			var cF = S.cF, cW = S.cW, y = S.y, t0, tot = 0;
 			for (p = 0; p < n; p++) {
 				m = S.m[p];
 				byH(H[p], y[p], cF[p], cW[p]);
 				t0 = T[p];
 				T[p] = OUT.t; ml[p] = OUT.melt;
-				if (grid[ph[p]] && OUT.t !== t0) tot += m * (OUT.t - t0);
+				if (OUT.t !== t0) tot += m * (OUT.t - t0);
 			}
 			S.ledger += tot;
 		}

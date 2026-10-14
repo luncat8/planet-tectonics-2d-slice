@@ -255,6 +255,14 @@ var F = {
 		// that gates closure to 1e-9 calls PTPOOL.inventoryComp itself, and pt-p3-pool.js holds
 		// the two against each other so they cannot drift.
 		PTPOOL.inventory(S);
+		// Per-frame P3.1 latent identity (0.3.2 M2): hLedger - ledger must equal L * (invLTot
+		// - invL0) to 1e-10 on every frame of every cell, not just at end-of-leg gates on the
+		// short owners. Wall stays untouched (0.3.2 plan M0: never balance a capped increment
+		// by editing the wall ledger); this is the gate the launch/air booking has to stay
+		// green on. A failing value is the bug report, not a self-repair.
+		var lAbs = S.hLedger - S.ledger - P.meltLat * (S.invLTot - S.invL0);
+		d.latentAbs = lAbs;
+		d.latent = Math.abs(lAbs) / Math.max(1, Math.abs(S.hLedger - S.ledger));
 	},
 
 	// The ledger is accumulated where the heat changes hands, in gatherDT: it is the marker
