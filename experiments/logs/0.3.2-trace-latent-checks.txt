@@ -1,0 +1,13 @@
+
+0.3.2 M1 latent trace: the banked cell, the chain and the mechanism
+PASS  the trace reproduces the banked trajectory   fingerprint 8261233554728015
+PASS  and the banked latent metric, worst frame and absolute value   latent 0.009664913928627542 at frame 11992, 167.35794353627716 km2*H
+PASS  and the banked books, held census and temperature samples   enth 5.315e-12, wall 0.0015455009947860088, held 30906
+PASS  and all three protected event records   3 events, frames 9341,10157,10660
+PASS  the fast residual starts at zero on the reset planet   rStart 0
+PASS  the boundary chain telescopes to the drift it reports   drift -167.41298524719605 km2*H against chain sum -167.41298524719605
+PASS  the drift is the unbooked air snaps, and nothing else   drift -167.412985 = launch snaps -167.412985 + in-flight snaps 0.000000, gap 2.001e-8; gather/equil pair residue -1.674e+2, all other boundaries 3.899e-8
+PASS  the launch prediction and the measured first snap agree   predicted -167.419050 over 203592 launches (34826 off-manifold), measured -167.412985
+INFO  compensated end residual   167.41299 km2*H (9.6020e-3 relative) against fast drift -167.41299
+
+ALL PASS (8 checks)

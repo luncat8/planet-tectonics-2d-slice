@@ -21,7 +21,7 @@ assert.deepStrictEqual(repeat.maxT, baseline.maxT);
 assert.deepStrictEqual(repeat.outsideSamples, baseline.outsideSamples);
 console.log('PASS baseline fingerprint, individual transfers and untimed diagnostics replay exactly');
 console.log('candidate       wall worst   ms/frame   dep T range       held km2 Myr  tx    melt km2   exact old events  decision');
-['baseline', 'cap2', 'floor001', 'relax999', 'minimum1', 'baseline-repeat'].forEach(function (name) {
+['baseline', 'cap2', 'floor001', 'relax999', 'minimum1', 'spread15', 'baseline-repeat'].forEach(function (name) {
 	var r = read(name);
 	assert.strictEqual(r.frames, 12000);
 	assert.strictEqual(r.seed, 5); assert.strictEqual(r.kyr, 50); assert.strictEqual(r.myr, 600);
@@ -42,6 +42,12 @@ console.log('candidate       wall worst   ms/frame   dep T range       held km2 
 		+ r.msFrame.toFixed(2).padEnd(11) + (r.minT[3].toFixed(3) + '..' + r.maxT[3].toFixed(3)).padEnd(18)
 		+ r.heldMassTime.toFixed(2).padEnd(14) + String(r.depTx).padEnd(6) + r.depMelt.toFixed(6).padEnd(11)
 		+ String(matched).padEnd(18) + (accepted ? 'eligible for wider acceptance' : 'NOT ACCEPTED'));
+	if (name === 'spread15') {
+		assert(r.spreadCapped > 0, 'the redistribution probe never capped a parcel');
+		console.log('  spread: ' + r.spreadCapped + ' parcel deliveries capped, ' + r.spreadGiven
+			+ ' bucket absorptions, ' + r.spreadGiveback + ' infeasible givebacks on '
+			+ r.spreadShortN + ' short nodes, ' + r.spreadShortH.toFixed(6) + ' km2*H returned');
+	}
 });
-console.log('PASS six complete cells; events reconcile to actual transfers, field support and global books');
+console.log('PASS seven complete cells; events reconcile to actual transfers, field support and global books');
 console.log('Candidate rejections are measurement outcomes, not a failing measurement harness.');

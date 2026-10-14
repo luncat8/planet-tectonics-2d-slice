@@ -281,7 +281,26 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   gather, a phase-scoped relaxation toward the field (`flip < 1` for deposits only), and a
   minimum parcel mass below which a deposit is merged rather than carried
   (`archive/0.3.1-buried-deposit-matrix-worklog.md`, `experiments/pt-buried-deposit-melt.js`'s
-  routing-event columns).
+  routing-event columns). **Status: M0 measured a gain cap, a mass-share floor, a deposit
+  relaxation and a local minimum-mass merge on the 600 Myr seed-5 cell and selected none —
+  each still violates the −0.5..1.5 wall or loses the intake/wall gate
+  (`archive/0.3.2-M0-heat-tail-report.md`).** M0 also exposed a latent-identity failure on
+  the *unmodified* baseline at this horizon (9.66e-3 relative, 167.36 km²·H at frame
+  11992) that the short owner legs never reach. **M1 localized it and measured the plan's
+  bounded redistribution (`archive/0.3.2-M1-localization-report.md`):** the drift is
+  entirely the unbooked equilibrium snap of airborne batches `FLIGHT.launch` creates
+  off-manifold (T from the batch enthalpy, melt from the vent stock's aggregate), which
+  `PHASE.equil` remaps without booking because air is the one phase no ledger covers —
+  203,592 launches, 34,826 off-manifold, every significant snap reading xiEq 1 against
+  xiStock 0.901..0.999, onset at 346 Myr, closing against the −167.41 km²·H drift to
+  2.0e-8, while every grid-coupled path closes to under 4e-7 over 12,000 frames (the
+  seed-1 300 Myr owner leg runs 75,979 launches at 1.09e-13 because none leaves
+  off-manifold inside its horizon). The node-wise conservative bounded redistribution
+  preserves the wall (1.309e-3) but is rejected: 3,118 of its placements find no local
+  capacity in a ~4-parcel bucket and its out-of-bound count equals its giveback count —
+  the constraint is local heat capacity, not local energy. Next: remedy the launch/air
+  booking (M2 candidate, wall ledger untouched, per-frame gate on the extended cell), then
+  re-measure the tail against a green identity.
 - **The crust kernel's ×1000 (found in 0.4.1 M2): settled by `0.1.7-plan.md`.** Both
   flow laws now read `1/Myr` on metre excesses, in a backward-Euler form that is stable
   at every slider leg, with the belt's receiver capped to the ceiling headroom and the

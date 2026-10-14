@@ -1,0 +1,76 @@
+{
+	"kind": "spread",
+	"value": 1.5,
+	"seed": 5,
+	"kyr": 50,
+	"myr": 600,
+	"frames": 12000,
+	"fingerprint": 1428604096386737,
+	"mass": 0,
+	"enthalpy": 5.314990222202203e-12,
+	"latent": 0.002843358445945122,
+	"latentWorstFrame": 12000,
+	"latentWorstAbs": 52.14700801078288,
+	"latentEnd": 0.002843358445945122,
+	"depositBook": 1.8044374883174896e-8,
+	"meltBook": 4.677076503867283e-10,
+	"intakeWallWorst": 0.0013090291036713664,
+	"intakeWallEnd": 0.0012929037780445851,
+	"msFrame": 11.380607158250028,
+	"minT": [
+		-0.48872371593994096,
+		0.4992331776406663,
+		1.008115198651907,
+		-2.4407405077528384
+	],
+	"maxT": [
+		1.0327178561065065,
+		1.4837504193829285,
+		1.1136448501619007,
+		2.045881021906885
+	],
+	"outsideSamples": [
+		0,
+		0,
+		0,
+		3118
+	],
+	"nonfinite": 0,
+	"heldSamples": 39578,
+	"heldMassTime": 69179.8246961652,
+	"heldMeltTime": 17337.119340207984,
+	"heldGapMax": 1.8666241385560296,
+	"mantleRoutes": 5054,
+	"depMelt": 18.87826843382547,
+	"depTx": 1,
+	"refuse": 0,
+	"merged": 0,
+	"strandedAttempts": 0,
+	"spreadCapped": 4451,
+	"spreadGiven": 3222,
+	"spreadGiveback": 3118,
+	"spreadShortN": 3118,
+	"spreadShortH": 4268.9594062295955,
+	"events": [
+		{
+			"frame": 10582,
+			"id": 126763,
+			"x": 7249.8394771527155,
+			"y": 238.97827653686468,
+			"host": 18.87826843382547,
+			"melt": 18.87826843382547,
+			"T": 1.4837504193829285,
+			"field": 0.9708776255956076,
+			"solidus": 0.9478605960884311
+		}
+	],
+	"gates": {
+		"mass": true,
+		"enthalpy": true,
+		"latent": false,
+		"intakeWallP4": true,
+		"intakeWallReference": false,
+		"frame": true,
+		"temperature": false
+	}
+}

@@ -1216,3 +1216,46 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   scoping claim by reading the mantle's T-field gap beside the deposits' (+0.0150 against
   +0.2152 on the 600 Myr cell), so a future reader can see why the term is deposit-only and what
   re-scoping it would cost.
+
+## 0.3.2 M1 — latent localization and bounded redistribution (archive/0.3.2-M1-localization-worklog.md)
+
+- **A conserved stock and a booked flux can differ by a whole phase nobody books.** The P3.1
+  identity `hLedger − ledger = L·(invLTot − invL0)` closes on every grid-coupled path to
+  under 4e-7 cumulative over 12,000 frames, yet drifts −167.41 km²·H on the 600 Myr cell.
+  `invLTot` spans the whole pool; the sensible ledger books grid-coupled phases only; and
+  `FLIGHT.launch` creates air parcels with T from the equilibrium reading of the batch
+  enthalpy but melt from the vent stock's *aggregate* fraction. The next `PHASE.equil`
+  remaps the whole pool onto the manifold and books nothing for air, so each mushy-stock
+  launch steps `invLTot` by `m·(xiEq − xiStock)` unbooked. Every significant snap reads
+  xiEq = 1 against xiStock 0.901..0.999 — the surface solidus always reads the batch fully
+  molten. Localize a two-book gap by tracing the residual across *every* kernel boundary
+  (fast naive latent in the inventory's own order against a ~1e-8 noise floor) and
+  decomposing the suspect pass per phase: the boundary table said "equil keeps what gather
+  cancels, minus air", and the per-launch prediction then matched the measured drift to
+  2.0e-8 with the 6.1e-3 gap accounted for by the five final-frame launches whose re-read
+  never followed.
+- **A green short-horizon gate can be a horizon fact, not a correctness fact.** The seed-1
+  300 Myr owner leg runs 75,979 launches and still reads 1.09e-13 on the identity — every
+  batch left on-manifold *inside that horizon*. The seed-5 cell first vents a mushy stock
+  at 346 Myr. Before trusting an end-of-leg gate, ask what event class it never reached;
+  the same asymmetry found the deposit route (silent at 300 Myr, live at 600).
+- **When wrapping engine methods in a harness, `fn.apply(this, arguments)` is not
+  optional.** `FLIGHT.launch` reads `this.surfaceY`; a wrapper calling `launch0(Mx, Sx, k,
+  dt)` detached the receiver and died on the first eruption. The generic wrapper had it
+  right; the four hand-written ones did not.
+- **A conservative probe's giveback must be capped per parcel, and its two violation sides
+  placed separately.** Dividing an infeasible remainder by the bucket's *net* withheld
+  excess amplifies one parcel's giveback without bound when a mixed-sign bucket nearly
+  cancels; place the hot and cold sides against their own headrooms and never return more
+  than each capped parcel's own withholding. On this cell the two cuts ran bitwise
+  identical (no mixed-sign bucket occurred) — keep the fix as hygiene and say so; a
+  silently repaired probe would have misdiagnosed the −2.44 tail as the bug instead of
+  what it is: feasible-set exhaustion.
+- **Conserving the integral does not remedy a distribution whose constraint is local
+  capacity.** The spread probe held the wall to 1.309e-3 (better than baseline) and still
+  failed: 3,118 of its bounded placements found zero headroom in a ~4-parcel nearest-node
+  bucket, and its out-of-bound sample count equals its giveback count exactly — every
+  violation is a parcel taking its full uncapped delivery back. The light-parcel increment
+  (gains to 11.9) exceeds what three neighbours can absorb inside the bounds; the remedy
+  family that remains is a wider feasible set or a wall-booked correction, not a tighter
+  local split.

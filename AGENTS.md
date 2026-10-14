@@ -92,11 +92,17 @@ readings for the populations they were drawn from and for the deposits the field
 it runs one live leg or a cell matrix -- `--cells seed:kyr:myr,...`, each cell a seed with its own
 clock and duration, the first repeated for a fingerprint check -- and changes no routing itself),
 experiments/pt-heat-tail.js (0.3.2's experiment-only gather cap/share attenuation, deposit
-relaxation and conservative local minimum-mass probes on seed 5 at 50 kyr/frame for 600 Myr;
+relaxation, conservative local minimum-mass and node-wise bounded conservative redistribution
+(spread) probes on seed 5 at 50 kyr/frame for 600 Myr;
 reports every-frame books, per-phase temperature bounds, wall intake, timed kernel frames and
 individual G5 deposit transfers; no shipping parameter changes), with pt-heat-tail-check.js
 validating its saved baseline replay and candidate bank (rejected candidates are outcomes, not
-successful remedies; specification 0.3.2-plan.md, report archive/0.3.2-M0-heat-tail-report.md),
+successful remedies; specification 0.3.2-plan.md, reports archive/0.3.2-M0-heat-tail-report.md
+and archive/0.3.2-M1-localization-report.md), and experiments/pt-heat-tail-trace.js (the M1
+latent-book localization: the P3.1 identity residual traced across every kernel boundary of
+the *unchanged* banked cell, gated on reproducing its fingerprint, books, census and protected
+events exactly, attributing the drift to the boundary that raises it and decomposing the
+unbooked phase's steps into individual predicted/measured events),
 and the cut in three: experiments/slice-cut.js (the walk, the pack, the resample),
 section-pack.js (the section page: transports, refusals, switches, HUD), section-seed.js (the
 mapping: the z identity, the ledger, the quiet start, the two run modes), checkpoint.js (the

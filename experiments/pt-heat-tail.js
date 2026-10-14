@@ -1,5 +1,5 @@
 // 0.3.2 candidate measurement, not a shipping switch. Each cell runs in a fresh process.
-// node experiments/pt-heat-tail.js [baseline|cap|floor|relax|minimum] [value] [Myr=600]
+// node experiments/pt-heat-tail.js [baseline|cap|floor|relax|minimum|spread] [value] [Myr=600]
 // Rejected candidates are reports, not a nonzero exit; --assert-baseline gates the bank.
 'use strict';
 var fs = require('fs'), path = require('path'), performance = require('perf_hooks').performance;
@@ -8,12 +8,13 @@ var P = require(B + 'params.js'), S = require(B + 'state.js'), G = require(B + '
 var SIM = require(B + 'sim.js'), POOL = require(B + 'pool.js'), PHASE = require(B + 'phase.js');
 var MT = require(B + 'melt.js'), F = require(B + 'fluid.js');
 var kind = process.argv[2] || 'baseline';
-var defaults = { baseline: 0, cap: 2, floor: 0.01, relax: 0.999, minimum: 1 };
+var defaults = { baseline: 0, cap: 2, floor: 0.01, relax: 0.999, minimum: 1, spread: 1.5 };
 var value = process.argv[3] === undefined ? defaults[kind] : +process.argv[3];
 var myr = process.argv[4] === undefined ? 600 : +process.argv[4];
 if (!(kind in defaults) || !Number.isFinite(value) || !(myr > 0) || !Number.isFinite(myr)
 	|| (kind === 'cap' && value < 1) || (kind === 'floor' && !(value > 0 && value <= 1))
-	|| (kind === 'relax' && !(value >= 0 && value < 1)) || (kind === 'minimum' && value <= 0)) {
+	|| (kind === 'relax' && !(value >= 0 && value < 1)) || (kind === 'minimum' && value <= 0)
+	|| (kind === 'spread' && !(value > 0))) {
 	throw new Error('invalid candidate, value or duration');
 }
 function replaceOnce(text, from, to) {
@@ -64,6 +65,94 @@ P.sl.kyr = 50; P.seed = 5;
 P.contact = true; P.slab = true; P.arc = true; P.ero = true;
 SIM.init(); SIM.reset(); SIM.dt = 0.05;
 var M = SIM.M;
+// Node-wise conservative bounded redistribution (0.3.2 M1, the plan's next measurement after
+// the rejected M0 families): bound the parcel-specific delivery at the gate's own equilibrium
+// temperature bounds (value .. value - 2, default 1.5 .. -0.5) and hand each node's withheld
+// extensive increment to the bucket members at that node that can still take it under the
+// same bound. Per-node totals are preserved, so the intake, the books and the wall gate see
+// the baseline's own delivery to round-off; nothing is attenuated and nothing is
+// manufactured. Where a bucket's eligible capacity cannot absorb the withheld increment, the
+// remainder goes back to the capped parcels that raised it -- the node total is still
+// preserved and the bound stays violated, but smaller than the baseline's -- and the event is
+// counted and integrated (shortN/shortH): feasibility is measured, not hidden in an unbooked
+// global correction. The bound is checked on the equilibrium reading of the delivered
+// enthalpy (byH), at the parcel's pre-advection depth; the frame-end gate reads the same
+// quantity after advection, so a capped parcel can still finish a hair outside the bound.
+// The two violation sides are placed separately, and a giveback never exceeds the capped
+// parcel's own withholding, so no parcel can finish worse than the baseline's own delivery
+// at it. The first cut of this probe divided the giveback by the bucket's *net* excess; a
+// mixed-sign bucket near cancellation then amplified one parcel's share without bound (a
+// deposit flung to T -2.44 where the baseline's coldest is -0.791,
+// logs/0.3.2-tail-spread15-v1.json) -- a rejected implementation of the family, kept as the
+// measurement that motivated the per-parcel cap.
+var spSt = { capped: 0, given: 0, giveback: 0, shortN: 0, shortH: 0 };
+if (kind === 'spread') {
+	var src = G.gatherDT.toString();
+	var hi = value, lo = value - 2;
+	var heads = new Int32Array(M.n), nextA = new Int32Array(S.m.length);
+	var roomA = new Float64Array(S.m.length), withA = new Float64Array(S.m.length);
+	var excessP = new Float64Array(M.n), excessN = new Float64Array(M.n);
+	src = replaceOnce(src,
+		'var nx = M.nx, p, q, di, dj, jj, ii, ic, jc, px, pe, tot = 0, d, cw = M.cw, wsum, out;',
+		`var nx = M.nx, p, q, di, dj, jj, ii, ic, jc, px, pe, tot = 0, d, cw = M.cw, wsum, out;
+	var hp, tb, dc, ex, room, gf, b2, wq, amt, rmd, sg, bd, exP, exN, g0 = P.PH_GRID, f0 = S.ph;
+	heads.fill(-1);
+	for (p = S.n - 1; p >= 0; p--) {
+		if (!g0[f0[p]]) continue;
+		withA[p] = 0;
+		q = nodeOf(M, S, p);
+		nextA[p] = heads[q]; heads[q] = p;
+	}`);
+	src = replaceOnce(src, 'S.H[p] += d;',
+		`hp = S.H[p] + d;
+		tb = PTPHASE.byH(hp, S.y[p], S.cF[p], S.cW[p]).t;
+		if (tb > hi || tb < lo) {
+			dc = PTPHASE.byT(tb > hi ? hi : lo, S.y[p], S.cF[p], S.cW[p]).h - S.H[p];
+			ex = S.m[p] * (d - dc);
+			q = nodeOf(M, S, p);
+			if (ex > 0) excessP[q] += ex; else excessN[q] += ex;
+			withA[p] = ex;
+			d = dc; st.capped++;
+		}
+		S.H[p] += d;`);
+	src = replaceOnce(src, 'S.hLedger += tot;',
+		`for (q = 0; q < M.n; q++) {
+		exP = excessP[q]; exN = excessN[q];
+		if (exP === 0 && exN === 0) continue;
+		excessP[q] = 0; excessN[q] = 0;
+		b2 = heads[q];
+		for (sg = 1; sg >= -1; sg -= 2) {
+			amt = sg > 0 ? exP : -exN;
+			if (amt === 0) continue;
+			bd = sg > 0 ? hi : lo;
+			room = 0;
+			for (p = b2; p >= 0; p = nextA[p]) {
+				hp = S.H[p];
+				dc = PTPHASE.byT(bd, S.y[p], S.cF[p], S.cW[p]).h;
+				dc = sg > 0 ? dc - hp : hp - dc;
+				roomA[p] = dc > 0 ? S.m[p] * dc : 0;
+				room += roomA[p];
+			}
+			gf = room >= amt ? amt / room : 1;
+			for (p = b2; p >= 0; p = nextA[p]) {
+				wq = roomA[p] * gf;
+				if (wq !== 0) { S.H[p] += sg * wq / S.m[p]; tot += sg * wq; st.given++; }
+			}
+			if (room >= amt) continue;
+			rmd = amt - room;
+			for (p = b2; p >= 0; p = nextA[p]) {
+				if (sg * withA[p] <= 0) continue;
+				wq = rmd * (sg * withA[p]) / amt;
+				S.H[p] += sg * wq / S.m[p]; tot += sg * wq; st.giveback++;
+			}
+			st.shortN++; st.shortH += rmd;
+		}
+	}
+	S.hLedger += tot;`);
+	G.gatherDT = new Function('P', 'PTPHASE', 'spl', 'hi', 'lo', 'heads', 'nextA', 'roomA',
+		'withA', 'excessP', 'excessN', 'nodeOf', 'st', 'return ' + src
+	)(P, PHASE, spl, hi, lo, heads, nextA, roomA, withA, excessP, excessN, G.nodeOf, spSt);
+}
 var merged = 0, stranded = 0;
 // Conservative same-node, compatible-composition, same-certificate merge before scatter.
 // Greedy ascending slots; rebuild buckets after a successful compacting merge. A floor
@@ -152,7 +241,9 @@ var result = { kind: kind, value: value, seed: 5, kyr: 50, myr: myr, frames: fra
 	msFrame: (ms - sampleMs) / frames, minT: mins, maxT: maxs, outsideSamples: outside, nonfinite: nonfinite,
 	heldSamples: heldSamples, heldMassTime: heldTime, heldMeltTime: heldMeltTime, heldGapMax: heldGap,
 	mantleRoutes: mantleRoutes, depMelt: S.thr.depMelt, depTx: S.tx.depMelt, refuse: S.tx.refuse,
-	merged: merged, strandedAttempts: stranded, events: events };
+	merged: merged, strandedAttempts: stranded,
+	spreadCapped: spSt.capped, spreadGiven: spSt.given, spreadGiveback: spSt.giveback,
+	spreadShortN: spSt.shortN, spreadShortH: spSt.shortH, events: events };
 result.gates = { mass: mass < 1e-9, enthalpy: enth < 1e-9, latent: latent < 1e-10,
 	intakeWallP4: wall < 0.01, intakeWallReference: wall < 5e-5,
 	frame: result.msFrame < 20, temperature: nonfinite === 0 && outside.every(function (n) { return n === 0; }) };
