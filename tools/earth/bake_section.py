@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 """tools/earth/bake_section.py - offline bake of a pgt-slice-pack from a baked Earth pack.
 
+RETIRED (0.4.2-plan.md §3 A3), frozen as the 0.4.1 M4 record: superseded by the
+counterpart's Node CLI tools/earth/bake_section.js (planet-geotectonics 0.8.2), which
+bakes through the real globe loader instead of this Python mirror of its internals.
+Do not extend. The 0.4.2 B-b bundle restore goes through that CLI (or a recorded
+hand-run of the 0.8.1 cutter export), never through this file: its constants pin
+planet-geotectonics @ d909476 and the pre-0.4.8 pack schema, so a private re-bake
+against earth-1deg.js would silently drift - waiting is cheaper than that (upstream
+prompt §4.6). The ledger entry is roadmap.md §4.
+
 0.4.0-sync-plan.md §2.8 / §5 M4, the "other half" of 0.4.1 M4: the interactive cutter
 draws a line on the live map (planet-geotectonics, js/slice.js, a running world) and
 this script bakes the same object from the baked Earth data pack (js/data/earth-*.js),

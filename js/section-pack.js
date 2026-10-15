@@ -1,10 +1,11 @@
 (function (root) {
-// section-pack.js — 0.4.1: the cut, this side. One entry point for every transport: a pasted
-// blob, a loaded .json file and a bundled ?pack= id all run through the same normalize →
-// quantise → validate → verify path on the shared port/slice-format.js (0.4.1-plan.md §4.1),
-// so none of them can be a second format and a pasted pack and a file pack of the same bytes
-// cannot behave differently. A verified pack is then laid on the section's own columns by
-// js/section-seed.js (M2), which is what turns a cut into a cross-section.
+// section-pack.js — 0.4.1: the cut, this side. One decode entry for every transport: a pasted
+// blob, a loaded .json file and a bundled ?pack= id all reach the page through the same
+// decodePack (0.4.2-plan.md §3 A2), the shared port/slice-format.js pipeline — parse, type,
+// quantise, validate, verify — underneath it (0.4.1-plan.md §4.1), so none of them can be a
+// second format and a pasted pack and a file pack of the same bytes cannot behave differently.
+// A verified pack is then laid on the section's own columns by js/section-seed.js (M2), which
+// is what turns a cut into a cross-section.
 //
 // This file owns the page's section mode (?start=section): the Slice panel, the raw strip —
 // what the paste says, before the seeding — the reconstructed view's raw overlay and the model
@@ -176,9 +177,15 @@ var SectionPack = (function () {
 		},
 
 		// ---------------------------------------------------------------- loading
-		// The one verify path (plan §4.1): a rejected pack is an error with the reason, the
-		// currently shown cut is not touched, and there is no partial load.
-		loadPack: function (pack, origin) {
+		// The one decode entry (plan §3 A2): text in — the shape every transport carries and
+		// the only shape the v2 decoder takes — a verified pack out, or a refusal with the
+		// reason. A rejected pack is an error with the reason, the currently shown cut is not
+		// touched, and there is no partial load (plan §4.1). The body is still the v1
+		// pipeline (parse, type, quantise, validate, verify); B4 swaps it for SP.decode.
+		decodePack: function (text) {
+			var pack;
+			try { pack = JSON.parse(text); }
+			catch (e) { this.refuse('not JSON: ' + e.message); throw e; }
 			if (!pack || typeof pack !== 'object' || Array.isArray(pack)) {
 				var typeError = 'a slice pack must be a JSON object';
 				this.refuse(typeError);
@@ -193,7 +200,45 @@ var SectionPack = (function () {
 			}
 			var bad = SP.validate(pack) || SP.verify(pack);
 			if (bad) { this.refuse(bad); throw new Error(bad); }
-			bad = SEED.measure(pack);
+			return pack;
+		},
+		// The already-parsed-object path (a bundled ?pack= id, a caller's object). The pack is
+		// typed and quantised in place before its checksum is proven, because the v1 checksum
+		// reads a field array through its .buffer and a plain-array bundle can only be proven
+		// typed (measured: a raw bundle checksums f464971e… against its stored 5e6a558a…);
+		// B4 deletes the two typing lines and this becomes exactly the v2 order,
+		// verify(raw) → decode(text) (plan §4 B4).
+		loadPack: function (pack, origin) {
+			if (!pack || typeof pack !== 'object' || Array.isArray(pack)) {
+				var typeError = 'a slice pack must be a JSON object';
+				this.refuse(typeError);
+				throw new Error(typeError);
+			}
+			try {
+				SP.normalize(pack);
+				SP.quantize(pack);
+			} catch (e) {
+				this.refuse('invalid slice pack: ' + e.message);
+				throw e;
+			}
+			var bad = SP.verify(pack);
+			if (bad) { this.refuse(bad); throw new Error(bad); }
+			return this.accept(this.decodePack(SP.encode(pack)), origin);
+		},
+		// The text transport (paste, file): a parse to route a coupling message, then the one
+		// decode entry — no second decoder on the object the sniff already produced.
+		load: function (text, origin) {
+			var wire = String(text), obj;
+			try { obj = JSON.parse(wire); }
+			catch (e) { this.refuse('not JSON: ' + e.message); throw e; }
+			if (obj && obj.format === 'pgt-coupling') return this.applyCoupling(wire, origin);
+			return this.accept(this.decodePack(wire), origin);
+		},
+		// What a verified pack means for the page. The seeding's own measurement may still
+		// refuse it (a window longer than the wrap keeps the pack and stays the strip, M2);
+		// only a fully laid cut replaces the running section's state.
+		accept: function (pack, origin) {
+			var bad = SEED.measure(pack);
 			SEED.refused = bad;
 			if (bad) {
 				if (!this.pack) {
@@ -228,13 +273,6 @@ var SectionPack = (function () {
 			this.paintMsg();
 			this.reconstruct();
 			return pack;
-		},
-		load: function (text, origin) {
-			var wire = String(text), obj;
-			try { obj = JSON.parse(wire); }
-			catch (e) { this.refuse('not JSON: ' + e.message); throw e; }
-			if (obj && obj.format === 'pgt-coupling') return this.applyCoupling(wire, origin);
-			return this.loadPack(obj, origin);
 		},
 		applyCoupling: function (text, origin) {
 			if (!this.pack || !this.world) {

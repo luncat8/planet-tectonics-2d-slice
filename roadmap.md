@@ -403,7 +403,32 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   dropping seed 12's maximum to 81.1 km and holding the 81.7 km ceiling across all 32 runs.
   Landed in `js/columns.js` (`COL.isClosingCC` and `COL.floor`).
 
-## 4. Not planned
+## 4. Staleness ledger (globe-derived artifacts — 0.4.2 Phase A, `0.4.2-plan.md` §2)
+
+The assumption ledger the 0.4.2 cutover writes down so a later session does not re-derive it.
+Every globe-derived artifact, the revision it is pinned to, its status at the Phase-A baseline
+(local HEAD `a214b1d`, globe `main` `61f77aa` = the 0.8.1 handoff revision whose `port/` bytes
+match its own manifest; no 0.8.2 bake CLI on `main` yet), and its disposition. *Stale-by-data*
+means: still decodes under v1, no longer describes the current globe. The three bundles are
+stale-by-data, **not corrupt** — nothing that loads them is broken, and B-b is their restore
+path, not a repair.
+
+| artifact | pinned to | status at cutover | disposition |
+| --- | --- | --- | --- |
+| `port/PORT.json` `upstream.commit` | `d909476` (globe 0.6.1-era) | historical; the v2 cutover replaces the manifest entry set | regenerate (B2, one coordinated bump) |
+| `port/slice-format.js` (v1, sha256 `941f2617…dd7118`) | `d909476` | the v1 codec; byte-identical with the globe's `d909476`-era copy | regenerate (B1: replaced byte-identical by the v2 codec from the handoff revision; local edits never) |
+| `port/deposit-models.js`, `port/deposit-economics.js` | deleted upstream (pre-0.6.3 catalogue) | not a shared contract any more; the globe's deposit catalogue is now a 13-row plate-frame table inside its `js/deposits.js` | freeze + keep-local (relocated to `js/data/` in the B-a series, values frozen; `js/deposit-core.js` / `js/deposits.js` stay section-local geology, only load paths change) |
+| `js/data/section-earth-gc0.js` | `d909476`, the old `earth` raster | stale-by-data (upstream: `earth-1deg.js`/`earth-05deg.js`, CRUST1.0 sediment extract `datum −460`, `scale {z:1, age:1, sed:0.1}`) | retire (B-a: v1 reader gone, no v2 writer yet; shipping a v1 bundle is not an option) → regenerate per-bundle at B-b through a v2 writer |
+| `js/data/section-earth-100Ma-gc0.js`, `…gc1.js` | `d909476` | same (upstream: per-epoch plate tables — 108 plates at 100 Ma, 92 at 250 Ma — and historical `earth-020Ma…earth-250Ma` pack names) | same (retire at B-a, restore at B-b per-bundle by whether a v2 writer can reproduce that epoch/path) |
+| `tools/earth/bake_section.py` (+ `stamp.js`) | `d909476` constants, old pack names, a Python mirror of globe internals (K9 inversion) | superseded by the globe's Node CLI `tools/earth/bake_section.js` (upstream 0.8.2); a private re-bake against `earth-1deg.js` is explicitly *not* done — the pack schema moved with upstream 0.4.8, and a silently drifted private bake is worse than waiting | freeze (retired, do not extend; the B-b restore never goes through it) |
+| `experiments/port-check.js` §A assertion | hard-codes `upstream.commit === 'd909476'` | must be rewritten with the manifest it asserts | regenerate (B2: asserts the v2 manifest shape; the assertion failing between B1 and B2 within one commit series is the cutover's recorded tripwire, not something to silence early) |
+| `js/checkpoint.js`, `js/coupling.js`, `js/core-log.js` (local readers of `SlicePack`) | v1 API (`normalize`/`quantize`/`validate`/`verify`, `SP.encode`, `SP.FIELDS`, `SP.EDGE`, `SP.round`) | untouched local readers; coupling semantics do not change in 0.4.2 (boundary 3) | keep-local (B4 migrates the call sites per the plan §4 method map; the v1→v2 inventory is in `archive/0.4.2-phase-a-worklog.md`) |
+
+The cut's own reading path is already one entry — `SectionPack.decodePack` (A2 landed; the
+fixture state hash `3682105425` identical across the refactor) — so the B-a cutover is a
+one-function change on the reader side, as the plan intended.
+
+## 5. Not planned
 
 - No climate, no eustasy-coupled erosion, no elastic flexure: the globe models those and this
   project reads the result.
