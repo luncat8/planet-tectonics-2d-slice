@@ -160,7 +160,7 @@ var laidD = SEED.layout(FIX.pinned(), { seed: 12345, t: t0, Tm: SIM.Tm });
 check.ok('the self-test lays a cut of the pinned ring without refusal', !laidD, laidD || 'ok');
 SIM.t = t0; SIM.cool();
 var expWorld = SEED.exportSection({ pack: 'self-test' });
-check.ok('exportSection produces a valid pgt-slice-pack v1',
+check.ok('exportSection produces a valid pgt-slice-pack v2',
 	expWorld.format === SP.FORMAT && expWorld.version === SP.VERSION &&
 	expWorld.n === S.nCol && /^[0-9a-f]{16}$/.test(expWorld.checksum));
 
@@ -186,7 +186,7 @@ check.ok('reconstructed exported slice pack without refusal', !reRefused, reRefu
 // so it is neither zero nor a number to guess: the bound below is the largest one-column
 // contrast on the ring times that fraction, doubled for the two ends of a column. A column
 // that really moved or a bed that really vanished shows up in whole metres and Myr, and the
-// quarter-column shift at the end of D1 proves the bound can see it.
+// fifth-of-a-column shift at the end of D1 proves the bound can see it.
 var quantM = 0, i2;
 for (i2 = 0; i2 < expWorld.n; i2++) quantM = Math.max(quantM, Math.abs(expWorld.sKm[i2] * 1000 - i2 * P.w0));
 var adjH = 0, adjA = 0, prev = SEED.nCut - 1;
@@ -197,12 +197,21 @@ for (col = 0; col < SEED.nCut; col++) {
 	prev = col;
 }
 var frac = quantM / P.w0, boundH = 2 * frac * adjH, boundA = 2 * frac * adjA;
-var maxHDiff = 0, maxAgeDiff = 0, maxPotDiff = 0, hostBad = 0, plateBad = 0;
+var maxHDiff = 0, maxAgeDiff = 0, maxPotDiff = 0, hostBad = 0, hostUnexplained = 0, plateBad = 0;
 for (col = 0; col < S.nCol; col++) {
 	maxHDiff = Math.max(maxHDiff, Math.abs(S.hFel[col] - origHThick[col][0]),
 		Math.abs(S.hMaf[col] - origHThick[col][1]), Math.abs(S.hSed[col] - origHThick[col][2]));
 	maxAgeDiff = Math.max(maxAgeDiff, Math.abs(S.colAge[col] - origAge[col]));
-	if (DEP.hostCode(S.hFel[col], S.hMaf[col], S.hSed[col], S.colGhost[col]) !== origHost[col]) hostBad++;
+	if (DEP.hostCode(S.hFel[col], S.hMaf[col], S.hSed[col], S.colGhost[col]) !== origHost[col]) {
+		hostBad++;
+		// a flip is explained only by sitting within the thickness bound of a class
+		// boundary: empty vs oceanic at zero total, continental at 8 000 / 45 000 m of
+		// felsic, sedimentary where hSed crosses the largest of 2 000 and its rivals
+		var nearZero = origTot[col] <= boundH || S.hTot[col] <= boundH;
+		var nearFel = Math.abs(origHThick[col][0] - 8000) <= boundH || Math.abs(origHThick[col][0] - 45000) <= boundH;
+		var nearSed = Math.abs(origHThick[col][2] - Math.max(2000, origHThick[col][0], origHThick[col][1])) <= boundH;
+		if (!nearZero && !nearFel && !nearSed) hostUnexplained++;
+	}
 	if (SEED.platesFrom[S.colPlate[col]] !== expWorld.plate[col]) plateBad++;
 	for (i2 = 0; i2 < 6; i2++) maxPotDiff = Math.max(maxPotDiff, Math.abs(S[DEP.POTENTIALS[i2]][col] - origPot[col][i2]));
 }
@@ -212,8 +221,9 @@ check.ok('re-imported thicknesses and ages are inside the pack\'s own arc quantu
 	boundH.toFixed(0) + ' m / ' + boundA.toFixed(3) + ' Myr at a ' + quantM.toFixed(0) +
 	' m quantum over a ' + (P.w0 / 1000).toFixed(1) + ' km column');
 check.ok('re-imported potentials are the exported ones inside the same quantum, and the host class survives it',
-	maxPotDiff <= 2 * frac && hostBad <= 2,
-	'max potential diff ' + maxPotDiff.toExponential(2) + ', ' + hostBad + ' host flips');
+	maxPotDiff <= 2 * frac && hostUnexplained === 0,
+	'max potential diff ' + maxPotDiff.toExponential(2) + ', ' + hostBad +
+	' host flips, every one within the thickness bound of its class boundary');
 check.ok('every column maps back to the plate the cut named', plateBad === 0, plateBad + ' mismatches');
 
 var massLedgerErr = Math.abs(SEED.seedMass - SEED.cutMass) / SEED.cutMass;
@@ -242,20 +252,22 @@ check.ok('frame-0 isostasy identity holds on self-exported world (|z - zM| <= 1e
 	worstZId <= 1e-3, 'worst z identity diff: ' + worstZId.toExponential(2) + ' m');
 
 // The round-trip caps above are only worth having if a moved cut fails them. Shifting every
-// sample boundary a quarter column, alternately in and out so the ring still fits its path,
-// moves a quarter of every column's span into its neighbour's reach; the same comparison then
-// has to leave the caps far behind.
+// sample boundary a fifth of a column, alternately in and out so the ring still fits its
+// path, moves a fifth of every column's span into its neighbour's reach; the same comparison
+// then has to leave the caps far behind. (v2: sKm[0] stays 0 — the codec requires the start
+// there, where v1 let the first boundary slide negative; and the widest shifted span, 1.4
+// cells, stays inside the codec's 1.5-cell budget where a quarter column's 1.5 did not.)
 var shifted = { sKm: expWorld.sKm.slice() };
-for (i2 = 0; i2 < expWorld.n; i2++) shifted.sKm[i2] = SP.round(expWorld.sKm[i2] + (i2 % 2 ? 0.25 : -0.25) * P.w0 / 1000);
+for (i2 = 1; i2 < expWorld.n; i2++) shifted.sKm[i2] = SP.round(expWorld.sKm[i2] + (i2 % 2 ? 0.2 : -0.2) * P.w0 / 1000);
 var copy = JSON.parse(SP.encode(expWorld));
 copy.sKm = Array.prototype.slice.call(shifted.sKm);
-copy.checksum = SP.checksum(SP.normalize(copy));
+SP.seal(copy);
 var shiftedRefused = SEED.layout(copy, { seed: 12345, t: t0, Tm: SIM.Tm });
 var shiftedH = 0;
 for (col = 0; col < S.nCol; col++) shiftedH = Math.max(shiftedH,
 	Math.abs(S.hFel[col] - origHThick[col][0]), Math.abs(S.hMaf[col] - origHThick[col][1]),
 	Math.abs(S.hSed[col] - origHThick[col][2]));
-check.ok('a quarter-column shift of the cut moves the reconstruction orders past the cap',
+check.ok('a fifth-of-a-column shift of the cut moves the reconstruction orders past the cap',
 	!shiftedRefused && shiftedH > 100 * maxHDiff && shiftedH > boundH,
 	shiftedH.toFixed(0) + ' m vs the round-trip\'s ' + maxHDiff.toFixed(1) + ' m');
 
@@ -266,14 +278,14 @@ check.ok('a quarter-column shift of the cut moves the reconstruction orders past
 // ribbons, so an eroding section does not read as a leaker.
 //
 // Two corrections (0.2.0 M5), both from measurement:
-//  - The world under test is the round-trip's own. The quarter-column shift above leaves its
+//  - The world under test is the round-trip's own. The shifted cut above leaves its
 //    mis-registered reconstruction in the state, so the good cut is laid again here; without
 //    the re-lay this gate measured the shifted world and its verdict moved with any constant.
 //  - The mass bound is the metric's own spread, not a guess. The section's spin-up moves
 //    ~6e-2 of its crustal mass in 1000 frames, and two runs that start within the pack's own
 //    quantum of each other diverge chaotically inside that: 1.3e-3 to 7.8e-3 apart over nine
 //    values of P.kBeltGradient (8..32), in both directions, with no trend in the constant.
-//    The bound is four times the worst of those. A quarter-column mis-registration does NOT
+//    The bound is four times the worst of those. A fifth-of-a-column mis-registration does NOT
 //    leave that noise behind either -- its own delta sits within 0.7e-2 of the fresh
 //    section's -- so no bound on this metric can witness a wrong world, which is why the
 //    invariant sweep runs on the same 1000 frames and is the gate that can fail.

@@ -26,6 +26,11 @@ var PORT = require('../port/PORT.json');
 
 var up = process.argv[2] || process.env.UPSTREAM || '/tmp/up';
 var haveUp = fs.existsSync(path.join(up, '.git')) || fs.existsSync(path.join(up, 'js'));
+// the v2 manifest pins repositories by role; the drift pin is the globe-writer
+var globeWriter = null;
+(PORT.repositories || []).forEach(function (r) { if (r.role === 'globe-writer') globeWriter = r; });
+var pin = globeWriter ? globeWriter.commit : '';
+var pinRepo = globeWriter ? globeWriter.repo : '';
 
 function at(commit, upPath) {
 	try {
@@ -51,7 +56,7 @@ function tip() {
 }
 function behind(tipSha) {
 	try {
-		return cp.execFileSync('git', ['-C', up, 'rev-list', '--count', PORT.upstream.commit + '..' + tipSha],
+		return cp.execFileSync('git', ['-C', up, 'rev-list', '--count', pin + '..' + tipSha],
 			{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 	} catch (e) { return '?'; }
 }
@@ -64,21 +69,18 @@ if (!haveUp) {
 	return;
 }
 
-var pin = PORT.upstream.commit;
 var tipC = tip();
 
 check.section('A. the pin still holds against the counterpart\'s own history');
 check.ok('the pinned commit is in the counterpart\'s history',
 	cp.spawnSync('git', ['-C', up, 'cat-file', '-t', pin], { encoding: 'utf8' }).stdout.trim() === 'commit',
-	pin + ' in ' + PORT.upstream.repo);
+	pin + ' in ' + pinRepo);
 PORT.files.forEach(function (f) {
-	if (!f.upstreamPath) {
-		check.info(f.path + ' is authored here (' + (f.what || '').slice(0, 60) + '…)',
-			'no upstreamPath: the counterpart has not adopted it yet');
-		return;
-	}
-	var sha = at(pin, f.upstreamPath);
-	check.ok(f.path + ' is byte-identical with ' + f.upstreamPath + ' at ' + pin,
+	// a v2 manifest entry names the shared path on both sides; an explicit
+	// upstreamPath, if one ever returns, still wins
+	var upPath = f.upstreamPath || f.path;
+	var sha = at(pin, upPath);
+	check.ok(f.path + ' is byte-identical with ' + upPath + ' at ' + pin,
 		sha === f.sha256, (sha ? sha.slice(0, 12) + '…' : 'ABSENT upstream') + ' vs manifest ' + f.sha256.slice(0, 12) + '…');
 });
 
@@ -91,17 +93,18 @@ if (!tipC) {
 }
 var at_ = function (upPath) { return at(tipC.sha, upPath); };
 check.info('the pin is ' + behind(tipC.sha) + ' commits behind the counterpart\'s tip (' + tipC.ref + ')',
-	PORT.upstream.repo + ' ' + pin + ' → ' + tipC.short);
+	pinRepo + ' ' + pin + ' → ' + tipC.short);
 PORT.files.forEach(function (f) {
-	if (!f.upstreamPath) return;
-	var sha = at_(f.upstreamPath);
+	var upPath = f.upstreamPath || f.path;
+	var sha = at_(upPath);
 	var state = !sha ? 'ABSENT at the tip' : (sha === f.sha256 ? 'still byte-identical' : 'DRIFTED ' + sha.slice(0, 12) + '…');
-	check.info(f.path + ' → ' + f.upstreamPath + ': ' + state, f.upstreamPath + ' @ ' + tipC.short);
+	check.info(f.path + ' → ' + upPath + ': ' + state, upPath + ' @ ' + tipC.short);
 });
-var corePin = require('./fixtures/deposits-draws.json').provenance.sha256;
+var extraction = require('./fixtures/deposits-draws.json').provenance;
 var coreTip = at_('js/deposits.js');
-check.info('js/deposit-core.js was extracted from js/deposits.js @ ' + pin.slice(0, 7) + ': ' +
-	(coreTip === corePin ? 'unchanged at the tip' : 'DRIFTED ' + (coreTip || 'ABSENT').slice(0, 12) + '… at the tip'),
-	'the fixture and its replay stay pinned to ' + pin.slice(0, 7) + '; re-extracting is 0.4.0\'s decision');
+check.info('js/deposit-core.js was extracted from js/deposits.js @ ' + extraction.commit + ': ' +
+	(coreTip === extraction.sha256 ? 'unchanged at the tip' : 'DRIFTED ' + (coreTip || 'ABSENT').slice(0, 12) + '… at the tip'),
+	'the fixture and its replay stay pinned to the historical extraction @ ' + extraction.commit +
+	'; re-extracting is a deliberate future decision, not drift repair');
 
 check.done();

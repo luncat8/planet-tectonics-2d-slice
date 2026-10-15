@@ -3,6 +3,7 @@
 'use strict';
 var fs = require('fs'), vm = require('vm'), path = require('path');
 var L = require('./lib.js'), check = L.check, html = fs.readFileSync(path.join(L.root, 'columns.html'), 'utf8');
+var FIX = require('./pack-fixture.js');
 var noop = function () {}, points = [], arcs = [], text = [];
 var context = new Proxy({
 	createImageData: function (w, h) { return { data: new Uint8ClampedArray(w * h * 4) }; },
@@ -187,8 +188,10 @@ check.section('M3 UI.4 reconstructed / raw cuts and lifecycle');
 SIM.stop(); sb.location.search = '?start=section';
 SIM.start(doc);
 check.ok('an empty raw section has no extraction domain', !UI.oreAvailable() && els.bDeposits.disabled);
-var packId = Object.keys(sb.SECTION_PACKS)[0]; SEC.loadPack(sb.SECTION_PACKS[packId], packId);
-check.ok('a file:// bundled cut shares the same live resource UI after reconstruction', SEC.world && UI.host === doc && UI.oreAvailable() && SIM.dG === 0);
+// no bundle ships at the v2 cutover (they return at Phase B-b), so the reconstructed
+// world here is the pinned fixture pack, through the same loadPack entry a bundle takes
+SEC.loadPack(FIX.pinned(), 'synthetic-fixture');
+check.ok('a pinned cut shares the same live resource UI after reconstruction', SEC.world && UI.host === doc && UI.oreAvailable() && SIM.dG === 0);
 if (!R.showDeposits) key('d');
 SEC.toggleRaw();
 var rawHash = S.hash(); els.oreMine.fire('click');

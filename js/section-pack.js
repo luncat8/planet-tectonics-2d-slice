@@ -1,8 +1,8 @@
 (function (root) {
 // section-pack.js — 0.4.1: the cut, this side. One decode entry for every transport: a pasted
 // blob, a loaded .json file and a bundled ?pack= id all reach the page through the same
-// decodePack (0.4.2-plan.md §3 A2), the shared port/slice-format.js pipeline — parse, type,
-// quantise, validate, verify — underneath it (0.4.1-plan.md §4.1), so none of them can be a
+// decodePack (0.4.2-plan.md §3 A2), whose body is the shared v2 codec's own SP.decode
+// (0.4.2-plan.md §4 B4), so none of them can be a
 // second format and a pasted pack and a file pack of the same bytes cannot behave differently.
 // A verified pack is then laid on the section's own columns by js/section-seed.js (M2), which
 // is what turns a cut into a cross-section.
@@ -177,53 +177,33 @@ var SectionPack = (function () {
 		},
 
 		// ---------------------------------------------------------------- loading
-		// The one decode entry (plan §3 A2): text in — the shape every transport carries and
-		// the only shape the v2 decoder takes — a verified pack out, or a refusal with the
-		// reason. A rejected pack is an error with the reason, the currently shown cut is not
-		// touched, and there is no partial load (plan §4.1). The body is still the v1
-		// pipeline (parse, type, quantise, validate, verify); B4 swaps it for SP.decode.
+		// The one decode entry (plan §3 A2, §4 B4): text in — the shape every transport
+		// carries and the only shape the v2 decoder takes — a verified pack out, or a
+		// refusal with the reason. The v2 body is the codec's own: SP.decode proves the
+		// raw JSON shape before a single field is typed, then validates and verifies, so
+		// a refused pack (the version gate included) is refused before any caller state
+		// changes and the currently shown cut is not touched (plan §4.1, §4 B4).
 		decodePack: function (text) {
 			var pack;
-			try { pack = JSON.parse(text); }
-			catch (e) { this.refuse('not JSON: ' + e.message); throw e; }
-			if (!pack || typeof pack !== 'object' || Array.isArray(pack)) {
-				var typeError = 'a slice pack must be a JSON object';
-				this.refuse(typeError);
-				throw new Error(typeError);
-			}
-			try {
-				SP.normalize(pack);
-				SP.quantize(pack);
-			} catch (e) {
-				this.refuse('invalid slice pack: ' + e.message);
-				throw e;
-			}
-			var bad = SP.validate(pack) || SP.verify(pack);
-			if (bad) { this.refuse(bad); throw new Error(bad); }
+			try { pack = SP.decode(text); }
+			catch (e) { this.refuse(e.message); throw e; }
 			return pack;
 		},
-		// The already-parsed-object path (a bundled ?pack= id, a caller's object). The pack is
-		// typed and quantised in place before its checksum is proven, because the v1 checksum
-		// reads a field array through its .buffer and a plain-array bundle can only be proven
-		// typed (measured: a raw bundle checksums f464971e… against its stored 5e6a558a…);
-		// B4 deletes the two typing lines and this becomes exactly the v2 order,
-		// verify(raw) → decode(text) (plan §4 B4).
+		// The already-parsed-object path (a bundled ?pack= id, a caller's object). The
+		// codec's own text form is SP.encode — it validates and verifies the object
+		// (a value the field checks cannot see, like a NaN that JSON would turn into a
+		// zero, is refused there) — and the result goes through the one decode entry:
+		// one decoder, not two, and no typed-array stringification of the raw object.
 		loadPack: function (pack, origin) {
 			if (!pack || typeof pack !== 'object' || Array.isArray(pack)) {
 				var typeError = 'a slice pack must be a JSON object';
 				this.refuse(typeError);
 				throw new Error(typeError);
 			}
-			try {
-				SP.normalize(pack);
-				SP.quantize(pack);
-			} catch (e) {
-				this.refuse('invalid slice pack: ' + e.message);
-				throw e;
-			}
-			var bad = SP.verify(pack);
-			if (bad) { this.refuse(bad); throw new Error(bad); }
-			return this.accept(this.decodePack(SP.encode(pack)), origin);
+			var text;
+			try { text = SP.encode(pack); }
+			catch (e) { this.refuse(e.message); throw e; }
+			return this.accept(this.decodePack(text), origin);
 		},
 		// The text transport (paste, file): a parse to route a coupling message, then the one
 		// decode entry — no second decoder on the object the sniff already produced.

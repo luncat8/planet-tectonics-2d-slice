@@ -1,5 +1,5 @@
 // pack-fixture.js — a synthetic pgt-slice-pack built exactly the way the cutter builds one:
-// SlicePack.make, per-sample fields from a seeded PRNG, quantise, checksum. Shared by
+// SlicePack.make, per-sample fields from a seeded PRNG, seal. Shared by
 // slice-cut.js (the format's self-measurement) and the two section harnesses, so they cannot
 // drift apart on what "the cutter's output" means. The pinned pack is the one they load on
 // every run: a fixed seed, a fixed circle, a fixed line.
@@ -37,9 +37,36 @@ function circle(n) {
 		arcKm: 2 * Math.PI * R, cellKm: 2 * Math.PI * R / n };
 }
 function windowPath(n, arcKm) {
-	var verts = [10, -40, 14, 8, 6, 52, -12, 78], i;
-	for (i = 0; i < verts.length; i += 2) verts[i] += 0.0001 * i;      // a drawn line is not exact
-	return { kind: 'polyline', verts: verts, closes: false, arcKm: arcKm, cellKm: arcKm / n };
+	// A polyline the v2 codec can seal: it proves path.arcKm against the verts after
+	// six-significant-digit quantisation, inside 2e-6 relative — tighter than a drawn
+	// line's own rounding at some lengths. So the line is walked along the equator in
+	// segments under 60°, and the segment step is nudged by its own last digit until
+	// the walked arc and the arc the sealed bytes will carry agree inside the codec's
+	// tolerance. The walk moves by metres; the requested length is the harness's.
+	var segs = Math.max(2, Math.ceil(arcKm / R * SP.DEG / 60));
+	var step0 = arcKm / R * SP.DEG / segs;
+	var ulp = Math.pow(10, Math.floor(Math.log10(step0)) - 5);
+	var m, oi, offs, off, step, verts, i, lon, arc, rounded;
+	for (m = 0; m <= 20000; m++) {
+		offs = m === 0 ? [0] : [-m, m];
+		for (oi = 0; oi < offs.length; oi++) {
+			off = offs[oi];
+			step = SP.round(step0 + off * ulp);
+			verts = [];
+			for (i = 0; i <= segs; i++) {
+				lon = SP.round(i * step);
+				lon = ((lon + 180) % 360 + 360) % 360 - 180;
+				verts.push(0, lon);
+			}
+			arc = SP.polylineArc({ kind: 'polyline', verts: verts, closes: false }, R);
+			rounded = SP.round(arc);
+			if (Math.abs(arc - rounded) <= Math.max(1e-6, arc * 2e-6) * 0.9) {
+				return { kind: 'polyline', verts: verts, closes: false,
+					arcKm: rounded, cellKm: rounded / n };
+			}
+		}
+	}
+	throw new Error('windowPath: no quantised arc within the codec tolerance for ' + arcKm + ' km');
 }
 
 // the model's own surface, so the pack's zM is the number the cutter would have read
@@ -58,7 +85,7 @@ function elev(hFel, hMaf, hSed, age) {
 function build(n, runs, path, seed) {
 	var rnd = lcg(seed === undefined ? 20261003 : seed), i, k, j;
 	var pack = SP.make(n, path || circle(n));
-	pack.source = { repo: 'planet-geotectonics', commit: 'd909476', pack: '', epochMa: 0, rotModel: '',
+	pack.source = { repo: 'planet-geotectonics', commit: 'd909476', pack: 'synthetic-fixture', epochMa: 0, rotModel: 'fixture-rigid-v1',
 		built: '2026-10-03T00:00:00Z', tMyr: 120.5, level: 5, gridSeed: 12345, simSeed: 7 };
 	pack.license = 'synthetic fixture, no data license';
 	var arc = pack.path.arcKm, step = arc / n;
@@ -98,29 +125,41 @@ function build(n, runs, path, seed) {
 		pack.vt[i] = vtRun[r] * (1 + 0.16 * wig);
 		pack.vp[i] = r === perp ? Math.abs(spd[r]) * 0.95
 			: Math.abs(spd[r] * 0.3 * Math.cos(3.141592654 * m / Math.max(1, mLen)));
-		var z, oceanic = !cont[r], gap = rnd() < 0.02;
+		// a boundary belongs to the last sample before the crossing: for the seam that closes
+		// the ring, that is the last sample of the array. A gap may not fall on that sample:
+		// a v2 gap row carries no boundary, so a gap there would erase the seam the speeds
+		// on either side still describe
+		at = r + 1 < runs ? (r + 1) * runLen - 1 : n - 1;
+		var z, oceanic = !cont[r], seamHere = i === at && (r + 1 < runs || pack.path.closes);
+		var gap = rnd() < 0.02 && !seamHere;
 		pack.hFelM[i] = gap ? 0 : (oceanic ? 0 : 14000 + 26000 * rnd());
 		pack.hMafM[i] = gap ? 0 : (oceanic ? 5500 + 2500 * rnd() : 11000 + 7000 * rnd());
 		pack.hSedM[i] = gap ? 0 : (oceanic ? 150 + 900 * rnd() : 500 + 3500 * rnd());
 		pack.ageMyr[i] = gap ? 0 : (oceanic ? 20 + 150 * rnd() : 30 + 260 * rnd());
 		pack.fert[i] = gap ? 0 : 0.5 + 1.5 * rnd();
 		pack.damage[i] = gap ? 0 : rnd() * (pack.hFelM[i] > 30000 ? 0.6 : 1);
-		pack.host[i] = gap ? 0 : (oceanic ? 1 : (pack.hSedM[i] > 1500 ? 4 : 2));
+		pack.host[i] = gap ? 0 : SP.hostCode(pack.hFelM[i], pack.hMafM[i], pack.hSedM[i]);
 		pack.alive[i] = gap ? 0 : 1;
 		pack.plate[i] = r;
 		z = elev(pack.hFelM[i], pack.hMafM[i], pack.hSedM[i], pack.ageMyr[i]);
 		pack.zM[i] = Math.round(z);
 		pack.wet[i] = z < 0 ? 1 : 0;
 		for (k = 0; k < 6; k++) pack.pot[i * 6 + k] = gap ? 0 : rnd();
-		// a boundary belongs to the last sample before the crossing: for the seam that closes
-		// the ring, that is the last sample of the array
-		at = r + 1 < runs ? (r + 1) * runLen - 1 : n - 1;
-		if (i === at && (r + 1 < runs || pack.path.closes)) { pack.bnd[i] = kind[r]; pack.pol[i] = pol[r]; }
+		if (seamHere) { pack.bnd[i] = kind[r]; pack.pol[i] = pol[r]; }
+		// a gap row is the codec's canonical row (no crust, no boundary, sea-level z):
+		// what "the cut crossed a cell with no column" is made of in v2
+		if (gap) SP.setGap(pack, i);
 	}
-	pack.plates = [];
-	for (r = 0; r < runs; r++) pack.plates.push({ id: r, n: Math.min(runLen, n - r * runLen) });
-	SP.quantize(pack);
-	pack.checksum = SP.checksum(pack);
+	// the v2 plate table counts live samples per id (a gap carries plate 0 and no
+	// count); the fixture's speeds are the vt field, so the Euler pole is zero
+	var counts = {}, ids = [], seen = {};
+	for (i = 0; i < n; i++) {
+		if (!seen[pack.plate[i]]) { seen[pack.plate[i]] = 1; ids.push(pack.plate[i]); counts[pack.plate[i]] = 0; }
+		if (pack.alive[i]) counts[pack.plate[i]]++;
+	}
+	ids.sort(function (a, b) { return a - b; });
+	pack.plates = ids.map(function (id) { return { id: id, n: counts[id], wx: 0, wy: 0, wz: 0 }; });
+	SP.seal(pack);
 	return pack;
 }
 

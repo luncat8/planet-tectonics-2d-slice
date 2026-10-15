@@ -291,7 +291,7 @@ var P = {
 	ciHi: 20e3,
 	// ores (design §4.7): saturating, fertility-scaled factories on the geological clock.
 	// The finite live resources below are a game delineation in a one-metre-deep slice,
-	// not the 3D catalogue / grade-tonnage priors in port/deposit-models.js.
+	// not the 3D catalogue / grade-tonnage priors in js/data/deposit-models.js.
 	kV: 0.3,
 	kM: 0.2,
 	kM2: 0.15,

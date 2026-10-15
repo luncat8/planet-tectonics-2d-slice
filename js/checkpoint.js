@@ -202,20 +202,15 @@ var Checkpoint = (function () {
 			if (obj.version !== this.SESSION_VERSION) throw new RangeError('session version ' + obj.version);
 			if (!obj.runtime || typeof obj.runtime !== 'string') throw new RangeError('session missing runtime payload');
 
+			// the session envelope is local and unchanged (0.4.2-plan.md D4); only its
+			// pack reader follows the codec. The pack arrives as plain JSON inside the
+			// session, so it is proven by the v2 decoder's own order — raw shape first,
+			// typed arrays after — never coerced first (the v1 normalize-first habit
+			// the cutover removes). A v1 session pack is refused by version here.
 			var sp = sliceFormat();
 			if (obj.pack) {
-				for (var k = 0; k < sp.FIELDS.length; k++) {
-					var fn = sp.FIELDS[k].name, val = obj.pack[fn];
-					if (val && typeof val === 'object' && !Array.isArray(val) && !ArrayBuffer.isView(val)) {
-						var arr = [];
-						for (var idx = 0; idx in val; idx++) arr.push(val[idx]);
-						obj.pack[fn] = arr;
-					}
-				}
-				sp.normalize(obj.pack);
-				sp.quantize(obj.pack);
-				var badPack = sp.validate(obj.pack) || sp.verify(obj.pack);
-				if (badPack) throw new RangeError('session pack invalid: ' + badPack);
+				try { obj.pack = sp.decode(JSON.stringify(obj.pack)); }
+				catch (e) { throw new RangeError('session pack invalid: ' + e.message); }
 			}
 
 			var bytes = b64dec(obj.runtime);

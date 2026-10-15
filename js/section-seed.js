@@ -25,7 +25,6 @@ var SEED = (function () {
 	var PLT = (typeof module !== 'undefined' && module.exports) ? require('./plates.js') : window.COLPLATES;
 	var MNT = (typeof module !== 'undefined' && module.exports) ? require('./mantle.js') : window.COLMANTLE;
 	var SP = (typeof module !== 'undefined' && module.exports) ? require('../port/slice-format.js') : window.SlicePack;
-	var DEP = (typeof module !== 'undefined' && module.exports) ? require('./deposits.js') : window.COLDEPOSITS;
 
 	var KM = 1000;
 
@@ -49,6 +48,8 @@ var SEED = (function () {
 	var wsum = new Float64Array(P.colCap);
 	var bestW = new Float64Array(P.colCap);
 	var bestI = new Int32Array(P.colCap);
+	var liveW = new Float64Array(P.colCap);       // the widest live sample in a column: a v2
+	var liveI = new Int32Array(P.colCap);         // gap row carries no plate, so plates read this
 	var colRaw = new Int32Array(P.colCap);       // the pack's plate id, before the renumbering
 	var zT = new Float64Array(P.colCap);         // the elevation the cut says the column stands at
 	var uT = new Float64Array(P.colCap);         // the cut's speed along the path, per column
@@ -112,6 +113,8 @@ var SEED = (function () {
 		wsum.fill(0, 0, nCut);
 		bestW.fill(0, 0, nCut);
 		bestI.fill(-1, 0, nCut);
+		liveW.fill(0, 0, nCut);
+		liveI.fill(-1, 0, nCut);
 		for (i = 0; i < n; i++) {
 			xa = i === 0 ? 0 : sKm[i] * sc;
 			xb = i + 1 < n ? sKm[i + 1] * sc : end;
@@ -126,6 +129,7 @@ var SEED = (function () {
 				for (k = 0; k < NF; k++) acc[base + k] += srcArr[k][i] * w;
 				for (k = 0; k < 6; k++) acc[base + NF + k] += pack.pot[i * 6 + k] * w;
 				if (w > bestW[j]) { bestW[j] = w; bestI[j] = i; }     // categorical: widest wins
+				if (pack.alive[i] && w > liveW[j]) { liveW[j] = w; liveI[j] = i; }
 			}
 		}
 		for (j = 0; j < nCut; j++) {
@@ -219,7 +223,16 @@ var SEED = (function () {
 	// wider neighbour (§4.3), and the merge is counted.
 	SEED.plates = function (pack) {
 		var n = SEED.nCut, j, k, p, r = 0, at, into, prev, next, sum, c;
-		for (j = 0; j < n; j++) colRaw[j] = bestI[j] >= 0 ? pack.plate[bestI[j]] : 0;
+		// a column's plate is the widest *live* sample's: a v2 gap row carries plate 0
+		// by canonicalisation, not a plate of its own, so a hole the cut crossed cannot
+		// become a plate-0 run of its own. A column no live sample touches takes the
+		// plate before the hole (wrapping on a closed cut, as the ring does).
+		var lastLive = -1;
+		for (j = n - 1; j >= 0; j--) if (liveI[j] >= 0) { lastLive = pack.plate[liveI[j]]; break; }
+		for (j = 0; j < n; j++) {
+			if (liveI[j] >= 0) lastLive = pack.plate[liveI[j]];
+			colRaw[j] = lastLive;
+		}
 		for (j = 0; j < n; j++) {
 			if (r > 0 && colRaw[j] === runId[r - 1]) { runN[r - 1]++; continue; }
 			runA[r] = j; runN[r] = 1; runId[r] = colRaw[j]; r++;
@@ -396,7 +409,8 @@ var SEED = (function () {
 	};
 
 	// ---------------------------------------------------------------- export
-	// M3 self round-trip: export the current column state as a verified pgt-slice-pack v1.
+	// M3 self round-trip: export the current column state as a verified pgt-slice-pack v2
+	// (make → fill → seal → encode is the writer's one route, 0.4.2-plan.md §4 B4).
 	SEED.exportSection = function (opts) {
 		opts = opts || {};
 		var n = S.nCol, w0 = P.w0, wrap = P.wrap, j, walk = 0;
@@ -417,7 +431,7 @@ var SEED = (function () {
 			commit: 'self-export',
 			pack: opts.pack || 'column-engine',
 			epochMa: 0,
-			rotModel: '',
+			rotModel: 'none',
 			built: new Date().toISOString(),
 			tMyr: SP.round(opts.t !== undefined ? opts.t : simClock()),
 			level: 6,
@@ -440,13 +454,11 @@ var SEED = (function () {
 			pack.ageMyr[j] = SP.round(S.colAge[j]);
 			pack.fert[j] = SP.round(S.fert[j]);
 			pack.damage[j] = SP.round(S.damage[j]);
-			// the host class has one owner (js/deposits.js), and it is applied to the numbers the
-			// pack actually carries: classing the live floats would let a cut say "thick
-			// continental" at 44 999.6 m while its own rounded sample reads 45 000
-			pack.host[j] = DEP.hostCode(pack.hFelM[j], pack.hMafM[j], pack.hSedM[j], S.colGhost[j]);
 			pack.plate[j] = S.colPlate[j];
 			pack.bnd[j] = S.edge[j] || 0;
-			pack.pol[j] = S.edgePol[j] || 0;
+			// only a subduction carries a polarity (the codec's own law, on the numbers
+			// the pack actually carries)
+			pack.pol[j] = pack.bnd[j] === SP.EDGE.subduct ? (S.edgePol[j] || 0) : 0;
 			pack.alive[j] = S.colGhost[j] ? 0 : 1;
 			pack.wet[j] = S.wet[j] ? 1 : 0;
 			pack.vt[j] = SP.round(S.colU[j]);
@@ -458,19 +470,26 @@ var SEED = (function () {
 			pack.pot[j * 6 + 3] = SP.round(S.oOro[j]);
 			pack.pot[j * 6 + 4] = SP.round(S.oBas[j]);
 			pack.pot[j * 6 + 5] = SP.round(S.oPla[j]);
+			// the host class is the codec's own law (SP.hostCode, the same thresholds
+			// js/deposits.js classes by), applied to the numbers the pack actually
+			// carries: classing the live floats would let a cut say "thick continental"
+			// at 44 999.6 m while its own rounded sample reads 45 000. A ghost column
+			// is a gap row, and the codec owns that row's canonical form too.
+			if (S.colGhost[j]) SP.setGap(pack, j);
+			else pack.host[j] = SP.hostCode(pack.hFelM[j], pack.hMafM[j], pack.hSedM[j]);
 		}
-		var plateRuns = [];
+		// the v2 plate table is the snapshot's plates, not its runs: one row per id the
+		// samples carry, counting live samples only, in ascending id order. The ring
+		// has no Euler pole — its speeds are the vt field — so the pole is zero.
+		var plateCounts = {}, plateIds = [];
 		for (j = 0; j < n; j++) {
-			var p = pack.plate[j];
-			if (plateRuns.length === 0 || plateRuns[plateRuns.length - 1].id !== p) {
-				plateRuns.push({ id: p, n: 1 });
-			} else {
-				plateRuns[plateRuns.length - 1].n++;
-			}
+			var pid = pack.plate[j];
+			if (!plateCounts[pid]) { plateCounts[pid] = { id: pid, n: 0, wx: 0, wy: 0, wz: 0 }; plateIds.push(pid); }
+			if (pack.alive[j]) plateCounts[pid].n++;
 		}
-		pack.plates = plateRuns;
-		SP.quantize(pack);
-		pack.checksum = SP.checksum(pack);
+		plateIds.sort(function (a, b) { return a - b; });
+		pack.plates = plateIds.map(function (id) { return plateCounts[id]; });
+		SP.seal(pack);
 		return pack;
 	};
 

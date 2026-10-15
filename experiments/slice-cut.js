@@ -243,7 +243,7 @@ function refuses(name, mutate) {
 	check.ok('rejects ' + name, msg !== '', msg);
 }
 refuses('a foreign format tag', function (p) { p.format = 'pgt-something-else'; });
-refuses('a future version', function (p) { p.version = 2; });
+refuses('a future version', function (p) { p.version = 3; });
 refuses('a pack with no license line', function (p) { p.license = ''; });
 refuses('an edited sample (the checksum catches it)', function (p) { p.hFelM[3] += 7; });
 refuses('a sample out of order', function (p) { var t = p.sKm[5]; p.sKm[5] = p.sKm[6]; p.sKm[6] = t; });

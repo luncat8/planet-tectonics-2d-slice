@@ -174,7 +174,7 @@ viaPaste(L, text);
 check.ok('a paste of the pinned cut loads', L.sb.COLSECTION.pack !== null
 	&& L.sb.COLSECTION.pack.checksum === pin.checksum, L.sb.COLSECTION.msg);
 check.ok('the readout says what the cut is (level, both resolutions, arc, mode, checksum)',
-	new RegExp('L5 · \\d+ km cells → 512 columns · 78 km · \\d[\\d ]+ km circle · t 120\\.5 Myr · seed 7 · mapping 2 · checksum '
+	new RegExp('L5 · \\d+ km cells → 512 columns · 78 km · \\d[\\d ]+ km circle · t 120\\.5 Myr · synthetic-fixture · seed 7 · mapping 2 · checksum '
 		+ pin.checksum).test(L.sb.COLSECTION.describe(L.sb.COLSECTION.pack)),
 	L.sb.COLSECTION.describe(L.sb.COLSECTION.pack));
 check.ok('the cut has been laid as a section (the stacks carry the cut mass, the clock stays off)',
@@ -210,7 +210,7 @@ function refuses(name, mutate, via) {
 	check.ok('refuses ' + name, threw && L.sb.COLSECTION.pack.checksum === before, L.sb.COLSECTION.msg);
 }
 refuses('a foreign format tag', function (p) { p.format = 'pgt-something-else'; });
-refuses('a future version', function (p) { p.version = 2; });
+refuses('a future version', function (p) { p.version = 3; });
 refuses('a pack with no license line', function (p) { p.license = ''; });
 refuses('an edited sample (the checksum catches it)', function (p) { p.hFelM[3] += 7; });
 refuses('a sample out of order', function (p) { var t = p.sKm[5]; p.sKm[5] = p.sKm[6]; p.sKm[6] = t; });
@@ -231,8 +231,51 @@ var shownPack = L.sb.COLSECTION.pack, shownHash = L.sb.COLS.hash(), primitiveRef
 try { L.sb.COLSECTION.load('null', 'paste'); } catch (e) { primitiveRefused = true; }
 check.ok('refuses a JSON primitive with a clear message and no live-state change',
 	primitiveRefused && L.sb.COLSECTION.pack === shownPack && L.sb.COLSECTION.world
-		&& L.sb.COLS.hash() === shownHash && /must be a JSON object/.test(L.sb.COLSECTION.msg),
+		&& L.sb.COLS.hash() === shownHash && /must be an object/.test(L.sb.COLSECTION.msg),
 	L.sb.COLSECTION.msg);
+
+check.section('C1. the byte-level corruptions, each refused atomically (0.4.2 B5 suite)');
+// The return-package suite at the reader's own door: mutations of the encoded text
+// itself (not of a decoded object), each refused with the running section's state
+// hash and shown pack untouched. v2 stamps one checksum in the bytes; the path
+// checksum is a derived identity (SP.pathChecksum of the path), so the path case
+// corrupts the path itself and is caught by the stamp and the path law together.
+(function () {
+	var good = SP.encode(FIX.build(64, 8));
+	function refusesText(name, text, pattern) {
+		var shown = L.sb.COLSECTION.pack, hash = L.sb.COLS.hash(), threw = false;
+		try { L.sb.COLSECTION.load(text, 'paste'); } catch (e) { threw = true; }
+		check.ok('refuses ' + name, threw && L.sb.COLSECTION.pack === shown
+			&& L.sb.COLS.hash() === hash && (!pattern || pattern.test(L.sb.COLSECTION.msg)),
+			L.sb.COLSECTION.msg);
+	}
+	refusesText('a corrupted path (the path checksum catches it)',
+		good.replace('"lat0":12', '"lat0":13'));
+	refusesText('a corrupted sea level (the snapshot checksum catches it)',
+		good.replace('"levelM":0', '"levelM":25'));
+	refusesText('an edited integer field (n)', good.replace('"n":64', '"n":63'));
+	refusesText('a missing field (license)', good.replace(/"license":"[^"]*",/, ''));
+	(function () {
+		var at = good.indexOf('"hFelM":[') + 9, c = good.charAt(at);
+		refusesText('a flipped payload byte', good.slice(0, at) + (c === '0' ? '1' : '0') + good.slice(at + 1));
+	})();
+	refusesText('a corrupted snapshot checksum stamp',
+		good.replace(/"checksum":"[0-9a-f]+"/, '"checksum":"0000000000000000"'));
+	refusesText('a corrupted path arc (arcKm against its own geometry)',
+		good.replace('"arcKm":40030.2', '"arcKm":40031.2'));
+	refusesText('a v1 pack, by version', good.replace('"version":2', '"version":1'),
+		/version 1, this build reads 2/);
+	var plateBad = FIX.build(64, 8); plateBad.plates[0].n += 1;
+	var shownP = L.sb.COLSECTION.pack, hashP = L.sb.COLS.hash(), threwP = false;
+	try { L.sb.COLSECTION.loadPack(plateBad, 'object'); } catch (e) { threwP = true; }
+	check.ok('refuses an edited plate table (object path)', threwP
+		&& L.sb.COLSECTION.pack === shownP && L.sb.COLS.hash() === hashP, L.sb.COLSECTION.msg);
+	var shortBad = FIX.build(64, 8); shortBad.sKm = Array.from(shortBad.sKm).slice(0, 10);
+	var threwS = false;
+	try { L.sb.COLSECTION.loadPack(shortBad, 'object'); } catch (e) { threwS = true; }
+	check.ok('refuses a field of the wrong raw length (object path)', threwS
+		&& L.sb.COLSECTION.pack === shownP && L.sb.COLS.hash() === hashP, L.sb.COLSECTION.msg);
+})();
 
 check.section('C2. layout refusal is atomic against a running section');
 L.sb.COLP.sl.geo = 10000;

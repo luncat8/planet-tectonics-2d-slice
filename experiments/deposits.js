@@ -16,7 +16,7 @@
 'use strict';
 var lib = require('./lib.js'), M = lib.mods, check = lib.check;
 var DEP = M.deposits, Core = require('../js/deposit-core.js'), SP = require('../port/slice-format.js');
-var DM = require('../port/deposit-models.js'), DE = require('../port/deposit-economics.js');
+var DM = require('../js/data/deposit-models.js'), DE = require('../js/data/deposit-economics.js');
 var S = M.state, P = M.params, SEED = M['section-seed'], CP = M.checkpoint, SEC = M['section-pack'];
 var FIX = require('./pack-fixture.js');
 var FIXTURE = require('./fixtures/deposits-draws.json');

@@ -2,7 +2,7 @@
 // deposit-core.js — the deposit catalogue's deterministic core, extracted verbatim from
 // planet-geotectonics @ d909476 (0.6.1) js/deposits.js: the hashing, the keyed draw, the
 // truncated normal and the body geometry. The counterpart keeps these inline today, so this
-// file is not in port/PORT.json (a shared file is one both sides assert byte-identical);
+// file was never in port/PORT.json (a shared file is one both sides assert byte-identical);
 // until the extraction lands upstream it is pinned by experiments/fixtures/deposits-draws.json,
 // which experiments/deposits.js replays: same key -> same draws, same draws -> same body.
 //
@@ -12,7 +12,7 @@
 'use strict';
 var DepositCore = (function () {
 	var node = typeof module !== 'undefined' && module.exports;
-	var DM = node ? require('../port/deposit-models.js') : window.DepositModels;
+	var DM = node ? require('./data/deposit-models.js') : window.DepositModels;
 
 	var Core = {
 		MAX_DRAWS: 40,          // upstream Deposits.MAX_DRAWS: slots 0..39 of one candidate

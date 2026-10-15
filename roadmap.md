@@ -20,7 +20,7 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | 0.3.2 | the light-parcel heat concentration: a parcel carrying a small share of its stencil's marker mass takes an amplified specific increment from the adjoint gather, so buried deposits reach T 2.267 in a field of 0.288 — outside the engine's own −0.5..1.5 wall — and 0.3.1's 300 Myr intake stays held back until that is answered | `0.3.2-draft.md` | 0.3.1 M2's routing-event columns |
 | 0.4.0 | sync/exchange: provenance, deposits core, water, checkpoint, section pack | `0.4.0-sync-plan.md` | — |
 | 0.4.1 | the cut: draw a line on the globe, copy/save, paste/load, reconstruct a section | `0.4.1-plan.md` | 0.4.0's format (`port/slice-format.js`, M0 done) |
-| 0.4.2 | the `pgt-slice-pack` v2 cutover: Phase A (staleness ledger, one decode entry, bake retirement), Phase B (one coordinated port bump, no v1 reader), Phase C gated/not started (core-log return, live bridge — topology-rebuild gate open) | `0.4.2-plan.md` | globe 0.8.0–0.8.2 handoff (`port/` v2 codec + fixture); globe 0.8.3 gates for Phase C |
+| 0.4.2 | the `pgt-slice-pack` v2 cutover: Phase A landed (staleness ledger, one decode entry, bake retirement); **Phase B-a landed 2026-10-15** (one coordinated port bump — v2 codec + fixture byte-identical with the `61f77aa` handoff, every reader on `SP.decode`, writers on make → seal → encode, the three v1 bundles retired, deposit catalogues relocated to `js/data/`; return package `archive/0.4.2-phase-b-report.md`); B-b (bundle restore) gated on a globe v2 writer, Phase C gated/not started (core-log return, live bridge — topology-rebuild gate open) | `0.4.2-plan.md` | globe 0.8.0–0.8.2 handoff (`port/` v2 codec + fixture); globe 0.8.3 gates for Phase C |
 | 0.9.0 | globe page hosts the section as a library; live sync is C3+C4 | `0.9.0-draft-sync.md`, `0.4.1-plan.md` §8 | 0.4.1 M1–M2; C1 on the column engine |
 
 0.2.0 status: **closed.** M0 (the headless toy box), M1 (vent lifecycle / second clock),
@@ -424,9 +424,18 @@ path, not a repair.
 | `experiments/port-check.js` §A assertion | hard-codes `upstream.commit === 'd909476'` | must be rewritten with the manifest it asserts | regenerate (B2: asserts the v2 manifest shape; the assertion failing between B1 and B2 within one commit series is the cutover's recorded tripwire, not something to silence early) |
 | `js/checkpoint.js`, `js/coupling.js`, `js/core-log.js` (local readers of `SlicePack`) | v1 API (`normalize`/`quantize`/`validate`/`verify`, `SP.encode`, `SP.FIELDS`, `SP.EDGE`, `SP.round`) | untouched local readers; coupling semantics do not change in 0.4.2 (boundary 3) | keep-local (B4 migrates the call sites per the plan §4 method map; the v1→v2 inventory is in `archive/0.4.2-phase-a-worklog.md`) |
 
-The cut's own reading path is already one entry — `SectionPack.decodePack` (A2 landed; the
-fixture state hash `3682105425` identical across the refactor) — so the B-a cutover is a
-one-function change on the reader side, as the plan intended.
+**B-a outcome (2026-10-15, `archive/0.4.2-phase-b-worklog.md` / `-phase-b-report.md`).**
+Every disposition above landed in the one series: the manifest is `pgt-port-manifest` v2
+(globe-writer `61f77aaad9663a26d0ed18c0504394542a31c036`, section-reader `68b6b3d`),
+`port/` holds exactly the v2 codec (sha256 `e5df4575…`) and fixture (sha256 `ca5e92d7…`),
+the deposit catalogues sit at `js/data/` with their hashes unchanged (`9f108872…`,
+`97008fa9…`), the three v1 bundles are deleted with no v1 artifact shipping, `bake_section.py`
+stays frozen, and `port-check.js` asserts the v2 manifest (18 checks). The reader's one entry
+is now the codec's own `SP.decode` inside `SectionPack.decodePack`; the v2 fixture reconstructs
+to state hash `82860503` through the page entry at seed 7. Two mapping consequences of the v2
+gap row are the section's own, recorded in the worklog: a gap column's plate comes from its
+widest live neighbour sample, and the synthetic fixture may not place a gap on a seam sample.
+Still open: B-b bundle restore (needs a globe v2 writer), Phase C (gated, not started).
 
 ## 5. Not planned
 

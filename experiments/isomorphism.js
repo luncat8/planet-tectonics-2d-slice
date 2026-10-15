@@ -5,8 +5,10 @@
 // harness proves is a three-link chain:
 //
 //   1. the checked-in fixture (experiments/fixtures/deposits-draws.json) records the
-//      counterpart file it came from -- repo, commit, sha256 -- and that commit is the
-//      one port/PORT.json pins;
+//      counterpart file it came from -- repo, commit, sha256. That commit is a
+//      historical extraction pin: it is not the manifest's current globe-writer
+//      commit, and the extraction is frozen there (no backport in either direction,
+//      0.4.2-plan.md §1);
 //   2. LIVE, when an upstream tree is available: the fixture regenerates from the
 //      counterpart's own code, at the pinned commit, byte-identical (the generator is
 //      experiments/make-deposits-fixture.js; the sha256 of the upstream file is checked
@@ -37,15 +39,19 @@ var up = process.argv[2] || process.env.UPSTREAM || '/tmp/up';
 var upFile = path.join(up, 'js', 'deposits.js');
 var haveUp = fs.existsSync(upFile);
 
-check.section('A. the fixture is pinned to the manifest\'s upstream');
-check.ok('the fixture names the counterpart file and the pinned commit',
+check.section('A. the fixture carries its historical extraction pin');
+var globeWriter = null;
+(PORT.repositories || []).forEach(function (r) { if (r.role === 'globe-writer') globeWriter = r; });
+check.ok('the fixture names the counterpart file and its extraction commit',
 	FIXTURE.provenance.file === 'js/deposits.js' &&
-	FIXTURE.provenance.commit === PORT.upstream.commit.slice(0, FIXTURE.provenance.commit.length) &&
+	/^[0-9a-f]{7,40}$/.test(FIXTURE.provenance.commit) &&
+	/planet-geotectonics/.test(FIXTURE.provenance.repo) &&
 	/^[0-9a-f]{64}$/.test(FIXTURE.provenance.sha256),
-	FIXTURE.provenance.file + ' @ ' + FIXTURE.provenance.commit + ' (manifest ' + PORT.upstream.repo +
-	' @ ' + PORT.upstream.commit + ')');
-check.ok('the manifest pins the same commit for the shared files',
-	PORT.upstream.commit.indexOf(FIXTURE.provenance.commit) === 0, PORT.upstream.commit);
+	FIXTURE.provenance.file + ' @ ' + FIXTURE.provenance.commit + ' in ' + FIXTURE.provenance.repo);
+check.ok('the extraction pin is historical, not the manifest\'s globe-writer commit',
+	!!globeWriter && globeWriter.commit.indexOf(FIXTURE.provenance.commit) !== 0,
+	'extracted @ ' + FIXTURE.provenance.commit + '; globe-writer pinned @ ' +
+	(globeWriter ? globeWriter.commit : 'none') + ' (frozen extraction, no backport either way)');
 var sharedOk = 0;
 PORT.files.forEach(function (f) {
 	var buf = fs.readFileSync(path.join(root, f.path));
