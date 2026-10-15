@@ -135,10 +135,14 @@
 <script src="js/deposits.js"></script>
 <script src="js/section-seed.js"></script>
 <script src="js/checkpoint.js"></script>
-<!-- bundled section packs: none ship at the v2 cutover (0.4.2 B-a retired the three v1
-     bundles; B-b restores them through a v2 writer). A restored bundle registers
-     window.SECTION_PACKS here, and ?start=section&pack=<id> resolves it through the
-     same decode entry as a paste -->
+<!-- bundled section packs, restored at 0.4.2 Phase B-b through the globe's v2 writer
+     (tools/earth/bake_section.js, 0.8.2; never the frozen tools/earth/bake_section.py).
+     Each wrapper records the globe revision, exact command line, both identities and
+     the license, and registers its id on window.SECTION_PACKS; ?start=section&pack=<id>
+     resolves it through the same decode entry as a paste -->
+<script src="js/data/section-earth-gc0.js"></script>
+<script src="js/data/section-earth-100Ma-gc0.js"></script>
+<script src="js/data/section-earth-100Ma-gc1.js"></script>
 <script src="js/section-pack.js"></script>
 <script src="js/coupling.js"></script>
 <script src="js/coupling-link.js"></script>

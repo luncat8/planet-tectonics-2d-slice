@@ -1,17 +1,25 @@
 // section-bundle.js — the gate for what ships as a bundled cut in js/data/, and for the
 // pinned v2 fixture the port carries. At the 0.4.2 v2 cutover (B4) the three v1 Earth
-// bundles were retired: no v1 artifact ships, and bundle *restore* waits for a globe
-// v2 writer (Phase B-b, gated). So this gate now holds three things:
+// bundles were retired; Phase B-b restored the same three ids through the globe's v2
+// writer (planet-geotectonics tools/earth/bake_section.js, 0.8.2 — never the frozen
+// tools/earth/bake_section.py), one bundle at a time. So this gate now holds three
+// things:
 //
-//   A. the retirement: js/data/ carries no section-*.js bundle, columns.html loads
-//      none, and a retired id asked for on the page is a visible refusal, not a
-//      silent fallback to some other world.
+//   A. the restore: js/data/ carries exactly the three v2 bakes, columns.html loads
+//      each once, each wrapper registers its old id on SECTION_PACKS, and each pack
+//      validates and verifies through the local codec with the pinned identities
+//      (path + full), the recorded provenance and license, and the static-bake
+//      honesty: ore potentials and damage are 0 (the t = 0 initializer, not a
+//      survey), and the pack carries pack fields only — beds and deposits shown
+//      after import are section reconstruction, not Earth-pack fields.
 //   B. the pinned v2 fixture (port/fixtures/slice-pack-v2.json): it decodes through
 //      the reader's own entry, its two identities are the recorded ones (and do not
 //      move when source.built does), the canonical text is stable, and it lays a
 //      real section on the page — the same cut and seed twice, one hash.
-//   C. a v1 pack is refused by version at the page's door, with the shown world
-//      untouched (the byte-level suite lives in experiments/section-pack.js §C1).
+//   C. the page: ?pack=<id> lays the real bundled Earth cut through the same decode
+//      entry as a paste, and a v1 pack is refused by version at the page's door,
+//      with the shown world untouched (the byte-level suite lives in
+//      experiments/section-pack.js §C1).
 // Run: node experiments/section-bundle.js
 'use strict';
 
@@ -25,24 +33,83 @@ var SP = require('../port/slice-format.js');
 var root = lib.root;
 var t0 = Date.now();
 
-// the retired v1 bakes (0.4.1 M4): gone at the cutover, and they stay gone until a
-// v2 writer regenerates them (Phase B-b)
-var RETIRED = ['section-earth-gc0.js', 'section-earth-100Ma-gc0.js', 'section-earth-100Ma-gc1.js'];
+// the restored v2 bakes (0.4.2 Phase B-b): regenerated one at a time through the
+// globe's bake CLI at revision 9270039a7cbebe84ef667d15200ff64c335fe26e, each command
+// pinning source.commit 0b10d68538488d6989939d4bf31a391775cf7581 and
+// source.built 2026-10-15T00:00:00.000Z (outside both identities); every wrapper
+// header carries its exact command line and license. Old v1 sample counts and
+// checksums are gone with the v1 walk: these are L5 cell-run bakes of the same
+// circles (193 / 193 / 209 runs).
+var SOURCE_COMMIT = '0b10d68538488d6989939d4bf31a391775cf7581';
+var GLOBE_REVISION = '9270039a7cbebe84ef667d15200ff64c335fe26e';
+var SOURCE_BUILT = '2026-10-15T00:00:00.000Z';
+var BUNDLES = [
+	{ id: 'earth-gc0', file: 'section-earth-gc0.js', circle: '0 0 90',
+		path: 'e0147ee8ff63d4d1', full: '63825f6abdfde871', n: 193, bytes: 17058, epochMa: 0,
+		license: 'Earth start earth · PALEOMAP-0Ma (Scotese & Wright 2018) + NNR-MORVEL56 + CRUST1.0 sediment (not GlobSed)' },
+	{ id: 'earth-100Ma-gc0', file: 'section-earth-100Ma-gc0.js', circle: '0 0 90',
+		path: 'e0147ee8ff63d4d1', full: 'a9a17ca6721a9597', n: 193, bytes: 15941, epochMa: 100,
+		license: 'Earth start earth-100Ma · PALEOMAP-PaleoDEM 100Ma (Scotese & Wright 2018)' },
+	{ id: 'earth-100Ma-gc1', file: 'section-earth-100Ma-gc1.js', circle: '20 0 90',
+		path: '77ac9f529df0fc55', full: '965109ddb61c5870', n: 209, bytes: 16513, epochMa: 100,
+		license: 'Earth start earth-100Ma · PALEOMAP-PaleoDEM 100Ma (Scotese & Wright 2018)' }
+];
 var FIXTURE_TEXT = fs.readFileSync(path.join(root, 'port', 'fixtures', 'slice-pack-v2.json'), 'utf8');
 
-console.log('  section bundle: retirement of the v1 bakes, and the pinned v2 fixture');
-console.log('  (bundle restore is Phase B-b, gated on a globe v2 writer; the format is port/slice-format.js)');
+console.log('  section bundle: the restored v2 bakes, and the pinned v2 fixture');
+console.log('  (restored at Phase B-b through the globe bake CLI at ' + GLOBE_REVISION.slice(0, 7) + '; the format is port/slice-format.js)');
 console.log('');
 
-check.section('A. no v1 artifact ships');
+check.section('A. the restored v2 bakes, through the local codec');
 var dataDir = path.join(root, 'js', 'data');
 var onDisk = fs.readdirSync(dataDir).filter(function (f) { return /^section-.*\.js$/.test(f); });
-check.ok('js/data/ carries no section bundle', onDisk.length === 0, onDisk.join(' ') || 'none');
-check.ok('the retired bundle files are absent',
-	RETIRED.every(function (f) { return !fs.existsSync(path.join(dataDir, f)); }), RETIRED.join(' '));
+check.ok('js/data/ carries exactly the three restored bundles',
+	onDisk.length === BUNDLES.length &&
+	BUNDLES.every(function (b) { return onDisk.indexOf(b.file) >= 0; }), onDisk.join(' ') || 'none');
 var htmlA = fs.readFileSync(path.join(root, 'columns.html'), 'utf8');
-check.ok('columns.html loads no bundle script',
-	!/js\/data\/section-[^"]*\.js/.test(htmlA), 'bundle script tags return with the v2 bake at Phase B-b');
+check.ok('columns.html loads each bundle script exactly once',
+	BUNDLES.every(function (b) {
+		return htmlA.split('js/data/' + b.file + '"').length - 1 === 1;
+	}), 'in the M4 load order, before js/section-pack.js');
+
+// the wrappers are page data scripts with a module.exports guard: one require proves
+// the registration path every ?pack= id resolves through
+var registered = null;
+try { registered = require(path.join(dataDir, BUNDLES[0].file)); }
+catch (e) { check.ok('the wrappers register on SECTION_PACKS (' + e.message + ')', false); }
+var EXPECTED_KEYS = ['format', 'version', 'source', 'path', 'planet', 'sea', 'plates', 'n']
+	.concat(SP.FIELDS.map(function (f) { return f.name; }))
+	.concat(['license', 'checksum']).sort().join(',');
+BUNDLES.forEach(function (b) {
+	var pack = registered && registered[b.id];
+	check.ok(b.id + ' re-registers under its old id on SECTION_PACKS',
+		!!pack && typeof pack === 'object' && !Array.isArray(pack));
+	if (!pack) return;
+	check.ok(b.id + ' validates and verifies through the local codec',
+		SP.validate(pack) === '' && SP.verify(pack) === '', 'validate/verify both empty');
+	check.ok(b.id + ' carries the pinned identities (path ' + b.path + ' · full ' + b.full + ')',
+		SP.pathChecksum(pack.path) === b.path && pack.checksum === b.full,
+		'path ' + SP.pathChecksum(pack.path) + ' · full ' + pack.checksum);
+	check.ok(b.id + ' is the recorded bake (' + b.n + ' runs, ' + b.bytes + ' bytes)',
+		pack.n === b.n && Buffer.byteLength(SP.encode(pack)) === b.bytes,
+		pack.n + ' runs, ' + Buffer.byteLength(SP.encode(pack)) + ' bytes');
+	check.ok(b.id + ' records the writer provenance',
+		!!pack.source && pack.source.repo === 'luncat8/planet-geotectonics' &&
+		pack.source.commit === SOURCE_COMMIT && pack.source.built === SOURCE_BUILT &&
+		pack.source.tMyr === 0 && pack.source.epochMa === b.epochMa && pack.source.level === 5 &&
+		pack.source.gridSeed === 7 && pack.source.simSeed === 7 && pack.source.rotModel === 'PALEOMAP',
+		'commit ' + (pack.source ? pack.source.commit : '?') + ' (' + (pack.source ? pack.source.pack : '?') +
+		' @ ' + (pack.source ? pack.source.epochMa : '?') + ' Ma, t ' + (pack.source ? pack.source.tMyr : '?') +
+		' Myr), baked against globe ' + GLOBE_REVISION.slice(0, 7));
+	check.ok(b.id + ' carries the pack license verbatim', pack.license === b.license, pack.license);
+	check.ok(b.id + ' zeros are the t = 0 initializer, not a survey',
+		pack.damage.every(function (v) { return v === 0; }) &&
+		pack.pot.every(function (v) { return v === 0; }),
+		'damage 0 and all six ore potentials 0');
+	check.ok(b.id + ' carries pack fields only (beds/deposits are section reconstruction)',
+		Object.keys(pack).sort().join(',') === EXPECTED_KEYS,
+		'no beds/deposits/stratigraphy fields in the pack');
+});
 
 check.section('B. the pinned v2 fixture, through the reader\'s own entry');
 var fixture = null;
@@ -134,11 +201,14 @@ function load(search) {
 	return { sb: sb, els: els };
 }
 
-check.section('C. the page: retired ids refuse, the fixture lays, v1 refuses');
-var L5 = load('?start=section&pack=earth-100Ma-gc0&seed=7');
-check.ok('a retired bundle id is a visible refusal, not a fallback world',
-	L5.sb.COLSECTION.pack === null && /no bundled pack 'earth-100Ma-gc0'/.test(L5.els.sMsg.textContent),
-	L5.els.sMsg.textContent);
+check.section('C. the page: the restored ids lay, the fixture lays, v1 refuses');
+BUNDLES.forEach(function (b) {
+	var L = load('?start=section&pack=' + b.id + '&seed=7');
+	check.ok('?pack=' + b.id + ' lays the real bundled cut through the reader entry',
+		L.sb.COLSECTION.pack !== null && L.sb.COLSECTION.pack.checksum === b.full &&
+		L.sb.COLSECTION.world === true && L.sb.COLSECTION.origin === b.id,
+		L.sb.COLSECTION.msg || ('checksum ' + (L.sb.COLSECTION.pack && L.sb.COLSECTION.pack.checksum)));
+});
 var L = load('?start=section&seed=7');
 var laidHash = 0;
 check.ok('the pinned fixture lays a real section through the paste entry',
