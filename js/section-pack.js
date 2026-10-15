@@ -128,6 +128,7 @@ var SectionPack = (function () {
 		linkStage: 'idle',
 		host: null, doc: null, win: null, modeRoot: null,
 		listeners: [],
+		fileReader: null,
 		cvs: null, ctx: null, hudEl: null, sliceEl: null, msgEl: null,
 		textEl: null, fileEl: null, pickEl: null, rawBtn: null, ovlBtn: null, runBtn: null,
 		saveBtn: null, loadEl: null, obsBtn: null, obsCopyBtn: null, obsOutEl: null,
@@ -177,6 +178,53 @@ var SectionPack = (function () {
 		},
 
 		// ---------------------------------------------------------------- loading
+		cancelFileRead: function () {
+			var reader = this.fileReader;
+			this.fileReader = null;
+			if (!reader) return;
+			reader.onload = reader.onerror = reader.onabort = null;
+			if (reader.readyState === 1) reader.abort();
+		},
+
+		// Cut and session files compete for one slot. Identity guards also cover callbacks
+		// already queued when a newer import, clear or host teardown aborts the reader.
+		readFile: function (input, session) {
+			var file = input.files && input.files[0];
+			if (!file) return;
+			this.cancelFileRead();
+			input.value = ''; // selecting the same file again must fire change, even after a refusal
+			var Reader = this.win.FileReader, self = this;
+			var kind = session ? 'session' : 'file';
+			if (!Reader) { this.refuse(kind + ' loading is unavailable in this host'); return; }
+			var reader;
+			try { reader = new Reader(); }
+			catch (e) { this.refuse(kind + ' loading failed: ' + e.message); return; }
+			this.fileReader = reader;
+			reader.onload = function () {
+				if (self.fileReader !== reader) return;
+				self.fileReader = null;
+				try {
+					if (session) CP.loadSession(reader.result);
+					else self.load(reader.result, 'file');
+				} catch (e) { self.refuse(e.message); }
+			};
+			reader.onerror = function () {
+				if (self.fileReader !== reader) return;
+				self.fileReader = null;
+				self.refuse(kind + ' read failed: ' + (reader.error ? reader.error.message : 'unknown error'));
+			};
+			reader.onabort = function () {
+				if (self.fileReader !== reader) return;
+				self.fileReader = null;
+				self.refuse(kind + ' read aborted');
+			};
+			try { reader.readAsText(file); }
+			catch (e) {
+				this.cancelFileRead();
+				this.refuse(kind + ' read failed: ' + e.message);
+			}
+		},
+
 		// The one decode entry (plan §3 A2, §4 B4): text in — the shape every transport
 		// carries and the only shape the v2 decoder takes — a verified pack out, or a
 		// refusal with the reason. The v2 body is the codec's own: SP.decode proves the
@@ -195,6 +243,7 @@ var SectionPack = (function () {
 		// zero, is refused there) — and the result goes through the one decode entry:
 		// one decoder, not two, and no typed-array stringification of the raw object.
 		loadPack: function (pack, origin) {
+			this.cancelFileRead();
 			if (!pack || typeof pack !== 'object' || Array.isArray(pack)) {
 				var typeError = 'a slice pack must be a JSON object';
 				this.refuse(typeError);
@@ -208,6 +257,7 @@ var SectionPack = (function () {
 		// The text transport (paste, file): a parse to route a coupling message, then the one
 		// decode entry — no second decoder on the object the sniff already produced.
 		load: function (text, origin) {
+			this.cancelFileRead();
 			var wire = String(text), obj;
 			try { obj = JSON.parse(wire); }
 			catch (e) { this.refuse('not JSON: ' + e.message); throw e; }
@@ -346,6 +396,7 @@ var SectionPack = (function () {
 
 		// ---------------------------------------------------------------- section mode
 		init: function (host) {
+			this.cancelFileRead();
 			this.unlisten();
 			if (this.link) this.link.stop();
 			this.link = null;
@@ -407,14 +458,10 @@ var SectionPack = (function () {
 				if (self.textEl.value) self.caught(function () { self.load(self.textEl.value, 'paste'); });
 			});
 			this.listen(this.fileEl, 'change', function () {
-				var file = this.files && this.files[0], Reader = self.win.FileReader;
-				if (!file) return;
-				if (!Reader) { self.refuse('file loading is unavailable in this host'); return; }
-				var reader = new Reader();
-				reader.onload = function () { self.caught(function () { self.load(reader.result, 'file'); }); };
-				reader.readAsText(file);
+				self.readFile(this, false);
 			});
 			this.listen(this.pickEl, 'change', function () {
+				self.cancelFileRead();
 				var value = this.value, pack = value ? self.bundled(value) : null;
 				if (pack) self.caught(function () { self.loadPack(pack, value); });
 				else if (!value) self.clear();
@@ -440,12 +487,7 @@ var SectionPack = (function () {
 				});
 			});
 			if (this.loadEl) this.listen(this.loadEl, 'change', function () {
-				var file = this.files && this.files[0], Reader = self.win.FileReader;
-				if (!file) return;
-				if (!Reader) { self.refuse('session loading is unavailable in this host'); return; }
-				var reader = new Reader();
-				reader.onload = function () { self.caught(function () { CP.loadSession(reader.result); }); };
-				reader.readAsText(file);
+				self.readFile(this, true);
 			});
 			if (this.obsBtn) this.listen(this.obsBtn, 'click', function () {
 				self.caught(function () { self.observe(true); });
@@ -467,6 +509,7 @@ var SectionPack = (function () {
 		},
 
 		stop: function () {
+			this.cancelFileRead();
 			this.unlisten();
 			if (this.link) this.link.stop();
 			this.link = null;
@@ -686,6 +729,7 @@ var SectionPack = (function () {
 		},
 
 		clear: function () {
+			this.cancelFileRead();
 			this.setLiveKinematics(false);
 			this.pack = null;
 			this.origin = '';

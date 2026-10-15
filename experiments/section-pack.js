@@ -319,6 +319,133 @@ check.ok('the HUD agrees on everything but the transport line',
 	A.els.hud.textContent.split('\n').slice(1).join('\n') === B.els.hud.textContent.split('\n').slice(1).join('\n'),
 	B.els.hud.textContent);
 
+check.section('D1. asynchronous file imports follow the latest user choice');
+var pendingReads = [];
+function DeferredReader() {
+	var reader = this;
+	this.readyState = 0;
+	this.readAsText = function () {
+		reader.readyState = 1;
+		// Keep the queued callbacks even after abort, to exercise the stale-event guard.
+		var done = reader.onload, fail = reader.onerror, aborted = reader.onabort;
+		pendingReads.push({
+			reader: reader,
+			finish: function (bytes) { reader.readyState = 2; reader.result = bytes; done(); },
+			fail: function () { reader.readyState = 2; reader.error = { message: 'disk unavailable' }; if (fail) fail(); },
+			abort: function () { reader.readyState = 2; if (aborted) aborted(); }
+		});
+	};
+	this.abort = function () { reader.readyState = 2; reader.cancelled = true; };
+}
+var Async = load('?start=section&seed=7', {
+	FileReader: DeferredReader,
+	btoa: function (s) { return Buffer.from(s, 'binary').toString('base64'); },
+	atob: function (s) { return Buffer.from(s, 'base64').toString('binary'); }
+});
+viaPaste(Async, text);
+var asyncSec = Async.sb.COLSECTION;
+var otherText = SP.encode(FIX.windowCut(160, 10, 12400));
+function queueFile(id) {
+	var el = Async.els[id || 'sFile'];
+	el.value = 'slice-test.json';
+	el.files = [{ name: el.value }];
+	el.listeners.change.call(el);
+	return pendingReads[pendingReads.length - 1];
+}
+function sameAsyncWorld(name, action) {
+	var pack = asyncSec.pack, hash = Async.sb.COLS.hash(), msg = asyncSec.msg;
+	action();
+	check.ok(name, asyncSec.pack === pack && Async.sb.COLS.hash() === hash && asyncSec.msg === msg);
+}
+var older = queueFile(), newer = queueFile();
+newer.finish(otherText);
+check.ok('the newer file lays the requested cut', asyncSec.pack.checksum === SP.decode(otherText).checksum && asyncSec.world);
+sameAsyncWorld('an older file finishing last cannot replace the newer cut', function () { older.finish(text); });
+check.ok('superseded readers are aborted and the file input allows a same-file retry',
+	older.reader.cancelled === true && Async.els.sFile.value === '');
+var pastRead = queueFile();
+viaPaste(Async, text);
+sameAsyncWorld('a paste supersedes an outstanding file', function () { pastRead.finish(otherText); });
+var objectRead = queueFile();
+asyncSec.loadPack(pin, 'object');
+sameAsyncWorld('an object import supersedes an outstanding file', function () { objectRead.finish(otherText); });
+var invalidRead = queueFile();
+viaPaste(Async, '{broken');
+sameAsyncWorld('even a refused newer paste keeps its refusal instead of loading an old file',
+	function () { invalidRead.finish(otherText); });
+var clearedRead = queueFile();
+asyncSec.clear();
+sameAsyncWorld('clear cannot be undone by an outstanding file', function () { clearedRead.finish(text); });
+check.ok('clear leaves no cut after the old read completes', asyncSec.pack === null && !asyncSec.world);
+viaPaste(Async, text);
+var brokenRead = queueFile(), brokenHash = Async.sb.COLS.hash(), brokenPack = asyncSec.pack;
+brokenRead.fail();
+check.ok('a file read error is visible and preserves the current cut',
+	asyncSec.bad && /disk unavailable/.test(asyncSec.msg) && asyncSec.pack === brokenPack &&
+	Async.sb.COLS.hash() === brokenHash, asyncSec.msg);
+var abortRead = queueFile();
+abortRead.abort();
+check.ok('an unexpected read abort is visible and preserves the current cut',
+	asyncSec.bad && /abort/.test(asyncSec.msg) && Async.sb.COLS.hash() === brokenHash, asyncSec.msg);
+var staleError = queueFile();
+viaPaste(Async, text);
+sameAsyncWorld('errors from an obsolete reader do not overwrite the current status', function () { staleError.fail(); });
+var staleAbort = queueFile();
+viaPaste(Async, text);
+sameAsyncWorld('an obsolete abort cannot overwrite a successful import', function () { staleAbort.abort(); });
+var bundleRead = queueFile();
+Async.els.sPick.value = 'no-such-pack';
+Async.els.sPick.listeners.change.call(Async.els.sPick);
+sameAsyncWorld('a refused bundle selection also supersedes pending reads', function () { bundleRead.finish(otherText); });
+var duplicateRead = queueFile();
+duplicateRead.finish(text);
+sameAsyncWorld('a reader completion is applied at most once', function () { duplicateRead.finish(otherText); });
+var sessionText = JSON.stringify(Async.sb.COLCHECKPOINT.saveSession());
+var cutBeforeSession = queueFile(), sessionRead = queueFile('sLoad');
+sessionRead.finish(sessionText);
+sameAsyncWorld('a session import supersedes an outstanding cut file', function () { cutBeforeSession.finish(otherText); });
+check.ok('the current session file still restores normally', /restored session/.test(asyncSec.msg) && !asyncSec.bad);
+var oldSession = queueFile('sLoad'), cutAfterSession = queueFile();
+cutAfterSession.finish(otherText);
+sameAsyncWorld('a newer cut file supersedes an outstanding session file', function () { oldSession.finish(sessionText); });
+var badSession = queueFile('sLoad'), sessionHash = Async.sb.COLS.hash(), sessionPack = asyncSec.pack;
+badSession.finish('{broken');
+check.ok('a malformed session file reports its parse error and keeps the shown section',
+	asyncSec.bad && /session not JSON/.test(asyncSec.msg) && Async.sb.COLS.hash() === sessionHash &&
+	asyncSec.pack === sessionPack, asyncSec.msg);
+var sessionError = queueFile('sLoad');
+sessionError.fail();
+check.ok('session read errors are visible without changing the world',
+	asyncSec.bad && /session read failed: disk unavailable/.test(asyncSec.msg) &&
+	Async.sb.COLS.hash() === sessionHash, asyncSec.msg);
+var savedReader = Async.sb.FileReader;
+Async.sb.FileReader = undefined;
+var missingReaderPack = asyncSec.pack;
+queueFile();
+check.ok('a host without FileReader refuses visibly and still permits retry',
+	asyncSec.bad && /unavailable/.test(asyncSec.msg) && asyncSec.pack === missingReaderPack &&
+	Async.els.sFile.value === '', asyncSec.msg);
+Async.sb.FileReader = function () {
+	this.readAsText = function () { throw new Error('read cannot start'); };
+};
+queueFile();
+check.ok('a synchronous read failure is visible and releases the reader',
+	asyncSec.bad && /read cannot start/.test(asyncSec.msg) && asyncSec.fileReader === null &&
+	asyncSec.pack === missingReaderPack, asyncSec.msg);
+Async.sb.FileReader = function () { throw new Error('reader cannot start'); };
+queueFile();
+check.ok('a reader construction failure is visible without changing the world',
+	asyncSec.bad && /reader cannot start/.test(asyncSec.msg) && asyncSec.pack === missingReaderPack, asyncSec.msg);
+Async.sb.FileReader = savedReader;
+var stoppedRead = queueFile();
+asyncSec.stop();
+sameAsyncWorld('a stopped host cannot be changed by its outstanding read', function () { stoppedRead.finish(text); });
+asyncSec.init(Async.sb.document);
+var reinitRead = queueFile();
+asyncSec.init(Async.sb.document);
+sameAsyncWorld('reinitializing a host invalidates reads from its previous lifetime', function () { reinitRead.finish(text); });
+check.ok('a reinitialized host remains empty after a stale completion', asyncSec.pack === null && !asyncSec.world);
+
 check.section('D2. coupling text uses the guarded reader on paste and file');
 var couplingMsg = COUP.fromPack(pin), couplingText = COUP.json(couplingMsg);
 var C = load('?start=section');
