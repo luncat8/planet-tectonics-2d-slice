@@ -1,0 +1,15 @@
+pt-heat-tail frb 0.25 scope dep seed 7 at 50 kyr/frame over 600 Myr, 12000 frames
+fingerprint 1401659456291387   21.458 ms/frame   bank experiments/logs/0.3.2-M6-dep-s7-600.json
+gates: mass ok, enthalpy ok, latent identity ok, wall (P4 < 0.01) ok, frame (< 20 ms) FAIL, per-phase T bound FAIL, refusals 0
+wall |intake/wall - 1| worst 2.373e-3, end 2.373e-3, operator-only 2.373e-3, R/wall 0.00e+0
+T mantle -0.8970..1.0327 (1815 outside -0.5..1.5, 0 above / 1815 below)
+T melt 0.5584..1.5439 (229 outside -0.5..1.5, 229 above / 0 below)
+T air 0.9861..1.1139 (0 outside -0.5..1.5, 0 above / 0 below)
+T dep -0.1588..1.1138 (0 outside -0.5..1.5, 0 above / 0 below)
+hottest parcel T 1.5439 in a field of 0.1101 at 72.9 km, 31.69 km2, phase melt, frame 9023
+route: 8 field-supported candidates, 8 delivered transfers, 0 bleeding (host < 1e-3 km2), 5.777096 km2 shed, 5306 mantle routings, 0 refusals
+held back by field support: 1721 samples, 1104.4715 km2*Myr of host, 250.5817 of melt-equivalent, worst T-field gap 0.2525
+repair join: 1104.4715 km2*Myr on material the repair had moved (1721 samples, worst gap 0.2525) against 0.0000 never moved (0, none); within 1f 1.6748/4, 3f 3.3496/8, 10f 5.4357/15, 30f 5.4961/17, 100f 21.2031/141, 2990 ids relocated
+P3.2 census: split 5314, whole 0, freeze 0, chambers 48, seg 1363002.8, intrDr 1360262.5, landCr 1009526.1, ventDr 1012341.8, meltM 2746.0, depN 1171415.2, nMelt 28, nDep 1871
+depletion: --dpart 0 (0 rises, max 0.0000, sum 0.0000), --cap 0 (0 parcels budgeted, 0 split candidates blocked, 0 whole blocked, 0 spent)
+books: mass 0.00e+0, enthalpy 7.23e-12, latent 7.70e-8 km2*H (3.53e-13 of its books), deposit 5.82e-9, melt -1.04e-9

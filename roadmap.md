@@ -47,10 +47,23 @@ instruments are off (15.768 ms/frame, not the 21.589 M4 banked). What still keep
 shown eligible is its deposit→melt flux, 1.2838 against 9.7302 km², which one world per row cannot
 separate from the divergence. M5 also counts a mover nobody had counted: the mesh repair
 (`G.reseed`'s donor pull) relocates 13,234 markers over 600 Myr, one traced parcel ten times and by
-up to 737 km in depth, and the bound leaves it alone (13,439 in the candidate). **Nothing is
-selected.** Next: the control and the deposit-scoped row on two or three further seeds, read as
-distributions; then the join between held routing samples and recent relocations. Condition 5 and
-the deposit field filter stay; no constant moves.
+up to 737 km in depth, and the bound leaves it alone (13,439 in the candidate). **M6
+(`archive/0.3.2-M6-distribution-report.md`, `-worklog.md`) takes the two measurements M5 §7
+names and dissolves the flux objection.** The distribution — the control and `frb 0.25 --scope
+dep` on seeds 1, 3 and 7 at 50 kyr/frame over 600 Myr, the seed-5 pair re-run beside them — spans
+a deposit→melt ratio of 0.085 to 3.20 across worlds including an inversion on s3 (115.04 against
+35.94 km²), so the "seventh" was one large event in one quiet world and by the plan's own rule
+**the row's standing is open again**. What every world agrees on is the defect's absence: deposit
+phase 1.1136–1.1150 where every control leaves the engine's wall at both ends, worst held gap the
+bound's own 0.25 against 1.17–1.99, concentration down 2–98×, zero refusals, closed books. The
+repair join (each id's last relocation from a `G.reseed` position diff, verified against the
+kernel's own move count) reads the held census as 100% on relocated material but majority settled
+(more than 100 frames: 65–98%; within one frame of a move: 0.1–33%), so the concentration is not
+coverage repair and a bound on deliveries is not the wrong instrument for it. **Nothing is
+selected.** Next: the correspondence (`--trace-id`) on the distribution's own worlds — s3's
+inversion and s1's 152.73 km² host — so condition 5's material branch holds beyond seed 5; then
+the selection decision, with the joint-vs-scoped temperature gate stated once and a frame time
+quoted from a quiet host. Condition 5 and the deposit field filter stay; no constant moves.
 
 0.2.0 status: **closed.** M0 (the headless toy box), M1 (vent lifecycle / second clock),
 M2 (stack write-back / visible edifice), M3 (bed-anchored deposits / finite extraction),

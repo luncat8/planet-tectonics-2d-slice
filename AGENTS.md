@@ -108,7 +108,13 @@ material id is not a material identity across two diverging runs (a split's chil
 merge survivor takes the smaller one), so M5's correspondence argument reads histories and sites,
 and the first-seen record is what tests whether one id does mean one material in both runs; its
 `hottest` record carries the material id, so the outlier can be traced and not only reported;
-reports every-frame books, per-phase temperature bounds, wall intake, timed kernel frames and
+M6's repair join reads each material id's last relocation frame from a position diff across
+`G.reseed` (observation only, `movedSeen` must equal the kernel's own `movedSum` when the
+lattice is never re-dealt) and splits the held census by relocation age -- cumulative windows
+1/3/10/30/100 frames plus the ever/never totals that partition it, sample count, host
+mass-time and worst T-field gap in each -- while delivered events and `hottest` carry the same
+age, so the held-back concentration can be crossed with the coverage repair that may be
+feeding it; reports every-frame books, per-phase temperature bounds, wall intake, timed kernel frames and
 individual G5 deposit transfers; no shipping parameter changes. M3 adds two melt-depletion
 probes that wrap the melt path's own kernel text rather than the engine state -- `--dpart D`,
 water-flux partitioning of the split (the residue's solidus rises by what the melt took, so it is

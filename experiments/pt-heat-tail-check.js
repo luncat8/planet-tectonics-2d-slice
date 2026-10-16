@@ -518,3 +518,177 @@ console.log('  repair: ' + tctl.movedSum + ' relocations in the control (' + tct
 	+ tdep.movedMax + '/frame), ' + tctl.redeals + ' and ' + tdep.redeals + ' global re-deals');
 console.log('  frame time: control 11.700 ms traced against 11.696 banked untraced; candidate 15.768 ms traced against 21.589 banked with --watch');
 console.log('PASS M5: the trace is neutral (both worlds, every banked diagnostic field for field); no id the two runs share names the same material -- the worlds diverge before every traced admission -- so the candidate 2 transfers are new deposits the ordinary pipeline runs and not the control 3 in different clothing; the candidate deposit phase never exceeds T 1.1136 against the control 2.2671, its held-back concentration is 694.73 against 68140.14 km2*Myr, and its deposit-to-melt flux is 1.2838 against 9.7302 km2.');
+
+// --- 0.3.2 M6: the bound against the world, and the repair join. Eight serial cells: the control
+// and frb 0.25 --scope dep on seeds 1, 3 and 7 (the other seeds of the matrix set) beside the
+// seed-5 pair every milestone was read on, re-run with the join so the question M5 left open is
+// answered on the very numbers it quoted. Every number archive/0.3.2-M6-distribution-report.md
+// states is asserted here against its own bank. One bank per world: these are the survivors.
+var root6 = path.join(__dirname, 'logs/0.3.2-M6-');
+function read6(name) { return JSON.parse(fs.readFileSync(root6 + name + '.json', 'utf8')); }
+var M6ROWS = [
+	// name, seed, fingerprint, depTx, depMelt, heldMassTime, heldSamples, maxTdep, heldGapMax, msFrame, max host
+	['base-s5-600', 5, 6191250240167390, 3, 9.73015809837463, 68140.14284555816, 30906, 2.267069502201132, 1.3276533479616148, 15.280883841250034, 50],
+	['dep-s5-600', 5, 1808048552219233, 2, 1.2838165494261151, 694.7296454453834, 713, 1.1136447535633849, 0.2503481501218162, 21.351125761416576, 5.240696509186323],
+	['base-s1-600', 1, 5524785744115553, 29, 142.69160449574065, 39009.40422323297, 52350, 2.3128475130252686, 1.9944785161036562, 15.179226384999986, 83.01736396801212],
+	['dep-s1-600', 1, 5025891284893073, 25, 80.72013109972458, 19293.565114745375, 12251, 1.114970360850176, 0.2513038667907077, 21.460615049333565, 152.72845368510758],
+	['base-s3-600', 3, 7478865669897216, 4, 35.93644904679494, 18423.89178544559, 13297, 1.6072146652070176, 1.1724055383443293, 15.567853885333307, 35.06086230043179],
+	['dep-s3-600', 3, 3305588838878544, 11, 115.04154147546977, 3983.209687546376, 2327, 1.1138015761489664, 0.2504142016439308, 21.80023574608327, 80.188307938032],
+	['base-s7-600', 7, 4424600941464687, 4, 68.29668917217981, 43694.63240246308, 32776, 1.9357911324082142, 1.8716877960231488, 14.90162163308344, 81.25123694302376],
+	['dep-s7-600', 7, 1401659456291387, 8, 5.777096193777766, 1104.4715478012263, 1721, 1.1138127399627262, 0.2525162026272012, 21.45841568333326, 7.018349906075348]
+];
+var M6 = {};
+console.log('M6 world  row       tx   depMelt km2   max host   held km2 Myr   maxT dep  worst gap  ms/frame   vs own control');
+M6ROWS.forEach(function (row) {
+	var r = read6(row[0]), seed = row[1];
+	M6[row[0]] = r;
+	assert.strictEqual(r.fingerprint, row[2], row[0] + ' fingerprint');
+	assert.strictEqual(r.seed, seed); assert.strictEqual(r.kyr, 50); assert.strictEqual(r.myr, 600);
+	assert.strictEqual(r.frames, 12000);
+	assert(r.gates.mass && r.gates.enthalpy, row[0] + ' books');
+	assert(r.gates.latentBook, row[0] + ' latent identity');
+	assert(r.gates.intakeWallP4, row[0] + ' wall');
+	assert.strictEqual(r.refuse, 0, row[0] + ' refusals');
+	assert.strictEqual(r.nonfinite, 0, row[0] + ' finite');
+	assert.strictEqual(r.depTx, row[3], row[0] + ' transfers');
+	near(r.depMelt, row[4], 1e-12, row[0] + ' deposit->melt flux');
+	near(r.heldMassTime, row[5], 1e-12, row[0] + ' held mass-time');
+	assert.strictEqual(r.heldSamples, row[6], row[0] + ' held samples');
+	near(r.maxT[3], row[7], 1e-12, row[0] + ' deposit phase maximum');
+	near(r.heldGapMax, row[8], 1e-12, row[0] + ' worst held gap');
+	near(r.msFrame, row[9], 1e-9, row[0] + ' kernel frame time');
+	near(Math.max.apply(null, r.events.map(function (e) { return e.host; })), row[10], 1e-12,
+		row[0] + ' largest delivered host');
+	assert.strictEqual(r.gates.frame, r.msFrame < 20, row[0] + ' frame gate is its own reading');
+	// every delivered transfer reconciles and carried field support
+	assert.strictEqual(r.events.length, r.depTx, row[0] + ' event count');
+	assert(Math.abs(r.events.reduce(function (s, e) { return s + e.melt; }, 0) - r.depMelt) < 1e-9,
+		row[0] + ' events reconcile to thr.depMelt');
+	assert(r.events.every(function (e) { return e.field >= e.solidus; }), row[0] + ' field support');
+	// the join instrument: the wrap's own count equals the kernel's, the lattice is untouched,
+	// and the ever/never totals partition the held census exactly
+	assert.strictEqual(r.movedSeen, r.movedSum, row[0] + ' the diff sees exactly the repair\'s moves');
+	assert.strictEqual(r.redeals, 0, row[0] + ' no lattice re-deal');
+	var j = r.heldJoin, i;
+	assert.deepStrictEqual(j.win, [1, 3, 10, 30, 100], row[0] + ' join windows');
+	for (i = 1; i < j.win.length; i++) {
+		assert(j.mass[i] >= j.mass[i - 1] && j.n[i] >= j.n[i - 1], row[0] + ' windows cumulative');
+	}
+	assert(j.mass.every(function (m) { return m <= j.ever.mass + 1e-9; }), row[0] + ' windows inside ever');
+	near(j.ever.mass + j.never.mass, r.heldMassTime, 1e-9, row[0] + ' ever + never = held mass-time');
+	assert.strictEqual(j.ever.n + j.never.n, r.heldSamples, row[0] + ' ever + never = held samples');
+	assert.strictEqual(j.never.n, 0, row[0] + ' every held sample sits on relocated material');
+	r.events.forEach(function (e, k) {
+		if (e.movedAgo === null) return;
+		assert(e.movedAgo >= 0 && e.movedAgo < e.frame, row[0] + ' event ' + k + ' relocation age');
+	});
+});
+[5, 1, 3, 7].forEach(function (seed) {
+	['base', 'dep'].forEach(function (kind) {
+		var r = M6[kind + '-s' + seed + '-600'], ctl = M6['base-s' + seed + '-600'];
+		console.log('  s' + seed + '     ' + (kind === 'dep' ? 'candidate' : 'control  ')
+			+ String(r.depTx).padStart(4) + r.depMelt.toFixed(4).padStart(13)
+			+ Math.max.apply(null, r.events.map(function (e) { return e.host; })).toFixed(2).padStart(11)
+			+ r.heldMassTime.toFixed(1).padStart(14) + r.maxT[3].toFixed(4).padStart(11)
+			+ r.heldGapMax.toFixed(4).padStart(11) + r.msFrame.toFixed(2).padStart(10)
+			+ (kind === 'dep' ? (r.depMelt / ctl.depMelt).toFixed(3) + 'x depMelt' : '-').padStart(16));
+	});
+});
+console.log('PASS 8 M6 cells: books, the latent identity and the wall close on every frame of every world; zero refusals; the join diff equals the kernel\'s own relocation count');
+// The decision rule M5 section 7 names. The flux ratio is not a constant of the bound: it spans
+// 0.085 to 3.20 across worlds, including an inversion (seed 3) where the candidate delivers over
+// three times the control's flux -- so the seed-5 'seventh' was one world's variance, and by the
+// plan's own rule the row's standing is open again. What IS constant is the defect's removal.
+var ratios = [1, 3, 7, 5].map(function (s) {
+	return M6['dep-s' + s + '-600'].depMelt / M6['base-s' + s + '-600'].depMelt;
+});
+assert(Math.min.apply(null, ratios) < 0.1 && Math.max.apply(null, ratios) > 3,
+	'M6 the flux ratio varies with the world');
+assert(M6ROWS.filter(function (row) { return row[0].indexOf('dep-') === 0; }).every(function (row) {
+	return M6[row[0]].maxT[3] < 1.12 && M6[row[0]].outsideSamples[3] === 0;
+}), 'M6 the candidate deposit phase stays inside 1.5 on every world');
+assert(M6ROWS.filter(function (row) { return row[0].indexOf('base-') === 0; }).every(function (row) {
+	return M6[row[0]].maxT[3] > 1.5 && M6[row[0]].outsideSamples[3] > 0;
+}), 'M6 the control deposit phase leaves the wall on every world');
+assert(M6ROWS.filter(function (row) { return row[0].indexOf('dep-') === 0; }).every(function (row) {
+	return M6[row[0]].heldGapMax < 0.26;
+}), 'M6 the candidate held gap is the bound\'s own width on every world');
+assert([1, 3, 7, 5].every(function (s) {
+	return M6['dep-s' + s + '-600'].heldMassTime < M6['base-s' + s + '-600'].heldMassTime;
+}), 'M6 the concentration is reduced on every world');
+// the temperature gate by phase, the report's cold-face column (mantle, melt, air, deposit),
+// split into its two ends: the candidate's residual crossings are the mantle cold side and the
+// air hot side -- phases the deposit-scoped bound does not touch by design -- while the deposit
+// phase, the release's own defect, crosses both ends in every control and neither in any candidate
+var M6OUT = {
+	'base-s5-600': [[0, 0, 0, 1744], [0, 0, 0, 1112]], 'dep-s5-600': [[0, 0, 0, 0], [0, 0, 0, 0]],
+	'base-s1-600': [[671, 0, 0, 2491], [0, 485, 0, 883]], 'dep-s1-600': [[273, 0, 0, 0], [0, 488, 0, 0]],
+	'base-s3-600': [[3268, 0, 0, 443], [0, 38, 0, 46]], 'dep-s3-600': [[865, 0, 0, 0], [0, 0, 0, 0]],
+	'base-s7-600': [[2768, 0, 0, 1704], [0, 165, 0, 726]], 'dep-s7-600': [[1815, 0, 0, 0], [0, 229, 0, 0]]
+};
+Object.keys(M6OUT).forEach(function (name) {
+	var below = M6OUT[name][0], above = M6OUT[name][1], totals = below.map(function (b, i) { return b + above[i]; });
+	assert.deepStrictEqual(M6[name].outsideSamples, totals, name + ' samples outside -0.5..1.5 by phase');
+	assert.deepStrictEqual(M6[name].outsideBelow, below, name + ' samples below -0.5 by phase');
+	assert.deepStrictEqual(M6[name].outsideAbove, above, name + ' samples above 1.5 by phase');
+	assert.strictEqual(M6[name].gates.temperature, totals.every(function (n) { return n === 0; }),
+		name + ' temperature gate is its own reading');
+});
+// the residual faces' own extremes, the report's extrema
+near(M6['dep-s7-600'].minT[0], -0.897, 5e-3, 'M6 mantle cold extreme of the candidate family');
+near(M6['dep-s1-600'].maxT[1], 1.595, 5e-3, 'M6 air hot extreme of the candidate family');
+console.log('  depMelt ratio candidate/control: s5 ' + ratios[3].toFixed(3) + ', s1 ' + ratios[0].toFixed(3)
+	+ ', s3 ' + ratios[1].toFixed(3) + ' (inverted), s7 ' + ratios[2].toFixed(3)
+	+ '; deposit T max 1.1136..1.1150 against 1.6072..2.3128');
+// The repair join's own answer: the held census is 100% on material the repair had moved at
+// least once (never = 0 in all eight cells), but the recent share is world-variable and the
+// worst gap sits mostly on settled material -- so the concentration is not predominantly a
+// fresh coverage drop, and a bound on deliveries is not the wrong instrument for it.
+var w1shares = M6ROWS.map(function (row) {
+	var j = M6[row[0]].heldJoin;
+	return { name: row[0], s1: j.mass[0] / M6[row[0]].heldMassTime, s100: j.mass[4] / M6[row[0]].heldMassTime,
+		settled: (j.ever.mass - j.mass[4]) / M6[row[0]].heldMassTime,
+		gapSettled: j.ever.gap > j.gap[4] };
+});
+assert(w1shares.every(function (w) { return w.s1 >= 0 && w.s1 < 0.35; }), 'M6 no world holds a majority of held mass-time within a frame of a relocation');
+assert(w1shares.every(function (w) { return w.settled > 0.5; }), 'M6 every world keeps most held mass-time on settled material');
+// the report's join table, to its printed precision: within 1 frame, within 100 frames, settled
+var M6JOIN = {
+	'base-s5-600': [33.3, 35.0], 'dep-s5-600': [1.1, 6.3], 'base-s1-600': [2.0, 4.4],
+	'dep-s1-600': [15.2, 16.4], 'base-s3-600': [28.2, 36.2], 'dep-s3-600': [0.1, 7.2],
+	'base-s7-600': [9.6, 10.7], 'dep-s7-600': [0.2, 1.9]
+};
+w1shares.forEach(function (w) {
+	var e = M6JOIN[w.name];
+	assert.strictEqual((100 * w.s1).toFixed(1), e[0].toFixed(1), w.name + ' within-one-frame share');
+	assert.strictEqual((100 * w.s100).toFixed(1), e[1].toFixed(1), w.name + ' within-one-hundred-frame share');
+});
+// the worst held gap is settled material on every cell but the s7 control, where it is attained
+// inside the 100-frame window (ever.gap === window gap there and nowhere else)
+assert.deepStrictEqual(w1shares.map(function (w) { return w.gapSettled; }),
+	[true, true, true, true, true, true, false, true], 'M6 worst-gap placement by cell');
+assert.strictEqual(M6['dep-s1-600'].events[0].movedAgo, 3076,
+	'M6 the s1 candidate 152.73 km2 host went 3076 frames past its last relocation');
+console.log('M6 join   <=1f share of held   <=100f share   settled >100f   worst gap at settled?   held km2 Myr');
+M6ROWS.forEach(function (row, i) {
+	var w = w1shares[i];
+	console.log('  ' + row[0].padEnd(13) + (100 * w.s1).toFixed(1).padStart(6) + '%'
+		+ (100 * w.s100).toFixed(1).padStart(12) + '%' + (100 * w.settled).toFixed(1).padStart(13) + '%'
+		+ String(w.gapSettled ? 'yes' : 'no').padStart(17) + M6[row[0]].heldMassTime.toFixed(1).padStart(18));
+});
+// the quoted world's own join, the numbers M5 section 7 asked its question on
+var j5 = M6['base-s5-600'].heldJoin;
+near(j5.mass[0], 22713.566026608973, 1e-12, 'M6 seed-5 control held mass-time within one frame of a relocation');
+near(j5.mass[4], 23856.149521100207, 1e-12, 'M6 seed-5 control held mass-time within one hundred frames');
+assert.deepStrictEqual(j5.n, [14067, 14092, 14154, 14274, 14544], 'M6 seed-5 control join sample counts');
+assert.strictEqual(M6['base-s5-600'].movedSum, 13234, 'M6 seed-5 control relocations');
+assert.strictEqual(M6['base-s5-600'].movedIds, 2786, 'M6 seed-5 control relocated material ids');
+assert.strictEqual(M6['dep-s5-600'].movedSum, 13439, 'M6 seed-5 candidate relocations');
+assert.strictEqual(M6['dep-s5-600'].movedIds, 2794, 'M6 seed-5 candidate relocated material ids');
+assert.deepStrictEqual(M6['base-s5-600'].events.map(function (e) { return e.movedAgo; }), [22, 36, 14],
+	'M6 the three protected transfers were relocated 14-36 frames before delivery');
+assert.deepStrictEqual(M6['dep-s5-600'].events.map(function (e) { return e.movedAgo; }), [211, 1],
+	'M6 the candidate pair: one transfer fresh off a relocation, one settled');
+assert.strictEqual(M6['base-s5-600'].hottest.movedAgo, 205, 'M6 the outlier id sat 205 frames from its last relocation');
+console.log('PASS M6: the flux ratio varies 0.085..3.20 with the world (the seed-5 seventh was one large event), the defect is absent on every world (deposit T 1.1136..1.1150 against 1.6072..2.3128, held gap the bound\'s own 0.25 against 1.17..1.99), and the held census is 100% on relocated material with 0.1..33% within one frame of a move -- a sizeable repair-adjacent minority, not the majority of the concentration.');
+console.log('The row\'s standing is open again (M5 section 7\'s own rule); eligibility turns on condition 5\'s material branch beyond seed 5, not on the flux.');

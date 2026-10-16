@@ -508,13 +508,15 @@ MT.detach = function (M, S) {
 		if (tg < ts) {
 			heldSamples++; heldTime += S.m[p] * subDt;
 			heldMeltTime += S.m[p] * S.melt[p] * subDt;
-			heldGap = Math.max(heldGap, S.T[p] - tg);
+			var gap = S.T[p] - tg;
+			heldGap = Math.max(heldGap, gap);
+			hjAdd(movedAge(S, p), S.m[p] * subDt, gap);
 			if (tk >= 0) { trace[tk].held++; trSample(M, S, p, tk, 4); }
 			continue;
 		}
 		events.push({ frame: frame, id: S.id[p], x: S.x[p], y: S.y[p], host: S.m[p],
 			melt: S.m[p] * S.melt[p], T: S.T[p], field: tg, solidus: ts,
-			cF: S.cF[p], cW: S.cW[p] });
+			cF: S.cF[p], cW: S.cW[p], movedAgo: movedAge(S, p) });
 		if (tk >= 0) { trace[tk].delivered++; trace[tk].deliveredFrame = frame; trSample(M, S, p, tk, 5); }
 	}
 	sampleMs += performance.now() - start;
@@ -539,6 +541,51 @@ var outFrames = 0, hot = { T: -Infinity, frame: 0, ph: -1, y: 0, m: 0, field: 0,
 // repair fires, and how much material it moves, is a population question a six-parcel trace cannot
 // answer, so the counters ride along in every bank from here on.
 var movedSum = 0, movedMax = 0, movedFrames = 0;
+// 0.3.2 M6: the repair join. The counters above say how much the repair moves; the join says
+// what it moves *into*. A relocated marker keeps its heat and lands wherever the donor ring
+// puts it, so material dropped into a cold neighbourhood sits hot against a cold field and the
+// field support holds it -- which would make part of the held-back concentration coverage
+// repair rather than melt routing. The wrap diffs positions across G.reseed (the only mover
+// that replaces a marker's position out of step with the flow) to learn each material id's
+// last relocation frame; held samples, delivered events and the hottest record then carry
+// that age. Observation only -- nothing here writes engine state.
+var lastMove = new Int32Array(1 << 21), movedIds = 0, movedSeen = 0;
+var reseed0 = G.reseed, mvX = new Float64Array(1 << 18), mvE = new Float64Array(1 << 18);
+G.reseed = function (M, S, force) {
+	var n = S.n, p, id, big;
+	if (mvX.length < n) { mvX = new Float64Array(n * 2); mvE = new Float64Array(n * 2); }
+	for (p = 0; p < n; p++) { mvX[p] = S.x[p]; mvE[p] = S.e[p]; }
+	reseed0(M, S, force);
+	for (p = 0; p < n; p++) {
+		if (S.x[p] === mvX[p] && S.e[p] === mvE[p]) continue;
+		movedSeen++;
+		id = S.id[p];
+		if (id >= lastMove.length) {
+			big = new Int32Array(Math.max(id + 1, lastMove.length * 2));
+			big.set(lastMove); lastMove = big;
+		}
+		if (lastMove[id] === 0) movedIds++;
+		lastMove[id] = frame;
+	}
+};
+// the held census split by relocation age: cumulative windows of frames since the repair last
+// moved the sample's material, plus the ever/never totals that partition the census exactly
+var JOIN_WIN = [1, 3, 10, 30, 100], JOIN_N = JOIN_WIN.length;
+var hjMass = new Float64Array(JOIN_N), hjN = new Int32Array(JOIN_N);
+var hjGap = new Float64Array(JOIN_N).fill(-Infinity);
+var hjEver = { mass: 0, n: 0, gap: -Infinity }, hjNever = { mass: 0, n: 0, gap: -Infinity };
+function hjAdd(age, mass, gap) {
+	var t = age >= 0 ? hjEver : hjNever, i;
+	t.mass += mass; t.n++;
+	if (gap > t.gap) t.gap = gap;
+	for (i = 0; i < JOIN_N; i++) {
+		if (age >= 0 && age <= JOIN_WIN[i]) {
+			hjMass[i] += mass; hjN[i]++;
+			if (gap > hjGap[i]) hjGap[i] = gap;
+		}
+	}
+}
+function movedAge(S, p) { var lm = lastMove[S.id[p]]; return lm > 0 ? frame - lm : null; }
 var ms = 0, frames = Math.round(myr / SIM.dt);
 var mins = [Infinity, Infinity, Infinity, Infinity], maxs = [-Infinity, -Infinity, -Infinity, -Infinity];
 var outside = [0, 0, 0, 0], outsideLo = [0, 0, 0, 0], outsideHi = [0, 0, 0, 0], nonfinite = 0;
@@ -618,7 +665,7 @@ for (frame = 1; frame <= frames; frame++) {
 		mins[ph] = Math.min(mins[ph], T); maxs[ph] = Math.max(maxs[ph], T);
 		if (T < -0.5) { outsideLo[ph]++; outside[ph]++; }
 		else if (T > 1.5) { outsideHi[ph]++; outside[ph]++; }
-		if (T > hot.T) { hot.T = T; hot.frame = frame; hot.ph = ph; hot.y = S.y[p]; hot.m = S.m[p]; hot.x = S.x[p]; hot.id = S.id[p]; }
+		if (T > hot.T) { hot.T = T; hot.frame = frame; hot.ph = ph; hot.y = S.y[p]; hot.m = S.m[p]; hot.x = S.x[p]; hot.id = S.id[p]; hot.movedAgo = movedAge(S, p); }
 		if (TRN) {
 			tk = trSlot(S, p);
 			if (tk >= 0) {
@@ -701,7 +748,13 @@ var result = { kind: kind, value: value, scope: kind === 'relaxw' || kind === 's
 	heldSamples: heldSamples, heldMassTime: heldTime, heldMeltTime: heldMeltTime, heldGapMax: heldGap,
 	mantleRoutes: mantleRoutes, depMelt: S.thr.depMelt, depTx: S.tx.depMelt, refuse: S.tx.refuse,
 	merged: merged, strandedAttempts: stranded,
-	movedSum: movedSum, movedMax: movedMax, movedFrames: movedFrames, redeals: S.redeals,
+	movedSum: movedSum, movedMax: movedMax, movedFrames: movedFrames, redeals: S.redeals, movedIds: movedIds,
+	movedSeen: movedSeen,
+	heldJoin: { win: JOIN_WIN.slice(),
+		mass: Array.prototype.slice.call(hjMass), n: Array.prototype.slice.call(hjN),
+		gap: Array.prototype.slice.call(hjGap),
+		ever: { mass: hjEver.mass, n: hjEver.n, gap: hjEver.gap },
+		never: { mass: hjNever.mass, n: hjNever.n, gap: hjNever.gap } },
 	spreadCapped: spSt.capped, spreadGiven: spSt.given, spreadGiveback: spSt.giveback,
 	spreadShortN: spSt.shortN, spreadShortH: spSt.shortH,
 	relaxSource: rlSt.R, relaxGross: rlSt.gross, relaxReaction: rlSt.react, relaxResidMax: rlSt.resid,
@@ -774,6 +827,11 @@ function summary(r) {
 		+ f(r.depMelt, 6) + ' km2 shed, ' + r.mantleRoutes + ' mantle routings, ' + r.refuse + ' refusals');
 	out.push('held back by field support: ' + r.heldSamples + ' samples, ' + f(r.heldMassTime, 4) + ' km2*Myr of host, '
 		+ f(r.heldMeltTime, 4) + ' of melt-equivalent, worst T-field gap ' + f(r.heldGapMax, 4));
+	t = r.heldJoin;
+	out.push('repair join: ' + f(t.ever.mass, 4) + ' km2*Myr on material the repair had moved (' + t.ever.n
+		+ ' samples, worst gap ' + f(t.ever.gap, 4) + ') against ' + f(t.never.mass, 4) + ' never moved ('
+		+ t.never.n + ', ' + f(t.never.gap, 4) + '); within ' + t.win.map(function (w, i) {
+			return w + 'f ' + f(t.mass[i], 4) + '/' + t.n[i]; }).join(', ') + ', ' + r.movedIds + ' ids relocated');
 	t = r.census;
 	out.push('P3.2 census: split ' + t.split + ', whole ' + t.whole + ', freeze ' + t.freeze + ', chambers ' + t.chambers
 		+ ', seg ' + f(t.seg, 1) + ', intrDr ' + f(t.intrDr, 1) + ', landCr ' + f(t.landCr, 1) + ', ventDr ' + f(t.ventDr, 1)
