@@ -1,0 +1,65 @@
+pt-heat-tail frb 0.25 scope dep seed 1 at 50 kyr/frame over 600 Myr, 12000 frames
+fingerprint 5025891284893073   16.224 ms/frame   bank experiments/logs/0.3.2-M7-dep-s1-trace-600.json
+gates: mass ok, enthalpy ok, latent identity ok, wall (P4 < 0.01) ok, frame (< 20 ms) ok, per-phase T bound FAIL, refusals 0
+wall |intake/wall - 1| worst 1.692e-3, end 1.692e-3, operator-only 1.692e-3, R/wall 0.00e+0
+T mantle -0.5678..1.0326 (273 outside -0.5..1.5, 0 above / 273 below)
+T melt 0.3300..1.5955 (488 outside -0.5..1.5, 488 above / 0 below)
+T air 0.9976..1.1150 (0 outside -0.5..1.5, 0 above / 0 below)
+T dep -0.2113..1.1150 (0 outside -0.5..1.5, 0 above / 0 below)
+hottest parcel T 1.5955 in a field of 0.0566 at 54.6 km, 26.27 km2, phase melt, frame 8049
+route: 25 field-supported candidates, 25 delivered transfers, 0 bleeding (host < 1e-3 km2), 80.720131 km2 shed, 5722 mantle routings, 0 refusals
+held back by field support: 12251 samples, 19293.5651 km2*Myr of host, 5532.5861 of melt-equivalent, worst T-field gap 0.2513
+repair join: 19293.5651 km2*Myr on material the repair had moved (12251 samples, worst gap 0.2513) against 0.0000 never moved (0, none); within 1f 2930.0488/2109, 3f 2931.4762/2125, 10f 2934.2287/2156, 30f 2957.7068/2285, 100f 3156.4790/3495, 3023 ids relocated
+P3.2 census: split 5746, whole 1, freeze 0, chambers 47, seg 1345028.9, intrDr 1342840.3, landCr 987129.4, ventDr 991084.3, meltM 2269.3, depN 1119428.2, nMelt 29, nDep 1734
+depletion: --dpart 0 (0 rises, max 0.0000, sum 0.0000), --cap 0 (0 parcels budgeted, 0 split candidates blocked, 0 whole blocked, 0 spent)
+books: mass 0.00e+0, enthalpy 9.42e-12, latent 5.24e-8 km2*H (4.04e-13 of its books), deposit 5.12e-9, melt -1.07e-9
+trace 25022: first seen frame 1 at x 5500.0 km, -0.0 km deep, 0.000 km2, phase dep; max T 0.9152 (frame 8579), max T-field 0.2507 at 62.0 km (frame 9444)
+        326 caps withholding 2.1418 km2*H (largest 2.5337), 350 frames at the routing threshold, 348 held by field support, 2 delivered at frame 9014, last seen frame 12000, 1314 rows
+trace 25024: first seen frame 1 at x 5625.0 km, -0.0 km deep, 0.000 km2, phase dep; max T 0.7796 (frame 12000), max T-field 0.1560 at 127.4 km (frame 11800)
+        113 caps withholding -0.0117 km2*H (largest 0.0009), 0 frames at the routing threshold, 0 held by field support, 0 delivered, last seen frame 12000, 174 rows
+trace 25026: first seen frame 1 at x 5750.0 km, -0.0 km deep, 0.000 km2, phase dep; max T 0.9444 (frame 9308), max T-field 0.2502 at 37.1 km (frame 10856)
+        80 caps withholding -1.0498 km2*H (largest 1.2927), 523 frames at the routing threshold, 521 held by field support, 2 delivered at frame 9920, last seen frame 12000, 1634 rows
+trace 25030: first seen frame 1 at x 6000.0 km, -0.0 km deep, 0.000 km2, phase dep; max T 0.1166 (frame 11000), max T-field 0.0987 at -0.0 km (frame 1)
+        12 caps withholding -13.4753 km2*H (largest 4.2643), 0 frames at the routing threshold, 0 held by field support, 0 delivered, last seen frame 12000, 78 rows
+trace 25031: first seen frame 1 at x 6062.5 km, -0.0 km deep, 0.000 km2, phase dep; max T 0.8744 (frame 8308), max T-field 0.2518 at 95.3 km (frame 9472)
+        295 caps withholding 0.0014 km2*H (largest 0.0077), 239 frames at the routing threshold, 238 held by field support, 1 delivered at frame 8308, last seen frame 12000, 1070 rows
+trace 25032: first seen frame 1 at x 6125.0 km, -0.0 km deep, 0.000 km2, phase dep; max T 0.8993 (frame 10089), max T-field 0.2519 at 119.8 km (frame 8146)
+        15 caps withholding -7.0994 km2*H (largest 8.8467), 77 frames at the routing threshold, 74 held by field support, 3 delivered at frame 9930, last seen frame 12000, 2594 rows
+trace 25033: first seen frame 1 at x 6187.5 km, -0.0 km deep, 0.000 km2, phase dep; max T 0.6023 (frame 11800), max T-field 0.0981 at -0.0 km (frame 1)
+        489 caps withholding -3.1061 km2*H (largest 0.0485), 0 frames at the routing threshold, 0 held by field support, 0 delivered, last seen frame 12000, 548 rows
+trace 25036: first seen frame 1 at x 6437.5 km, -0.0 km deep, 0.000 km2, phase dep; max T 0.4389 (frame 7869), max T-field 0.0984 at -0.0 km (frame 1)
+        208 caps withholding -4.2156 km2*H (largest 0.1990), 0 frames at the routing threshold, 0 held by field support, 0 delivered, last seen frame 7869, 246 rows
+trace 25109: first seen frame 1 at x 11375.0 km, 0.0 km deep, 0.000 km2, phase dep; max T 0.9801 (frame 6548), max T-field 0.2500 at 1638.6 km (frame 5282)
+        324 caps withholding 1.1223 km2*H (largest 0.0066), 2089 frames at the routing threshold, 2088 held by field support, 1 delivered at frame 7552, last seen frame 12000, 9270 rows
+trace 25110: first seen frame 1 at x 11437.5 km, 0.0 km deep, 0.001 km2, phase dep; max T 0.7063 (frame 11400), max T-field 0.0985 at 0.0 km (frame 1)
+        550 caps withholding -89.5759 km2*H (largest 0.3327), 0 frames at the routing threshold, 0 held by field support, 0 delivered, last seen frame 12000, 609 rows
+trace 25111: first seen frame 1 at x 11500.0 km, 0.0 km deep, 0.000 km2, phase dep; max T 0.7214 (frame 12000), max T-field 0.0982 at 0.0 km (frame 1)
+        0 caps withholding 0.0000 km2*H (largest 0.0000), 0 frames at the routing threshold, 0 held by field support, 0 delivered, last seen frame 12000, 61 rows
+trace 25118: first seen frame 1 at x 12000.0 km, 0.0 km deep, 0.000 km2, phase dep; max T 0.7048 (frame 11400), max T-field 0.0981 at 0.0 km (frame 1)
+        1867 caps withholding -16.0662 km2*H (largest 0.1695), 0 frames at the routing threshold, 0 held by field support, 0 delivered, last seen frame 12000, 1919 rows
+trace 25121: first seen frame 1 at x 12187.5 km, 0.0 km deep, 0.000 km2, phase dep; max T 0.9524 (frame 6855), max T-field 0.2269 at 1764.6 km (frame 5608)
+        0 caps withholding 0.0000 km2*H (largest 0.0000), 1082 frames at the routing threshold, 1081 held by field support, 1 delivered at frame 7178, last seen frame 12000, 7809 rows
+trace 25124: first seen frame 1 at x 12375.0 km, 0.0 km deep, 0.000 km2, phase dep; max T 0.6995 (frame 12000), max T-field 0.0985 at 0.0 km (frame 1)
+        1671 caps withholding -0.0056 km2*H (largest 0.0000), 0 frames at the routing threshold, 0 held by field support, 0 delivered, last seen frame 12000, 1723 rows
+trace 25151: first seen frame 1 at x 14250.0 km, -0.0 km deep, 0.000 km2, phase dep; max T 0.8901 (frame 9533), max T-field 0.2510 at 44.5 km (frame 10062)
+        1302 caps withholding -66.1690 km2*H (largest 4.4222), 268 frames at the routing threshold, 263 held by field support, 5 delivered at frame 10655, last seen frame 12000, 2611 rows
+trace 25194: first seen frame 53 at x 6312.5 km, -0.1 km deep, 0.000 km2, phase dep; max T 0.5999 (frame 12000), max T-field 0.0796 at -0.1 km (frame 53)
+        59 caps withholding -0.0525 km2*H (largest 0.0012), 0 frames at the routing threshold, 0 held by field support, 0 delivered, last seen frame 12000, 119 rows
+trace 36321: first seen frame 2844 at x 11562.5 km, 3.1 km deep, 1.389 km2, phase dep; max T 0.9759 (frame 6823), max T-field 0.2499 at 1011.9 km (frame 4989)
+        282 caps withholding 13.6884 km2*H (largest 0.1583), 1830 frames at the routing threshold, 1829 held by field support, 1 delivered at frame 7033, last seen frame 12000, 9166 rows
+trace 89175: first seen frame 5463 at x 1643.6 km, -0.7 km deep, 8.622 km2, phase air; max T 1.0999 (frame 5463), max T-field 1.0999 at -0.7 km (frame 5463)
+        0 caps withholding 0.0000 km2*H (largest 0.0000), 50 frames at the routing threshold, 0 held by field support, 0 delivered, last seen frame 5512, 50 rows
+trace 151222: first seen frame 7719 at x 5011.2 km, -2.2 km deep, 50.000 km2, phase air; max T 1.0677 (frame 7719), max T-field 1.0677 at -2.2 km (frame 7719)
+        0 caps withholding 0.0000 km2*H (largest 0.0000), 55 frames at the routing threshold, 0 held by field support, 0 delivered, last seen frame 7773, 55 rows
+trace 161463: first seen frame 8075 at x 1187.5 km, -1.3 km deep, 0.033 km2, phase dep; max T 0.9459 (frame 9845), max T-field 0.8246 at 4.4 km (frame 10559)
+        394 caps withholding 59.6257 km2*H (largest 25.3836), 433 frames at the routing threshold, 431 held by field support, 2 delivered at frame 9926, last seen frame 12000, 1441 rows
+trace 163877: first seen frame 8162 at x 14308.5 km, -1.9 km deep, 1.504 km2, phase air; max T 1.0745 (frame 8162), max T-field 1.0745 at -1.9 km (frame 8162)
+        0 caps withholding 0.0000 km2*H (largest 0.0000), 51 frames at the routing threshold, 0 held by field support, 0 delivered, last seen frame 8212, 51 rows
+trace 181104: first seen frame 8824 at x 1375.0 km, -1.4 km deep, 0.000 km2, phase dep; max T 0.9859 (frame 11010), max T-field 0.2510 at 44.5 km (frame 10062)
+        259 caps withholding 0.5788 km2*H (largest 0.1794), 897 frames at the routing threshold, 895 held by field support, 2 delivered at frame 11010, last seen frame 12000, 2885 rows
+trace 189011: first seen frame 9114 at x 1375.0 km, -1.5 km deep, 0.049 km2, phase dep; max T 1.0007 (frame 11009), max T-field 0.2510 at 44.5 km (frame 10062)
+        352 caps withholding 0.1778 km2*H (largest 0.5001), 877 frames at the routing threshold, 876 held by field support, 1 delivered at frame 11009, last seen frame 12000, 2869 rows
+trace 193006: first seen frame 9287 at x 12955.0 km, -0.8 km deep, 4.370 km2, phase air; max T 1.0768 (frame 9287), max T-field 1.0768 at -0.8 km (frame 9287)
+        0 caps withholding 0.0000 km2*H (largest 0.0000), 49 frames at the routing threshold, 0 held by field support, 0 delivered, last seen frame 9335, 49 rows
+trace 194787: first seen frame 9365 at x 1437.5 km, -1.7 km deep, 0.000 km2, phase dep; max T 0.8415 (frame 10376), max T-field 0.2510 at 44.5 km (frame 10062)
+        481 caps withholding -6.7977 km2*H (largest 0.2666), 81 frames at the routing threshold, 77 held by field support, 4 delivered at frame 10394, last seen frame 12000, 1392 rows

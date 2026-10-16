@@ -127,12 +127,19 @@ table for mobile melt above T = 1.5 that closes a run still open at the last fra
 dropping it. With HEAT_TAIL_OUT set the bank file keeps the whole record and stdout prints a
 summary, so a `> logs/x.txt` redirect is a console record and not a second copy of the bank),
 with pt-heat-tail-check.js validating its saved baseline replays and candidate banks -- the M0 bank, the M2 re-bank
-whose grid-coupled readings must equal M0's bitwise, and the M3 rows, whose fingerprints, books,
+whose grid-coupled readings must equal M0's bitwise, the M3 rows, whose fingerprints, books,
 census, serial timings, dry-solidus percentiles, excursion tables and cold paths are asserted so
-a report cannot drift from its own evidence (rejected candidates are outcomes, not
+a report cannot drift from its own evidence, and the M7 section: the traced distribution pairs
+(s3/s1, both rows) asserted field for field against their M6 worlds, the admission tables (init
+ids share their admission exactly; every later id is admitted at a different site in a different
+phase or at a different mass scale), the class reading on both worlds, the selection's two
+statements (the temperature gate read scoped to the deposit phase applied to every row; frame
+time from quiet hosts) and the trace's margin (rejected candidates are outcomes, not
 successful remedies; specification 0.3.2-plan.md, reports archive/0.3.2-M0-heat-tail-report.md,
 archive/0.3.2-M1-localization-report.md, archive/0.3.2-M2-launch-air-report.md,
-archive/0.3.2-M2-tail-matrix-report.md and archive/0.3.2-M3-depletion-report.md), experiments/pt-heat-matrix.js (the M2 clock/seed
+archive/0.3.2-M2-tail-matrix-report.md, archive/0.3.2-M3-depletion-report.md,
+archive/0.3.2-M4-field-bound-report.md, archive/0.3.2-M5-correspondence-report.md,
+archive/0.3.2-M6-distribution-report.md and archive/0.3.2-M7-selection-report.md), experiments/pt-heat-matrix.js (the M2 clock/seed
 matrix: seeds 1,2,3,5,7 at 10/50/100/500 kyr over 300 Myr plus the 600 Myr seed-5 cell, each a
 fresh pt-heat-tail.js child, gated on every frame's books, the latent identity, the wall and
 the per-phase temperature bound; the first cell repeated bitwise; `--cells seed:kyr:myr,...`

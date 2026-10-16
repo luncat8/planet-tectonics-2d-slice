@@ -618,8 +618,10 @@ assert([1, 3, 7, 5].every(function (s) {
 }), 'M6 the concentration is reduced on every world');
 // the temperature gate by phase, the report's cold-face column (mantle, melt, air, deposit),
 // split into its two ends: the candidate's residual crossings are the mantle cold side and the
-// air hot side -- phases the deposit-scoped bound does not touch by design -- while the deposit
-// phase, the release's own defect, crosses both ends in every control and neither in any candidate
+// mobile-melt hot side -- phases the deposit-scoped bound does not touch by design -- while the
+// deposit phase, the release's own defect, crosses both ends in every control and neither in any
+// candidate. M7 corrects M6 report's label here: index 1 is melt, not air (the air phase never
+// crosses on any world), so the hot face is M3's own mobile-melt face, not the flight face.
 var M6OUT = {
 	'base-s5-600': [[0, 0, 0, 1744], [0, 0, 0, 1112]], 'dep-s5-600': [[0, 0, 0, 0], [0, 0, 0, 0]],
 	'base-s1-600': [[671, 0, 0, 2491], [0, 485, 0, 883]], 'dep-s1-600': [[273, 0, 0, 0], [0, 488, 0, 0]],
@@ -636,7 +638,7 @@ Object.keys(M6OUT).forEach(function (name) {
 });
 // the residual faces' own extremes, the report's extrema
 near(M6['dep-s7-600'].minT[0], -0.897, 5e-3, 'M6 mantle cold extreme of the candidate family');
-near(M6['dep-s1-600'].maxT[1], 1.595, 5e-3, 'M6 air hot extreme of the candidate family');
+near(M6['dep-s1-600'].maxT[1], 1.595, 5e-3, 'M6 melt hot extreme of the candidate family');
 console.log('  depMelt ratio candidate/control: s5 ' + ratios[3].toFixed(3) + ', s1 ' + ratios[0].toFixed(3)
 	+ ', s3 ' + ratios[1].toFixed(3) + ' (inverted), s7 ' + ratios[2].toFixed(3)
 	+ '; deposit T max 1.1136..1.1150 against 1.6072..2.3128');
@@ -692,3 +694,245 @@ assert.deepStrictEqual(M6['dep-s5-600'].events.map(function (e) { return e.moved
 assert.strictEqual(M6['base-s5-600'].hottest.movedAgo, 205, 'M6 the outlier id sat 205 frames from its last relocation');
 console.log('PASS M6: the flux ratio varies 0.085..3.20 with the world (the seed-5 seventh was one large event), the defect is absent on every world (deposit T 1.1136..1.1150 against 1.6072..2.3128, held gap the bound\'s own 0.25 against 1.17..1.99), and the held census is 100% on relocated material with 0.1..33% within one frame of a move -- a sizeable repair-adjacent minority, not the majority of the concentration.');
 console.log('The row\'s standing is open again (M5 section 7\'s own rule); eligibility turns on condition 5\'s material branch beyond seed 5, not on the flux.');
+
+// --- 0.3.2 M7: the correspondence beyond seed 5, and the selection. Two traced pairs on the
+// worlds the distribution adds -- s3 (the inversion: eleven transfers against four, the question
+// reversed -- what IS that material?) and s1 (the 152.73 km2 host) -- each run tracing the
+// delivered ids of both rows and the control's hottest, so every id is read in both worlds the
+// way M5 read its five. The trace writes no engine state, so each run must reproduce its own M6
+// world exactly before its trace says anything. Then the selection's two statements bind here:
+// the temperature gate's reading (one reading, stated once, applied to every row) and the frame
+// time quoted from a quiet host.
+var root7 = path.join(__dirname, 'logs/0.3.2-M7-');
+function read7(name) { return JSON.parse(fs.readFileSync(root7 + name + '.json', 'utf8')); }
+var M7 = {
+	'base-s3': read7('base-s3-trace-600'), 'dep-s3': read7('dep-s3-trace-600'),
+	'base-s1': read7('base-s1-trace-600'), 'dep-s1': read7('dep-s1-trace-600')
+};
+['s3', 's1'].forEach(function (w) {
+	['base', 'dep'].forEach(function (k) {
+		var r = M7[k + '-' + w], m = M6[k + '-' + w + '-600'];
+		assert.strictEqual(r.fingerprint, m.fingerprint, 'M7 traced ' + k + ' ' + w + ' keeps its M6 world');
+		assert.deepStrictEqual(r.events, m.events, 'M7 ' + k + ' ' + w + ' transfers');
+		assert.deepStrictEqual(r.hottest, m.hottest, 'M7 ' + k + ' ' + w + ' hottest');
+		assert.deepStrictEqual(r.census, m.census, 'M7 ' + k + ' ' + w + ' census');
+		assert.deepStrictEqual(r.heldJoin, m.heldJoin, 'M7 ' + k + ' ' + w + ' repair join');
+		['heldSamples', 'heldMassTime', 'heldMeltTime', 'heldGapMax', 'spreadCapped', 'spreadGiven',
+			'mantleRoutes', 'depTx', 'depMelt', 'refuse', 'intakeWallWorst', 'minT', 'maxT',
+			'outsideBelow', 'outsideAbove', 'movedSum', 'movedIds', 'movedSeen'].forEach(function (key) {
+			assert.deepStrictEqual(r[key], m[key], 'M7 ' + k + ' ' + w + ' diagnostic ' + key);
+		});
+	});
+});
+function hist7(r) { var m = {}; r.trace.history.forEach(function (h) { m[h.id] = h; }); return m; }
+var c3 = hist7(M7['base-s3']), d3 = hist7(M7['dep-s3']);
+var c1 = hist7(M7['base-s1']), d1 = hist7(M7['dep-s1']);
+// The admission tables the report reads. Init ids (the shared initial world) keep their admission
+// in both runs -- id and material agree up to the divergence -- while every id admitted after it
+// is admitted at a different site (239 to 7854 km) in a different phase or at a different mass
+// scale: the counter keeps step with the eruption cadence while the material it names does not.
+function admit7(h) {
+	return 'f' + h.first.frame + ' x' + h.first.x.toFixed(0) + ' y' + h.first.y.toFixed(1)
+		+ ' m' + h.first.m.toFixed(3) + ' ph' + h.first.ph;
+}
+[['s3', c3, d3], ['s1', c1, d1]].forEach(function (row) {
+	var w = row[0], a = row[1], b = row[2];
+	console.log('  ' + w + ' id      control admission                       candidate admission'
+		+ '                     circ Dx km  dframe   ctl tx   dep tx');
+	Object.keys(a).map(Number).sort(function (x, y) { return x - y; }).forEach(function (id) {
+		var A = a[id], B = b[id];
+		if (!A.first || !B.first) return;
+		var init = A.first.frame <= 53;
+		if (init) {
+			assert.strictEqual(B.first.frame, A.first.frame, 'M7 s' + w + ' ' + id + ' init frame shared');
+			assert.strictEqual(B.first.x, A.first.x, 'M7 s' + w + ' ' + id + ' init site shared');
+			assert.strictEqual(B.first.y, A.first.y, 'M7 s' + w + ' ' + id + ' init depth shared');
+			assert.strictEqual(B.first.m, A.first.m, 'M7 s' + w + ' ' + id + ' init mass shared');
+		} else {
+			assert(circ(A.first.x, B.first.x) > 200, 'M7 s' + w + ' ' + id + ' admitted at a different site');
+			assert(A.first.ph !== B.first.ph || A.first.m > 2 * B.first.m || B.first.m > 2 * A.first.m,
+				'M7 s' + w + ' ' + id + ' is not the same material in the two runs');
+		}
+		console.log('  ' + w + ' ' + String(id).padEnd(8) + admit7(A).padEnd(38) + admit7(B).padEnd(38)
+			+ circ(A.first.x, B.first.x).toFixed(0).padStart(8) + String(B.first.frame - A.first.frame).padStart(8)
+			+ String(A.delivered).padStart(9) + String(B.delivered).padStart(9));
+	});
+});
+// The class, on both worlds: every id the candidate delivers is surface deposit material --
+// admitted at or just below the surface (init markers of the shared initial world, or small
+// deposits of 0.02..1.39 km2), buried, held back by field support on the large majority of its
+// routed frames, and delivered field-supported within 0.12 of T of its own solidus and 0.1 of
+// its own field. That is M5's protected class read past seed 5 -- the inversion's material is
+// the ordinary pipeline, and so is the 152.73 km2 host's.
+['s3', 's1'].forEach(function (w) {
+	var d = w === 's3' ? d3 : d1, r = M7['dep-' + w], ids = {};
+	r.events.forEach(function (e) {
+		ids[e.id] = 1;
+		assert(e.T - e.solidus < 0.12 && e.T - e.field < 0.1 && e.field >= e.solidus,
+			'M7 dep ' + w + ' transfer ' + e.id + ' f' + e.frame + ' goes field-supported, near its solidus');
+	});
+	Object.keys(ids).forEach(function (id) {
+		var h = d[id];
+		assert(h && h.delivered >= 1, 'M7 dep ' + w + ' ' + id + ' is traced and delivered');
+		assert.strictEqual(h.first.ph, 3, 'M7 dep ' + w + ' ' + id + ' admitted as deposit material');
+		assert(h.first.y < 4 && h.first.m < 2, 'M7 dep ' + w + ' ' + id + ' admitted at the surface, small');
+		assert(h.held > 0.5 * h.routed, 'M7 dep ' + w + ' ' + id + ' held back until its field caught up');
+	});
+});
+// s3: the inversion's material is ordinary pipeline deposits, and the control's carriers are
+// prevented rather than displaced -- 25018 delivers the world's tail (T 1.6072 at the threshold,
+// 0.7429 of T above its own solidus, then the world's hottest at T 1.6518, gap 1.3667) and 24975
+// delivers three; in the candidate neither ever reaches the routing threshold at all (the bound's
+// cold-side caps hold them: 1082 and 136 caps, all but a few on the cold side).
+assert.strictEqual(c3[25018].delivered, 1, 'M7 s3 control 25018 delivers its tail transfer');
+assert.strictEqual(c3[25018].deliveredFrame, 8890, 'M7 s3 control 25018 delivery frame');
+near(c3[25018].maxT, 1.6518467012040896, 1e-9, 'M7 s3 control 25018 becomes the world hottest');
+near(c3[25018].maxGap, 1.3667435475296426, 1e-9, 'M7 s3 control 25018 widest gap');
+assert.strictEqual(c3[24975].delivered, 3, 'M7 s3 control 24975 delivers three');
+assert.deepStrictEqual(c3[24975].rows.filter(function (x) { return x.why === 5; }).map(function (x) { return x.frame; }),
+	[9627, 9682, 9816], 'M7 s3 control 24975 delivery frames');
+assert.strictEqual(d3[25018].delivered, 0, 'M7 s3 candidate never delivers the control carrier id');
+assert.strictEqual(d3[25018].routed, 0, 'M7 s3 candidate never even routes it');
+assert.strictEqual(d3[25018].capped, 1082, 'M7 s3 candidate 25018 capped by the bound');
+near(d3[25018].withheld, -27.239086278520958, 1e-9, 'M7 s3 candidate 25018 withheld km2*H');
+assert.strictEqual(d3[25018].capped, d3[25018].caps.filter(function (c) { return c.withheld < 0; }).length,
+	'M7 s3 candidate 25018 capped on the cold side only');
+assert.strictEqual(d3[24975].delivered, 0, 'M7 s3 candidate never delivers the other control carrier id');
+assert.strictEqual(d3[24975].routed, 0, 'M7 s3 candidate never routes it either');
+assert.strictEqual(d3[24975].capped, 136, 'M7 s3 candidate 24975 capped by the bound');
+near(d3[24975].withheld, -11.626119452778886, 1e-9, 'M7 s3 candidate 24975 withheld km2*H');
+// s1: the 152.73 km2 host is a 1.39 km2 surface deposit admitted at f2844, buried to 2614 km,
+// held at the threshold 1829 of its 1830 routed frames and delivered field-supported 0.0569 of T
+// above its own solidus -- and its widest gap in the candidate is the bound's own width. The
+// host's size is the ordinary pipeline's long residence, not the defect in a large body.
+assert.strictEqual(d1[36321].first.ph, 3, 'M7 s1 candidate 36321 admitted as deposit material');
+assert.strictEqual(d1[36321].first.frame, 2844, 'M7 s1 candidate 36321 admission frame');
+near(d1[36321].first.m, 1.3888603133646946, 1e-9, 'M7 s1 candidate 36321 admitted small');
+assert.strictEqual(d1[36321].delivered, 1, 'M7 s1 candidate 36321 delivered once');
+assert.strictEqual(d1[36321].deliveredFrame, 7033, 'M7 s1 candidate 36321 delivery frame');
+assert.strictEqual(d1[36321].routed, 1830, 'M7 s1 candidate 36321 frames at the threshold');
+assert.strictEqual(d1[36321].held, 1829, 'M7 s1 candidate 36321 held by field support');
+assert.strictEqual(d1[36321].capped, 282, 'M7 s1 candidate 36321 capped by the bound');
+near(d1[36321].withheld, 13.688441995992543, 1e-9, 'M7 s1 candidate 36321 withheld km2*H');
+assert(d1[36321].maxGap < 0.251, 'M7 s1 candidate 36321 widest gap is the bound\'s own width');
+near(Math.max.apply(null, M7['dep-s1'].events.map(function (e) { return e.host; })), 152.72845368510758,
+	1e-12, 'M7 s1 candidate largest host is the 36321 delivery');
+assert.strictEqual(M7['dep-s1'].events[0].movedAgo, 3076, 'M7 s1 candidate host settled 3076 frames');
+// s1: the outlier is named, and its name does not travel (M5 section 4 again). The control's
+// hottest is id 163877 -- a 0.036 km2 surface deposit admitted at f8254, buried to 110 km and
+// amplified to T 2.3128 in a field of 0.3264 (gap 1.9945 at f9654, the world's own held-gap
+// maximum) -- and it delivers at f11500 anyway. In the candidate that id is 51 frames of
+// airborne material that never routes.
+assert.strictEqual(c1[163877].first.ph, 3, 'M7 s1 control outlier admitted as deposit material');
+near(c1[163877].first.m, 0.035907943685254906, 1e-9, 'M7 s1 control outlier admitted small');
+near(c1[163877].maxT, 2.3128475130252686, 1e-9, 'M7 s1 control outlier temperature');
+assert.strictEqual(c1[163877].maxTFrame, 9660, 'M7 s1 control outlier frame');
+near(c1[163877].maxGap, 1.9944785161036562, 1e-9, 'M7 s1 control outlier widest gap');
+assert.strictEqual(c1[163877].maxGapFrame, 9654, 'M7 s1 control outlier gap frame');
+near(c1[163877].maxGap, M6['base-s1-600'].heldGapMax, 1e-12, 'M7 that gap is the world held-gap maximum');
+assert.strictEqual(c1[163877].delivered, 1, 'M7 s1 control outlier delivers anyway');
+assert.strictEqual(c1[163877].deliveredFrame, 11500, 'M7 s1 control outlier delivery frame');
+assert.strictEqual(d1[163877].first.ph, 2, 'M7 s1 candidate: that id is airborne material');
+assert.strictEqual(d1[163877].delivered, 0, 'M7 s1 candidate never delivers the outlier id');
+assert.strictEqual(d1[163877].last.frame, 8212, 'M7 s1 candidate outlier id is gone after f8212');
+// The trace's own margins, at their full size: per-lineage T-field maxima sit at the bound's own
+// width on sixteen of the twenty-one delivered lineages. The five wider ones (0.3063..0.9825) are
+// all read at the surface layer (y <= 4.4 km, or at the admission frame itself) where the field is
+// near zero and non-gather steps set the parcel's state between gathers -- and the very next
+// gather caps the parcel back to the bound (148272's f8751 spike: the f8752 cap wants T 0.9625,
+// the bound holds it at hi 0.2510). The family's own metrics stay at the bound on both worlds.
+var WIDE = { 98814: 1, 148272: 1, 168528: 1, 187345: 1, 161463: 1 };
+[d3, d1].forEach(function (d) {
+	Object.keys(d).forEach(function (id) {
+		var h = d[id];
+		if (!h.delivered) return;
+		if (WIDE[id]) {
+			assert(h.maxGapY < 5, 'M7 wide lineage gap ' + id + ' is a surface-layer reading');
+			assert(h.maxT < 1.1, 'M7 wide lineage gap ' + id + ' stays inside the wall');
+		} else {
+			assert(h.maxGap < 0.26, 'M7 lineage ' + id + ' widest gap is the bound\'s own width');
+		}
+	});
+});
+assert.strictEqual(d3[148272].caps[0].frame, 8752, 'M7 the spike frame is capped at the very next gather');
+assert(d3[148272].caps[0].T > 0.9 && d3[148272].caps[0].hi < 0.26,
+	'M7 the next gather wants T 0.9625 and the bound holds it at 0.2510');
+// The selection's first statement: the temperature gate is read scoped to the bound's own phase --
+// one reading, applied to every row. Under it every candidate is green on every world and every
+// control is red at both ends; under the joint reading seven of eight cells are red and both rows
+// are red on three of four worlds (s1, s3, s7), the only green cell being the quoted world's
+// candidate. The joint reds are the mantle cold side and the *mobile-melt* hot side -- M6's
+// report called the hot face 'air', the split says phase 1 (the air phase never crosses on any
+// world, maxT 1.1149..1.1150) -- faces the deposit scope does not touch by design. They cross in
+// every row, so they cannot discriminate between rows and cannot be passed by any row of this
+// family: they are the engine's other defects, owed to the plan that owns them.
+var jointRed = Object.keys(M6OUT).filter(function (n) {
+	return M6[n].outsideSamples.reduce(function (a, b) { return a + b; }, 0) > 0;
+});
+assert.strictEqual(jointRed.length, 7, 'M7 the joint gate is red in seven of eight cells');
+assert.strictEqual(M6['dep-s5-600'].outsideSamples.reduce(function (a, b) { return a + b; }, 0), 0,
+	'M7 the one joint-green cell is the quoted world\'s candidate');
+['s1', 's3', 's7'].forEach(function (w) {
+	assert(M6['base-' + w + '-600'].outsideSamples.reduce(function (a, b) { return a + b; }, 0) > 0
+		&& M6['dep-' + w + '-600'].outsideSamples.reduce(function (a, b) { return a + b; }, 0) > 0,
+		'M7 both rows are red jointly on ' + w);
+});
+Object.keys(M6OUT).forEach(function (n) {
+	assert.strictEqual(M6[n].outsideBelow[1], 0, n + ' no melt cold crossing');
+	assert.strictEqual(M6[n].outsideBelow[2], 0, n + ' no air cold crossing');
+	assert.strictEqual(M6[n].outsideAbove[0], 0, n + ' no mantle hot crossing');
+	assert.strictEqual(M6[n].outsideAbove[2], 0, n + ' no air hot crossing -- the hot face is melt');
+});
+assert(M6ROWS.filter(function (row) { return row[0].indexOf('dep-') === 0; }).every(function (row) {
+	return M6[row[0]].outsideSamples[3] === 0;
+}), 'M7 scoped reading: every candidate deposit phase is green');
+assert(M6ROWS.filter(function (row) { return row[0].indexOf('base-') === 0; }).every(function (row) {
+	return M6[row[0]].outsideSamples[3] > 0;
+}), 'M7 scoped reading: every control deposit phase is red at both ends');
+// The selection's second statement: the frame time, quoted from a quiet host. The gate is mean
+// kernel frame < 20 ms at 50 kyr, serial, observation excluded. The M5 host's serial banks read
+// 11.696 ms (control) and 15.768 (candidate); the M7 cells -- run serially alone, on their own
+// host -- read 12.037/12.706 and 16.224/16.915, 3..9% above the M5 host on both rows. The M6
+// distribution's batch host read the same rows 27..38% above the M5 host (14.90..15.57 against
+// 11.696, 21.35..21.80 against 15.768) and crossed the gate for the candidate; the shift is
+// multiplicative on both rows -- the quiet-host probe overhead is 4.07..4.21 ms over the matched
+// control, stable across worlds -- so that crossing is the host's as much as the row's, and the
+// selection quotes the gate from the quiet readings: green.
+near(M7['base-s3'].msFrame, 12.706470979249973, 1e-9, 'M7 s3 control frame time');
+near(M7['dep-s3'].msFrame, 16.914800283499765, 1e-9, 'M7 s3 candidate frame time');
+near(M7['base-s1'].msFrame, 12.036690401083387, 1e-9, 'M7 s1 control frame time');
+near(M7['dep-s1'].msFrame, 16.22383000333336, 1e-9, 'M7 s1 candidate frame time');
+['base-s3', 'dep-s3', 'base-s1', 'dep-s1'].forEach(function (n) {
+	assert.strictEqual(M7[n].gates.frame, M7[n].msFrame < 20, 'M7 ' + n + ' frame gate is its own reading');
+	assert(M7[n].gates.frame, 'M7 ' + n + ' passes the frame gate on the quiet host');
+});
+assert(tdep.gates.frame === true, 'M7 the M5 host\'s candidate cell is the quiet-host quote');
+near(bctl.msFrame, 11.695936057916715, 1e-9, 'M7 the M5 host control reading');
+near(tdep.msFrame, 15.76764284125001, 1e-9, 'M7 the M5 host candidate reading');
+assert(M7['dep-s3'].msFrame / tdep.msFrame < 1.08 && M7['dep-s1'].msFrame / tdep.msFrame < 1.04
+	&& M7['base-s3'].msFrame / bctl.msFrame < 1.09 && M7['base-s1'].msFrame / bctl.msFrame < 1.03,
+	'M7 this host reads both rows within 9% of the M5 host');
+assert(M6['dep-s3-600'].msFrame / tdep.msFrame > 1.35 && M6['dep-s5-600'].msFrame / tdep.msFrame > 1.35,
+	'M7 the M6 host read the candidates 35%+ above the M5 host');
+assert(M6['base-s3-600'].msFrame / bctl.msFrame > 1.3 && M6['base-s7-600'].msFrame / bctl.msFrame > 1.25,
+	'M7 the M6 host read the controls 25%+ above the M5 host');
+near(M7['dep-s3'].msFrame - M7['base-s3'].msFrame, 4.208, 5e-3, 'M7 s3 probe overhead on the quiet host');
+near(M7['dep-s1'].msFrame - M7['base-s1'].msFrame, 4.187, 5e-3, 'M7 s1 probe overhead on the quiet host');
+near(tdep.msFrame - bctl.msFrame, 4.072, 5e-3, 'M7 the M5 host probe overhead');
+console.log('M7 trace  ctl tx  dep tx   class (candidate delivered ids)                    maxGap wide ids');
+[['s3', c3, d3], ['s1', c1, d1]].forEach(function (row) {
+	var w = row[0], d = row[2], r = M7['dep-' + w];
+	var wide = Object.keys(d).filter(function (id) { return d[id].delivered && WIDE[id]; });
+	console.log('  ' + w + '     ' + String(M7['base-' + w].depTx).padStart(5) + String(r.depTx).padStart(8)
+		+ '   all admitted surface deposit, held, field-supported  wide maxGaps: ' + wide.join(','));
+});
+console.log('PASS M7: the four traced runs reproduce their M6 worlds field for field; the class reads'
+	+ ' the same on s3 and s1 -- surface deposit, burial, heating, field-supported routing, defect'
+	+ ' absent -- so condition 5\'s material branch holds beyond seed 5. The inversion\'s material is'
+	+ ' ordinary pipeline deposits (the control\'s carriers never route in the candidate), and the'
+	+ ' 152.73 km2 host is a 1.39 km2 surface deposit held 1829 frames at the threshold. Selected:'
+	+ ' frb 0.25 --scope dep. Statement 1: the temperature gate is read scoped to the deposit phase'
+	+ ' (every candidate green, every control red at both ends); the joint reading\'s reds are the'
+	+ ' mantle-cold and mobile-melt faces in every row, handed to the plan that owns them. Statement'
+	+ ' 2: the frame time is quoted from quiet hosts -- 15.768 ms on the M5 host, 16.224..16.915 on'
+	+ ' this one -- and passes; the M6 host\'s 21.35..21.80 was host drift on both rows.');

@@ -59,11 +59,20 @@ bound's own 0.25 against 1.17–1.99, concentration down 2–98×, zero refusals
 repair join (each id's last relocation from a `G.reseed` position diff, verified against the
 kernel's own move count) reads the held census as 100% on relocated material but majority settled
 (more than 100 frames: 65–98%; within one frame of a move: 0.1–33%), so the concentration is not
-coverage repair and a bound on deliveries is not the wrong instrument for it. **Nothing is
-selected.** Next: the correspondence (`--trace-id`) on the distribution's own worlds — s3's
-inversion and s1's 152.73 km² host — so condition 5's material branch holds beyond seed 5; then
-the selection decision, with the joint-vs-scoped temperature gate stated once and a frame time
-quoted from a quiet host. Condition 5 and the deposit field filter stay; no constant moves.
+coverage repair and a bound on deliveries is not the wrong instrument for it. **M7 (`archive/0.3.2-M7-selection-report.md`, `-worklog.md`) reads the correspondence line by
+line on those distribution worlds and makes the selection.** The traced pairs (s3 and s1, both
+rows, every delivered id plus the control's hottest, each run asserted field for field against
+its own M6 world) carry condition 5's material branch beyond seed 5: s1's 152.73 km² host is
+surface-deposit material (id 36321, a 1.389 km² clast held 1829 frames at the threshold)
+delivered field-supported 0.057 above its solidus, and s3's two carriers are prevented, not
+displaced (1082/136 cold-side caps, never routed in the candidate). **Selected: `frb 0.25
+--scope dep`** — the temperature gate read scoped to the bound's own phase (candidates 0
+samples outside on all four worlds; the joint reds are the mantle-cold and mobile-melt faces,
+handed to the plan that owns them), frame time quoted from quiet hosts at 16.2–16.9 ms (the
+M6 batch's "~30–35% above" was host drift: the same rows read 3–9% high on this one). No
+constant moves; condition 5 and the deposit field filter stay. Next: land the row in the
+kernel (constant + scope + the freeze line), re-bank the state-dependent fingerprints,
+full-series re-acceptance and page parity.
 
 0.2.0 status: **closed.** M0 (the headless toy box), M1 (vent lifecycle / second clock),
 M2 (stack write-back / visible edifice), M3 (bed-anchored deposits / finite extraction),
