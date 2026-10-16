@@ -95,7 +95,8 @@ experiments/pt-heat-tail.js (0.3.2's experiment-only gather cap/share attenuatio
 relaxation, conservative local minimum-mass, node-wise and stencil-scale bounded conservative
 redistribution (spread, stencil), the field-relative two-sided bound (frb, `--share s0` scales
 the bound a parcel gets by its own stencil mass share, `--place mass` hands a withheld increment
-out by marker share instead of by headroom) and sub-grid relaxation toward the field,
+out by marker share instead of by headroom, `--scope dep|solid` limits the cap to the deposit
+phase or all grid-coupled phases) and sub-grid relaxation toward the field,
 wall-booked or zero-sum through the adjoint (relaxw, subgrid; `--scope dep|solid`) probes on
 seed 5 at 50 kyr/frame for 600 Myr, or any `--seed`/`--kyr` cell; its `--watch` instruments read
 the adjoint gain and stencil mass share at every cold minimum and every mobile-melt excursion

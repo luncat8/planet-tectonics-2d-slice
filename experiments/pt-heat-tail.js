@@ -265,7 +265,7 @@ if (kind === 'spread' || kind === 'stencil' || kind === 'frb') {
 			kp = shr > 0 ? shP[p] / shr : 1;
 			bh = tfP[p] + hiOff * kp; bl = tfP[p] - hiOff * kp;
 		} else { bh = hiOff; bl = loOff; }
-		if (tb > bh || tb < bl) {
+		if ((!fr || !scopeDep || S.ph[p] === P.PH.dep) && (tb > bh || tb < bl)) {
 			dc = PTPHASE.byT(tb > bh ? bh : bl, S.y[p], S.cF[p], S.cW[p]).h - S.H[p];
 			ex = S.m[p] * (d - dc);
 			q = nodeOf(M, S, p);
@@ -326,11 +326,11 @@ if (kind === 'spread' || kind === 'stencil' || kind === 'frb') {
 	S.hLedger += tot;`);
 	G.gatherDT = new Function('P', 'PTPHASE', 'spl', 'hiOff', 'loOff', 'heads', 'nextA', 'roomA',
 		'withA', 'wA', 'excessP', 'excessN', 'nodeOf', 'st', 'rad', 'fr', 'tfP', 'shP', 'shr', 'pmass',
-		'sample',
+		'sample', 'scopeDep',
 		'return ' + src
 	)(P, PHASE, spl, hiOff, loOff, heads, nextA, roomA, withA, wA, excessP, excessN, G.nodeOf, spSt,
 		rad,
-		fr, tfP, shP, shr, place === 'mass', G.sampleAt);
+		fr, tfP, shP, shr, place === 'mass', G.sampleAt, scope === 'dep');
 }
 var merged = 0, stranded = 0;
 // Conservative same-node, compatible-composition, same-certificate merge before scatter.
@@ -606,7 +606,7 @@ if (watch) xruns.forEach(function (r, id) {
 		cF: r.cF, cW: r.cW, entryGap: r.entryGap, gain0: r.gain0, share0: r.share0,
 		maxGain: r.maxGain, maxShare: r.maxShare, open: true });
 });
-var result = { kind: kind, value: value, scope: kind === 'relaxw' || kind === 'subgrid' ? scope : null,
+var result = { kind: kind, value: value, scope: kind === 'relaxw' || kind === 'subgrid' || kind === 'frb' ? scope : null,
 	seed: seed, kyr: kyr, myr: myr, frames: frames,
 	fingerprint: S.hash(), mass: mass, enthalpy: enth, latent: latent,
 	latentWorstFrame: latentFrame, latentWorstAbs: latentAbs, latentAbsMax: latentAbsMax,

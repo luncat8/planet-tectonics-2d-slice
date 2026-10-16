@@ -356,3 +356,23 @@ assert(read4('frb025-mass-600').census.nMelt > 900,
 	'M4: placing by marker share runs the pipeline again and melts the world');
 console.log('PASS 6 M4 rows: books, wall and the latent identity close; the concentration falls from 68140 to 21-16304 km2*Myr; the two-sided bound holds on five rows and only the loosest crosses, on the cold side');
 console.log('No M4 row is eligible: every row that removes the concentration empties the pipeline or saturates the pool (0-1 transfers, 5.2M-16.9M refusals).');
+
+// --- 0.3.2 M4 continuation: scope the bound to the deposit phase, then frb + --dpart.
+var dep = read4('frb025-dep-600'), frbd = read4('frb025-dpart01-600');
+assert.strictEqual(dep.fingerprint, 1808048552219233, 'M4 continuation dep fingerprint');
+assert.strictEqual(dep.kind, 'frb'); assert.strictEqual(dep.scope, 'dep');
+assert.strictEqual(dep.seed, 5); assert.strictEqual(dep.kyr, 50); assert.strictEqual(dep.myr, 600);
+assert(dep.gates.mass && dep.gates.enthalpy && dep.gates.latentBook && dep.gates.intakeWallP4 && dep.gates.temperature);
+assert.strictEqual(dep.nonfinite, 0);
+assert.strictEqual(dep.refuse, 0);
+assert.strictEqual(dep.depTx, 2);
+assert(dep.heldMassTime < 68140.14 / 3);
+console.log('  frb 0.25 --scope dep: held ' + dep.heldMassTime.toFixed(2) + ' km2*Myr, ' + dep.depTx + ' transfers, '
+	+ dep.refuse + ' refusals, frame ' + dep.msFrame.toFixed(3) + ' ms');
+assert.strictEqual(frbd.fingerprint, 1460769074631962, 'M4 continuation frb+dpart fingerprint');
+assert.strictEqual(frbd.kind, 'frb');
+assert(frbd.gates.mass && frbd.gates.enthalpy && frbd.gates.latentBook && frbd.gates.intakeWallP4 && frbd.gates.temperature);
+assert.strictEqual(frbd.outsideSamples.reduce(function (a, b) { return a + b; }, 0), 0);
+console.log('  frb 0.25 + --dpart 0.01: held ' + frbd.heldMassTime.toFixed(2) + ' km2*Myr, ' + frbd.depTx
+	+ ' transfers, ' + frbd.refuse + ' refusals, frame ' + frbd.msFrame.toFixed(3) + ' ms');
+console.log('PASS M4 continuation: deposit-scoped bound and frb + --dpart measured; banks asserted.');
