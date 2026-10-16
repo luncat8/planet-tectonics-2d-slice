@@ -1,7 +1,7 @@
 // 0.3.2 candidate measurement, not a shipping switch. Each cell runs in a fresh process.
 // node experiments/pt-heat-tail.js [baseline|cap|floor|relax|minimum|spread|stencil|relaxw|subgrid|frb]
 //      [value] [Myr=600] [--seed 5] [--kyr 50] [--scope dep|solid] [--watch] [--dpart D] [--cap PHI]
-//      [--assert-baseline|--assert-m2]
+//      [--trace-id a,b,c] [--assert-baseline|--assert-m2]
 // --seed/--kyr make one cell of the M2 clock/seed matrix (experiments/pt-heat-matrix.js runs it).
 // Rejected candidates are reports, not a nonzero exit; --assert-baseline gates the M0 bank
 // (pre-M2 tree), --assert-m2 the re-banked M2 cell (launch/air remedy in).
@@ -25,6 +25,54 @@ var seed = flag('--seed', 5), kyr = flag('--kyr', 50);
 var shr = flag('--share', 0);
 var place = (function () { var i = process.argv.indexOf('--place');
 	return i > 0 ? process.argv[i + 1] : 'room'; })();
+// 0.3.2 M5 (--trace-id): the material correspondence trace, declared before the probe that
+// closes over it. Two runs of one cell diverge, so a material id is not a material identity
+// across them -- ids come from S.nextId, a split's child is a new id and a merge survivor takes
+// the smaller one, so the same deposit carries different ids in the control and in a candidate
+// once their trajectories part. What is comparable is a parcel's own history inside the run that
+// produced it: the frame and the place it first appears, how it is buried, what the bound
+// withholds from it, when it reaches the routing threshold, whether the field support holds it
+// back and whether it is delivered. The first-seen record is also the test of whether one id
+// means one material in the two runs: where the two agree the id was assigned before the
+// divergence and compares directly, and where they do not only the site and the burial do.
+// Observation only -- nothing here writes engine state, so a traced run keeps its fingerprint.
+var trIds = (function () {
+	var i = process.argv.indexOf('--trace-id');
+	if (i < 0) return [];
+	return String(process.argv[i + 1]).split(',').map(Number)
+		.filter(function (v) { return Number.isInteger(v) && v >= 0; });
+})();
+var TRN = trIds.length, TRCAP = 1 << 21, TRSTRIDE = 200;
+var trIdx = TRN ? new Int32Array(TRCAP).fill(-1) : null, trFrame = { frame: 0 };
+// why: 0 stride, 1 at or above its own solidus - 0.05, 2 molten, 3 capped this frame,
+// 4 held back by the field support, 5 delivered, 6 phase change, 7 the last frame
+var trace = trIds.map(function (id, k) {
+	if (trIdx) trIdx[id] = k;
+	return { id: id, seen: 0, first: null, last: null, lastPh: -1, cappedFrame: -1, rows: [], caps: [],
+		maxT: -Infinity, maxTFrame: 0, maxGap: -Infinity, maxGapFrame: 0, maxGapY: 0,
+		capped: 0, withheld: 0, withheldMax: 0, routed: 0, held: 0, delivered: 0, deliveredFrame: 0 };
+});
+function trSlot(S, p) { var id = S.id[p]; return TRN && id < TRCAP ? trIdx[id] : -1; }
+function trSample(M, S, p, k, why) {
+	var t = trace[k], tg = G.sampleAt(M, S.Tg, S.x[p], S.e[p]), ts = PHASE.solidus(S.y[p], S.cF[p], S.cW[p]);
+	var row = { frame: frame, why: why, ph: S.ph[p], x: S.x[p], y: S.y[p], m: S.m[p], T: S.T[p], H: S.H[p],
+		melt: S.melt[p], field: tg, solidus: ts, cF: S.cF[p], cW: S.cW[p] };
+	if (!t.first) t.first = row;
+	t.last = row; t.seen++;
+	if (S.T[p] > t.maxT) { t.maxT = S.T[p]; t.maxTFrame = frame; }
+	if (S.T[p] - tg > t.maxGap) { t.maxGap = S.T[p] - tg; t.maxGapFrame = frame; t.maxGapY = S.y[p]; }
+	t.rows.push(row);
+}
+// the bound's own act on a traced parcel, recorded where it happens: the equilibrium temperature
+// the delivery would have reached, the two sides of the bound at that parcel and what was withheld
+function trCap(S, p, tb, bh, bl, ex, fr) {
+	var k = trSlot(S, p);
+	if (k < 0) return;
+	var t = trace[k];
+	t.capped++; t.withheld += ex; t.cappedFrame = fr;
+	if (Math.abs(ex) > t.withheldMax) t.withheldMax = Math.abs(ex);
+	if (t.caps.length < 4000) t.caps.push({ frame: fr, y: S.y[p], m: S.m[p], T: tb, hi: bh, lo: bl, withheld: ex });
+}
 if (place !== 'room' && place !== 'mass') throw new Error('--place is room or mass');
 if (!(shr >= 0)) throw new Error('--share is the mass share at which the frb bound is full, >= 0');
 if (!(seed > 0) || !Number.isInteger(seed) || !(kyr > 0) || !Number.isFinite(kyr)) throw new Error('invalid --seed or --kyr');
@@ -272,6 +320,7 @@ if (kind === 'spread' || kind === 'stencil' || kind === 'frb') {
 			if (ex > 0) excessP[q] += ex; else excessN[q] += ex;
 			withA[p] = ex;
 			d = dc; st.capped++;
+			if (TRC) TRC(S, p, tb, bh, bl, ex, TRF.frame);
 		}
 		S.H[p] += d;`);
 	src = replaceOnce(src, 'S.hLedger += tot;',
@@ -326,11 +375,11 @@ if (kind === 'spread' || kind === 'stencil' || kind === 'frb') {
 	S.hLedger += tot;`);
 	G.gatherDT = new Function('P', 'PTPHASE', 'spl', 'hiOff', 'loOff', 'heads', 'nextA', 'roomA',
 		'withA', 'wA', 'excessP', 'excessN', 'nodeOf', 'st', 'rad', 'fr', 'tfP', 'shP', 'shr', 'pmass',
-		'sample', 'scopeDep',
+		'sample', 'scopeDep', 'TRC', 'TRF',
 		'return ' + src
 	)(P, PHASE, spl, hiOff, loOff, heads, nextA, roomA, withA, wA, excessP, excessN, G.nodeOf, spSt,
 		rad,
-		fr, tfP, shP, shr, place === 'mass', G.sampleAt, scope === 'dep');
+		fr, tfP, shP, shr, place === 'mass', G.sampleAt, scope === 'dep', TRN ? trCap : null, trFrame);
 }
 var merged = 0, stranded = 0;
 // Conservative same-node, compatible-composition, same-certificate merge before scatter.
@@ -447,9 +496,11 @@ var events = [], frame = 0, sampleMs = 0, heldTime = 0, heldMeltTime = 0, heldSa
 var heldGap = -Infinity, mantleRoutes = 0, detach = MT.detach;
 // Allocation here is observation only, subtracted from the step timer. State is read-only.
 MT.detach = function (M, S) {
-	var start = performance.now(), p, tg, ts;
+	var start = performance.now(), p, tg, ts, tk;
 	for (p = 0; p < S.n; p++) {
 		if (S.melt[p] < P.meltHold) continue;
+		tk = trSlot(S, p);
+		if (tk >= 0) trace[tk].routed++;
 		if (S.ph[p] === P.PH.mantle) { mantleRoutes++; continue; }
 		if (S.ph[p] !== P.PH.dep || !S.depQ[p] || S.y[p] <= P.depositCoolDepth) continue;
 		tg = G.sampleAt(M, S.Tg, S.x[p], S.e[p]);
@@ -458,11 +509,13 @@ MT.detach = function (M, S) {
 			heldSamples++; heldTime += S.m[p] * subDt;
 			heldMeltTime += S.m[p] * S.melt[p] * subDt;
 			heldGap = Math.max(heldGap, S.T[p] - tg);
+			if (tk >= 0) { trace[tk].held++; trSample(M, S, p, tk, 4); }
 			continue;
 		}
 		events.push({ frame: frame, id: S.id[p], x: S.x[p], y: S.y[p], host: S.m[p],
 			melt: S.m[p] * S.melt[p], T: S.T[p], field: tg, solidus: ts,
 			cF: S.cF[p], cW: S.cW[p] });
+		if (tk >= 0) { trace[tk].delivered++; trace[tk].deliveredFrame = frame; trSample(M, S, p, tk, 5); }
 	}
 	sampleMs += performance.now() - start;
 	detach(M, S);
@@ -474,7 +527,18 @@ var mass = 0, enth = 0, wall = 0, wallOp = 0, latent = 0, latentFrame = 0, laten
 // floors |hLedger - ledger| at 1, which near a zero crossing of that difference is an absolute
 // 1e-10 km2*H gate, below the compensated-inventory round-off of a ~4e7 km2*H pool)
 var latentBook = 0, latentBookFrame = 0, latentAbsMax = 0, l0 = S.ledger;
-var outFrames = 0, hot = { T: -Infinity, frame: 0, ph: -1, y: 0, m: 0, field: 0 };
+// hottest carries the material id (0.3.2 M5): the outlier the whole release is about was banked
+// as a temperature, a frame and a place, which is enough to report it and not enough to trace it
+var outFrames = 0, hot = { T: -Infinity, frame: 0, ph: -1, y: 0, m: 0, field: 0, id: -1 };
+// the mesh repair's own counters (0.3.2 M5). F.transfer calls G.reseed when a node's deposited
+// weight falls below coverage, and reseed's donor pull *moves* a marker onto the hole -- id, mass,
+// composition and heat preserved, position replaced -- out of rings of radius 2, 8 then 32 nodes
+// (dx = 62.5 km, so 32 nodes is 2000 km), with G.redeal's lattice permutation behind that. The M5
+// trace found buried deposit material relocated by up to 737 km in depth and 376 km laterally, and
+// one parcel's largest departure from its own field three frames after such a move; how often the
+// repair fires, and how much material it moves, is a population question a six-parcel trace cannot
+// answer, so the counters ride along in every bank from here on.
+var movedSum = 0, movedMax = 0, movedFrames = 0;
 var ms = 0, frames = Math.round(myr / SIM.dt);
 var mins = [Infinity, Infinity, Infinity, Infinity], maxs = [-Infinity, -Infinity, -Infinity, -Infinity];
 var outside = [0, 0, 0, 0], outsideLo = [0, 0, 0, 0], outsideHi = [0, 0, 0, 0], nonfinite = 0;
@@ -529,6 +593,7 @@ function gainAt(S, p) {
 	RG.share = den > 0 ? part / den : 0;
 }
 for (frame = 1; frame <= frames; frame++) {
+	trFrame.frame = frame;
 	var t = performance.now();
 	SIM.step();
 	ms += performance.now() - t;
@@ -544,13 +609,27 @@ for (frame = 1; frame <= frames; frame++) {
 	if (la > latentAbsMax) latentAbsMax = la;
 	lr = la / Math.max(1, Math.abs(S.hLedger - hl0), Math.abs(S.ledger - l0));
 	if (lr > latentBook) { latentBook = lr; latentBookFrame = frame; }
+	movedSum += S.moved;
+	if (S.moved > movedMax) movedMax = S.moved;
+	if (S.moved > 0) movedFrames++;
 	for (var p = 0; p < S.n; p++) {
-		var ph = S.ph[p], T = S.T[p];
+		var ph = S.ph[p], T = S.T[p], tk, tr, why;
 		if (!Number.isFinite(T)) { nonfinite++; continue; }
 		mins[ph] = Math.min(mins[ph], T); maxs[ph] = Math.max(maxs[ph], T);
 		if (T < -0.5) { outsideLo[ph]++; outside[ph]++; }
 		else if (T > 1.5) { outsideHi[ph]++; outside[ph]++; }
-		if (T > hot.T) { hot.T = T; hot.frame = frame; hot.ph = ph; hot.y = S.y[p]; hot.m = S.m[p]; hot.x = S.x[p]; }
+		if (T > hot.T) { hot.T = T; hot.frame = frame; hot.ph = ph; hot.y = S.y[p]; hot.m = S.m[p]; hot.x = S.x[p]; hot.id = S.id[p]; }
+		if (TRN) {
+			tk = trSlot(S, p);
+			if (tk >= 0) {
+				tr = trace[tk];
+				why = tr.cappedFrame === frame ? 3 : S.melt[p] > 0 ? 2
+					: T >= PHASE.solidus(S.y[p], S.cF[p], S.cW[p]) - 0.05 ? 1
+					: frame === frames ? 7 : tr.lastPh !== ph ? 6 : frame % TRSTRIDE === 0 ? 0 : -1;
+				if (why >= 0) trSample(M, S, p, tk, why);
+				tr.lastPh = ph;
+			}
+		}
 		if (!watch) continue;
 		var kb = ph * NB + bandOf(S.y[p]);
 		if (T < bndMin[kb]) { bndMin[kb] = T; bndFrame[kb] = frame; bndId[kb] = S.id[p]; }
@@ -622,6 +701,7 @@ var result = { kind: kind, value: value, scope: kind === 'relaxw' || kind === 's
 	heldSamples: heldSamples, heldMassTime: heldTime, heldMeltTime: heldMeltTime, heldGapMax: heldGap,
 	mantleRoutes: mantleRoutes, depMelt: S.thr.depMelt, depTx: S.tx.depMelt, refuse: S.tx.refuse,
 	merged: merged, strandedAttempts: stranded,
+	movedSum: movedSum, movedMax: movedMax, movedFrames: movedFrames, redeals: S.redeals,
 	spreadCapped: spSt.capped, spreadGiven: spSt.given, spreadGiveback: spSt.giveback,
 	spreadShortN: spSt.shortN, spreadShortH: spSt.shortH,
 	relaxSource: rlSt.R, relaxGross: rlSt.gross, relaxReaction: rlSt.react, relaxResidMax: rlSt.resid,
@@ -643,6 +723,21 @@ if (watch) {
 	result.excursions = excur;
 	result.exSamples = exSamples;
 	result.exSampleLog = xsamples;
+}
+// the trace is banked beside the run it explains: a material history is a property of one run,
+// and the correspondence argument reads two of them side by side
+if (TRN) {
+	result.trace = { stride: TRSTRIDE, capRows: 4000,
+		why: ['stride', 'at or above its own solidus - 0.05', 'molten', 'capped by the bound this frame',
+			'held back by the field support', 'delivered', 'phase change', 'the last frame'],
+		history: trace.map(function (t) {
+			return { id: t.id, seen: t.seen, first: t.first, last: t.last,
+				maxT: Number.isFinite(t.maxT) ? t.maxT : null, maxTFrame: t.maxTFrame,
+				maxGap: Number.isFinite(t.maxGap) ? t.maxGap : null, maxGapFrame: t.maxGapFrame, maxGapY: t.maxGapY,
+				capped: t.capped, withheld: t.withheld, withheldMax: t.withheldMax,
+				routed: t.routed, held: t.held, delivered: t.delivered, deliveredFrame: t.deliveredFrame,
+				rows: t.rows, caps: t.caps };
+		}) };
 }
 result.gates = { mass: mass < 1e-9, enthalpy: enth < 1e-9, latent: latent < 1e-10, latentBook: latentBook < 1e-10,
 	intakeWallP4: wall < 0.01, intakeWallReference: wall < 5e-5,
@@ -692,6 +787,19 @@ function summary(r) {
 	if (r.cold) out.push('global mantle minimum T ' + f(r.cold.T, 4) + ' at frame ' + r.cold.frame + ', id ' + r.cold.id
 		+ ', ' + f(r.cold.y, 1) + ' km, ' + f(r.cold.m, 1) + ' km2, field ' + f(r.cold.field, 4)
 		+ ' (parcel ' + f(r.cold.field - r.cold.T, 4) + ' below its own field); ' + r.coldPath.length + ' new minima');
+	if (r.trace) r.trace.history.forEach(function (h) {
+		out.push('trace ' + h.id + ': ' + (h.first
+			? 'first seen frame ' + h.first.frame + ' at x ' + f(h.first.x, 1) + ' km, ' + f(h.first.y, 1)
+				+ ' km deep, ' + f(h.first.m, 3) + ' km2, phase ' + names[h.first.ph]
+			: 'no parcel of this id in this run')
+			+ '; max T ' + f(h.maxT, 4) + ' (frame ' + h.maxTFrame + '), max T-field ' + f(h.maxGap, 4)
+			+ ' at ' + f(h.maxGapY, 1) + ' km (frame ' + h.maxGapFrame + ')');
+		out.push('        ' + h.capped + ' caps withholding ' + f(h.withheld, 4) + ' km2*H (largest '
+			+ f(h.withheldMax, 4) + '), ' + h.routed + ' frames at the routing threshold, ' + h.held
+			+ ' held by field support, ' + h.delivered + ' delivered'
+			+ (h.deliveredFrame ? ' at frame ' + h.deliveredFrame : '') + ', last seen frame '
+			+ (h.last ? h.last.frame : 'none') + ', ' + h.rows.length + ' rows');
+	});
 	if (r.excursions) out.push('mobile melt above 1.5: ' + r.excursions.length + ' excursion(s) over ' + r.exSamples
 		+ ' parcel-frames' + (r.excursions.some(function (v) { return v.open; }) ? ', at least one still open at the last frame' : ''));
 	return out.join('\n');

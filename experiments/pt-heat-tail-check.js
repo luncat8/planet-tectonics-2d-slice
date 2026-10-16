@@ -376,3 +376,145 @@ assert.strictEqual(frbd.outsideSamples.reduce(function (a, b) { return a + b; },
 console.log('  frb 0.25 + --dpart 0.01: held ' + frbd.heldMassTime.toFixed(2) + ' km2*Myr, ' + frbd.depTx
 	+ ' transfers, ' + frbd.refuse + ' refusals, frame ' + frbd.msFrame.toFixed(3) + ' ms');
 console.log('PASS M4 continuation: deposit-scoped bound and frb + --dpart measured; banks asserted.');
+
+// --- 0.3.2 M5: the material correspondence argument, the open question M4 section 7 leaves.
+// Two traced runs of the cell every milestone was read on: the control, and frb 0.25 --scope dep,
+// each tracing the five ids that matter -- the three the control delivered and the two the
+// candidate did -- plus, in the candidate, the id of the control's T 2.267 outlier. The trace
+// writes no engine state, so each run keeps the fingerprint of its own untraced world and every
+// diagnostic the family was read on is the banked one, field for field. That neutrality is what
+// lets what follows be read as the same two runs and not as two new ones.
+var root5 = path.join(__dirname, 'logs/0.3.2-M5-');
+function read5(name) { return JSON.parse(fs.readFileSync(root5 + name + '.json', 'utf8')); }
+var tctl = read5('baseline-trace-600'), tdep = read5('frb025-dep-trace-600');
+var bctl = read3('baseline600-final2'), bdep = read4('frb025-dep-600');
+assert.strictEqual(tctl.fingerprint, 6191250240167390, 'M5 traced control keeps the control world');
+assert.strictEqual(tdep.fingerprint, 1808048552219233, 'M5 traced candidate keeps the dep-scoped world');
+assert.deepStrictEqual(tctl.events, bctl.events, 'M5 traced control reproduces the banked transfers');
+assert.deepStrictEqual(tdep.events, bdep.events, 'M5 traced candidate reproduces the banked transfers');
+['heldSamples', 'heldMassTime', 'heldMeltTime', 'heldGapMax', 'spreadCapped', 'spreadGiven',
+	'mantleRoutes', 'depTx', 'depMelt', 'refuse', 'intakeWallWorst'].forEach(function (k) {
+	assert.strictEqual(tctl[k], bctl[k], 'M5 traced control diagnostic ' + k);
+	assert.strictEqual(tdep[k], bdep[k], 'M5 traced candidate diagnostic ' + k);
+});
+assert.deepStrictEqual(tctl.maxT, bctl.maxT, 'M5 traced control maxT');
+assert.deepStrictEqual(tdep.maxT, bdep.maxT, 'M5 traced candidate maxT');
+assert.deepStrictEqual(tdep.census, bdep.census, 'M5 traced candidate census');
+// hottest carries the material id, so the outlier is nameable -- and its name is not among the ids
+// either run delivered, in either run
+assert.strictEqual(tctl.hottest.id, 134747, 'M5 control outlier id');
+near(tctl.hottest.T, 2.2671, 1e-3, 'M5 control outlier temperature');
+assert.strictEqual(tdep.hottest.id, 130330, 'M5 candidate hottest id');
+assert(tctl.maxT[3] > 2.2, 'M5 the control deposit phase reaches the outlier');
+assert(tdep.maxT[3] < 1.2 && tdep.maxT[3] <= tdep.maxT[2] + 1e-12,
+	'M5 the candidate deposit phase never leaves the grid-coupled range');
+
+// One id does not mean one material across the divergence. Every id the two runs share is admitted
+// at a different site -- circularly, on the 16000 km wrap -- most in a different phase, with a
+// different mass and a different lifetime. The admission frames stay within 34 of each other, so
+// the counter keeps step with the eruption cadence while the material it names does not, which is
+// exactly why an id match looks available here and is not.
+var ctlH = {}, depH = {};
+tctl.trace.history.forEach(function (h) { ctlH[h.id] = h; });
+tdep.trace.history.forEach(function (h) { depH[h.id] = h; });
+function circ(a, b) { var d = Math.abs(a - b) % 16000; return Math.min(d, 16000 - d); }
+var shared = [42152, 165372, 194306, 124861, 217799];
+console.log('  id      control admission                       candidate admission                     circ Dx km  dframe   ctl rows  dep rows   ctl tx   dep tx');
+shared.forEach(function (id) {
+	var a = ctlH[id], b = depH[id];
+	assert(a && a.first && b && b.first, 'M5 id ' + id + ' exists in both runs');
+	assert(circ(a.first.x, b.first.x) > 1000, 'M5 id ' + id + ' is admitted at a different site in each run');
+	assert(Math.abs(a.first.frame - b.first.frame) <= 50, 'M5 id ' + id + ' is admitted within the same cadence');
+	var admit = function (h) {
+		return 'f' + h.first.frame + ' x' + h.first.x.toFixed(0) + ' y' + h.first.y.toFixed(1)
+			+ ' m' + h.first.m.toFixed(3) + ' ph' + h.first.ph;
+	};
+	console.log('  ' + String(id).padEnd(8) + admit(a).padEnd(38) + admit(b).padEnd(38)
+		+ circ(a.first.x, b.first.x).toFixed(0).padStart(8) + String(b.first.frame - a.first.frame).padStart(8)
+		+ String(a.rows.length).padStart(11) + String(b.rows.length).padStart(10)
+		+ String(a.delivered).padStart(9) + String(b.delivered).padStart(9));
+});
+
+// The candidate's two transfers are ordinary pipeline deposits, not the control's tail in different
+// clothing: admitted at the surface as deposit material of 0.03 and 0.20 km2, buried, held back by
+// the field support on every frame but one of the 133 and 29 they sat at the routing threshold, and
+// delivered one frame after their own hottest frame, 0.06 and 0.02 of T above their own solidus.
+[124861, 217799].forEach(function (id) {
+	var h = depH[id], e = tdep.events.filter(function (x) { return x.id === id; })[0];
+	assert.strictEqual(h.first.ph, 3, 'M5 candidate ' + id + ' admitted as deposit material');
+	assert(h.first.y < 0 && h.first.m < 1, 'M5 candidate ' + id + ' admitted small, at the surface');
+	assert.strictEqual(h.delivered, 1, 'M5 candidate ' + id + ' delivered once');
+	assert.strictEqual(h.deliveredFrame, e.frame, 'M5 candidate ' + id + ' delivered on the event frame');
+	assert.strictEqual(h.maxTFrame, e.frame - 1, 'M5 candidate ' + id + ' hottest the frame before it goes');
+	assert(e.field >= e.solidus && e.T - e.solidus < 0.1, 'M5 candidate ' + id + ' goes field-supported, near solidus');
+	assert(h.routed > 20 && h.held === h.routed - 1, 'M5 candidate ' + id + ' held back until its field caught up');
+});
+// And the bound acts on the parcels that do transfer, which is the mechanism read at the material
+// rather than at the population: 332 caps withholding -55.83 km2*H on the first, 316 of them on the
+// cold side -- there the bound warms the parcel toward its own field -- and 25 caps withholding
+// +9.14 km2*H on the second, 18 of them on the hot side.
+assert.strictEqual(depH[124861].capped, 332, 'M5 candidate 124861 capped by the bound');
+near(depH[124861].withheld, -55.83390112914293, 1e-9, 'M5 candidate 124861 withheld km2*H');
+assert.strictEqual(depH[124861].caps.filter(function (c) { return c.withheld < 0; }).length, 316,
+	'M5 candidate 124861 capped on the cold side');
+assert.strictEqual(depH[217799].capped, 25, 'M5 candidate 217799 capped by the bound');
+near(depH[217799].withheld, 9.138446812486684, 1e-9, 'M5 candidate 217799 withheld km2*H');
+assert.strictEqual(depH[217799].caps.filter(function (c) { return c.withheld > 0; }).length, 18,
+	'M5 candidate 217799 capped on the hot side');
+// The control's three, traced in the control, are never capped -- it has no bound -- and the first
+// of them stands 0.86 of T above its own field after delivery, which is the tail the family exists
+// to remove. The two ids the candidate delivers are, in the control, short-lived airborne parcels
+// that never transfer at all: the crossover is complete in both directions.
+assert.strictEqual(ctlH[42152].capped, 0, 'M5 control has no bound to cap it');
+near(ctlH[42152].maxGap, 0.8615690046862132, 1e-9, 'M5 control 42152 max T - field');
+assert.strictEqual(ctlH[124861].delivered, 0, 'M5 control never delivers 124861');
+assert.strictEqual(ctlH[217799].delivered, 0, 'M5 control never delivers 217799');
+assert.strictEqual(depH[134747].delivered, 0, 'M5 candidate never delivers the control outlier id');
+assert.strictEqual(depH[134747].first.ph, 2, 'M5 that id is airborne material in the candidate');
+
+// The mesh repair the trace walked into, measured at the population rather than at six parcels.
+// F.transfer calls G.reseed when a node's deposited weight falls below coverage, and reseed's donor
+// pull *moves* a marker onto the hole -- id, mass, composition and heat preserved, position
+// replaced -- out of rings of radius 2, 8 then 32 nodes (dx is 62.5 km, so the widest ring is
+// 2000 km), with G.redeal's lattice permutation behind that. It is routine in both worlds, it never
+// falls back to the global re-deal, and the bound does not change how much it moves: the repair is
+// not the route by which the deposit-scoped row removes the concentration.
+assert.strictEqual(tctl.movedSum, 13234, 'M5 control marker relocations over 600 Myr');
+assert.strictEqual(tdep.movedSum, 13439, 'M5 candidate marker relocations over 600 Myr');
+assert.strictEqual(tctl.movedFrames, 5209, 'M5 control frames with a relocation');
+assert.strictEqual(tdep.movedFrames, 5126, 'M5 candidate frames with a relocation');
+assert.strictEqual(tctl.redeals, 0, 'M5 control never re-deals the lattice');
+assert.strictEqual(tdep.redeals, 0, 'M5 candidate never re-deals the lattice');
+assert(Math.abs(tdep.movedSum - tctl.movedSum) < 0.05 * tctl.movedSum, 'M5 the bound leaves the repair alone');
+// and to one parcel: the control's first protected transfer is relocated ten times over its 1484
+// sampled frames, by up to 737 km in depth and 376 km laterally, and its widest departure from its
+// own field (0.862 at y 49.3 km, in a field of 0.175) is reached three frames after one of them
+function relocations(h) {
+	var seen = {}, last = null, out = { n: 0, dx: 0, dy: 0 };
+	h.rows.forEach(function (r) {
+		if (seen[r.frame]) return;
+		seen[r.frame] = 1;
+		if (last && r.frame - last.frame === 1) {
+			var ax = Math.abs(r.x - last.x), jx = Math.min(ax, 16000 - ax), jy = Math.abs(r.y - last.y);
+			if (jx > 100 || jy > 20) { out.n++; out.dx = Math.max(out.dx, jx); out.dy = Math.max(out.dy, jy); }
+		}
+		last = r;
+	});
+	return out;
+}
+var ctlMoves = relocations(ctlH[42152]), depMoves = relocations(depH[124861]);
+assert.strictEqual(ctlMoves.n, 10, 'M5 control 42152 relocations');
+assert(ctlMoves.dy > 700 && ctlMoves.dx > 300, 'M5 one relocation spans hundreds of km');
+assert.strictEqual(depMoves.n, 2, 'M5 candidate 124861 relocations');
+assert.strictEqual(ctlH[42152].maxGapFrame, 9405, 'M5 the widest gap is three frames after a relocation');
+// the frame-time gate: the same cell banked in M4 read 21.589 ms with --watch on and failed it;
+// with the trace instead of the watch instruments it reads 15.768 ms and passes. The trace's own
+// cost is what the control says it is -- 11.696 ms banked without it, 11.700 with it.
+assert.strictEqual(tdep.gates.frame, tdep.msFrame < 20, 'M5 candidate frame gate is its own reading');
+assert(tdep.gates.frame === true && bdep.gates.frame === false,
+	'M5 the candidate cell passes the frame-time gate once the watch instruments are off');
+console.log('  repair: ' + tctl.movedSum + ' relocations in the control (' + tctl.movedFrames + ' frames, max '
+	+ tctl.movedMax + '/frame), ' + tdep.movedSum + ' in the candidate (' + tdep.movedFrames + ' frames, max '
+	+ tdep.movedMax + '/frame), ' + tctl.redeals + ' and ' + tdep.redeals + ' global re-deals');
+console.log('  frame time: control 11.700 ms traced against 11.696 banked untraced; candidate 15.768 ms traced against 21.589 banked with --watch');
+console.log('PASS M5: the trace is neutral (both worlds, every banked diagnostic field for field); no id the two runs share names the same material -- the worlds diverge before every traced admission -- so the candidate 2 transfers are new deposits the ordinary pipeline runs and not the control 3 in different clothing; the candidate deposit phase never exceeds T 1.1136 against the control 2.2671, its held-back concentration is 694.73 against 68140.14 km2*Myr, and its deposit-to-melt flux is 1.2838 against 9.7302 km2.');

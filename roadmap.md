@@ -33,8 +33,24 @@ marker-share-placed form). Every form removes the held-back concentration (68,14
 km²·Myr) and holds the two-sided bound on every phase and frame, which no earlier row did; every
 form also empties the pipeline or saturates the pool (0–1 transfers, 5.2M–16.9M refusals),
 because a withheld increment has to go somewhere and everywhere it goes it changes what melts.
-**Nothing is selected.** Next: the bound scoped to the deposit phase, then `frb` + `--dpart`.
-Condition 5 and the deposit field filter stay; no constant moves.
+The continuation measured both rows that "Next" named: scoping the bound to the deposit phase is
+the one form that removes the concentration (68,140 → 694.73 km²·Myr) with the pipeline live and
+zero refusals, and paying for it with `--dpart` instead re-opens the route (14 transfers, 46,802
+refusals). **M5 (`archive/0.3.2-M5-correspondence-report.md`, `-worklog.md`) settles the question
+that left open**, with `--trace-id` — a material's own history inside the run that produced it,
+because no id the two runs share names the same material: the worlds diverge before every traced
+admission, so condition 5's material branch cannot be met by any row of this family. The
+deposit-scoped row's two transfers are new deposits the ordinary pipeline runs, not the control's
+three displaced, and the tail is absent rather than moved (deposit maximum 1.1136 against 2.2671,
+worst held gap 0.2503 against 1.3277); the row also passes the frame-time gate once the watch
+instruments are off (15.768 ms/frame, not the 21.589 M4 banked). What still keeps it from being
+shown eligible is its deposit→melt flux, 1.2838 against 9.7302 km², which one world per row cannot
+separate from the divergence. M5 also counts a mover nobody had counted: the mesh repair
+(`G.reseed`'s donor pull) relocates 13,234 markers over 600 Myr, one traced parcel ten times and by
+up to 737 km in depth, and the bound leaves it alone (13,439 in the candidate). **Nothing is
+selected.** Next: the control and the deposit-scoped row on two or three further seeds, read as
+distributions; then the join between held routing samples and recent relocations. Condition 5 and
+the deposit field filter stay; no constant moves.
 
 0.2.0 status: **closed.** M0 (the headless toy box), M1 (vent lifecycle / second clock),
 M2 (stack write-back / visible edifice), M3 (bed-anchored deposits / finite extraction),

@@ -101,7 +101,13 @@ wall-booked or zero-sum through the adjoint (relaxw, subgrid; `--scope dep|solid
 seed 5 at 50 kyr/frame for 600 Myr, or any `--seed`/`--kyr` cell; its `--watch` instruments read
 the adjoint gain and stencil mass share at every cold minimum and every mobile-melt excursion
 (the mechanism, not only its signature), and its per-phase outside count is split into the two
-ends of the bound;
+ends of the bound; its `--trace-id a,b,c` records a material's own history inside the run that
+produced it -- the frame and site it first appears, a 200-frame burial spine with every frame that
+does something to it in full, every act of the bound on it, and its routing fate -- because a
+material id is not a material identity across two diverging runs (a split's child is a new id, a
+merge survivor takes the smaller one), so M5's correspondence argument reads histories and sites,
+and the first-seen record is what tests whether one id does mean one material in both runs; its
+`hottest` record carries the material id, so the outlier can be traced and not only reported;
 reports every-frame books, per-phase temperature bounds, wall intake, timed kernel frames and
 individual G5 deposit transfers; no shipping parameter changes. M3 adds two melt-depletion
 probes that wrap the melt path's own kernel text rather than the engine state -- `--dpart D`,

@@ -1334,3 +1334,51 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   codec" was true of the shipping read/write path and false of the tree. Either say "outside the
   codec in `js/`, `experiments/` and the page" or run the grep over everything and report what it
   finds — including the retired tool.
+
+## 0.3.2 M5 — material identity across diverging runs, and the mover nobody had counted (archive/0.3.2-M5-correspondence-worklog.md)
+
+- **A material id is not a material identity across two runs that diverge.** Ids come from
+  `S.nextId` (`js/pt/pool.js:96`), a split's child is a new id, a merge survivor takes the smaller
+  one (`js/pt/pool.js:349`), and `nextId` is mixed into the fingerprint (`js/pt/state.js:527`).
+  Measured on one cell (seed 5, 50 kyr/frame, 600 Myr), control against `frb 0.25 --scope dep`: all
+  five ids the two runs share are admitted at a different site — 3,537 to 7,928 km apart circularly
+  on the 16,000 km wrap, three of the five in a different phase, one as 55 frames of airborne
+  material in the control against 884 frames of buried deposit in the candidate — while the
+  admission *frames* stay within 34, because the counter keeps step with the eruption cadence and
+  the material it names does not. A cross-run id match therefore looks available exactly when it is
+  not, and a gate written as "the same material ids route" can only be met by a candidate that
+  changes nothing. Compare per-run histories and admission records instead, and say so in the gate.
+- **Within one run, a traced id is a lineage, not a fixed body of material.** The merge survivor
+  takes the smaller id, so one traced id's mass runs 0.075 → 0.603 km² and another's 3.076 →
+  50.000 km² (the pool's own cap). Read a trace's admission, delivery, cap and routing counts; do
+  not read its position or mass sequence as one parcel's.
+- **The mesh repair moves material non-locally, and it is routine.** `F.transfer` calls `G.reseed`
+  when a node's deposited weight falls below `M.cover` (1/16); `pull` searches square rings of
+  radius 2, 8 then 32 nodes (`dx` is 62.5 km, so the widest ring is 2,000 km) and `donor()`
+  (`js/pt/grid.js`) assigns the hole's coordinates to a marker from a bucket that has a spare — id,
+  mass, composition and heat untouched, position replaced — with `G.redeal`'s global lattice
+  permutation behind it. Counted over 600 Myr: 13,234 relocations in the control and 13,439 in the
+  candidate, in 5,209 and 5,126 of 12,000 frames, at most 12 and 17 in one frame, and zero global
+  re-deals in either world. One traced deposit was moved ten times, by up to 737 km in depth and 376
+  km laterally, and its widest departure from its own field (T − field 0.862 at y 49.3 km, in a
+  field of 0.175) came three frames after a move that lifted it 156 km. So a parcel's position
+  history is not advective, and hot material dropped into a cold neighbourhood keeps its heat and
+  only afterwards relaxes toward the field it landed in. `movedSum`/`movedMax`/`movedFrames`/
+  `redeals` are banked by `pt-heat-tail.js` from M5 on: read them before believing a trajectory, and
+  remember the repair is not a defect — a node no marker reaches keeps its last frame's value, and
+  leaving holes stale drove a run at Ra 1e6 into a grid-scale instability.
+- **A banked `ms/frame` belongs to its instrument set.** The same cell read 21.589 ms/frame with
+  `--watch` on (cold path, band table, per-sample gain and share) and 15.768 with `--trace-id`
+  instead; the trace's own cost on the control is 0.004 ms/frame (11.696 untraced, 11.700 traced).
+  M4 recorded the frame-time gate as failed on the watch-inflated number. Before rejecting a row on
+  frame time, check which instruments its bank was made with — and run a quoted cell alone.
+- **Verify an observation hook with a large target list, not with debug output.** `trCap` fires only
+  where the bound actually caps, so a short smoke run with two or three arbitrary ids records zero
+  caps and looks broken when it is working. Four thousand traced ids on `frb 0.25 20 --scope solid`
+  gave 72 cap rows with the fingerprint unchanged. The same run priced the instrument: 8.23 MB of
+  bank for 4,000 ids over 400 frames — trace five ids, not a population.
+- **Neutrality is a fingerprint plus a field-for-field diff.** Keeping its world's fingerprint
+  (6191250240167390, 1808048552219233) proves an instrument left the engine state alone; matching
+  the world's already-banked transfers down to `cF`/`cW`, its held census, spread counters,
+  `mantleRoutes`, `minT`/`maxT` and census proves it left the observation alone too. Assert both and
+  the new bank can be read as the same run rather than as a new one.
