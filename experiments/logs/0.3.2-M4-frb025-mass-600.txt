@@ -1,0 +1,16 @@
+pt-heat-tail frb 0.25 seed 5 at 50 kyr/frame over 600 Myr, 12000 frames
+fingerprint 6134000684222626   21.698 ms/frame   bank experiments/logs/0.3.2-M4-frb025-mass-600.json
+gates: mass ok, enthalpy ok, latent identity ok, wall (P4 < 0.01) ok, frame (< 20 ms) FAIL, per-phase T bound ok, refusals 16878550
+wall |intake/wall - 1| worst 1.849e-3, end 1.849e-3, operator-only 1.849e-3, R/wall 0.00e+0
+T mantle -0.2231..1.0343 (0 outside -0.5..1.5, 0 above / 0 below)
+T melt 0.2000..1.1367 (0 outside -0.5..1.5, 0 above / 0 below)
+T air 0.8560..0.9914 (0 outside -0.5..1.5, 0 above / 0 below)
+T dep -0.1971..1.0894 (0 outside -0.5..1.5, 0 above / 0 below)
+hottest parcel T 1.1367 in a field of 0.8835 at 149.8 km, 148.31 km2, phase melt, frame 102
+route: 1581 field-supported candidates, 1 delivered transfers, 0 bleeding (host < 1e-3 km2), 0.573871 km2 shed, 16707668 mantle routings, 16878550 refusals
+held back by field support: 22219 samples, 16304.3352 km2*Myr of host, 4409.7944 of melt-equivalent, worst T-field gap 0.8296
+P3.2 census: split 13823, whole 13846, freeze 16343, chambers 49, seg 901143.6, intrDr 824886.6, landCr 253142.5, ventDr 340653.6, meltM 163.6, depN 461373.5, nMelt 976, nDep 1429
+depletion: --dpart 0 (0 rises, max 0.0000, sum 0.0000), --cap 0 (0 parcels budgeted, 0 split candidates blocked, 0 whole blocked, 0 spent)
+books: mass 0.00e+0, enthalpy 5.31e-12, latent 1.10e-7 km2*H (6.19e-13 of its books), deposit 7.92e-9, melt 3.82e-9
+global mantle minimum T -0.2231 at frame 11396, id 918, 5.2 km, 97.5 km2, field 0.0268 (parcel 0.2499 below its own field); 3048 new minima
+mobile melt above 1.5: 0 excursion(s) over 0 parcel-frames

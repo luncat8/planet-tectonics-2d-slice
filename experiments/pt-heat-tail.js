@@ -1,6 +1,7 @@
 // 0.3.2 candidate measurement, not a shipping switch. Each cell runs in a fresh process.
-// node experiments/pt-heat-tail.js [baseline|cap|floor|relax|minimum|spread|stencil|relaxw|subgrid]
-//      [value] [Myr=600] [--seed 5] [--kyr 50] [--scope dep|solid] [--assert-baseline|--assert-m2]
+// node experiments/pt-heat-tail.js [baseline|cap|floor|relax|minimum|spread|stencil|relaxw|subgrid|frb]
+//      [value] [Myr=600] [--seed 5] [--kyr 50] [--scope dep|solid] [--watch] [--dpart D] [--cap PHI]
+//      [--assert-baseline|--assert-m2]
 // --seed/--kyr make one cell of the M2 clock/seed matrix (experiments/pt-heat-matrix.js runs it).
 // Rejected candidates are reports, not a nonzero exit; --assert-baseline gates the M0 bank
 // (pre-M2 tree), --assert-m2 the re-banked M2 cell (launch/air remedy in).
@@ -12,18 +13,25 @@ var SIM = require(B + 'sim.js'), POOL = require(B + 'pool.js'), PHASE = require(
 var MT = require(B + 'melt.js'), F = require(B + 'fluid.js');
 var kind = process.argv[2] || 'baseline';
 var defaults = { baseline: 0, cap: 2, floor: 0.01, relax: 0.999, minimum: 1, spread: 1.5, stencil: 1.5,
-	relaxw: 1, subgrid: 1 };
+	relaxw: 1, subgrid: 1, frb: 0.25 };
 var value = process.argv[3] === undefined ? defaults[kind] : +process.argv[3];
 var myr = process.argv[4] === undefined || process.argv[4].startsWith('--') ? 600 : +process.argv[4];
 var scopeAt = process.argv.indexOf('--scope'), scope = scopeAt > 0 ? process.argv[scopeAt + 1] : 'solid';
 if (scope !== 'dep' && scope !== 'solid') throw new Error('--scope is dep or solid');
 function flag(name, fallback) { var i = process.argv.indexOf(name); return i > 0 ? +process.argv[i + 1] : fallback; }
 var seed = flag('--seed', 5), kyr = flag('--kyr', 50);
+// declared before the probe that closes over it: --share scales the frb bound by a parcel's
+// own stencil mass share (s0 = 0 is the flat bound, the form measured first)
+var shr = flag('--share', 0);
+var place = (function () { var i = process.argv.indexOf('--place');
+	return i > 0 ? process.argv[i + 1] : 'room'; })();
+if (place !== 'room' && place !== 'mass') throw new Error('--place is room or mass');
+if (!(shr >= 0)) throw new Error('--share is the mass share at which the frb bound is full, >= 0');
 if (!(seed > 0) || !Number.isInteger(seed) || !(kyr > 0) || !Number.isFinite(kyr)) throw new Error('invalid --seed or --kyr');
 if (!(kind in defaults) || !Number.isFinite(value) || !(myr > 0) || !Number.isFinite(myr)
 	|| (kind === 'cap' && value < 1) || (kind === 'floor' && !(value > 0 && value <= 1))
 	|| (kind === 'relax' && !(value >= 0 && value < 1)) || (kind === 'minimum' && value <= 0)
-	|| ((kind === 'spread' || kind === 'stencil') && !(value > 0))
+	|| ((kind === 'spread' || kind === 'stencil' || kind === 'frb') && !(value > 0))
 	|| ((kind === 'relaxw' || kind === 'subgrid') && !(value > 0))) {
 	throw new Error('invalid candidate, value or duration');
 }
@@ -175,31 +183,90 @@ if (kind === 'relaxw' || kind === 'subgrid') {
 // node, so the conservation unit is the stencil block rather than the node. Blocks overlap and
 // are placed in node order on the live enthalpy, so headroom one placement used is gone for
 // the next; the giveback still returns only to the capped parcels of the node that raised it.
+// frb (0.3.2 M4, the candidate M3 §9.1 leaves standing): the same conservative placement, but
+// the bound is the field a parcel sits in instead of a constant -- the delivered state may not
+// leave (T_field - value, T_field + value) -- so the bound is two-sided by construction and it
+// bites where M2's constant bound only clipped (a light deposit parked at T 1.500 while still
+// 0.72 of T above its own field). The field is the pre-gather nodal temperature, read once per
+// coupled parcel into tfP before the delivery loop, so the bound, the headroom and the giveback
+// all read the same snapshot. Placement is unchanged, so per-node totals, the intake, the books
+// and the wall integral are still the baseline's own delivery to round-off: the probe bounds the
+// distribution, never the integral.
+// `--share s0 > 0` is M3 §9.1's own form of the same bound: the departure a parcel may hold
+// from the field it sits in is `K * share / s0`, share being the parcel's own fraction of its
+// stencil's marker mass, so a parcel that *is* the field there is left alone and the slivers
+// the concentration rides on are clamped toward nothing. (s0 = 0 is the flat bound, measured
+// first: it holds the gate on every phase and every frame and takes the pipeline with it --
+// the departure from the field is also what makes melt segregate and erupt, so a bound tight
+// enough to empty the tail empties the engine along with it.)
+// `--place mass` changes who receives a withheld increment: M1/M2 hand it to the block member
+// with the most headroom under the bound, and headroom is largest for the *coldest* parcel, so
+// the family pumps heat out of the tail and into the cold bulk -- measured on the bank cell, the
+// mantle then sits above the melt threshold 1,400x as often and the pool refuses millions of
+// slots. Weighted by the member's marker share instead, the withheld heat goes back to the
+// material that *is* the field there; a weight is still clipped at that member's own headroom,
+// and whatever the block cannot take returns to the capped parcels as before, so node totals
+// are preserved either way.
 var spSt = { capped: 0, given: 0, giveback: 0, shortN: 0, shortH: 0 };
-if (kind === 'spread' || kind === 'stencil') {
-	var rad = kind === 'stencil' ? 1 : 0;
+if (kind === 'spread' || kind === 'stencil' || kind === 'frb') {
+	var rad = kind === 'spread' ? 0 : 1;
+	var fr = kind === 'frb';
 	var src = G.gatherDT.toString();
-	var hi = value, lo = value - 2;
+	var hiOff = value, loOff = fr ? -value : value - 2;
+	// the field reading every bound below is taken against, and the stencil mass share that
+	// scales it: one snapshot per frame, taken together in one pass
+	var tfP = new Float64Array(S.m.length), shP = new Float64Array(S.m.length);
 	var heads = new Int32Array(M.n), nextA = new Int32Array(S.m.length);
 	var roomA = new Float64Array(S.m.length), withA = new Float64Array(S.m.length);
+	var wA = new Float64Array(S.m.length);
 	var excessP = new Float64Array(M.n), excessN = new Float64Array(M.n);
 	src = replaceOnce(src,
 		'var nx = M.nx, p, q, di, dj, jj, ii, ic, jc, px, pe, tot = 0, d, cw = M.cw, wsum, out;',
 		`var nx = M.nx, p, q, di, dj, jj, ii, ic, jc, px, pe, tot = 0, d, cw = M.cw, wsum, out;
-	var hp, tb, dc, ex, room, gf, b2, wq, amt, rmd, sg, bd, exP, exN, g0 = P.PH_GRID, f0 = S.ph;
+	var hp, tb, bh, bl, kp, dc, ex, room, gf, b2, wq, amt, rmd, sg, bd, exP, exN, g0 = P.PH_GRID, f0 = S.ph;
+	var placed;
+	var num, den, part, ww, wxm, wx0, wxp, wem, we0, wep;
 	var qi, qj, bi, bj;
 	heads.fill(-1);
 	for (p = S.n - 1; p >= 0; p--) {
 		if (!g0[f0[p]]) continue;
 		withA[p] = 0;
+		if (fr) {
+			tfP[p] = sample(M, Tg, S.x[p], S.e[p]);
+			// the share is read whether or not the bound scales by it: --place mass weights by it
+			px = S.x[p] / M.dx; ic = Math.round(px); px -= ic;
+			pe = S.e[p] / M.dEta; jc = Math.round(pe); pe -= jc;
+			wxm = spl(-1 - px); wx0 = spl(-px); wxp = spl(1 - px);
+			wem = spl(-1 - pe); we0 = spl(-pe); wep = spl(1 - pe);
+			num = 0; den = 0; part = 0;
+			for (dj = -1; dj <= 1; dj++) {
+				jj = jc + dj;
+				if (jj < 1 || jj > M.ny - 1) continue;
+				we = dj === -1 ? wem : dj === 0 ? we0 : wep;
+				for (di = -1; di <= 1; di++) {
+					ii = ic + di; ii -= Math.floor(ii / nx) * nx;
+					wx = di === -1 ? wxm : di === 0 ? wx0 : wxp;
+					ww = wx * we;
+					if (!(ww > 0)) continue;
+					q = jj * nx + ii;
+					den += ww;
+					if (M.w[q] > 0) part += ww * (ww * S.m[p] / M.w[q]);
+				}
+			}
+			shP[p] = den > 0 ? part / den : 0;
+		}
 		q = nodeOf(M, S, p);
 		nextA[p] = heads[q]; heads[q] = p;
 	}`);
 	src = replaceOnce(src, 'S.H[p] += d;',
 		`hp = S.H[p] + d;
 		tb = PTPHASE.byH(hp, S.y[p], S.cF[p], S.cW[p]).t;
-		if (tb > hi || tb < lo) {
-			dc = PTPHASE.byT(tb > hi ? hi : lo, S.y[p], S.cF[p], S.cW[p]).h - S.H[p];
+		if (fr) {
+			kp = shr > 0 ? shP[p] / shr : 1;
+			bh = tfP[p] + hiOff * kp; bl = tfP[p] - hiOff * kp;
+		} else { bh = hiOff; bl = loOff; }
+		if (tb > bh || tb < bl) {
+			dc = PTPHASE.byT(tb > bh ? bh : bl, S.y[p], S.cF[p], S.cW[p]).h - S.H[p];
 			ex = S.m[p] * (d - dc);
 			q = nodeOf(M, S, p);
 			if (ex > 0) excessP[q] += ex; else excessN[q] += ex;
@@ -216,17 +283,22 @@ if (kind === 'spread' || kind === 'stencil') {
 		for (sg = 1; sg >= -1; sg -= 2) {
 			amt = sg > 0 ? exP : -exN;
 			if (amt === 0) continue;
-			bd = sg > 0 ? hi : lo;
-			room = 0;
+			bd = sg > 0 ? hiOff : loOff;
+			room = 0; placed = 0;
 			for (bj = qj - rad; bj <= qj + rad; bj++) {
 				if (bj < 1 || bj > M.ny - 1) continue;
 				for (bi = qi - rad; bi <= qi + rad; bi++) {
 					for (p = heads[bj * M.nx + bi - Math.floor(bi / M.nx) * M.nx]; p >= 0; p = nextA[p]) {
 						hp = S.H[p];
+						if (fr) {
+							kp = shr > 0 ? shP[p] / shr : 1;
+							bd = tfP[p] + (sg > 0 ? hiOff : -hiOff) * kp;
+						}
 						dc = PTPHASE.byT(bd, S.y[p], S.cF[p], S.cW[p]).h;
 						dc = sg > 0 ? dc - hp : hp - dc;
 						roomA[p] = dc > 0 ? S.m[p] * dc : 0;
-						room += roomA[p];
+						wA[p] = pmass ? shP[p] : roomA[p];
+						room += wA[p];
 					}
 				}
 			}
@@ -235,13 +307,14 @@ if (kind === 'spread' || kind === 'stencil') {
 				if (bj < 1 || bj > M.ny - 1) continue;
 				for (bi = qi - rad; bi <= qi + rad; bi++) {
 					for (p = heads[bj * M.nx + bi - Math.floor(bi / M.nx) * M.nx]; p >= 0; p = nextA[p]) {
-						wq = roomA[p] * gf;
-						if (wq !== 0) { S.H[p] += sg * wq / S.m[p]; tot += sg * wq; st.given++; }
+						wq = wA[p] * gf;
+						if (wq > roomA[p]) wq = roomA[p];
+						if (wq > 0) { S.H[p] += sg * wq / S.m[p]; tot += sg * wq; st.given++; placed += wq; }
 					}
 				}
 			}
-			if (room >= amt) continue;
-			rmd = amt - room;
+			if (pmass) { rmd = amt - placed; if (rmd <= 0) continue; }
+			else { if (room >= amt) continue; rmd = amt - room; }
 			for (p = b2; p >= 0; p = nextA[p]) {
 				if (sg * withA[p] <= 0) continue;
 				wq = rmd * (sg * withA[p]) / amt;
@@ -251,9 +324,13 @@ if (kind === 'spread' || kind === 'stencil') {
 		}
 	}
 	S.hLedger += tot;`);
-	G.gatherDT = new Function('P', 'PTPHASE', 'spl', 'hi', 'lo', 'heads', 'nextA', 'roomA',
-		'withA', 'excessP', 'excessN', 'nodeOf', 'st', 'rad', 'return ' + src
-	)(P, PHASE, spl, hi, lo, heads, nextA, roomA, withA, excessP, excessN, G.nodeOf, spSt, rad);
+	G.gatherDT = new Function('P', 'PTPHASE', 'spl', 'hiOff', 'loOff', 'heads', 'nextA', 'roomA',
+		'withA', 'wA', 'excessP', 'excessN', 'nodeOf', 'st', 'rad', 'fr', 'tfP', 'shP', 'shr', 'pmass',
+		'sample',
+		'return ' + src
+	)(P, PHASE, spl, hiOff, loOff, heads, nextA, roomA, withA, wA, excessP, excessN, G.nodeOf, spSt,
+		rad,
+		fr, tfP, shP, shr, place === 'mass', G.sampleAt);
 }
 var merged = 0, stranded = 0;
 // Conservative same-node, compatible-composition, same-certificate merge before scatter.
@@ -400,7 +477,7 @@ var latentBook = 0, latentBookFrame = 0, latentAbsMax = 0, l0 = S.ledger;
 var outFrames = 0, hot = { T: -Infinity, frame: 0, ph: -1, y: 0, m: 0, field: 0 };
 var ms = 0, frames = Math.round(myr / SIM.dt);
 var mins = [Infinity, Infinity, Infinity, Infinity], maxs = [-Infinity, -Infinity, -Infinity, -Infinity];
-var outside = [0, 0, 0, 0], nonfinite = 0;
+var outside = [0, 0, 0, 0], outsideLo = [0, 0, 0, 0], outsideHi = [0, 0, 0, 0], nonfinite = 0;
 // 0.3.2 M3 (steps 2 and 3), --watch: read-only observation of the two faces the M2 matrix
 // opened. The band table reads the cold side as its own quantity -- per-depth extrema per
 // phase, with the frame and the material id that set each one, and the path of every new
@@ -419,6 +496,38 @@ var cold = { T: Infinity, frame: 0, id: -1, y: 0, m: 0, field: 0, H: 0 };
 var coldPath = [];
 var xruns = new Map(), excur = [], xsamples = [], exSamples = 0, meltSeen = 0;
 function gapAt(S, p) { return PHASE.byT(G.sampleAt(M, S.Tg, S.x[p], S.e[p]), S.y[p], S.cF[p], S.cW[p]).h - S.H[p]; }
+// M3 §9.2: the pairing's own gain and the parcel's mass share of the same stencil, ported from
+// experiments/pt-buried-deposit-melt.js (routeGain) so the cold side is measured rather than
+// inferred. gatherDT hands parcel p the specific increment sum_q W_pq cw_q inc_q, so
+// cw = mu / W is exactly the factor between a plain interpolation of the node increments and
+// what the parcel took: above 1 the quadrature concentrated heat into it. cw and w are G1's,
+// i.e. the deposit that produced the delivery now closing; the parcel has advected a substep
+// since, so a reading is a sample of the mechanism and not a reconstruction of the history.
+var RG = { gain: 0, share: 0 };
+function gainAt(S, p) {
+	var nx = M.nx, ny = M.ny, cw = M.cw, w = M.w, m = S.m[p];
+	var px = S.x[p] / M.dx, ic = Math.round(px), pe = S.e[p] / M.dEta, jc = Math.round(pe);
+	var num = 0, den = 0, part = 0, di, dj, ii, jj, wx, we, ww, q;
+	px -= ic; pe -= jc;
+	var wxm = spl(-1 - px), wx0 = spl(-px), wxp = spl(1 - px);
+	var wem = spl(-1 - pe), we0 = spl(-pe), wep = spl(1 - pe);
+	for (dj = -1; dj <= 1; dj++) {
+		jj = jc + dj;
+		if (jj < 1 || jj > ny - 1) continue;
+		we = dj === -1 ? wem : dj === 0 ? we0 : wep;
+		for (di = -1; di <= 1; di++) {
+			ii = ic + di; ii -= Math.floor(ii / nx) * nx;
+			wx = di === -1 ? wxm : di === 0 ? wx0 : wxp;
+			ww = wx * we;
+			if (!(ww > 0)) continue;
+			q = jj * nx + ii;
+			num += ww * cw[q]; den += ww;
+			if (w[q] > 0) part += ww * (ww * m / w[q]);
+		}
+	}
+	RG.gain = den > 0 ? num / den : 0;
+	RG.share = den > 0 ? part / den : 0;
+}
 for (frame = 1; frame <= frames; frame++) {
 	var t = performance.now();
 	SIM.step();
@@ -439,7 +548,8 @@ for (frame = 1; frame <= frames; frame++) {
 		var ph = S.ph[p], T = S.T[p];
 		if (!Number.isFinite(T)) { nonfinite++; continue; }
 		mins[ph] = Math.min(mins[ph], T); maxs[ph] = Math.max(maxs[ph], T);
-		if (T < -0.5 || T > 1.5) outside[ph]++;
+		if (T < -0.5) { outsideLo[ph]++; outside[ph]++; }
+		else if (T > 1.5) { outsideHi[ph]++; outside[ph]++; }
 		if (T > hot.T) { hot.T = T; hot.frame = frame; hot.ph = ph; hot.y = S.y[p]; hot.m = S.m[p]; hot.x = S.x[p]; }
 		if (!watch) continue;
 		var kb = ph * NB + bandOf(S.y[p]);
@@ -447,25 +557,31 @@ for (frame = 1; frame <= frames; frame++) {
 		if (ph === P.PH.mantle && T < cold.T) {
 			cold.T = T; cold.frame = frame; cold.id = S.id[p]; cold.y = S.y[p]; cold.m = S.m[p];
 			cold.H = S.H[p]; cold.field = G.sampleAt(M, S.Tg, S.x[p], S.e[p]);
+			gainAt(S, p);
 			coldPath.push({ frame: frame, id: S.id[p], y: S.y[p], m: S.m[p], T: T, H: S.H[p],
-				field: cold.field, melt: S.melt[p], hm: cold.field - cold.T });
+				field: cold.field, melt: S.melt[p], hm: cold.field - cold.T,
+				gain: RG.gain, share: RG.share });
 		}
 		if (ph === P.PH.melt) {
 			meltSeen++;
 			var r = xruns.get(S.id[p]);
 			if (T > 1.5) {
 				exSamples++;
+				gainAt(S, p);
 				if (xsamples.length < 2000) xsamples.push({ frame: frame, id: S.id[p], T: T, y: S.y[p], m: S.m[p],
 					H: S.H[p], melt: S.melt[p], field: G.sampleAt(M, S.Tg, S.x[p], S.e[p]),
-					cF: S.cF[p], cW: S.cW[p], gap: gapAt(S, p) });
+					cF: S.cF[p], cW: S.cW[p], gap: gapAt(S, p), gain: RG.gain, share: RG.share });
 				if (r === undefined) xruns.set(S.id[p], { frame0: frame, m0: S.m[p], H0: S.H[p], y0: S.y[p], T0: T,
 					maxT: T, maxFrame: frame, n: 1, seen: frame, entryGap: gapAt(S, p), cF: S.cF[p], cW: S.cW[p],
-					maxM: S.m[p], maxY: S.y[p], maxField: G.sampleAt(M, S.Tg, S.x[p], S.e[p]), maxMelt: S.melt[p], maxH: S.H[p] });
+					maxM: S.m[p], maxY: S.y[p], maxField: G.sampleAt(M, S.Tg, S.x[p], S.e[p]), maxMelt: S.melt[p], maxH: S.H[p],
+					gain0: RG.gain, share0: RG.share, maxGain: RG.gain, maxShare: RG.share });
 				else {
 					r.n++; r.seen = frame;
 					if (T > r.maxT) {
+						gainAt(S, p);
 						r.maxT = T; r.maxFrame = frame; r.maxM = S.m[p]; r.maxY = S.y[p]; r.maxMelt = S.melt[p];
 						r.maxH = S.H[p]; r.maxField = G.sampleAt(M, S.Tg, S.x[p], S.e[p]);
+						r.maxGain = RG.gain; r.maxShare = RG.share;
 					}
 				}
 			}
@@ -475,7 +591,8 @@ for (frame = 1; frame <= frames; frame++) {
 		if (r.seen === frame) return;
 		excur.push({ id: id, frame0: r.frame0, frame1: frame, frames: r.n, m0: r.m0, H0: r.H0, y0: r.y0, T0: r.T0,
 			maxT: r.maxT, maxFrame: r.maxFrame, maxM: r.maxM, maxY: r.maxY, maxMelt: r.maxMelt, maxField: r.maxField,
-			cF: r.cF, cW: r.cW, entryGap: r.entryGap });
+			cF: r.cF, cW: r.cW, entryGap: r.entryGap, gain0: r.gain0, share0: r.share0,
+			maxGain: r.maxGain, maxShare: r.maxShare });
 		xruns.delete(id);
 	});
 	if (outside[0] + outside[1] + outside[2] + outside[3] > outBefore) outFrames++;
@@ -486,7 +603,8 @@ for (frame = 1; frame <= frames; frame++) {
 if (watch) xruns.forEach(function (r, id) {
 	excur.push({ id: id, frame0: r.frame0, frame1: frames, frames: r.n, m0: r.m0, H0: r.H0, y0: r.y0, T0: r.T0,
 		maxT: r.maxT, maxFrame: r.maxFrame, maxM: r.maxM, maxY: r.maxY, maxMelt: r.maxMelt, maxField: r.maxField,
-		cF: r.cF, cW: r.cW, entryGap: r.entryGap, open: true });
+		cF: r.cF, cW: r.cW, entryGap: r.entryGap, gain0: r.gain0, share0: r.share0,
+		maxGain: r.maxGain, maxShare: r.maxShare, open: true });
 });
 var result = { kind: kind, value: value, scope: kind === 'relaxw' || kind === 'subgrid' ? scope : null,
 	seed: seed, kyr: kyr, myr: myr, frames: frames,
@@ -500,6 +618,7 @@ var result = { kind: kind, value: value, scope: kind === 'relaxw' || kind === 's
 	intakeWallWorst: wall,
 	intakeWallEnd: Math.abs((S.hLedger - hl0) / (S.wall - w0) - 1),
 	msFrame: (ms - sampleMs) / frames, minT: mins, maxT: maxs, outsideSamples: outside, nonfinite: nonfinite,
+	outsideBelow: outsideLo, outsideAbove: outsideHi,
 	heldSamples: heldSamples, heldMassTime: heldTime, heldMeltTime: heldMeltTime, heldGapMax: heldGap,
 	mantleRoutes: mantleRoutes, depMelt: S.thr.depMelt, depTx: S.tx.depMelt, refuse: S.tx.refuse,
 	merged: merged, strandedAttempts: stranded,
@@ -550,7 +669,8 @@ function summary(r) {
 		+ ', operator-only ' + e(r.intakeWallOperatorWorst) + ', R/wall ' + e(r.relaxSourceOverWall, 2));
 	for (i = 0; i < 4; i++) {
 		out.push('T ' + names[i] + ' ' + f(r.minT[i], 4) + '..' + f(r.maxT[i], 4) + ' (' + r.outsideSamples[i]
-			+ ' outside -0.5..1.5)');
+			+ ' outside -0.5..1.5' + (r.outsideBelow ? ', ' + r.outsideAbove[i] + ' above / '
+			+ r.outsideBelow[i] + ' below' : '') + ')');
 	}
 	out.push('hottest parcel T ' + f(r.hottest.T, 4) + ' in a field of ' + f(r.hottest.field, 4) + ' at '
 		+ f(r.hottest.y, 1) + ' km, ' + f(r.hottest.m, 2) + ' km2, phase ' + names[r.hottest.ph] + ', frame ' + r.hottest.frame);

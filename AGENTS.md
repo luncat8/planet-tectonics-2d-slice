@@ -93,9 +93,14 @@ it runs one live leg or a cell matrix -- `--cells seed:kyr:myr,...`, each cell a
 clock and duration, the first repeated for a fingerprint check -- and changes no routing itself),
 experiments/pt-heat-tail.js (0.3.2's experiment-only gather cap/share attenuation, deposit
 relaxation, conservative local minimum-mass, node-wise and stencil-scale bounded conservative
-redistribution (spread, stencil) and sub-grid relaxation toward the field, wall-booked or
-zero-sum through the adjoint (relaxw, subgrid; `--scope dep|solid`) probes on seed 5 at
-50 kyr/frame for 600 Myr, or any `--seed`/`--kyr` cell;
+redistribution (spread, stencil), the field-relative two-sided bound (frb, `--share s0` scales
+the bound a parcel gets by its own stencil mass share, `--place mass` hands a withheld increment
+out by marker share instead of by headroom) and sub-grid relaxation toward the field,
+wall-booked or zero-sum through the adjoint (relaxw, subgrid; `--scope dep|solid`) probes on
+seed 5 at 50 kyr/frame for 600 Myr, or any `--seed`/`--kyr` cell; its `--watch` instruments read
+the adjoint gain and stencil mass share at every cold minimum and every mobile-melt excursion
+(the mechanism, not only its signature), and its per-phase outside count is split into the two
+ends of the bound;
 reports every-frame books, per-phase temperature bounds, wall intake, timed kernel frames and
 individual G5 deposit transfers; no shipping parameter changes. M3 adds two melt-depletion
 probes that wrap the melt path's own kernel text rather than the engine state -- `--dpart D`,

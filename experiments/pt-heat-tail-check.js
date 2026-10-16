@@ -290,3 +290,69 @@ console.log('PASS the cold side: the control\'s own global minimum is a 191 km2 
 });
 console.log('PASS the crossing rows: the cold side is 1-3 individual shallow parcels at or near the erosion floor, not a population');
 console.log('No M3 row is eligible: the two-sided bound and the three protected events fail together in every probe row.');
+
+// --- 0.3.2 M4: the field-relative bound (frb) and the two instruments. Six rows on the M2/M3
+// bank cell; every number the report quotes is asserted here against the row's own bank.
+var root4 = path.join(__dirname, 'logs/0.3.2-M4-');
+function read4(name) { return JSON.parse(fs.readFileSync(root4 + name + '.json', 'utf8')); }
+var M4ROWS = [
+	['frb025-600', 'frb 0.25', 3436672068889011, 0, 0],
+	['frb005-600', 'frb 0.05', 7670258870680534, 0, 0],
+	['frb025-share01-600', 'frb 0.25 --share 0.1', 301728381202803, 0, 0],
+	['frb05-share01-600', 'frb 0.5 --share 0.1', 4044321228233077, 145, 0],
+	['frb025-mass-600', 'frb 0.25 --place mass', 6134000684222626, 0, 1],
+	['frb025-sh01-mass-600', 'frb 0.25 --share 0.1 --place mass', 4414087139002819, 0, 0]
+];
+console.log('M4 row                              held km2 Myr  max gap  wall worst  refuse      tx   outside  decision');
+M4ROWS.forEach(function (row) {
+	var r = read4(row[0]);
+	assert.strictEqual(r.fingerprint, row[2], row[0] + ' fingerprint');
+	assert.strictEqual(r.kind, 'frb');
+	assert.strictEqual(r.seed, 5); assert.strictEqual(r.kyr, 50);
+	assert.strictEqual(r.myr, 600); assert.strictEqual(r.frames, 12000);
+	// the exchange is the operator's own: books, wall and the latent identity on every frame
+	assert(r.gates.mass && r.gates.enthalpy, row[0] + ' books');
+	assert(r.gates.latentBook, row[0] + ' latent identity');
+	assert(r.gates.intakeWallP4, row[0] + ' wall');
+	assert.strictEqual(r.nonfinite, 0, row[0] + ' finite temperatures');
+	// the instrument: the outside count splits into its two ends and the split is the whole
+	assert(Array.isArray(r.outsideBelow) && Array.isArray(r.outsideAbove), row[0] + ' split counters');
+	for (var i = 0; i < 4; i++) {
+		assert.strictEqual(r.outsideBelow[i] + r.outsideAbove[i], r.outsideSamples[i], row[0] + ' split');
+	}
+	assert.strictEqual(r.outsideSamples.reduce(function (a, b) { return a + b; }, 0), row[3],
+		row[0] + ' samples outside -0.5..1.5');
+	// the instrument: the mechanism is read, not inferred
+	var cp = r.coldPath;
+	assert(cp.length > 1000, row[0] + ' cold path is populated');
+	assert(cp.every(function (e) { return e.gain > 0 && e.share >= 0 && e.share <= 1; }),
+		row[0] + ' every cold minimum carries a gain and a mass share');
+	// the concentration is what the family removes; the route is what it costs
+	// every row takes the concentration down at least 3x (21.5 .. 16304 against the control's
+	// 68140.14 km2*Myr); that is the one thing the family does in every form
+	assert(r.heldMassTime < 68140.14 / 3, row[0] + ' held-back concentration reduced');
+	assert.strictEqual(r.depTx, row[4], row[0] + ' delivered transfers');
+	var bound = row[3] === 0 ? 'ok' : 'FAIL';
+	console.log('  ' + row[1] + ' '.repeat(Math.max(1, 32 - row[1].length))
+		+ r.heldMassTime.toFixed(2).padStart(12) + '  ' + r.heldGapMax.toFixed(4).padStart(7)
+		+ '  ' + r.intakeWallWorst.toExponential(3) + '  ' + String(r.refuse).padStart(9)
+		+ '  ' + String(r.depTx).padStart(3) + '  ' + String(row[3]).padStart(7) + '  ' + bound);
+});
+// the cold extreme of a bounded row is set by the bound, not by the mechanism: the loosest bound
+// is the only row that crosses, and it crosses on the cold side alone
+var loose = read4('frb05-share01-600'), tight = read4('frb025-600');
+assert.strictEqual(loose.outsideAbove.reduce(function (a, b) { return a + b; }, 0), 0, 'M4: no row crosses the upper bound');
+assert(loose.outsideBelow[0] === 145 && loose.minT[0] < -0.5, 'M4: the loosest bound crosses on the cold side');
+assert(tight.minT[0] > -0.5 && tight.maxT[3] < 1.5, 'M4: K 0.25 holds both ends on every phase');
+var tg = tight.coldPath.map(function (e) { return e.hm; });
+// a hair over K: the bound is read before advection, the observer reads after it
+near(Math.max.apply(null, tg), 0.25, 1e-2, 'M4: the bounded row\'s cold extreme is the bound itself');
+assert(tight.spreadCapped > 1e7 && tight.mantleRoutes > 1e6,
+	'M4: the bounded row caps the bulk, and the mantle then sits above the melt threshold 1,000x as often');
+assert.strictEqual(read4('frb025-600').landCr === undefined, true, 'M4: landCr is read from the census');
+assert(read4('frb005-600').census.landCr === 0 && read4('frb005-600').census.nMelt === 1,
+	'M4: the tightest row empties the surface pipeline');
+assert(read4('frb025-mass-600').census.nMelt > 900,
+	'M4: placing by marker share runs the pipeline again and melts the world');
+console.log('PASS 6 M4 rows: books, wall and the latent identity close; the concentration falls from 68140 to 21-16304 km2*Myr; the two-sided bound holds on five rows and only the loosest crosses, on the cold side');
+console.log('No M4 row is eligible: every row that removes the concentration empties the pipeline or saturates the pool (0-1 transfers, 5.2M-16.9M refusals).');
