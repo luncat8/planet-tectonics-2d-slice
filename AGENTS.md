@@ -206,6 +206,16 @@ reproduces a log byte for byte is recorded in the identity map
 file per tag and leg even where the bytes repeat (each name is a row's source), a frozen
 snapshot directory like `0.3.0-p3.4-review/` stays whole, and a wall-clock-only re-run is
 scratch. Prune at the end of a milestone and say what went and why in that milestone's worklog.
+The pass is one command, `experiments/log-hygiene.js`: it resolves the four ways a harness names
+a log (a path literal, a directory prefix composed with a call-site literal, a readdir filter, a
+name built out of table legs) and the three ways a document does (the exact basename, `...-drift.txt`,
+a glob), groups the banks by world and compares them by field paths rather than by key count,
+folds wall-clock timings and nothing else, and prints keep/go/review with the identity map ready
+to paste into the worklog. `--apply` prunes only what the policy decides without a judgement call,
+`--worlds` prints the same-world decision data, `--why NAME` one file's reasons. It cannot decide
+whether a bank's raw arrays are worth their bytes -- that is a question about what a future
+re-analysis will ask, and the checkers re-derive the reports' percentiles, bleed counts and
+protected ids from those arrays, so thinning them is a re-measurement, not hygiene.
 
 ## sandbox
 
