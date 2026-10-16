@@ -10,6 +10,14 @@ planet-geotectonics @ d909476 and the pre-0.4.8 pack schema, so a private re-bak
 against earth-1deg.js would silently drift - waiting is cheaper than that (upstream
 prompt §4.6). The ledger entry is roadmap.md §4.
 
+It is unrunnable, not merely frozen: the stamp step (tools/earth/stamp.js) calls
+SP.normalize / SP.quantize, which the pgt-slice-pack v2 codec keeps internal and does not
+export, so the pair throws TypeError against port/slice-format.js today. Leave it that way -
+porting it to make/seal would resurrect the private re-bake forbidden above, and exporting
+those two from the codec would be a unilateral edit to a shared file. The 0.4.2 B-b restore
+went through the globe's CLI at its 9270039 (archive/0.4.2-counterpart-audit-response.md
+F4.3).
+
 0.4.0-sync-plan.md §2.8 / §5 M4, the "other half" of 0.4.1 M4: the interactive cutter
 draws a line on the live map (planet-geotectonics, js/slice.js, a running world) and
 this script bakes the same object from the baked Earth data pack (js/data/earth-*.js),

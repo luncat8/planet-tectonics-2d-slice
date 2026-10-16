@@ -163,9 +163,13 @@ term and the ledger gates -- closed at M2, `archive/0.3.1-M2-acceptance-report.m
 `archive/0.3.1-M2-acceptance-worklog.md`),
 0.4.0-sync-plan.md (what is exchanged with the reference project, in which direction), 0.4.1-plan.md (the cut: a line on
 the globe's map -> a section here), 0.4.2-plan.md (the pgt-slice-pack v2 cutover, slice side of the globe's
-0.8.0-0.8.2 handoff; Phase A and Phase B-a landed — port/ carries only the v2 codec and
-fixture, the v1 bundles are retired, B-b waits for a globe v2 writer, Phase C/live bridge
-gated in the globe's 0.8.3), 0.9.0-draft-sync.md (the integrated globe, later). The
+0.8.0-0.8.2 handoff; Phases A, B-a and B-b are landed — port/ carries only the v2 codec and
+fixture, and the three Earth bundles are restored through the globe's v2 bake CLI at its
+9270039 and audited byte-for-byte on both sides. Phase C is held, not waiting on the globe:
+its 0.8.3 completes as planning, so the open block is this side's C-live gate 4, the automatic
+section plate-topology rebuild, plus a scheduling decision taken negatively on 2026-10-16 —
+`archive/0.4.2-counterpart-audit-response.md`),
+0.9.0-draft-sync.md (the integrated globe, later). The
 completed 0.1.8 plan is `archive/0.1.8-plan.md` (collision arrest and orogen memory) and the
 completed 0.2.0 plan is `archive/0.2.0-plan.md` (eruptives, deposits, save/load; the series
 is accepted at M5, `archive/0.2.0-m5-worklog.md`). Drafts are

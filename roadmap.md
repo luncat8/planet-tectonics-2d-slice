@@ -20,7 +20,7 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | 0.3.2 | the light-parcel heat concentration: a parcel carrying a small share of its stencil's marker mass takes an amplified specific increment from the adjoint gather, so buried deposits reach T 2.267 in a field of 0.288 — outside the engine's own −0.5..1.5 wall — and 0.3.1's 300 Myr intake stays held back until that is answered | `0.3.2-draft.md` | 0.3.1 M2's routing-event columns |
 | 0.4.0 | sync/exchange: provenance, deposits core, water, checkpoint, section pack | `0.4.0-sync-plan.md` | — |
 | 0.4.1 | the cut: draw a line on the globe, copy/save, paste/load, reconstruct a section | `0.4.1-plan.md` | 0.4.0's format (`port/slice-format.js`, M0 done) |
-| 0.4.2 | the `pgt-slice-pack` v2 cutover: Phase A landed (staleness ledger, one decode entry, bake retirement); **Phase B-a landed 2026-10-15** (one coordinated port bump — v2 codec + fixture byte-identical with the `61f77aa` handoff, every reader on `SP.decode`, writers on make → seal → encode, the three v1 bundles retired, deposit catalogues relocated to `js/data/`; return package `archive/0.4.2-phase-b-report.md`); B-b (bundle restore) gated on a globe v2 writer, Phase C gated/not started (core-log return, live bridge — topology-rebuild gate open) | `0.4.2-plan.md` | globe 0.8.0–0.8.2 handoff (`port/` v2 codec + fixture); globe 0.8.3 gates for Phase C |
+| 0.4.2 | the `pgt-slice-pack` v2 cutover: Phase A landed (staleness ledger, one decode entry, bake retirement); **Phase B-a landed 2026-10-15** (one coordinated port bump — v2 codec + fixture byte-identical with the `61f77aa` handoff, every reader on `SP.decode`, writers on make → seal → encode, the three v1 bundles retired, deposit catalogues relocated to `js/data/`; return package `archive/0.4.2-phase-b-report.md`); **Phase B-b landed 2026-10-15** (the three Earth bundles restored one at a time through the globe's v2 bake CLI at its `9270039`, `source.commit 0b10d685…`, identities `e0147ee8ff63d4d1`/`63825f6abdfde871`, `e0147ee8ff63d4d1`/`a9a17ca6721a9597`, `77ac9f529df0fc55`/`965109ddb61c5870`; `archive/0.4.2-phase-b-b-report.md`, audited byte-for-byte by the globe at its `3c960e7` and answered in `archive/0.4.2-counterpart-audit-response.md`); **Phase C held, not started** — the globe's 0.8 line is complete as shipped (its 0.8.3 §5 completes as planning, so Phase C was never waiting on globe implementation), the block is this side's C-live gate 4 (automatic section plate-topology rebuild after incoming crossings) plus a scheduling decision taken negatively on 2026-10-16: no `port/core-log-format.js`, no observation side table, no C0–C4 work, no manifest touch | `0.4.2-plan.md` | globe 0.8.0–0.8.2 handoff (`port/` v2 codec + fixture); globe 0.8.3 gate list for Phase C |
 | 0.9.0 | globe page hosts the section as a library; live sync is C3+C4 | `0.9.0-draft-sync.md`, `0.4.1-plan.md` §8 | 0.4.1 M1–M2; C1 on the column engine |
 
 0.2.0 status: **closed.** M0 (the headless toy box), M1 (vent lifecycle / second clock),
@@ -435,7 +435,24 @@ is now the codec's own `SP.decode` inside `SectionPack.decodePack`; the v2 fixtu
 to state hash `82860503` through the page entry at seed 7. Two mapping consequences of the v2
 gap row are the section's own, recorded in the worklog: a gap column's plate comes from its
 widest live neighbour sample, and the synthetic fixture may not place a gap on a seam sample.
-Still open: B-b bundle restore (needs a globe v2 writer), Phase C (gated, not started).
+
+**B-b outcome (2026-10-15, `archive/0.4.2-phase-b-b-report.md`; audited by the globe at its
+`3c960e7`, answered in `archive/0.4.2-counterpart-audit-response.md`).**
+The three retired bundles are restored, one at a time, through the globe's v2 writer
+(`tools/earth/bake_section.js`, 0.8.2) at globe revision `9270039`, each command pinning
+`source.commit 0b10d685…` — never the frozen `bake_section.py`. Identities:
+`e0147ee8ff63d4d1`/`63825f6abdfde871`, `e0147ee8ff63d4d1`/`a9a17ca6721a9597`,
+`77ac9f529df0fc55`/`965109ddb61c5870` (193/193/209 L5 runs), with canonical payload sha256
+`a0e3afad…`, `34dc4b24…`, `0ec3a4e8…` — a fresh re-bake in their tree is byte-identical with each
+committed wrapper, measured independently on both sides. `port/` was untouched, so the ledger's
+first two rows still stand as B-a left them. One correction to the ledger's `tools/earth/` row:
+the frozen pair is not merely "do not extend", it **cannot run** against the v2 codec at all
+(`stamp.js` calls `SP.normalize`/`SP.quantize`, which v2 does not export), so it is a record of
+the 0.4.1 M4 bake and not a fallback — both headers now say so.
+Still open: **Phase C, held** — the globe's 0.8 line is complete as shipped (its 0.8.3 §5
+completes as planning), so the block is this side's C-live gate 4 plus a scheduling decision
+taken negatively on 2026-10-16. No `port/core-log-format.js`, no observation side table, no
+C0–C4 work, no manifest touch until something is genuinely scheduled.
 
 ## 5. Not planned
 

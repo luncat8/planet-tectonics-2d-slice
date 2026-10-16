@@ -1302,3 +1302,35 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   census, extrema, wall, books, the three protected events — while only the latent residual
   and the hash moved. That is survival by identity, a stronger claim than any event
   correspondence argument, and the checker now asserts it.
+
+## 0.4.2 — verifying a counterpart across two repositories (archive/0.4.2-counterpart-audit-response.md)
+
+- **Byte equality beats identity equality, and a length is not an identity.** The globe's audit
+  compared canonical byte *counts* with its own fresh bake; the stronger reading costs nothing —
+  re-run the counterpart's writer in a fresh checkout of its tree (codeload tarball, 0.7 s per
+  bake) and `sha256` the payload text on both sides. Three hashes
+  (`a0e3afad…`, `34dc4b24…`, `0ec3a4e8…`) now say more than six checksums plus three lengths,
+  because a future re-bake that agrees on them agrees on every byte.
+- **`git hash-object` on both sides is stronger than `sha256sum` of a working copy** for a shared
+  file: a blob match also pins line endings and the absence of a BOM, and it is comparable
+  through the GitHub API (the contents endpoint returns the blob sha) without downloading a tree.
+- **A manifest pin is a claim about a repository, and only that repository's own history can
+  check it.** Their `PORT.json` pins `globe-writer ee43f647…`, which does not exist in their repo
+  (`git cat-file -e <sha>^{commit}` → fatal; the API → HTTP 422). Their port test is offline by
+  design and asserts file *bytes*, so it cannot fail on a dangling pin; our `upstream-drift.js`
+  resolves the pin and is green only because ours points at a real commit. Neither suite reads
+  the other's manifest — so a one-line `cat-file -e` is the only gate that sees it, and the fix
+  belongs in the coordinated manifest touch, not in a new harness.
+- **Resolve the handoff by hash, not by branch or by pin** (`0.4.2-plan.md` D1). It is why a
+  dangling upstream pin cost this repository nothing: the bytes were the authority from the start.
+- **"Frozen, do not extend" is not the same as "still runs".** `tools/earth/stamp.js` calls
+  `SP.normalize`/`SP.quantize`, which the v2 codec keeps internal and does not export, so the
+  retired Python bake's stamp step throws `TypeError` against `port/slice-format.js`. A retirement
+  note that says only "frozen" leaves a future session two tempting repairs, both wrong: porting
+  the tool to `make → seal` resurrects the private re-bake A3 forbids, and exporting the two
+  functions is a unilateral edit to a shared file. The third move is a header line saying the tool
+  is dead and why.
+- **A grep claim in a report must name its scope.** "no `normalize`/`quantize` call outside the
+  codec" was true of the shipping read/write path and false of the tree. Either say "outside the
+  codec in `js/`, `experiments/` and the page" or run the grep over everything and report what it
+  finds — including the retired tool.
