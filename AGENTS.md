@@ -55,8 +55,14 @@ The pages cross-link each other; keep the mirror in sync when editing index.html
 
 harnesses (node, no runner script): experiments/pt-ui.js (page wiring, particle),
 experiments/smoke.js + view-check.js (column engine), experiments/contact-audit.js (column
-contact measurements; `--quiet-trace` inspects omitted correspondence candidates and
-`experiments/quiet-distribution-table.js` reads the saved 0.1.9 quiet-frame matrix),
+contact measurements; `--quiet-trace` inspects omitted correspondence candidates,
+`--quiet-identity` certifies the quiet-frame population (neighbour continuity, exact width
+decomposition, volume-identity-corrected thickness, a raster-yardstick split by population) and
+`--drain-event` counts a sliver retirement as the event it is — measured, not landed:
+experiments/acceptance.js runs the four strict legs and requires exit 0, so that definition
+lands with the engine remedy it exposes;
+`experiments/quiet-distribution-table.js` reads the saved 0.1.9 quiet-frame matrix and
+`experiments/quiet-identity-table.js` the saved 0.1.12 one),
 experiments/tephra-pile.js (live arc
 cone vs death write-back), plus the per-milestone pt-*.js checks (0.3.0 P3: pt-p3-pool.js, pt-p3-routing.js, pt-p3-enthalpy.js, pt-p3-melt.js, pt-p3-erupt.js, pt-p3-flight.js, pt-p3-budget.js,
 the budget is a report whose gates are the plan's own, its price table never edits params.js;

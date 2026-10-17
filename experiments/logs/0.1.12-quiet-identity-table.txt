@@ -1,0 +1,90 @@
+A — the instrument under the committed event definition (--quiet-identity)
+seed kyr quietF    pairs ghostUnc   cen badF drain cadence  idMax idUnc   vol%  volH  yardstick   rzBad
+ 1  50   4769  2505907  19442   109   64    64    5   9837   2098   61.7   8.7      3868   3868
+ 1 100   4563  2422062  18806   145   99    96   11  13454   5517  130.4   0.1      5554   5554
+ 2  50   4853  2541139  15756    60   35    34    4   4604    469   36.3  11.1      5325   5325
+ 2 100   4756  2499835  12854    83   56    53   10  13070   2561   52.1  11.7      5267   5267
+ 3  50   4843  2526816   9366    32   23    20    7   6497    845   34.9   9.6      3885   3885
+ 3 100   4684  2462342   9306    72   52    47   10  16476   2970   53.7  17.6      3790   3790
+ 4  50   4792  2502613  14416   108   66    64    5  11172   1936   38.6   8.6      4185   4185
+ 4 100   4729  2492653  20650   109   76    74   17  14084   4782   43.5   9.2      2503   2503
+ 5  50   4896  2548289  19546    41   29    25    6   3301    671   20.3  10.4      5078   5078
+ 5 100   4759  2492128  16340    78   59    52   12  12899   3456   28.3  15.2      3899   3899
+ 6  50   4842  2543703  20718    60   36    36    2   4174    991   17.7  11.1      3284   3284
+ 6 100   4770  2519943  18754    93   61    58    6   9394   2365   37.1  10.0      2466   2466
+ 7  50   4798  2501092  11622    99   59    59    2   5407   2255   35.9  12.2      4874   4874
+ 7 100   4719  2468829  15412   123   81    77   11  14852   2551   48.1  12.5      4705   4705
+ 8  50   4840  2538768  14764    63   38    36    3   2457    435   17.5   8.7      1594   1594
+ 8 100   4687  2479866  14806   108   69    67    7   8963   1028   33.1  12.4      3506   3506
+ 9  50   4907  2555035   4528    23   18    14    4   3951    464   17.4  11.3      1939   1939
+ 9 100   4832  2527693   9438    35   31    27    7   4867   1781   26.4   9.1      5120   5120
+10  50   4765  2489747  12574    96   63    60    5   5459    765   28.7  13.5      4712   4712
+10 100   4664  2465301  11006    85   60    57   10  10367   2535   44.9   9.1      4085   4085
+11  50   4856  2526931  12432    55   31    31    0   8589   1070   26.2  13.4      5005   5005
+11 100   4784  2502530  13070    84   55    52   13   7267   1283   39.3  12.7      5897   5897
+12  50   4774  2499640  16030   128   75    71    8   7774    837   32.9  12.2      2239   2239
+12 100   4646  2468496  18456   125   81    78   12  11305   5286   51.9  11.1      5094   5094
+13  50   4754  2491902  11796   107   68    67    5   5856    681   81.2   0.1      4190   4190
+13 100   4522  2400285  14936   181  121   117   19   7352   2338  164.5   0.1      4464   4464
+14  50   4762  2481926  11074   120   73    70    5   7063   1537   37.3  10.8      3045   3045
+14 100   4573  2409291  11748   188  126   121   21   9529   2860   48.8   8.5      4395   4395
+15  50   4818  2520827  24214    64   46    44    4   6234   2053   30.2  11.0      2426   2426
+15 100   4737  2489778  14254    68   44    43    6  13552   1705   48.0  10.8      3974   3974
+16  50   4785  2492711   6184    58   38    37    4   8223   1595   29.0  14.9      4725   4725
+16 100   4754  2488602  11990    83   54    50    8  16441   4032   59.6  13.0      4627   4627
+
+B — the corrected event definition (--quiet-identity --drain-event)
+seed kyr site kind          site yardstick ratio       quietDh quietDw   cen badF  rzBad
+ 1  50 sliver retirement  3868      1458  2.65 RED      8.6   8.3     0    2   1140
+ 1 100 sliver retirement  5554      2285  2.43 RED     11.4   9.1     0    3    455
+ 2  50 sliver retirement  5325       904  5.89 RED      4.4   8.6     0    1     41
+ 2 100 sliver retirement  5267      2042  2.58 RED     12.7   8.5     0    3    258
+ 3  50 sliver retirement  3885       857  4.53 RED      6.0   1.8     0    3    160
+ 3 100 sliver retirement  3790      1978  1.92 RED     14.5   8.3     0    5    202
+ 4  50 sliver retirement  4185      1531  2.73 RED      9.7   6.4     0    3    473
+ 4 100 sliver retirement  2503      1936  1.29 RED     11.1   9.0     0    2    324
+ 5  50 sliver retirement  5078      1000  5.08 RED      3.3   3.1     0    4    272
+ 5 100 sliver retirement  3899      1631  2.39 RED     12.6   7.1     0    7    598
+ 6  50 sliver retirement  3284       628  5.23 RED      4.0   3.7     0    1     37
+ 6 100 sliver retirement  2466      1268  1.94 RED      9.0   6.8     0    3    166
+ 7  50 sliver retirement  4874      1069  4.56 RED      4.6   8.4     0    0      0
+ 7 100 sliver retirement  4705      1997  2.36 RED     13.5   7.6     0    4    326
+ 8  50 birth              2523       773  3.26 RED      2.5   2.2     0    2    318
+ 8 100 sliver retirement  3506      1977  1.77 RED      7.8   9.6     1    3    668
+ 9  50 accretion          2109       656  3.21 RED      3.2   2.2     0    4    190
+ 9 100 sliver retirement  5120       952  5.38 RED      3.9   4.1     0    4    283
+10  50 sliver retirement  4712       899  5.24 RED      4.9   7.0     0    3    318
+10 100 sliver retirement  5172      1982  2.61 RED      9.0   7.4     0    4    309
+11  50 sliver retirement  5005      1109  4.51 RED      7.1   7.6     0    0      0
+11 100 sliver retirement  5897      1129  5.22 RED      7.0   6.6     0    3    861
+12  50 accretion          2999      1637  1.83 RED      6.2   3.5     0    4    209
+12 100 sliver retirement  5094      1889  2.70 RED      9.7   8.5     0    4    389
+13  50 sliver retirement  4190      1586  2.64 RED      5.5   8.1     0    2    120
+13 100 sliver retirement  4464      3097  1.44 RED      7.4   9.4     0    5   1990
+14  50 sliver retirement  3045      1279  2.38 RED      6.7   6.8     0    3    268
+14 100 sliver retirement  4395      2668  1.65 RED      8.3   8.8     0    7    553
+15  50 sliver retirement  2426      1433  1.69 RED      6.2   6.3     0    2    134
+15 100 sliver retirement  3974      2101  1.89 RED     13.2   8.6     0    1    540
+16  50 sliver retirement  4725      1209  3.91 RED      7.7   7.9     0    1     71
+16 100 sliver retirement  4627      2506  1.85 RED     16.1   8.4     0    4    255
+
+censored observations 2883, of them 2882 on a frame that changed its record set and 1 on a certified quiet frame (1 worlds, 0..111 m of the yardstick, the gate reading 1594..5897 m); certified quiet pairs 79400392 of 79856680, beside a draining record 456288, beside a different record 0
+missed frames 1887 of 152233 quiet frames: drain intents 1801, event-cadence plate splits/sutures 249, births/consumes/accretions 0/0/0, ghost-count changes 1790
+the width decomposition closes to 0..0 m over 79400392 certified pairs; the advection law to 0.0000..0.0000 m
+identity-corrected drawn change, certified 2457..16476 m (median 8406), uncertified 435..5517 m (median 1859)
+C2 worst relative volume change 17.4..164.5% on columns drawn 0.1..17.6 km; beside a draining record 0.9..6.4%
+the drawn change the audit reports on certified quiet pairs: inside the exclusion 2.5..16.1 km (median 7.6), censored 0.0..0.0 km
+the drawn surface per record, committed definition: territory unchanged 510..3097 m, inside the exclusion 578..2506 m, censored 0..111 m, uncertified 436..3012 m, record set changed 1594..5897 m (the gate reads 1594..5897 m)
+the same split with a retirement counted: territory unchanged 510..3097 m, inside the exclusion 578..2506 m, censored 0..111 m, uncertified 436..3012 m, record set changed 0..1990 m (the gate reads 628..3097 m)
+the audit's own quiet reading, committed definition: thickness 3.0..16.1 km (median 12.9), width 9.4..10.0% (median 9.9)
+R1 yardstick, committed definition 1594..5897 m (median 4188), of which on a missed frame 1594..5897 m (median 4188)
+R1 with a retirement counted: site 2109..5897 m, yardstick 628..3097 m (median 1495), ratio 1.29..5.89 against a budget of 1.25
+R1 over budget on 32 of 32 worlds; the retirement is the loudest site on 29 of them
+quiet drawn thickness with a retirement counted 2.5..16.1 km (median 7.6), width 1.8..9.6% (median 7.6), censored pairs left 1 in 1 worlds, missed frames left 97 (cadence calls 97) carrying 0..1990 m of the yardstick
+certified exceedance >10 m     2355443 pairs identity-corrected,   3205567 drawn
+certified exceedance >100 m     663175 pairs identity-corrected,    729992 drawn
+certified exceedance >500 m      79699 pairs identity-corrected,     76058 drawn
+certified exceedance >1 km       19516 pairs identity-corrected,     23174 drawn
+certified exceedance >2 km        4848 pairs identity-corrected,      5477 drawn
+certified exceedance >5 km         329 pairs identity-corrected,       237 drawn
+certified exceedance >10 km         18 pairs identity-corrected,        12 drawn

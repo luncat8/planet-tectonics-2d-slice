@@ -14,6 +14,7 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | 0.1.7 | crust flow units: the two relaxations in metres and Myr, the ceiling made honest; corrected R1/R2/R5 gates and R4 remain open | `0.1.7-plan.md`, `archive/0.1.7-review-followup.md` | — |
 | 0.1.8 | collision arrest: the absorbed-shortening brake (`S.edgeShort`, checkpoint v4) closes R4; R1/R2/R5 left open only as measurement definitions on one 100 kyr leg | `archive/0.1.8-plan.md`, `archive/0.1.8-worklog.md` | 0.1.7 flow laws and corrected audit |
 | 0.1.9 | the two contact measurements: R1's site window anchored at the event and its background taken from the quiet-frame yardstick, R2's needle shoulder read over the belt's own neighbourhood | `0.1.9-plan.md`, `archive/0.1.9-worklog.md` | 0.1.8's M3 matrix |
+| 0.1.12 | quiet-frame material identity: the audit certifies the quiet population (neighbour continuity, the exact Voronoi width decomposition, volume-identity-corrected thickness) and finds 0.1.9's 2,883 censored observations are the kernel's sliver retirement — 2,882 of them on frames that changed their record set behind the event definition, and R1's yardstick set by such a frame in all 32 worlds. Measurement only; the candidate definition (`--drain-event`) is measured, not landed | `0.1.12-plan.md`, `archive/0.1.12-quiet-identity-report.md` | 0.1.9's corrected matcher |
 | 0.2.x | column engine: eruptives, deposits, extraction; page chrome (pause/step/reset) uses E1/E3 — **closed at M5** | `archive/0.2.0-plan.md` | — |
 | 0.3.0 | particle engine P3+ (melt, eruptions, contact). **P3 closed at P3.5**: conserved pool/routing, phase and enthalpy, segregation/storage, conduits, conserved wall-clock flight through landing/cooling/welding, and the integrated acceptance pass with the reserve frozen — `archive/0.3.0-p3.5-report.md`. **P4 closed at P4.4**: contact/underthrusting, slab sinking and deep recycling, arc melt from the slab, particle erosion/deposition, and the integrated acceptance pass with the P4 constants frozen — `archive/0.3.0-p4.4-report.md` | `0.3.0-plan.md`, `0.3.0-p3-plan.md`, `0.3.0-p4-plan.md` | — |
 | 0.3.1 | buried-deposit remelting: **closed at M2** — the shallow-quench certificate, the G5 deposit gate (depth, threshold, certificate and M2's field support), the source-aware equilibrium split and the `thr.depMelt`/`tx.depMelt` books. Every cell closes both identities at zero refusals. At 300 Myr the field term holds the whole intake back — the deposits that reach `meltHold` there get there by the pairing's own concentration, 0.21–0.31 of T above the field they sit in; at 600 Myr it admits 9.730 km² in 3 transfers, at a field support of +0.0005..+0.0419 and a gain of 0.68–1.88, which is sediment the interior warmed | `0.3.1-plan.md`, `archive/0.3.1-M2-acceptance-report.md` | 0.3.0 P4.4 baseline |
@@ -37,6 +38,23 @@ quiet thickness changes are 3.0–14.5 km at 50 kyr/frame (median 9.6) and 7.4�
 is selected; establish identity through re-partition before measuring those as quiet changes.
 Evidence: `archive/0.1.9-quiet-distribution-report.md`, the matrix logs, and
 `experiments/quiet-distribution-table.js`. 0.4.2 Phase C remains held.
+
+**0.1.12 answered that obligation:** `experiments/contact-audit.js --quiet-identity` certifies the
+quiet population — 79,400,392 of 79,856,680 pairs hold neighbour continuity, **0** sit beside a
+different record, and the Voronoi width decomposition and the advection law both close to **0 m**
+over every certified pair. The censored population is not a quiet re-partition: **2,882 of the
+2,883** sit on one of the 1,887 quiet frames (1.24%) that changed their record set behind the
+event definition, and the kernel's own intents on those frames are drain 1,801 / birth 0 /
+consume 0 / accrete 0 — `COL.intents`' sliver retirement, whose comment claims it "moves each
+neighbour's surface by metres" while one measured retirement drops a drawn surface ~5.9 km in a
+frame. R1's yardstick is set by such a frame in **all 32 worlds**, the same false-green shape
+0.1.9 §1.1 fixed for the site. With a retirement counted as the event it is (`--drain-event`,
+measured not landed: `experiments/acceptance.js` requires the four strict legs to exit 0) the
+exclusion has **1** observation left to censor in 32 worlds, the quiet reading drops to thickness
+2.5..16.1 km (median 7.6) and width 1.8..9.6% (median 7.6), and R1 reads ratio 1.29..5.89 against
+its 1.25 budget — over on 32 of 32. No threshold selected, no constant moved.
+Evidence: `archive/0.1.12-quiet-identity-report.md`, the 64 matrix logs, and
+`experiments/quiet-identity-table.js`.
 
 0.3.2 status: M0 (four bounded/relaxing probes, none selected) and M1 (latent localization, the
 bounded redistribution) are measurement; **M2 landed the launch/air latent remedy** in the kernel
@@ -525,6 +543,22 @@ Normative for 0.4.0 on. A plan that needs to break one says so.
   separation); resolving the crossing math in `COL.floor` restores proper floor separation,
   dropping seed 12's maximum to 81.1 km and holding the 81.7 km ceiling across all 32 runs.
   Landed in `js/columns.js` (`COL.isClosingCC` and `COL.floor`).
+- **The sliver retirement's ramp (0.1.12, `0.1.12-plan.md` §7): open, and it is what keeps
+  `--drain-event` from landing.** `COL.intents`' intent 3 retires a ghost whose two trench gaps
+  have closed to `P.gFloor·P.w0`, `COL.drain` empties its stack and `gather` drops the record, so
+  one neighbour takes the whole territory in one frame: measured on seed 11 @100 kyr frame 1271,
+  width 34.2 → 73.2 km, thickness 73.9 → 34.6 km (volume conserved to 0.21%), drawn elevation
+  −5.9 km while its neighbours sit at −4.9 km. `COL.intents`' own comment says the retirement
+  "moves each neighbour's surface by metres" — three orders of magnitude off — and where a birth
+  gets `COL.rampZ`, a retirement gets no ramp. The candidates are ramping the absorbing record's
+  `zDyn` the way a birth does, and handing the territory back over frames; the gates are R1's
+  ratio on all four strict legs (`3000/1/50`, `3000/1/100`, `5000/5/50`, `5000/5/100`) and the
+  R3 ceiling, and the measurement to beat is `archive/0.1.12-quiet-identity-report.md` §2: with a
+  retirement counted as an event, R1 reads ratio 1.29..5.89 against a budget of 1.25 on 32 of 32
+  worlds, the retirement being the loudest site on 29. **Do not widen R1's budget** — 1.25 is
+  0.1.5 §1's own wording, and the retirement's pop is the artifact, not the background. When it
+  lands, `--drain-event` becomes the event definition (no flag) and the four strict legs are
+  re-accepted.
 
 ## 4. Staleness ledger (globe-derived artifacts — 0.4.2 Phase A, `0.4.2-plan.md` §2)
 

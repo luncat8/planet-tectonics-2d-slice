@@ -1436,3 +1436,39 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   - `CONTACT.guard` residue after `P.ctSweep = 3` is $100\%$ (`381/381` bound pairs, `641/641` unbound
     pairs) multi-pair sandwiched markers (`deg >= 2`), holding $\ge 97.58\%$ of `contactHard` across all
     48,000 shipped frames and clearing $100\%$ in finite scratch sweeps ($4..40$).
+
+## 0.1.12 — quiet-frame material identity, and the background that was the event (`archive/0.1.12-quiet-identity-worklog.md`)
+
+- **A gate's background has to be certified against the event definition, not assumed quiet.**
+  R1 reads "the largest drawn move on a quiet frame away from every event footprint", and the audit's
+  event set (`dSites`) counts births and consumes only — `COL.intents` has four intents, and intent 3
+  (the sliver retirement, `COL.drain`) is geometry, not a boundary state, so it never enters `dSites`.
+  1,887 of 152,233 "quiet" frames (1.24%) changed their record set behind that definition, carrying
+  2,882 of 0.1.9's 2,883 censored observations, and the "record set changed" bucket **equalled R1's
+  yardstick in all 32 worlds**: the background was the event, the same false-green shape 0.1.9 §1.1
+  fixed for the site. When a gate measures against "everything else", enumerate what its event
+  definition does not count before trusting the number.
+- **Conservation buys identity for free, and both identities must be asserted, not assumed.** K4's
+  quiet branch rescales beds by `oldW/newW`, so volume is exactly conserved on a quiet frame and the
+  material change is `dhId = |hNew − hOld·wOld/wNew|` with no flow model. `S.widths()` is the Voronoi
+  cell (`0.5·(dl + dr)` wrapped), so with neighbour continuity (C1) held the territory change is
+  exactly half the difference of the two neighbours' displacements, each split into advection
+  (`colU·dt`) and floor push. Both closed to **0 m / 0.0000 m** over 79,400,392 certified pairs —
+  which is what made the residual readable as felsic flow (13.4 km of felsic, 0 m mafic, 19 m sediment
+  in one frame) rather than as a correspondence artifact.
+- **Print the absolute companion of every relative maximum.** C2's worst volume change was 164.5%, on
+  a column drawn 0.1 km → 0.2 km: metres of rock. A relative conservation check on a near-empty
+  record says nothing without the row's own thickness beside it.
+- **A ghost-count delta is not evidence of a missed consume.** The drained record *is* the ghost, so a
+  retirement frame removes one; 1,790 of the 1,801 drain frames did. Assert `ghostChanges <= drains`,
+  and read `SIM.onEvent` **calls** (the cadence may call and do nothing) apart from floor solves.
+- **One log can carry two counts with the same word.** `contact-audit.js` prints its own
+  `re-partitioned` (every frame) and the identity book's censored (certified frames only, 0..1 here);
+  a table that asserts they are equal throws on the first world. Name the population in the assertion.
+- **A definition change that turns a gate red cannot land alone.** `experiments/acceptance.js` runs the
+  four strict legs and requires exit 0, so `--drain-event` stays a flag: measure it, report the red
+  (ratio 1.29..5.89 against a 1.25 budget on 32 of 32 worlds), and land it with the engine remedy.
+  Do not widen the budget to clear it — 1.25 is 0.1.5 §1's own wording, and the pop is the artifact.
+- **Diff against the current baseline, not the nearest filename.** `experiments/logs/0.1.9-contact-audit-*.txt`
+  are pre-matcher-fix 12-check runs; the 13-check baseline is `0.1.9-quiet-strict-*.txt`, and those have
+  no `--detail` block, so only lines 1–21 and the gate lines compare.
