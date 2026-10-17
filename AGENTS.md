@@ -139,7 +139,11 @@ successful remedies; specification 0.3.2-plan.md, reports archive/0.3.2-M0-heat-
 archive/0.3.2-M1-localization-report.md, archive/0.3.2-M2-launch-air-report.md,
 archive/0.3.2-M2-tail-matrix-report.md, archive/0.3.2-M3-depletion-report.md,
 archive/0.3.2-M4-field-bound-report.md, archive/0.3.2-M5-correspondence-report.md,
-archive/0.3.2-M6-distribution-report.md and archive/0.3.2-M7-selection-report.md), experiments/pt-heat-matrix.js (the M2 clock/seed
+archive/0.3.2-M6-distribution-report.md, archive/0.3.2-M7-selection-report.md and
+archive/0.3.2-M8-landing-report.md; the M8 section reads the three landed banks and proves the
+unprobed kernel reproduces the M7 candidate worlds field for field, the kernel's own bound
+counters equal the probe's totals it replaces, and the frozen depBound is the selected 0.25),
+experiments/pt-heat-matrix.js (the M2 clock/seed
 matrix: seeds 1,2,3,5,7 at 10/50/100/500 kyr over 300 Myr plus the 600 Myr seed-5 cell, each a
 fresh pt-heat-tail.js child, gated on every frame's books, the latent identity, the wall and
 the per-phase temperature bound; the first cell repeated bitwise; `--cells seed:kyr:myr,...`
@@ -234,7 +238,14 @@ to paste into the worklog. `--apply` prunes only what the policy decides without
 `--worlds` prints the same-world decision data, `--why NAME` one file's reasons. It cannot decide
 whether a bank's raw arrays are worth their bytes -- that is a question about what a future
 re-analysis will ask, and the checkers re-derive the reports' percentiles, bleed counts and
-protected ids from those arrays, so thinning them is a re-measurement, not hygiene.
+protected ids from those arrays, so thinning them is a re-measurement, not hygiene -- with one
+exception it owns, `--compact`: a trace bank over 4 MB is summarised, not deleted. The per-id
+scalars, the 200-frame stride spine, deliveries, phase changes, the last frame and the `caps[]`
+record stay; what goes is why 1/2/4 (per-frame readings whose maxima and counts are already
+scalars) and why 3 when `caps[]` is not full. The 4 MB floor keeps the M5 banks whole because
+their checker reads raw consecutive-frame rows for the repair's relocations. M8 compacted the
+three M7 s1/s3 banks 45.26 -> 3.76 MB and `pt-heat-tail-check.js` still passes 17 lines, so the
+checker is the proof of the transform, not the sizes.
 
 ## sandbox
 

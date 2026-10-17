@@ -321,6 +321,9 @@ var hPause = S.hash(), movedOn = S.thr.eroCr, dEro = S.d.ero;
 ERODE.run(M, S, 0);
 var okPause = S.hash() === hPause;
 P.ero = false;
+// 0.3.2 M8's deposit field bound is later than this freeze and shifts the live world; off in
+// this owner's legs, on in the integrated P4.4 leg (which is the shipped configuration).
+P.depBound = 0;
 ERODE.run(M, S, SIM.dt);
 var okOff = S.hash() === hPause && S.d.ero === 0 && S.thr.eroCr === movedOn;
 P.ero = true;

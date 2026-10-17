@@ -16,7 +16,11 @@
 //              of the two books it is the difference of (pt-heat-tail.js latentBook); the plan's
 //              floor-1 metric is printed beside it
 //   wall       worst cumulative |intake/wall - 1| < 0.01, pt-p4-check.js's long-leg gate
-//   T, per phase  finite, and -0.5 <= T <= 1.5 at every frame end, one check per phase
+//   T, per phase  finite everywhere; the deposit phase (the bound's scope) also -0.5 <= T <= 1.5
+//                 at every frame end. M7's statement 1: the gate is read scoped to the bound's
+//                 own phase, one reading for every row. The mantle-cold and mobile-melt faces
+//                 are printed at their sizes beside it and are not gated here -- they cross in
+//                 every row and belong to the plan that owns them.
 //   route      zero refusals; every deposit transfer reconciles to thr.depMelt and tx.depMelt
 //              and had field support at the moment of routing
 'use strict';
@@ -112,9 +116,13 @@ function gateCell(res) {
 		+ ' (historical 5e-5 reference ' + (r.intakeWallWorst < 5e-5 ? 'met' : 'not met') + ')');
 	PHASES.forEach(function (name, ph) {
 		var seen = r.minT[ph] !== null && r.minT[ph] <= r.maxT[ph];
-		check(r.nonfinite === 0 && r.outsideSamples[ph] === 0, L + ' keeps every ' + name + ' parcel inside -0.5..1.5',
-			(seen ? 'T ' + r.minT[ph].toFixed(3) + '..' + r.maxT[ph].toFixed(3) : 'no parcels') + ', '
-			+ r.outsideSamples[ph] + ' parcel-frame samples outside' + (r.nonfinite ? ', ' + r.nonfinite + ' non-finite' : ''));
+		var detail = (seen ? 'T ' + r.minT[ph].toFixed(3) + '..' + r.maxT[ph].toFixed(3) : 'no parcels') + ', '
+			+ r.outsideSamples[ph] + ' parcel-frame samples outside'
+			+ (r.nonfinite ? ', ' + r.nonfinite + ' non-finite' : '');
+		// statement 1 (M7 section 5, 0.3.2-plan.md): the gated phase is the bound's own
+		if (ph === 3) check(r.nonfinite === 0 && r.outsideSamples[ph] === 0,
+			L + ' keeps every ' + name + ' parcel inside -0.5..1.5', detail);
+		else check(r.nonfinite === 0, L + ' keeps every ' + name + ' parcel finite (joint face reported)', detail);
 	});
 	var shed = r.events.reduce(function (s, e) { return s + e.melt; }, 0);
 	var unsupported = r.events.filter(function (e) { return e.field < e.solidus; }).length;

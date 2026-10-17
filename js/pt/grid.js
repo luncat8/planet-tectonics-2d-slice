@@ -433,9 +433,46 @@ G.scatterT = function (M, S, Tg, mug) {
 // conduction intake against the operator's own wall flux) is a separate measured number,
 // pt-check's job. The sensible part of the same intake is booked by the phase kernel in
 // S.ledger, which is what makes hLedger - ledger the latent heat a run has stored.
+// The deposit field bound (0.3.2 M4, selected by M7, frozen by M8). A deposit parcel's
+// delivered state may not leave (T_field - P.depBound, T_field + P.depBound), the field
+// being the pre-gather node temperature it sits in. The bound is applied to the phase's own
+// delivery only: the placement that follows is over the grid-coupled parcels of the 3x3
+// gather stencil, and it is conservative -- the withheld increment is handed to members with
+// headroom under their own bound, and whatever the block cannot take returns to the capped
+// parcels in proportion to their withholding, so per-node totals, the intake, the books and
+// the wall integral are the baseline's own delivery to round-off. The bound is read once per
+// parcel into tfP before any enthalpy is written, so the bound, the headroom and the giveback
+// all read the same snapshot. The scope is the deposit phase: mantle/melt segregation was
+// frozen by P3.2, and the light tail this bounds is a deposit population (melt.js
+// fieldHolds holds the same parcels' routing). Measured and frozen by M8 against M7's three
+// candidate worlds; archive/0.3.2-M8-landing-report.md.
+var _bd = null;
+function bdScratch(M, S) {
+	var n = S.m.length, nn = M.n;
+	if (!_bd || _bd.n !== n || _bd.nn !== nn) {
+		_bd = { n: n, nn: nn, tf: new Float64Array(n), heads: new Int32Array(nn),
+			next: new Int32Array(n), room: new Float64Array(n), with: new Float64Array(n),
+			exP: new Float64Array(nn), exN: new Float64Array(nn) };
+	}
+	return _bd;
+}
 G.gatherDT = function (M, S, inc, Tg, flip) {
 	var nx = M.nx, p, q, di, dj, jj, ii, ic, jc, px, pe, tot = 0, d, cw = M.cw, wsum, out;
-	var grid = P.PH_GRID, ph = S.ph;
+	var grid = P.PH_GRID, ph = S.ph, dep = P.PH.dep, bound = P.depBound > 0;
+	var bd = bound ? bdScratch(M, S) : null;
+	var tfP = bd && bd.tf, heads = bd && bd.heads, nextA = bd && bd.next;
+	var roomA = bd && bd.room, withA = bd && bd.with, exP = bd && bd.exP, exN = bd && bd.exN;
+	var hp, tb, bh, bl, dc, ex, room, gf, wq, amt, rmd, sg, bj, bi, qi, qj, b2;
+	if (bd) {
+		heads.fill(-1);
+		for (p = S.n - 1; p >= 0; p--) {
+			if (!grid[ph[p]]) continue;
+			withA[p] = 0;
+			tfP[p] = G.sampleAt(M, Tg, S.x[p], S.e[p]);
+			q = nodeOf(M, S, p);
+			nextA[p] = heads[q]; heads[q] = p;
+		}
+	}
 	for (p = 0; p < S.n; p++) {
 		// the adjoint of the deposit over the *same* parcel set: the coverage weights cw were
 		// built from the coupled parcels alone, so gathering over them keeps
@@ -465,8 +502,70 @@ G.gatherDT = function (M, S, inc, Tg, flip) {
 			out = PTPHASE.byT(tg, S.y[p], S.cF[p], S.cW[p]);
 			d = flip * di_ + (1 - flip) * (out.h - S.H[p]);
 		} else d = di_;
+		if (bd && ph[p] === dep) {
+			hp = S.H[p] + d;
+			tb = PTPHASE.byH(hp, S.y[p], S.cF[p], S.cW[p]).t;
+			bh = tfP[p] + P.depBound; bl = tfP[p] - P.depBound;
+			if (tb > bh || tb < bl) {
+				dc = PTPHASE.byT(tb > bh ? bh : bl, S.y[p], S.cF[p], S.cW[p]).h - S.H[p];
+				ex = S.m[p] * (d - dc);
+				q = nodeOf(M, S, p);
+				if (ex > 0) exP[q] += ex; else exN[q] += ex;
+				withA[p] = ex;
+				d = dc; S.bdCap++;
+			}
+		}
 		S.H[p] += d;
 		tot += S.m[p] * d;
+	}
+	// the withheld increment, by node and by side, placed on the stencil block's own members
+	// in node order on the live enthalpy: headroom one placement used is gone for the next
+	if (bd) {
+		for (q = 0; q < M.n; q++) {
+			if (exP[q] === 0 && exN[q] === 0) continue;
+			qi = q % M.nx; qj = (q - qi) / M.nx; b2 = heads[q];
+			for (sg = 1; sg >= -1; sg -= 2) {
+				amt = sg > 0 ? exP[q] : -exN[q];
+				if (amt === 0) continue;
+				room = 0;
+				for (bj = qj - 1; bj <= qj + 1; bj++) {
+					if (bj < 1 || bj > M.ny - 1) continue;
+					for (bi = qi - 1; bi <= qi + 1; bi++) {
+						for (p = heads[bj * M.nx + bi - Math.floor(bi / M.nx) * M.nx]; p >= 0; p = nextA[p]) {
+							hp = S.H[p];
+							dc = PTPHASE.byT(tfP[p] + (sg > 0 ? P.depBound : -P.depBound),
+								S.y[p], S.cF[p], S.cW[p]).h;
+							dc = sg > 0 ? dc - hp : hp - dc;
+							roomA[p] = dc > 0 ? S.m[p] * dc : 0;
+							room += roomA[p];
+						}
+					}
+				}
+				gf = room >= amt ? amt / room : 1;
+				for (bj = qj - 1; bj <= qj + 1; bj++) {
+					if (bj < 1 || bj > M.ny - 1) continue;
+					for (bi = qi - 1; bi <= qi + 1; bi++) {
+						for (p = heads[bj * M.nx + bi - Math.floor(bi / M.nx) * M.nx]; p >= 0; p = nextA[p]) {
+							wq = roomA[p] * gf;
+							if (wq > roomA[p]) wq = roomA[p];
+							if (!(wq > 0)) continue;
+							S.H[p] += sg * wq / S.m[p];
+							tot += sg * wq; S.bdGiven++;
+						}
+					}
+				}
+				if (room >= amt) continue;
+				rmd = amt - room;
+				for (p = b2; p >= 0; p = nextA[p]) {
+					if (sg * withA[p] <= 0) continue;
+					wq = rmd * (sg * withA[p]) / amt;
+					S.H[p] += sg * wq / S.m[p];
+					tot += sg * wq; S.bdGiveback++;
+				}
+				S.bdShortN++; S.bdShortH += rmd;
+			}
+			exP[q] = 0; exN[q] = 0;
+		}
 	}
 	S.hLedger += tot;
 };

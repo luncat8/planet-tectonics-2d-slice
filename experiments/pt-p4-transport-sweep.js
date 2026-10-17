@@ -225,6 +225,9 @@ function frozenLeg(law, name, frames) {
 	var i, t0, ms = 0;
 	L.livePlanet();
 	P.ero = false;
+	// 0.3.2 M8's deposit field bound is later than this freeze and shifts the live world; off in
+	// this owner's legs, on in the integrated P4.4 leg (which is the shipped configuration).
+	P.depBound = 0;
 	for (i = 0; i < 100; i++) SIM.step();
 	var before = L.bandMass();
 	POOL.inventoryComp(S);

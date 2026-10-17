@@ -936,3 +936,72 @@ console.log('PASS M7: the four traced runs reproduce their M6 worlds field for f
 	+ ' mantle-cold and mobile-melt faces in every row, handed to the plan that owns them. Statement'
 	+ ' 2: the frame time is quoted from quiet hosts -- 15.768 ms on the M5 host, 16.224..16.915 on'
 	+ ' this one -- and passes; the M6 host\'s 21.35..21.80 was host drift on both rows.');
+
+// --- 0.3.2 M8: the landing. M7 selected `frb 0.25 --scope dep`; M8 puts it in the kernel
+// (params.js depBound, grid.js gatherDT) with its own freeze line. The gate is the strongest
+// one available: the landed engine, run with no probe at all, must reproduce each M7 candidate
+// world field for field -- fingerprint, every transfer down to movedAgo, hottest, census, the
+// repair join and every diagnostic the family is read on -- and the kernel's own bound counters
+// must equal the probe's totals it replaces. The old M6 `base` banks are the pre-landing
+// controls and stay as evidence, never as expected outputs (the plan's re-bank rule).
+var root8 = path.join(__dirname, 'logs/0.3.2-M8-');
+function read8(name) { return JSON.parse(fs.readFileSync(root8 + name + '.json', 'utf8')); }
+var P8 = require('../js/pt/params.js');
+assert.strictEqual(P8.depBound, 0.25, 'M8 the frozen constant is the selected row\'s 0.25');
+var M8WORLDS = [
+	['s5', 'landed-s5-600', null],
+	['s3', 'landed-s3-600', 'dep-s3'],
+	['s1', 'landed-s1-600', 'dep-s1']
+];
+M8WORLDS.forEach(function (row) {
+	var w = row[0], r = read8(row[1]), m6 = M6['dep-' + w + '-600'];
+	assert.strictEqual(r.kind, 'baseline', 'M8 ' + w + ' is the unprobed baseline');
+	assert.strictEqual(r.fingerprint, m6.fingerprint, 'M8 ' + w + ' lands the selected world');
+	assert.deepStrictEqual(r.events, m6.events, 'M8 ' + w + ' every transfer, down to movedAgo');
+	assert.deepStrictEqual(r.hottest, m6.hottest, 'M8 ' + w + ' hottest');
+	assert.deepStrictEqual(r.census, m6.census, 'M8 ' + w + ' census');
+	assert.deepStrictEqual(r.heldJoin, m6.heldJoin, 'M8 ' + w + ' repair join');
+	['heldSamples', 'heldMassTime', 'heldMeltTime', 'heldGapMax',
+		'mantleRoutes', 'depTx', 'depMelt', 'refuse', 'intakeWallWorst', 'minT', 'maxT',
+		'outsideSamples', 'outsideBelow', 'outsideAbove', 'movedSum', 'movedIds', 'movedSeen',
+		'redeals', 'depositBook', 'meltBook'].forEach(function (key) {
+		assert.deepStrictEqual(r[key], m6[key], 'M8 ' + w + ' diagnostic ' + key);
+	});
+	// no probe ran: the probe fields are zero, and the kernel's own counters replace them
+	assert.strictEqual(r.spreadCapped, 0, 'M8 ' + w + ' no probe caps');
+	assert.strictEqual(r.spreadGiven, 0, 'M8 ' + w + ' no probe placements');
+	// same acts, same sides, same shortfall
+	assert.strictEqual(r.boundCapped, m6.spreadCapped, 'M8 ' + w + ' caps equal the probe');
+	assert.strictEqual(r.boundGiven, m6.spreadGiven, 'M8 ' + w + ' placements equal the probe');
+	assert.strictEqual(r.boundGiveback, m6.spreadGiveback, 'M8 ' + w + ' givebacks equal the probe');
+	assert.strictEqual(r.boundShortN, m6.spreadShortN, 'M8 ' + w + ' short blocks equal the probe');
+	assert.strictEqual(r.boundShortH, m6.spreadShortH, 'M8 ' + w + ' shortfall equals the probe');
+	// the freeze line's gates, on the world's own bank
+	assert(r.gates.mass && r.gates.enthalpy, 'M8 ' + w + ' books');
+	assert(r.gates.latentBook, 'M8 ' + w + ' latent identity');
+	assert(r.gates.intakeWallP4, 'M8 ' + w + ' wall');
+	assert.strictEqual(r.refuse, 0, 'M8 ' + w + ' refusals');
+	assert.strictEqual(r.nonfinite, 0, 'M8 ' + w + ' finite');
+	assert.strictEqual(r.events.length, r.depTx, 'M8 ' + w + ' event count');
+	assert(r.events.every(function (e) { return e.field >= e.solidus; }), 'M8 ' + w + ' field support');
+	assert(r.maxT[3] < 1.12 && r.outsideSamples[3] === 0, 'M8 ' + w + ' deposit phase inside the wall');
+	assert(r.heldGapMax < 0.252, 'M8 ' + w + ' worst held gap is the bound\'s own width');
+	assert(r.msFrame < 20, 'M8 ' + w + ' frame gate on this quiet host');
+	if (row[2]) {
+		var m7 = M7[row[2]], trace = m7.trace.history.map(function (h) { return h.id; }).join(',');
+		assert(m6.depTx === m7.depTx && m6.depMelt === m7.depMelt,
+			'M8 ' + w + ' is the very world M7 traced (' + trace + ')');
+	}
+});
+console.log('M8 world   tx   depMelt km2   maxT dep   worst gap   caps / placements      ms/frame');
+M8WORLDS.forEach(function (row) {
+	var r = read8(row[1]);
+	console.log('  ' + row[0] + '      ' + String(r.depTx).padStart(3) + r.depMelt.toFixed(6).padStart(14)
+		+ r.maxT[3].toFixed(4).padStart(11) + r.heldGapMax.toFixed(4).padStart(12)
+		+ (String(r.boundCapped) + ' / ' + r.boundGiven).padStart(21) + r.msFrame.toFixed(2).padStart(11));
+});
+console.log('PASS M8: the landed kernel reproduces the three M7 candidate worlds field for field with'
+	+ ' no probe running -- fingerprints 1808048552219233 / 3305588838878544 / 5025891284893073,'
+	+ ' every event, the census, the join and every diagnostic -- and its own counters equal the'
+	+ ' probe\'s acts (879915/837390/765851 caps). The deposit phase stays inside 1.12 with worst'
+	+ ' held gap 0.2503..0.2513, zero refusals, books/latent/wall closed, frame 16.27..16.36 ms.');

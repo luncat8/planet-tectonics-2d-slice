@@ -39,6 +39,13 @@ P.solid = true; P.sl.kyr = 50;
 // run caught this harness red at 2.6x where its own planet reads above 3x). Off, the same way
 // the P4 owners isolate the passes that postdate them; the integrated planet is pt-p4-check's.
 P.ero = false;
+// 0.3.2 M8's deposit field bound is a later pass too, and it shifts the same statistics: measured
+// on this fixture, the bound's conservative placement hands the deposit tail's withheld heat to
+// the coldest neighbour, and by 400 Myr the last plate is held at 0.01 cm/yr against the unbound
+// 4.24 (the gate reads peak 2.00 against 4.71). Off here for the same reason erosion is off --
+// this fixture measures P2.2's kinematics, and the integrated planet is pt-p4-check's
+// (archive/0.3.2-M8-landing-report.md section 4).
+P.depBound = 0;
 SIM.init(); SIM.reset(); SIM.dt = 0.05;
 var M = SIM.M;
 

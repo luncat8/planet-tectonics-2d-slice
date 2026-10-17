@@ -195,6 +195,10 @@ var PTS = {
 	// column's weathering band had nothing left above the take floor. It is a capacity event
 	// like a pool refusal and it is reported, never silently dropped.
 	eroShort: 0,
+	// 0.3.2 M8: the deposit field bound's own cumulative counters (diagnostics, not state --
+	// the parcels' H already carries the bound's effect, and a counter in the hash would make
+	// a measurement an identity). bdShortH is km2*H the 3x3 block could not absorb.
+	bdCap: 0, bdGiven: 0, bdGiveback: 0, bdShortN: 0, bdShortH: 0,
 	// per-frame diagnostics, mutated in place: the HUD formats them at 2 Hz
 	d: {
 		nu: 0, uMax: 0, vMax: 0, wells: 0, heat: 0, mHeat: 0, tMin: 0, tMax: 0,
@@ -376,6 +380,7 @@ var PTS = {
 	this.thr.arcDr = 0; this.thr.arcCr = 0; this.thr.arcMelt = 0;
 	this.thr.eroDr = 0; this.thr.eroCr = 0; this.thr.eroDep = 0;
 	this.thr.deepDep = 0; this.thr.depMelt = 0;
+		this.bdCap = 0; this.bdGiven = 0; this.bdGiveback = 0; this.bdShortN = 0; this.bdShortH = 0;
 		this.chN = 0;
 		this.chX.fill(0); this.chY.fill(0); this.chM.fill(0); this.chH.fill(0);
 		this.chL.fill(0); this.chF.fill(0); this.chW.fill(0);

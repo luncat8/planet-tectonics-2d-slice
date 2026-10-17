@@ -139,6 +139,27 @@ var PTP = {
 	depositCoolT: 0,             // normalized surface boundary temperature (the model's ambient)
 	depositCoolTau: 0.1,         // Myr; a coarse-step quench over a few demonstration frames
 	depositCoolDepth: 30,        // km, only shallow landed material exchanges with the surface wall
+	// 0.3.2 M8, the deposit field bound (M7's selected row `frb 0.25 --scope dep`). A deposit
+	// parcel's delivered state may not leave (T_field - depBound, T_field + depBound), the
+	// field being the pre-gather node temperature it sits in; the increment a violation
+	// would have added is placed, node totals preserved, on the grid-coupled parcels of the
+	// 3x3 gather stencil that still have headroom under their own bound, and whatever the
+	// block cannot take returns to the capped parcels in proportion to their withholding.
+	// The scope is the deposit phase: the mantle and melt branches were frozen by P3.2, and
+	// the bound is the light-parcel tail of the marker<->grid pairing, which is a deposit
+	// population (melt.js fieldHolds holds the same parcels' routing).
+	// Frozen by M8 against M7's three candidate worlds (seed 5 and the distribution's s1/s3):
+	// every deposit phase reads max T 1.1136..1.1150 and worst held gap 0.2503..0.2513; zero
+	// refusals; the books, the latent identity and the wall close every frame; the landed kernel
+	// reproduces the three M7 candidate fingerprints field for field, and its quiet-host serial
+	// frame is 16.27..16.36 ms (< 20). The later-pass convention: P2.2's drift fixture and P4.0's
+	// contact owner set P.depBound = 0, as they do for the P4 passes that postdate their gates,
+	// because the bound's placement shifts their isolated worlds; the integrated P3/P4 legs keep
+	// it on. Measured side-effect at its size: the un-isolated drift fixture reads peak 2.00 cm/yr
+	// against 4.71 unbound, the contact owner 1 hard pair on 1 of 6000 frames against 0, and the
+	// integrated 300 Myr leg 2 pairs at 0.9969 of contactHard on 1 of 6000 frames (the guard's
+	// 3-sweep cap) against 0 on the base tree (archive/0.3.2-M8-landing-report.md section 4).
+	depBound: 0.25,
 	depositMerge: 40,            // km, compatible landed batches inside this radius may coalesce
 	mergeCompF: 0.02,            // maximum felsic-fraction difference for a material merge
 	mergeCompW: 0.002,           // maximum water-fraction difference for a material merge
@@ -265,16 +286,20 @@ var PTP = {
 	                            // 0 below it (experiments/pt-p4-contact.js)
 	contactBand: 300,           // km, the bending zone's reach into the subducting plate
 	contactHard: 0.55,          // cells, the no-penetration radius of the position guard.
-	                            // Frozen: worst residue 0 pairs on every frame of the
-	                            // integrated leg (the rounding slop inside the radius is
-	                            // what makes the count honest, P4.0's review)
+	                            // Frozen: worst residue 0 pairs on every frame of the P4 leg.
+	                            // 0.3.2 M8's bound leaves 2 pairs at 0.9969 of the radius on
+	                            // 1 of 6,000 frames, measured and recorded (M8 report §4);
+	                            // the rounding slop inside the radius is what makes the
+	                            // count honest (P4.0's review)
 	ctTop: 4,                   // clusters per column in the contact table: the shallowest
 	                            // crust marker of each, so a plate boundary is read where it
 	                            // reaches the surface
 	ctSweep: 3,                 // separation sweeps the guard may take in one frame: where
 	                            // several pairs share a marker, one sweep can leave a residue.
-	                            // Frozen: two clear the live planet (P4.0's sweep scan), the
-	                            // third is margin -- 1,257 pushes on 800 of 6,000 frames
+	                            // Frozen: two clear the P4 planet (P4.0's sweep scan), the
+	                            // third is margin -- 1,257 pushes on 800 of 6,000 frames.
+	                            // 0.3.2 M8's sandwiched marker needs ~20 (the overlap halves
+	                            // per sweep); the cap leaves 1 frame 0.3% inside, recorded
 	ctHinge: 32,                // bending bands per frame. A site the cap turns away is held
 	                            // without being bent, so it is counted (S.hgOver, S.d.over)
 	                            // rather than lost. Frozen by P4.4: the integrated leg's

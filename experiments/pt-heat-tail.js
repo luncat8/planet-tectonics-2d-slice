@@ -3,8 +3,11 @@
 //      [value] [Myr=600] [--seed 5] [--kyr 50] [--scope dep|solid] [--watch] [--dpart D] [--cap PHI]
 //      [--trace-id a,b,c] [--assert-baseline|--assert-m2]
 // --seed/--kyr make one cell of the M2 clock/seed matrix (experiments/pt-heat-matrix.js runs it).
-// Rejected candidates are reports, not a nonzero exit; --assert-baseline gates the M0 bank
-// (pre-M2 tree), --assert-m2 the re-banked M2 cell (launch/air remedy in).
+// Rejected candidates are reports, not a nonzero exit. The three tree gates: --assert-baseline
+// is the M0 bank (pre-M2 tree), --assert-m2 the re-banked M2 cell (launch/air remedy in, pre-M8),
+// and --assert-landed the shipped M8 world (the deposit field bound in the kernel). Old hashes
+// are baseline evidence, never expected outputs for a changed state (0.3.2-plan.md's re-bank
+// rule); a gate that no longer matches says which tree it belongs to.
 'use strict';
 var fs = require('fs'), path = require('path'), performance = require('perf_hooks').performance;
 var B = path.join(__dirname, '../js/pt/');
@@ -757,6 +760,10 @@ var result = { kind: kind, value: value, scope: kind === 'relaxw' || kind === 's
 		never: { mass: hjNever.mass, n: hjNever.n, gap: hjNever.gap } },
 	spreadCapped: spSt.capped, spreadGiven: spSt.given, spreadGiveback: spSt.giveback,
 	spreadShortN: spSt.shortN, spreadShortH: spSt.shortH,
+	// the landed bound's own counters (0.3.2 M8): the kernel's, present on every kind, beside
+	// the probe's above. A landed `baseline` reads the same numbers its `frb` probe banked.
+	boundCapped: S.bdCap, boundGiven: S.bdGiven, boundGiveback: S.bdGiveback,
+	boundShortN: S.bdShortN, boundShortH: S.bdShortH,
 	relaxSource: rlSt.R, relaxGross: rlSt.gross, relaxReaction: rlSt.react, relaxResidMax: rlSt.resid,
 	relaxSourceOverWall: rlSt.R / (S.wall - w0), intakeWallOperatorWorst: wallOp,
 	outsideFrames: outFrames, hottest: hot, events: events,
@@ -866,6 +873,8 @@ if (process.argv.includes('--assert-baseline') && (kind !== 'baseline' || myr !=
 	|| result.fingerprint !== 8261233554728015 || result.depTx !== 3)) process.exitCode = 1;
 if (process.argv.includes('--assert-m2') && (kind !== 'baseline' || myr !== 600 || seed !== 5 || kyr !== 50
 	|| result.fingerprint !== 6191250240167390 || result.depTx !== 3)) process.exitCode = 1;
+if (process.argv.includes('--assert-landed') && (kind !== 'baseline' || myr !== 600 || seed !== 5 || kyr !== 50
+	|| result.fingerprint !== 1808048552219233 || result.depTx !== 2)) process.exitCode = 1;
 if (process.env.HEAT_TAIL_OUT) {
 	fs.writeFileSync(process.env.HEAT_TAIL_OUT, JSON.stringify(result, null, '\t') + '\n');
 	console.log(summary(result));

@@ -62,6 +62,9 @@ var CAP0 = P.deepCap, JOIN0 = P.deepJoin, YCRUST0 = P.yCrust, SINKMYR = 10;
 // P4.3's surface law likewise (pt-p4-check.js owns the integrated census).
 P.arc = false;
 P.ero = false;
+// 0.3.2 M8's deposit field bound is later than this freeze and shifts the live world; off in
+// this owner's legs, on in the integrated P4.4 leg (which is the shipped configuration).
+P.depBound = 0;
 
 // ------------------------------------------------------------------ the seeded slab
 function seed(i0, i1, y0, y1, T, cF, cW) {

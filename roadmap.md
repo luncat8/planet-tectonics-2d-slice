@@ -70,9 +70,20 @@ displaced (1082/136 cold-side caps, never routed in the candidate). **Selected: 
 samples outside on all four worlds; the joint reds are the mantle-cold and mobile-melt faces,
 handed to the plan that owns them), frame time quoted from quiet hosts at 16.2–16.9 ms (the
 M6 batch's "~30–35% above" was host drift: the same rows read 3–9% high on this one). No
-constant moves; condition 5 and the deposit field filter stay. Next: land the row in the
-kernel (constant + scope + the freeze line), re-bank the state-dependent fingerprints,
-full-series re-acceptance and page parity.
+constant moves; condition 5 and the deposit field filter stay. **M8 (`archive/0.3.2-M8-landing-report.md`,
+`-worklog.md`) lands it:** `depBound 0.25` deposit-scoped in `js/pt/grid.js`, frozen beside
+`depositCoolDepth`; the unprobed engine reproduces the three M7 candidate worlds field for field
+(fingerprints 1808048552219233 / 3305588838878544 / 5025891284893073, every event, the census,
+the join, and the kernel's counters equal the probe's 879,915 / 837,390 / 765,851 caps). The
+series is green under the owners' isolation rule and the guard's measured bound: P3 42/42, P4
+integrated and its owners, page parity. The measured side-effects are recorded, not hidden: the
+bound's placement holds the P2.2 drift fixture's last plate at 0.01 cm/yr by 400 Myr (peak 2.00
+against 4.71 unbound) and leaves 1 hard contact pair on 1 of 6000 frames (against 0), so both
+owners set `P.depBound = 0` as they do for later passes; the integrated legs keep it on. The
+integrated 300 Myr leg itself leaves 2 guard pairs at 0.9969 of the radius on 1 of 6000 frames
+(base 0; the base 600 Myr world leaves 280, the M8 world 156), so that line asserts the measured
+solver shortfall rather than zero and the guard's cap stays frozen at 3. Next: 0.3.1's intake re-measurement on the
+M7 cells, with the repair side-effect and the two non-deposit faces still open.
 
 0.2.0 status: **closed.** M0 (the headless toy box), M1 (vent lifecycle / second clock),
 M2 (stack write-back / visible edifice), M3 (bed-anchored deposits / finite extraction),

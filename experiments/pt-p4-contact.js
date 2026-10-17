@@ -71,6 +71,10 @@ var L = require('./pt-p4-lib.js');
 
 function configure() {
 	P.slab = false; P.arc = false; P.ero = false;
+	// 0.3.2 M8's deposit field bound is later than this freeze and shifts the lid the same way
+	// the passes above do; the integrated P4.4 leg keeps it on and measures the residue it
+	// leaves at 0.9969 of the radius on 1 of 6,000 frames (M8 report §4).
+	P.depBound = 0;
 	L.configure();
 }
 
@@ -364,6 +368,7 @@ function live(on, myr) {
 	// business: a live leg that ran them could not say which pass put a marker where it
 	// ended up, and this harness owns the contact kernel
 	P.slab = false; P.arc = false; P.ero = false;
+	P.depBound = 0;
 	L.livePlanet();
 	var o = { m0: S.invMTot, sites: 0, worst: 0, holds: 0, bends: 0, pushes: 0,
 		pushFrames: 0, short: 0, frames: 0, mass: 0, t: 0, hash: 0,

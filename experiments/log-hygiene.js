@@ -12,6 +12,20 @@
 //      node experiments/log-hygiene.js --why NAME    every reason behind one file's verdict
 //      node experiments/log-hygiene.js --worlds      the same-world banks and what each records
 //      node experiments/log-hygiene.js --review      the judgement-call list in full
+//      node experiments/log-hygiene.js --compact     the trace-bank summary verdict
+//      node experiments/log-hygiene.js --compact --apply   rewrite the candidates
+//
+// --compact is the one place the tool changes a bank instead of deleting it. A trace bank's
+// `rows` are per-frame samples, and a 20 MB bank is mostly the same handful of ids held and
+// heated frame after frame. The quantities those rows are read for are kept: every per-id
+// scalar (first/last, maxT/maxGap with their frames and depth, capped/withheld, routed/held,
+// delivered/deliveredFrame), the 200-frame stride spine (why 0), every delivery (why 5),
+// phase change (6) and last frame (7), and the `caps` array. What goes is why 1 (at/above
+// solidus), why 2 (molten) and why 4 (held) -- repeated per-frame readings whose maxima and
+// counts are already scalars -- and why 3 when caps[] is not full, because a cap row is a
+// duplicate of a caps[] record. A bank under 4 MB is left alone: M5's checker reads raw
+// consecutive-frame rows to find the repair's relocations, and compacting that would be a
+// re-measurement, not hygiene. A compacted bank says so in `trace.history[*].compacted`.
 'use strict';
 var fs = require('fs'), path = require('path'), crypto = require('crypto');
 
@@ -19,6 +33,7 @@ var ROOT = path.join(__dirname, '..'), LOGS = path.join(__dirname, 'logs');
 var APPLY = process.argv.indexOf('--apply') >= 0;
 var WHY = process.argv.indexOf('--why') >= 0 ? process.argv[process.argv.indexOf('--why') + 1] : null;
 var SHOW_REVIEW = process.argv.indexOf('--review') >= 0;
+var COMPACT = process.argv.indexOf('--compact') >= 0;
 
 function walk(dir, base) {
 	var out = [];
@@ -32,6 +47,61 @@ function walk(dir, base) {
 function sha(file) { return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 16); }
 function mb(n) { return (n / 1048576).toFixed(2) + ' MB'; }
 function kb(n) { return (n / 1024).toFixed(0) + 'K'; }
+
+// --- the one transform: a trace bank's per-frame rows ----------------------------------------
+// Every quantity the rows are read for is kept (see the header). The drop rule is a property
+// of the row's `why`, not of a file's name, so a new trace bank is compacted the same way; the
+// 4 MB floor is what keeps the M5 banks -- whose checker reads consecutive-frame rows for the
+// repair's relocations -- untouched, and a bank that did not shrink is not rewritten.
+var COMPACT_MIN = 4 * 1048576;
+function compactTrace(d) {
+	if (!d.trace || !Array.isArray(d.trace.history)) return null;
+	var before = 0, after = 0, dropWhy = {};
+	d.trace.history.forEach(function (h) {
+		if (!Array.isArray(h.rows)) return;
+		// caps[] holds every cap event unless it overflowed its own cap (4000): then the
+		// why-3 rows past it are the only record of the rest
+		var full = h.caps && h.capped > 0 && h.caps.length >= h.capped;
+		var keep = [], dw = {};
+		before += h.rows.length;
+		h.rows.forEach(function (r) {
+			if (r.why === 1 || r.why === 2 || r.why === 4 || (r.why === 3 && full)) {
+				dw[r.why] = (dw[r.why] || 0) + 1;
+				dropWhy[r.why] = (dropWhy[r.why] || 0) + 1;
+				return;
+			}
+			keep.push(r);
+		});
+		if (!Object.keys(dw).length) return;
+		after += keep.length;
+		h.compacted = { rows: h.rows.length, kept: keep.length, dropped: dw,
+			rule: 'why 1/2/4 are per-frame readings whose maxima and counts are the id scalars; why 3 duplicates caps[] when not full' };
+		h.rows = keep;
+	});
+	if (before === after) return null;
+	return { before: before, after: after, dropWhy: dropWhy };
+}
+if (COMPACT) {
+	var cBefore = 0, cAfter = 0, rBefore = 0, rAfter = 0, rewrote = 0, traces = 0;
+	var cands = walk(LOGS, '').filter(function (f) { return /\.json$/.test(f.base) && f.bytes > COMPACT_MIN; });
+	cands.forEach(function (f) {
+		var d, c, text;
+		try { d = JSON.parse(fs.readFileSync(f.full, 'utf8')); } catch (e) { return; }
+		c = compactTrace(d);
+		if (!c) return;
+		traces++;
+		text = JSON.stringify(d, null, '\t') + '\n';
+		cBefore += f.bytes; cAfter += Buffer.byteLength(text); rBefore += c.before; rAfter += c.after;
+		console.log('  ' + f.base + '  ' + mb(f.bytes) + ' -> ' + mb(Buffer.byteLength(text))
+			+ '   rows ' + c.before + ' -> ' + c.after + '   dropped ' + Object.keys(c.dropWhy).map(function (w) {
+				return 'why ' + w + ':' + c.dropWhy[w];
+			}).join(', '));
+		if (APPLY) { fs.writeFileSync(f.full, text); rewrote++; }
+	});
+	console.log('trace compaction: ' + traces + ' trace banks over ' + mb(COMPACT_MIN) + ', ' + mb(cBefore) + ' -> '
+		+ mb(cAfter) + ', rows ' + rBefore + ' -> ' + rAfter + (APPLY ? '; rewrote ' + rewrote : '; dry run, pass --apply to rewrite'));
+	process.exit(0);
+}
 
 // --- the corpus: every file under logs/, its bytes, its content hash, its world -------------
 var files = walk(LOGS, '');

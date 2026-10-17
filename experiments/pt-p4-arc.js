@@ -63,6 +63,9 @@ function restore() {
 // planet. Off the whole file the way P4.1's slab is, so these numbers stay this harness's
 // own; the integrated census is P4.4's (pt-p4-check.js).
 P.ero = false;
+// 0.3.2 M8's deposit field bound is later than this freeze and shifts the live world; off in
+// this owner's legs, on in the integrated P4.4 leg (which is the shipped configuration).
+P.depBound = 0;
 
 function seedBox(i0, i1, y0, y1, T, cF, cW) {
 	var nx = SIM.M.nx, dx = SIM.M.dx, p, i, tag = {};
