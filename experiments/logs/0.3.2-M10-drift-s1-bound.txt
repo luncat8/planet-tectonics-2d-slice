@@ -1,0 +1,29 @@
+  drift diagnostic: the shipped run, 256x24, wrap 16000 km, 50 kyr/f, 600 Myr
+
+   t/Myr  plate  markers   plate depth    |vPlate|   |vOwn|   |vBase|   |v150|   |v300|
+     100      0    5193        4..89 km       0.02     0.01     0.01    0.01    0.01
+     200      0    1366        4..97 km       2.39     0.35     0.36    0.34    0.41
+     200      1     794        4..74 km       1.23     0.18     0.19    0.23    0.37
+     200      2     786        4..56 km       1.48     0.11     0.11    0.17    0.28
+     300      8     335       4..125 km       1.78     0.35     0.36    0.38    0.64
+     300      3     203        4..39 km       0.17     0.06     0.07    0.21    0.39
+     300      5     159        4..31 km       1.08     1.28     1.31    1.13    1.07
+     400      3     191        4..35 km       1.80     0.11     0.11    0.20    0.35
+     500      7     197       4..117 km       5.08     0.20     0.19    0.19    0.23
+     600      3     185       7..135 km       2.99     0.10     0.10    0.11    0.14
+
+  every plate at the last sample (>= 64 markers):
+   plate 3: 185 markers   drift 2.99 cm/yr   own 0.10   base 0.10   at 150 km 0.11   at 300 km 0.14 (mean speed there 0.22)
+
+the diagnostic is sane
+PASS  plates were found at every sample   100.04999999999646, 200.00000000001123, 300.00000000003394, 400.0000000000567, 500.0000000000794, 600.000000000002
+PASS  every number is finite
+INFO  mean plate drift over all samples   1.80 cm/yr
+INFO  mean own-marker flow   0.27 cm/yr
+INFO  mean base flow under the plates   0.28 cm/yr
+INFO  mean flow at 150 km under the plates   0.30 cm/yr
+INFO  mean flow at 300 km under the plates   0.39 cm/yr
+INFO  mean speed (not net) at 300 km   0.56 cm/yr
+INFO  ratio net-300km/plate   0.22x
+
+ALL PASS (2 checks)

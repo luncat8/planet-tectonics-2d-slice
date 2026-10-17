@@ -1005,3 +1005,34 @@ console.log('PASS M8: the landed kernel reproduces the three M7 candidate worlds
 	+ ' every event, the census, the join and every diagnostic -- and its own counters equal the'
 	+ ' probe\'s acts (879915/837390/765851 caps). The deposit phase stays inside 1.12 with worst'
 	+ ' held gap 0.2503..0.2513, zero refusals, books/latent/wall closed, frame 16.27..16.36 ms.');
+
+// M9: the route owner's fresh landed run must read the same intake as the heat bank.
+var intake9 = fs.readFileSync(path.join(__dirname, 'logs/0.3.2-M9-intake-s5-600.txt'), 'utf8');
+var landed9 = read8('landed-s5-600'), control9 = M6['base-s5-600'];
+assert(intake9.includes('ALL PASS (37 checks)'));
+assert(intake9.includes('fingerprint ' + landed9.fingerprint));
+var transfers9 = intake9.split('\n').filter(function (s) {
+	return s.startsWith('INFO  deposit routing transfer ');
+});
+assert.strictEqual(transfers9.length, landed9.depTx);
+landed9.events.forEach(function (e, i) {
+	var line = transfers9[i];
+	['t=' + (e.frame * 0.05).toFixed(2) + ' Myr',
+		e.host.toFixed(3) + ' km2 host', e.melt.toFixed(3) + ' km2 of melt',
+		'T ' + e.T.toFixed(4), 'solidus ' + e.solidus.toFixed(4),
+		'node field of ' + e.field.toFixed(4),
+		'field support ' + (e.field - e.solidus).toFixed(4)].forEach(function (text) {
+		assert(line.includes(text), 'M9 owner event ' + i + ': ' + text);
+	});
+});
+assert(intake9.includes(landed9.heldSamples + ' samples of a population nothing consumes'));
+assert(intake9.includes(landed9.heldMassTime.toExponential(4) + ' km2 Myr of host mass-time'));
+assert(control9.heldMassTime / landed9.heldMassTime > 98);
+assert(control9.heldGapMax > 1.32 && landed9.heldGapMax < 0.252);
+assert.strictEqual(control9.depTx, 3);
+assert.strictEqual(landed9.depTx, 2);
+assert(landed9.events.every(function (e) {
+	return !control9.events.some(function (c) { return c.id === e.id; });
+}));
+console.log('PASS M9: fresh 0.3.1 owner run reproduces the landed s5 intake, both transfers and'
+	+ ' the held census; 3 -> 2 is class preservation, not an exact-event or id correspondence.');

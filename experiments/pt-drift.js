@@ -20,6 +20,7 @@
 // not sampling. This is a report: it calibrates whatever §4.2's kinematics upgrade becomes.
 //
 // Run: node experiments/pt-drift.js [spinMyr=400]
+//      node experiments/pt-drift.js 600 --shipped [--unbound] [--seed N] [--out file.json]
 'use strict';
 
 var path = require('path');
@@ -29,7 +30,14 @@ var P = require(B + 'params.js'), S = require(B + 'state.js');
 var SIM = require(B + 'sim.js'), G = require(B + 'grid.js');
 
 var spin = +(process.argv[2] || 400);
-var MIN_PLATE = 64;                  // the HUD's own threshold for calling a cluster a plate
+var SHIPPED = process.argv.indexOf('--shipped') >= 0;
+function option(name) {
+	var i = process.argv.indexOf(name);
+	return i < 0 ? null : process.argv[i + 1];
+}
+var samples = [];
+if (process.argv.includes('--unbound') && !SHIPPED) throw new Error('--unbound needs --shipped');
+var MIN_PLATE = P.plateMin;                  // the HUD's own threshold for calling a cluster a plate
 
 // the shipped draw, pinned
 P.ic = 'cool'; P.icMode = 4; P.icAmp = 0.02; P.icBand = 0.6; P.icBandMax = 12; P.seed = 1;
@@ -38,14 +46,15 @@ P.solid = true; P.sl.kyr = 50;
 // calibrated: sediment welds into the lids and shifts the drift statistics (P4.4's first full
 // run caught this harness red at 2.6x where its own planet reads above 3x). Off, the same way
 // the P4 owners isolate the passes that postdate them; the integrated planet is pt-p4-check's.
-P.ero = false;
+if (!SHIPPED) P.ero = false;
 // 0.3.2 M8's deposit field bound is a later pass too, and it shifts the same statistics: measured
 // on this fixture, the bound's conservative placement hands the deposit tail's withheld heat to
 // the coldest neighbour, and by 400 Myr the last plate is held at 0.01 cm/yr against the unbound
 // 4.24 (the gate reads peak 2.00 against 4.71). Off here for the same reason erosion is off --
 // this fixture measures P2.2's kinematics, and the integrated planet is pt-p4-check's
 // (archive/0.3.2-M8-landing-report.md section 4).
-P.depBound = 0;
+if (!SHIPPED || process.argv.includes('--unbound')) P.depBound = 0;
+if (option('--seed')) P.seed = +option('--seed');
 SIM.init(); SIM.reset(); SIM.dt = 0.05;
 var M = SIM.M;
 
@@ -53,6 +62,7 @@ var M = SIM.M;
 var CAP = S.x.length;
 var eSave = new Float64Array(CAP), ySave = new Float64Array(CAP);
 var base = new Float64Array(M.n);
+var vxSave = new Float64Array(CAP), vySave = new Float64Array(CAP);
 var mass = new Float64Array(CAP), gx = new Float64Array(CAP), gy = new Float64Array(CAP);
 var gs = new Float64Array(CAP);
 var cnt = new Int32Array(CAP), yLo = new Float64Array(CAP), yHi = new Float64Array(CAP);
@@ -109,6 +119,8 @@ function probeAt(eLevel, out) {
 
 function analyse(t) {
 	var c, n = S.n, span = [], count = [];
+	if (SHIPPED) { vxSave.set(S.vx); vySave.set(S.vy); }
+	var before = SHIPPED ? S.hash() : 0;
 	var rigid = [], own = [], under = [], v150 = [], v300 = [], v300s = [];
 	// 1. the plate's own motion, straight from the state: after a frame every plate marker
 	// carries the velocity the rigid fit gave it. The depth span and member count are read
@@ -150,7 +162,14 @@ function analyse(t) {
 	for (c = 0; c < S.csN; c++) {
 		if (count[c] < MIN_PLATE) continue;
 		rows.push({ t: t, c: c, n: count[c], plate: rigid[c], own: own[c], base: under[c],
-			v150: v150[c], v300: v300[c], v300s: v300s[c], y0: span[c][0], y1: span[c][1] });
+			v150: v150[c], v300: v300[c], v300s: v300s[c], mass: mass[c], y0: span[c][0], y1: span[c][1] });
+	}
+	if (SHIPPED) {
+		S.vx.set(vxSave); S.vy.set(vySave);
+		if (S.hash() !== before) throw new Error('drift observation changed state');
+		samples.push({ t: t, frame: SIM.frame, fingerprint: before,
+			nSolid: S.nSolid, clusters: S.csN, boundCaps: S.bdCap,
+			depMelt: S.thr.depMelt, rows: rows.filter(function (r) { return r.t === t; }) });
 	}
 }
 
@@ -158,7 +177,7 @@ console.log('  drift diagnostic: the shipped run, ' + P.mesh.nx + 'x' + P.mesh.n
 	+ ' km, ' + P.sl.kyr + ' kyr/f, ' + spin + ' Myr\n');
 console.log('   t/Myr  plate  markers   plate depth    |vPlate|   |vOwn|   |vBase|   |v150|   |v300|');
 
-var next = 0, marks = [100, 200, 300, 400];
+var next = 0, marks = SHIPPED ? [100, 200, 300, 400, 500, 600] : [100, 200, 300, 400];
 while (SIM.t < spin && next < marks.length) {
 	SIM.step();
 	if (SIM.t >= marks[next]) { analyse(SIM.t); next++; }
@@ -198,12 +217,14 @@ var mPlate = mean(function (r) { return r.plate; });
 var mOwn = mean(function (r) { return r.own; });
 var maxPlate = rows.reduce(function (m, r) { return r.plate > m ? r.plate : m; }, 0);
 var lid100 = (byT[100] && byT[100][0]) ? byT[100][0].plate : 0;
-check.ok('an unbroken planet-wrapping lid is not pulled sideways', lid100 < 0.1,
-	't 100 Myr drift ' + lid100.toFixed(2) + ' cm/yr');
-check.ok('slab pull drives mean plate drift above the cancelled net flow', mPlate > 3 * mOwn,
-	'plate ' + mPlate.toFixed(2) + ' vs own ' + mOwn.toFixed(2) + ' cm/yr (' + (mPlate / mOwn).toFixed(1) + 'x)');
-check.ok('slab-bearing plates reach the 3-10 cm/yr demonstration scale', maxPlate >= 3 && maxPlate <= 10,
-	'peak ' + maxPlate.toFixed(2) + ' cm/yr');
+if (!SHIPPED) {
+	check.ok('an unbroken planet-wrapping lid is not pulled sideways', lid100 < 0.1,
+		't 100 Myr drift ' + lid100.toFixed(2) + ' cm/yr');
+	check.ok('slab pull drives mean plate drift above the cancelled net flow', mPlate > 3 * mOwn,
+		'plate ' + mPlate.toFixed(2) + ' vs own ' + mOwn.toFixed(2) + ' cm/yr (' + (mPlate / mOwn).toFixed(1) + 'x)');
+	check.ok('slab-bearing plates reach the 3-10 cm/yr demonstration scale', maxPlate >= 3 && maxPlate <= 10,
+		'peak ' + maxPlate.toFixed(2) + ' cm/yr');
+}
 check.info('mean plate drift over all samples', mPlate.toFixed(2) + ' cm/yr');
 check.info('mean own-marker flow', mOwn.toFixed(2) + ' cm/yr');
 check.info('mean base flow under the plates', mean(function (r) { return r.base; }).toFixed(2) + ' cm/yr');
@@ -211,4 +232,8 @@ check.info('mean flow at 150 km under the plates', mean(function (r) { return r.
 check.info('mean flow at 300 km under the plates', mean(function (r) { return r.v300; }).toFixed(2) + ' cm/yr');
 check.info('mean speed (not net) at 300 km', mean(function (r) { return r.v300s; }).toFixed(2) + ' cm/yr');
 check.info('ratio net-300km/plate', (mean(function (r) { return r.v300; }) / mean(function (r) { return r.plate; })).toFixed(2) + 'x');
+if (SHIPPED && option('--out')) {
+	require('fs').writeFileSync(option('--out'), JSON.stringify({ seed: P.seed, kyr: P.sl.kyr,
+		myr: spin, erosion: P.ero, depBound: P.depBound, fingerprint: S.hash(), samples: samples }, null, '\t') + '\n');
+}
 check.done();

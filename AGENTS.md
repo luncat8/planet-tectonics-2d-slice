@@ -91,6 +91,10 @@ gain (`cw = mu_k / W_k` over its stencil) and its mass share of that stencil, be
 readings for the populations they were drawn from and for the deposits the field term holds back;
 it runs one live leg or a cell matrix -- `--cells seed:kyr:myr,...`, each cell a seed with its own
 clock and duration, the first repeated for a fingerprint check -- and changes no routing itself),
+experiments/pt-drift.js (P2.2 isolated drift by default; `600 --shipped` measures all-pass
+late drift with optional `--unbound`, `--seed N`, `--out file.json`; the shipped mode restores
+probe velocities and asserts observation neutrality; experiments/pt-drift-check.js validates
+the M10 seed-1 pair against the heat worlds and its report, not a universal drift gate),
 experiments/pt-heat-tail.js (0.3.2's experiment-only gather cap/share attenuation, deposit
 relaxation, conservative local minimum-mass, node-wise and stencil-scale bounded conservative
 redistribution (spread, stencil), the field-relative two-sided bound (frb, `--share s0` scales

@@ -82,8 +82,22 @@ against 4.71 unbound) and leaves 1 hard contact pair on 1 of 6000 frames (agains
 owners set `P.depBound = 0` as they do for later passes; the integrated legs keep it on. The
 integrated 300 Myr leg itself leaves 2 guard pairs at 0.9969 of the radius on 1 of 6000 frames
 (base 0; the base 600 Myr world leaves 280, the M8 world 156), so that line asserts the measured
-solver shortfall rather than zero and the guard's cap stays frozen at 3. Next: 0.3.1's intake re-measurement on the
-M7 cells, with the repair side-effect and the two non-deposit faces still open.
+solver shortfall rather than zero and the guard's cap stays frozen at 3. **M9
+(`archive/0.3.2-M9-intake-report.md`, `-worklog.md`) re-measures 0.3.1's 600 Myr seed-5
+intake with the landed remedy:** 37/37, fingerprint 1808048552219233, two transfers /
+1.283817 km² against the control's three / 9.730158. The exact three do not survive; the
+field-supported class does, by M5/M7's correspondence argument in the bitwise-landed worlds.
+Held mass-time falls 98.08× (68,140 to 695 km²·Myr), worst held gap 1.3277 to 0.25035;
+the field filter still binds. No gate or constant moves. **M10
+(`archive/0.3.2-M10-shipped-drift-report.md`, `-worklog.md`) measures the shipped late
+drift on seed 1 against a matched bound-off control through 600 Myr.** Both reproduce
+their M8/M6 heat-bank worlds exactly. With all passes on, the bound world has one
+qualifying plate at each 400/500/600 Myr snapshot, drifting 1.80/5.08/2.99 cm/yr:
+the isolated fixture's late slowdown does not carry to these samples. The unbound
+world itself has a slow plate at 500 Myr; this is not a universal drift or continuous
+residence claim. Next: drive/contact attribution on that slow plate, then a late-drift
+distribution before any general horizon promise. The repair side-effect, two
+non-deposit faces and guard residue remain open.
 
 0.2.0 status: **closed.** M0 (the headless toy box), M1 (vent lifecycle / second clock),
 M2 (stack write-back / visible edifice), M3 (bed-anchored deposits / finite extraction),
