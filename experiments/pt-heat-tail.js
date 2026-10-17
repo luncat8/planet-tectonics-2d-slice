@@ -572,11 +572,18 @@ G.reseed = function (M, S, force) {
 	}
 };
 // the held census split by relocation age: cumulative windows of frames since the repair last
-// moved the sample's material, plus the ever/never totals that partition the census exactly
+// moved the sample's material, plus the ever/never totals that partition the census.
+// 0.3.2 M12 note: in `hjAdd`, `age >= 0` and `age <= JOIN_WIN[i]` coerce `age === null`
+// (never-relocated parcels) to `+0` in JS, folding `never` into `ever` and into `win[0..4]`.
+// `heldJoin` is kept untouched so the M6/M7/M8 bank checks continue to compare against the
+// saved banks; `heldJoinTrue` (`age !== null && age >= 0`) records the null-separated partition.
 var JOIN_WIN = [1, 3, 10, 30, 100], JOIN_N = JOIN_WIN.length;
 var hjMass = new Float64Array(JOIN_N), hjN = new Int32Array(JOIN_N);
 var hjGap = new Float64Array(JOIN_N).fill(-Infinity);
 var hjEver = { mass: 0, n: 0, gap: -Infinity }, hjNever = { mass: 0, n: 0, gap: -Infinity };
+var hjtMass = new Float64Array(JOIN_N), hjtN = new Int32Array(JOIN_N);
+var hjtGap = new Float64Array(JOIN_N).fill(-Infinity);
+var hjtEver = { mass: 0, n: 0, gap: -Infinity }, hjtNever = { mass: 0, n: 0, gap: -Infinity };
 function hjAdd(age, mass, gap) {
 	var t = age >= 0 ? hjEver : hjNever, i;
 	t.mass += mass; t.n++;
@@ -585,6 +592,17 @@ function hjAdd(age, mass, gap) {
 		if (age >= 0 && age <= JOIN_WIN[i]) {
 			hjMass[i] += mass; hjN[i]++;
 			if (gap > hjGap[i]) hjGap[i] = gap;
+		}
+	}
+	var tt = (age !== null && age >= 0) ? hjtEver : hjtNever;
+	tt.mass += mass; tt.n++;
+	if (gap > tt.gap) tt.gap = gap;
+	if (age !== null && age >= 0) {
+		for (i = 0; i < JOIN_N; i++) {
+			if (age <= JOIN_WIN[i]) {
+				hjtMass[i] += mass; hjtN[i]++;
+				if (gap > hjtGap[i]) hjtGap[i] = gap;
+			}
 		}
 	}
 }
@@ -758,6 +776,11 @@ var result = { kind: kind, value: value, scope: kind === 'relaxw' || kind === 's
 		gap: Array.prototype.slice.call(hjGap),
 		ever: { mass: hjEver.mass, n: hjEver.n, gap: hjEver.gap },
 		never: { mass: hjNever.mass, n: hjNever.n, gap: hjNever.gap } },
+	heldJoinTrue: { win: JOIN_WIN.slice(),
+		mass: Array.prototype.slice.call(hjtMass), n: Array.prototype.slice.call(hjtN),
+		gap: Array.prototype.slice.call(hjtGap),
+		ever: { mass: hjtEver.mass, n: hjtEver.n, gap: hjtEver.gap },
+		never: { mass: hjtNever.mass, n: hjtNever.n, gap: hjtNever.gap } },
 	spreadCapped: spSt.capped, spreadGiven: spSt.given, spreadGiveback: spSt.giveback,
 	spreadShortN: spSt.shortN, spreadShortH: spSt.shortH,
 	// the landed bound's own counters (0.3.2 M8): the kernel's, present on every kind, beside

@@ -1,0 +1,5 @@
+PASS  M12 §1 bitwise fingerprint and M6/M8 bank parity across all 8 600-Myr worlds
+PASS  M12 §2 repair-adjacent heldJoin null-coercion reconciliation & G.reseed census
+PASS  M12 §3 mantle-cold and mobile-melt-hot faces census & physical attribution
+PASS  M12 §4 contact guard finite-sweep residue census & sandwich/sweep-to-clear attribution
+ALL PASS (960 assertions, 0 failed)

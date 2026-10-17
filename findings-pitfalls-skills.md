@@ -1404,3 +1404,35 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   faster than unbound on seed 3 (1.125 vs 0.808 cm/yr) and equivalent on seeds 1, 5, 7. Tuning
   `depBound` from a single-seed snapshot would have corrupted a verified heat remedy to solve a
   non-existent drift defect.
+
+## 0.3.2 M12 — repair-adjacent minority (`null >= 0` coercion), non-deposit thermal faces, and contact guard residue (`archive/0.3.2-M12-faces-repair-guard-worklog.md`)
+
+- **Never test nullable sentinel ages with bare `<` / `<=` / `>=` in JS (`null >= 0` is `true`).**
+  In `experiments/pt-heat-tail.js`, `movedAge(S, p)` returned `null` for parcels never relocated by
+  `G.reseed`, and `hjAdd` tested `age >= 0` and `age <= JOIN_WIN[i]`. Because JavaScript relational
+  operators coerce `null` to `+0`, every M6/M7/M8 bank recorded `heldJoin.never.n = 0` and folded all
+  never-relocated held deposit mass-time into `heldJoin.ever` and `win[0..4]` ($\le 1\text{f}$). On
+  `dep-s1`, a single never-relocated deposit (`id = 25109`, `movedAgo: null` in the M7 trace bank)
+  accounted for $2,927.79$ of the $2,930.05\text{ km}^2\cdot\text{Myr}$ reported as "within 1 frame of
+  a move", inflating a true $0.0117\%$ ($2.26\text{ km}^2\cdot\text{Myr}$) 1-frame share to $15.19\%$;
+  on `base-s5`, $22,592.10$ of $22,713.57\text{ km}^2\cdot\text{Myr}$ was never-relocated, inflating a
+  true $0.1783\%$ share to $33.33\%$. Always guard nullable ages with `age !== null && age >= 0`.
+- **Match the kernel's exact B-spline stencil when attributing FLIP gather gain and mass share.**
+  `G.gatherDT(M, S, inc, Tg, flip)` (`js/pt/grid.js`) uses the 3$\times$3 quadratic B-spline stencil
+  `spl(u, c0, w)` over `M.cw` and `M.w` (with vertical coordinate $\eta = \log((y + y_0)/y_0)$ and step
+  `M.dEta`), not a 2$\times$2 bilinear stencil over `S.W`. An attribution harness that computes stencil
+  share or placement giveback on `S.W` will misattribute both the parcel's mass share and the exact
+  `depBound` 3$\times$3 placement increments.
+- **Attribute non-deposit thermal extremes and guard residues by provenance and topology before touching frozen kernels.**
+  Across the 8-world 600 Myr distribution:
+  - `mantle-cold` ($T < -0.5$) is $100\%$ confined to $0$–$50\text{ km}$ depth and $m \le 200\text{ km}^2$
+    ($80.1\%$ of bound samples sitting at the `P.eroMinM = 50` $\text{km}^2$ weathering floor after
+    `ERODE.run`, $11.1\%$ reduced below $50\text{ km}^2$ by P3.2 `POOL.separate` melt splits), cooled by
+    raw surface conduction (`negRawDi < 0`) while `depBound` placement is non-negative (`negBdGiven >= 0`).
+  - Shipped `mobile-melt-hot` ($T > 1.5$, $\max T \le 1.5955$) is $100\%$ never-relocated deep
+    `mantle-split` melt parcels ($m = 12$–$43\text{ km}^2$, stencil share $< 0.024$) warmed by raw
+    conduction ($\Delta T = \Delta H$ at $\xi = 1$) during buoyant ascent to `P.yCham = 37.5 km`, while
+    `depBound = 0.25` already eliminates `base-s3`'s deposit-born `dep-whole` excursion ($38 \to 0$).
+  - `CONTACT.guard` residue after `P.ctSweep = 3` is $100\%$ (`381/381` bound pairs, `641/641` unbound
+    pairs) multi-pair sandwiched markers (`deg >= 2`), holding $\ge 97.58\%$ of `contactHard` across all
+    48,000 shipped frames and clearing $100\%$ in finite scratch sweeps ($4..40$).

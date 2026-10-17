@@ -104,8 +104,32 @@ subduction override hold brake (+3.49 cm/yr dv) at two subduction boundaries. Th
 census across 8 worlds (all reproducing M6/M8 heat bank fingerprints) shows late drift is
 comparable between bound (1.11 cm/yr) and unbound (1.14 cm/yr); slow episodes make up
 35–60% of late plate-time, with subduction override braking accounting for 30–77% of all
-slow late plates. No constant is tuned. The repair-adjacent heat minority, mantle-cold/mobile-melt-hot
-faces, and contact guard residue remain open.
+slow late plates. No constant is tuned. **M12
+(`archive/0.3.2-M12-faces-repair-guard-report.md`, `-worklog.md`, `experiments/pt-faces-guard-census.js`,
+`experiments/pt-faces-guard-check.js`) instruments and attributes the remaining three open
+0.3.2 items across all 8 600-Myr distribution worlds (`seeds 1, 3, 5, 7` $\times$ `{bound, unbound}`),
+reproducing all 8 M6/M8 fingerprints bitwise.** (1) The M6 `0.1–33%` "within 1 frame of a
+relocation" share was a JavaScript `null >= 0` coercion artifact in `pt-heat-tail.js`'s
+`hjAdd`: `movedAge` returns `null` for never-relocated parcels, so `age >= 0` and
+`age <= JOIN_WIN[i]` coerced `null` to `+0` and folded all never-relocated held mass-time
+into `ever` and `<= 1f` (`2,927.79` of `2,930.05` km²·Myr on `dep-s1`, `22,592.10` of
+`22,713.57` km²·Myr on `base-s5`). True $\le 1$-frame repair adjacency is `0.012%–1.13%`
+(`1.67–121.47` km²·Myr), true $\le 100$-frame adjacency is `1.16%–8.25%`, and `P.depBound = 0.25`
+clamps 100% of post-reseed deposit gaps $> 0.25$ on the same frame. (2) `mantle-cold`
+($T < -0.5$) is 100% confined to `0–50 km` depth and $m \le 200\text{ km}^2$ ($3–5$ carrier
+IDs per world; $80.1\%$ of bound samples at the `P.eroMinM = 50` km² weathering floor and
+$11.1\%$ at $m < 50$ km² after `POOL.separate` melt splits), driven by raw conductive cooling
+(`negRawDi < 0`, `negBdGiven >= 0`) and already reduced $56.0\%$ by `depBound = 0.25`
+($\min T$ lifted from $-3.7470$ to $-0.5678$ on `s1`). Shipped `mobile-melt-hot` ($T > 1.5$,
+$\max T \le 1.5955$) is 100% never-relocated deep `mantle-split` melt children
+($y_0 = 1,064–2,513$ km, $m = 12.16–42.98$ km², stencil share $< 0.024$) warmed by raw
+conduction (`cumRawDi = +0.38..+0.43`, $\Delta T = \Delta H$) during buoyant ascent to
+`yCham = 37.5` km, while `depBound = 0.25` eliminates `base-s3`'s deposit-born `dep-whole`
+excursion ($38 \to 0$ samples). (3) 100% of `CONTACT.guard` surviving pairs after
+`P.ctSweep = 3` (`381/381` bound across $366$ frames, `641/641` unbound across $617$ frames)
+are multi-pair sandwiched markers (`deg >= 2`, with $20.2\%$ compounded by `G.keepInside`
+surface reflection), holding $\ge 97.58\%$ of `contactHard` across all 48,000 shipped frames
+and clearing 100% in finite scratch sweeps ($4..40$). No constant is tuned and no gate is moved.
 
 0.2.0 status: **closed.** M0 (the headless toy box), M1 (vent lifecycle / second clock),
 M2 (stack write-back / visible edifice), M3 (bed-anchored deposits / finite extraction),
