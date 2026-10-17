@@ -23,6 +23,21 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | 0.4.2 | the `pgt-slice-pack` v2 cutover: Phase A landed (staleness ledger, one decode entry, bake retirement); **Phase B-a landed 2026-10-15** (one coordinated port bump — v2 codec + fixture byte-identical with the `61f77aa` handoff, every reader on `SP.decode`, writers on make → seal → encode, the three v1 bundles retired, deposit catalogues relocated to `js/data/`; return package `archive/0.4.2-phase-b-report.md`); **Phase B-b landed 2026-10-15** (the three Earth bundles restored one at a time through the globe's v2 bake CLI at its `9270039`, `source.commit 0b10d685…`, identities `e0147ee8ff63d4d1`/`63825f6abdfde871`, `e0147ee8ff63d4d1`/`a9a17ca6721a9597`, `77ac9f529df0fc55`/`965109ddb61c5870`; `archive/0.4.2-phase-b-b-report.md`, audited byte-for-byte by the globe at its `3c960e7` and answered in `archive/0.4.2-counterpart-audit-response.md`); **Phase C held, not started** — the globe's 0.8 line is complete as shipped (its 0.8.3 §5 completes as planning, so Phase C was never waiting on globe implementation), the block is this side's C-live gate 4 (automatic section plate-topology rebuild after incoming crossings) plus a scheduling decision taken negatively on 2026-10-16: no `port/core-log-format.js`, no observation side table, no C0–C4 work, no manifest touch | `0.4.2-plan.md` | globe 0.8.0–0.8.2 handoff (`port/` v2 codec + fixture); globe 0.8.3 gate list for Phase C |
 | 0.9.0 | globe page hosts the section as a library; live sync is C3+C4 | `0.9.0-draft-sync.md`, `0.4.1-plan.md` §8 | 0.4.1 M1–M2; C1 on the column engine |
 
+**Particle-page browser check:** the previously outstanding real-browser smoke has now passed
+for both `index.html` and `particles.html` through `file://` in headless Chromium; button, key,
+clock, step, reset and new-planet interactions passed with no browser errors. This does not claim
+a cross-browser or frame-rate acceptance pass. Evidence: `archive/particle-page-browser-smoke-2026-10-17.md`.
+
+**0.1.9 deferred background measurement:** correspondence diagnosis found both ghost-blocked
+predecessors and false pairings across a misaligned circular seam. `experiments/contact-audit.js`
+now aligns the cyclic walks, enforces the same distance bound on both candidate sides and claims
+old records one-to-one. The corrected 32-world matrix has zero unmatched observations; retained
+quiet thickness changes are 3.0–14.5 km at 50 kyr/frame (median 9.6) and 7.4–16.1 km at 100 kyr/frame
+(median 14.7). The 10% width-change exclusion still censors 2,883 observations, so no threshold
+is selected; establish identity through re-partition before measuring those as quiet changes.
+Evidence: `archive/0.1.9-quiet-distribution-report.md`, the matrix logs, and
+`experiments/quiet-distribution-table.js`. 0.4.2 Phase C remains held.
+
 0.3.2 status: M0 (four bounded/relaxing probes, none selected) and M1 (latent localization, the
 bounded redistribution) are measurement; **M2 landed the launch/air latent remedy** in the kernel
 (`js/pt/flight.js`, `js/pt/phase.js`) and re-banked the cell; M3 measured melt depletion and the

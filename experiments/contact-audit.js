@@ -35,6 +35,7 @@
 // Run: node experiments/contact-audit.js [frames=3000] [seed=1] [kyrPerFrame=50] [png] [--strict] [--tectonic-only]
 // --tectonic-only pauses K7's eruptive clock for the 0.2.0 §0 surface-budget contract;
 // the default remains a combined-clock stress run, with the same unchanged gates.
+// --quiet-trace reads the unmatched quiet records and width changes omitted by the 10% matcher.
 'use strict';
 var L = require('./lib.js');
 var P = L.mods.params, S = L.mods.state, GEO = L.mods.geom, SIM = L.mods.sim, COL = L.mods.columns, CRU = L.mods.crust;
@@ -51,6 +52,7 @@ var tectonicOnly = flags.indexOf('--tectonic-only') >= 0;
 // stage chain that takes a column over the R3 ceiling, and both ends of each R5 repeat
 // with the distance and time between them. Report only; the gate arithmetic is unchanged.
 var detail = flags.indexOf('--detail') >= 0;
+var quietTrace = flags.indexOf('--quiet-trace') >= 0;
 var NS = 2048, step = P.wrap / NS;
 
 // 0.2.0 M5 contact-tuning sweep hook, the way orogen-measure.js's KFIX freezes its
@@ -215,6 +217,13 @@ var r2Scratch = { flank: 0, peak: 0, shoulder: 0, outerRatio: 0, needleRatio: 0,
 // window is read off these positions, never off the bucket's left edge (0.1.9-plan.md §2).
 var SITE_X = [], SITE_B = [], SITE_D = [], SITE_A = [];
 var bSites = new Set(), dSites = new Set(), halfW = 0.4 * P.w0, unmatched = 0, rematched = 0, consumed = [];
+var QT = quietTrace ? {
+	wideN: 0, wideMax: 0, wideFrame: -1, wideIndex: -1, wideH: 0,
+	wideOldX: 0, wideNewX: 0, wideOldW: 0, wideNewW: 0, wideOldH: 0, wideNewH: 0,
+	dhMax: 0, dhFrame: -1, dhIndex: -1, dhWidth: 0,
+	dhOldX: 0, dhNewX: 0, dhOldW: 0, dhNewW: 0, dhOldH: 0, dhNewH: 0,
+	misses: 0
+} : null;
 // detail state (--detail)
 var D_NEEDLE = { n: 0, ghost: 0, worst: 0, worstRow: null, rawN: 0, rawGhost: 0, rawWorst: 0 }, D_WIDTH = { n: 0, narrow: 0, hole: 0, ghostWin: 0 };
 var D_WIDTH_SITES = {}, D_WIDTH_FIRST = {}, D_WIDTH_LAST = {};
@@ -365,15 +374,20 @@ for (f = 0; f < frames; f++) {
 		for (i = 0; i < S.nCol; i++) {
 			if (S.colGhost[i] || S.colW[i] < halfW) continue;
 			var best = MATCH[i];
-			if (best < 0) { unmatched++; continue; }
-			// width first, thickness second: a record that wins or loses territory shows
-			// up here before it shows up in the drawn picture. A pair that is not the
-			// same width is not the same record -- a suture welds two of them into one
-			// and the test would report the whole of one as the other's change -- so
-			// those are counted and not measured.
+			if (best < 0) {
+				unmatched++;
+				if (QT) traceQuietMiss(i, f, preN);
+				continue;
+			}
+			// Width changes above 10% are excluded from both quiet maxima because
+			// this position matcher cannot certify that a re-partition kept identity.
 			if (preW[best] > 0) {
 				d = Math.abs(S.colW[i] - preW[best]) / preW[best];
-				if (d > 0.1) { rematched++; continue; }
+				if (d > 0.1) {
+					rematched++;
+					if (QT) traceQuietRepartition(i, best, f, d, Math.abs(S.hTot[i] - preTh[best]));
+					continue;
+				}
 				if (d > maxDw) { maxDw = d; maxDwFrame = f; }
 				if (d > quietDw) quietDw = d;
 			}
@@ -498,6 +512,7 @@ console.log('  topology       ' + births + ' births / ' + deaths + ' deaths (' +
 	'sites (' + S.nCol + ' columns, ' + S.nPl + ' plates)');
 console.log('  stacks         ' + inversions + ' column-frames with an inverted bed, ' +
 	atCap + ' column-frames at layerCap');
+if (QT) quietTraceSummary();
 if (png) writePng(png);
 if (detail) detailReport();
 if (strict) gate();
@@ -511,17 +526,18 @@ if (strict) gate();
 // Two properties make the answer trustworthy. The window is 0.4 of a column, not half
 // of one: records are a column wide, so half a column can reach a record's neighbour
 // and hand it the neighbour's history. And both sides are only sorted around the
-// circle -- a plate that crosses the antimeridian is renumbered, so the records run
-// off the end of the array and start again at the front -- so the walk starts after
-// the descent in each array. Walking from index 0 instead matched a column at 4700 km
-// to one at 24600 km, which is where 53 km of one-frame thickness change came from.
+// circle -- a plate that crosses the antimeridian is renumbered, so each array runs
+// off its end and starts again at the front. Start the current walk after its descent,
+// align the old walk to that x, and allow one complete old-record lap; the two descent
+// indices are not themselves the same geographic seam. Starting both at index 0
+// matched a column at 4700 km to one at 24600 km, creating a false 53 km thickness change.
 //
 // Draining records are left out of it. A draining record stands a few km from the
 // margin whose ground it is drawing, so the two claim each other's counterpart and
 // both come away unmatched; the margin is a real record and is matched to the record
 // that was there, which is the only history the drawn-thickness test may use.
 function match(thenX, thenG, thenNew, thenW, thenN) {
-	var half = 0.4 * P.w0, k, i, b, x, d, e, a, cs = 0, ps = 0;
+	var half = 0.4 * P.w0, k, q, i, b, bStart = 0, bLimit, d, e, a, prev, startX, forward, cs = 0, ps = 0;
 	for (k = 1; k < S.nCol; k++) if (S.colX[k] < S.colX[k - 1]) { cs = k; break; }
 	for (k = 1; k < thenN; k++) if (thenX[k] < thenX[k - 1]) { ps = k; break; }
 	MATCH.fill(-1, 0, S.nCol);
@@ -551,28 +567,45 @@ function match(thenX, thenG, thenNew, thenW, thenN) {
 		}
 		if (gj >= 0 && gw < 0.1) { PRE[gj] = -2; consumed.push(gj); }
 	}
-	b = 0;
+	startX = S.colX[cs];
+	forward = Infinity;
+	for (k = 0; k < thenN; k++) {
+		q = (ps + k) % thenN;
+		d = thenX[q] - startX;
+		if (d < 0) d += P.wrap;
+		if (d < forward) { forward = d; bStart = k; }
+	}
+	b = bStart;
+	bLimit = bStart + thenN;
 	for (k = 0; k < S.nCol; k++) {
 		i = (cs + k) % S.nCol;
 		if (S.colGhost[i]) continue;
-		x = S.colX[i];
-		while (b < thenN) {                      // catch up over the seam, then walk on
-			d = thenX[(ps + b) % thenN] - x;
+		while (b < bLimit) {
+			q = (ps + b) % thenN;
+			d = thenX[q] - S.colX[i];
 			if (d > P.wrap * 0.5) d -= P.wrap; else if (d < -P.wrap * 0.5) d += P.wrap;
-			if (d < -half) b++; else if (d > half) b++; else break;
+			// A ghost, sliver or consumed record inside the position window cannot be
+			// the continuation; skip it or it blocks the real record beside it.
+			if (d < 0 || thenG[q] || PRE[q] !== -1 || thenW[q] < halfW) b++;
+			else break;
 		}
+		if (QT) { NEAR[i] = b; NEAR2[i] = ps; }
 		a = -1; e = Infinity;
-		if (b < thenN && !thenG[(ps + b) % thenN] && PRE[(ps + b) % thenN] !== -2 && thenW[(ps + b) % thenN] >= halfW) {
-			d = thenX[(ps + b) % thenN] - x;
+		if (b < bLimit) {
+			q = (ps + b) % thenN;
+			d = thenX[q] - S.colX[i];
 			if (d > P.wrap * 0.5) d -= P.wrap; else if (d < -P.wrap * 0.5) d += P.wrap;
 			if (d < 0) d = -d;
-			if (d <= half) { e = d; a = (ps + b) % thenN; }
+			if (d <= half) { e = d; a = q; }
 		}
-		if (b > 0 && !thenG[(ps + b - 1) % thenN] && PRE[(ps + b - 1) % thenN] !== -2 && thenW[(ps + b - 1) % thenN] >= halfW) {
-			d = x - thenX[(ps + b - 1) % thenN];
+		for (prev = b - 1; prev >= bStart - thenN; prev--) {
+			q = (ps + prev + thenN) % thenN;
+			if (thenG[q] || PRE[q] !== -1 || thenW[q] < halfW) continue;
+			d = S.colX[i] - thenX[q];
 			if (d > P.wrap * 0.5) d -= P.wrap; else if (d < -P.wrap * 0.5) d += P.wrap;
 			if (d < 0) d = -d;
-			if (d < e) { e = d; a = (ps + b - 1) % thenN; }
+			if (d <= half && d < e) { e = d; a = q; }
+			break;
 		}
 		MATCH[i] = a;
 		if (a >= 0) PRE[a] = i;
@@ -837,6 +870,73 @@ function fmtKm(v) { return (v / 1e3).toFixed(1) + ' km'; }
 function fmtM(v) { return v.toFixed(0) + ' m'; }
 function pct(v) { return (v * 100).toFixed(1) + '%'; }
 function per1000(v) { return (v / frames * 1000).toFixed(2); }
+
+function wrapDelta(a, b) {
+	var d = a - b;
+	if (d > P.wrap * 0.5) d -= P.wrap;
+	else if (d < -P.wrap * 0.5) d += P.wrap;
+	return d;
+}
+
+function traceQuietMiss(i, frame, thenN) {
+	var k, dx, dist, near = -1, free = -1, nearD = Infinity, freeD = Infinity;
+	QT.misses++;
+	if (QT.misses > 32) return;
+	for (k = 0; k < thenN; k++) {
+		if (preG[k] || preW[k] < halfW) continue;
+		dx = wrapDelta(S.colX[i], preX[k]);
+		dist = Math.abs(dx);
+		if (dist < nearD) { nearD = dist; near = k; }
+		if (PRE[k] === -1 && dist < freeD) { freeD = dist; free = k; }
+	}
+	console.log('  quiet-trace unmatched frame ' + frame + ' t ' + (frame * kyr / 1e3).toFixed(2) +
+		' Myr: current ' + i + ' x ' + fmtKm(S.colX[i]) + ' w ' + fmtKm(S.colW[i]) +
+		' h ' + fmtKm(S.hTot[i]) + ' u ' + (S.colU[i] / 1e3).toFixed(2) + ' mm/yr');
+	if (near >= 0) console.log('    nearest old ' + near + ' x ' + fmtKm(preX[near]) +
+		' dx ' + (wrapDelta(S.colX[i], preX[near]) / 1e3).toFixed(2) + ' km, w ' +
+		fmtKm(preW[near]) + ' h ' + fmtKm(preTh[near]) + ' claim ' + PRE[near]);
+	var c0 = (NEAR2[i] + NEAR[i]) % thenN;
+	var c1 = (NEAR2[i] + NEAR[i] - 1 + thenN) % thenN;
+	console.log('    merge candidates ' + c0 + ' / ' + c1 + ' (old seam ' + NEAR2[i] +
+		', offset ' + NEAR[i] + ')');
+	console.log('      c0 dx ' + (wrapDelta(S.colX[i], preX[c0]) / 1e3).toFixed(2) +
+		' km ghost ' + preG[c0] + ' width ' + fmtKm(preW[c0]) + ' claim ' + PRE[c0]);
+	console.log('      c1 dx ' + (wrapDelta(S.colX[i], preX[c1]) / 1e3).toFixed(2) +
+		' km ghost ' + preG[c1] + ' width ' + fmtKm(preW[c1]) + ' claim ' + PRE[c1]);
+	if (free >= 0 && free !== near) console.log('    nearest unclaimed old ' + free + ' x ' +
+		fmtKm(preX[free]) + ' distance ' + fmtKm(freeD) + ' w ' + fmtKm(preW[free]) +
+		' h ' + fmtKm(preTh[free]));
+}
+
+function traceQuietRepartition(i, best, frame, dw, dh) {
+	QT.wideN++;
+	if (dw > QT.wideMax) {
+		QT.wideMax = dw; QT.wideFrame = frame; QT.wideIndex = i; QT.wideH = dh;
+		QT.wideOldX = preX[best]; QT.wideNewX = S.colX[i];
+		QT.wideOldW = preW[best]; QT.wideNewW = S.colW[i];
+		QT.wideOldH = preTh[best]; QT.wideNewH = S.hTot[i];
+	}
+	if (dh > QT.dhMax) {
+		QT.dhMax = dh; QT.dhFrame = frame; QT.dhIndex = i; QT.dhWidth = dw;
+		QT.dhOldX = preX[best]; QT.dhNewX = S.colX[i];
+		QT.dhOldW = preW[best]; QT.dhNewW = S.colW[i];
+		QT.dhOldH = preTh[best]; QT.dhNewH = S.hTot[i];
+	}
+}
+
+function quietTraceSummary() {
+	console.log('  quiet-trace unmatched observations: ' + QT.misses);
+	console.log('  quiet-trace re-partitioned observations: ' + QT.wideN +
+		', widest ' + pct(QT.wideMax) + ' at frame ' + QT.wideFrame + ' current ' + QT.wideIndex +
+		', x ' + fmtKm(QT.wideOldX) + ' -> ' + fmtKm(QT.wideNewX) +
+		', width ' + fmtKm(QT.wideOldW) + ' -> ' + fmtKm(QT.wideNewW) +
+		', thickness ' + fmtKm(QT.wideOldH) + ' -> ' + fmtKm(QT.wideNewH));
+	console.log('  quiet-trace largest paired thickness delta in re-partitions: ' + fmtKm(QT.dhMax) +
+		' at frame ' + QT.dhFrame + ' current ' + QT.dhIndex +
+		', x ' + fmtKm(QT.dhOldX) + ' -> ' + fmtKm(QT.dhNewX) +
+		', width ' + fmtKm(QT.dhOldW) + ' -> ' + fmtKm(QT.dhNewW) +
+		', thickness ' + fmtKm(QT.dhOldH) + ' -> ' + fmtKm(QT.dhNewH));
+}
 
 function gate() {
 	L.check.section('contact contract (0.1.9-plan.md §2)');

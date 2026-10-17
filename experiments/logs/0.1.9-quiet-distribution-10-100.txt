@@ -1,0 +1,21 @@
+
+contact-audit site bookkeeping
+PASS  event buckets are concrete Set values
+PASS  repeat spacing uses the current event frame
+PASS  the R1 window is anchored at the event, not at its bucket   event at 156.4 km, bucket left edge 0.0 km
+PASS  a standing-needle run counts consecutive frames and resets on a gap   a run of 22 frames reaches 22, a gap resets to 1, a second sample in one frame does not double-count
+INFO  clock scope   combined clocks (K7 write-back included)
+contact audit — seed 10, 100 kyr/frame, 5000 frames (500 Myr), 8.59 ms/frame
+  crust          max 80.8 km   thickest at a contact 80.3 km   collisions 6349 seen; legacy peak/flank 6.19x, legacy 4-of-6 96.5%, contiguous 4-of-6 96.3% of 5929 built samples   draining records 3 live holding 0.0% of the crust, widest run 0.0 columns (oldest 108.1 Myr)
+  R2 legacy peak frame 3291, edge 293, pair 67.3 km / outer flank 10.9 km (6.19x), mean immediate shoulders 49.2 km (1.37x), legacy count 6/6 above outer flank + 2.0 km: 6.9/16.5/47.5/67.3/64.4/51.0/44.2/14.2 km
+  R2 local needle frame 558, edge 281, pair 60.5 km / highest belt-neighbourhood shoulder 45.5 km (1.33x; max 1.5), local hTot (-3..+4) km: 36.0/36.8/45.5/60.5/48.3/36.2/30.9/14.0
+  R2 legacy width narrowest count 1/6 at frame 3834, edge 209, pair/flank 1.14: 45.5/21.8/25.5/30.0/33.4/29.7/27.4/14.2 km
+  R2 contiguous width minimum 1/6 at frame 3775, edge 210: 21.4/14.7/18.7/23.7/27.9/25.5/27.3/14.2 km
+  max column     frame 791, record 125, x 9387.8 km   fel 42.1 km, maf 38.7 km, sed 0.0 km, on a C-C retirement frame: false
+  surface        worst single-frame move 5172 m at frame 425 x 23650.6 km   mean 5.5 m, 54561 raster samples above 100 m
+  R1 event site  2773 m in an event footprint (accretion, frame 1319 x 34440.0 km) against the quiet-frame yardstick 4085 m (frame 822 x 6176.5 km), ratio 0.68 (max 1.25)
+                 event-frame background (report) 5172 m (frame 425 x 23650.6 km), worst same-frame pairing (report) 32.02 at frame 1319 (2773 m vs 87 m)
+                 quiet-frame drawn thickness 15.9 km and width 10.0%, 0 quiet records with no counterpart, 85 re-partitioned)
+  columns        worst single-frame drawn-thickness change 15.9 km at frame 558 x 21390.6 km   worst width change 10.0% at frame 2832   worst local slope 107.7%
+  topology       191 births / 156 deaths (69.40 per 1000 frames, incl. 89 C-C retirements) at 32 repeated birth and 30 repeated death sites (548 columns, 9 plates)
+  stacks         0 column-frames with an inverted bed, 0 column-frames at layerCap

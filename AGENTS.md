@@ -54,7 +54,10 @@ mirror of it, so a descriptive URL cannot go stale. experiments/pt-ui.js gates t
 The pages cross-link each other; keep the mirror in sync when editing index.html.
 
 harnesses (node, no runner script): experiments/pt-ui.js (page wiring, particle),
-experiments/smoke.js + view-check.js (column engine), experiments/tephra-pile.js (live arc
+experiments/smoke.js + view-check.js (column engine), experiments/contact-audit.js (column
+contact measurements; `--quiet-trace` inspects omitted correspondence candidates and
+`experiments/quiet-distribution-table.js` reads the saved 0.1.9 quiet-frame matrix),
+experiments/tephra-pile.js (live arc
 cone vs death write-back), plus the per-milestone pt-*.js checks (0.3.0 P3: pt-p3-pool.js, pt-p3-routing.js, pt-p3-enthalpy.js, pt-p3-melt.js, pt-p3-erupt.js, pt-p3-flight.js, pt-p3-budget.js,
 the budget is a report whose gates are the plan's own, its price table never edits params.js;
 it also prices the reserve as an interleaved empty/filled pair, because the sweep's own window
