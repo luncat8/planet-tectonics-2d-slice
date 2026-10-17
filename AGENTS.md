@@ -93,8 +93,11 @@ it runs one live leg or a cell matrix -- `--cells seed:kyr:myr,...`, each cell a
 clock and duration, the first repeated for a fingerprint check -- and changes no routing itself),
 experiments/pt-drift.js (P2.2 isolated drift by default; `600 --shipped` measures all-pass
 late drift with optional `--unbound`, `--seed N`, `--out file.json`; the shipped mode restores
-probe velocities and asserts observation neutrality; experiments/pt-drift-check.js validates
-the M10 seed-1 pair against the heat worlds and its report, not a universal drift gate),
+probe velocities and asserts observation neutrality), experiments/pt-drift-terms.js (0.3.2 M11
+drive/contact term decomposition on slow plates), experiments/pt-drift-census.js (continuous
+frame-by-frame 600 Myr slow-episode and drift speed distribution census across seeds), and
+experiments/pt-drift-check.js (validates M10's seed-1 pair and M11's slow-plate attribution and
+continuous census distribution across the 8 worlds against the reports, not a universal drift gate),
 experiments/pt-heat-tail.js (0.3.2's experiment-only gather cap/share attenuation, deposit
 relaxation, conservative local minimum-mass, node-wise and stencil-scale bounded conservative
 redistribution (spread, stencil), the field-relative two-sided bound (frb, `--share s0` scales

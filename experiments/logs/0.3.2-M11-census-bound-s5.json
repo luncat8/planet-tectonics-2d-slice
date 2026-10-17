@@ -1,0 +1,198 @@
+{
+	"seed": 5,
+	"kyr": 50,
+	"myr": 600,
+	"unbound": false,
+	"depBound": 0.25,
+	"erosion": true,
+	"fingerprint": 1808048552219233,
+	"elapsed_s": 224.609,
+	"ms_per_frame": 18.71741666666667,
+	"totalFrames": 12000,
+	"framesWithPlates": 8914,
+	"plateFraction": 0.7428333333333333,
+	"lateFrames": 6001,
+	"lateFramesWithPlates": 3030,
+	"latePlateFraction": 0.5049158473587735,
+	"allMassDrift": 0.578648883612717,
+	"lateMassDrift": 1.286196457505127,
+	"speedBins": [
+		5163,
+		541,
+		746,
+		1617,
+		2644,
+		940
+	],
+	"speedBinMass_km2Myr": [
+		145833122.40052843,
+		1720379.661849862,
+		9571991.92928595,
+		17329621.7005061,
+		17888096.036472227,
+		2330073.5619487017
+	],
+	"lateSpeedBins": [
+		977,
+		296,
+		392,
+		611,
+		427,
+		416
+	],
+	"lateSpeedBinMass_km2Myr": [
+		5264727.278250414,
+		1389672.19555688,
+		2122642.483336883,
+		3816191.943066516,
+		2016497.6357664317,
+		1046963.3627683211
+	],
+	"slowAttribution": {
+		"holdBrake": 1438,
+		"arrestBrake": 13,
+		"kinematicLow": 4253
+	},
+	"lateSlowAttribution": {
+		"holdBrake": 964,
+		"arrestBrake": 11,
+		"kinematicLow": 298
+	},
+	"slowEpisodes": {
+		"count": 145,
+		"totalFrames": 5597,
+		"totalMyr": 279.85,
+		"fractionOfPlateFrames": 0.6278887143818712,
+		"maxContinuousFrames": 3668,
+		"maxContinuousMyr": 183.4
+	},
+	"snapshots": [
+		{
+			"nominalMyr": 100,
+			"t": 100.04999999999646,
+			"frame": 2001,
+			"plateCount": 1,
+			"massWeightedDrift": 0.002027351408604497,
+			"plates": [
+				{
+					"c": 0,
+					"cnt": 5245,
+					"mass": 807777.7613347395,
+					"rawFlow": 0.0002694538083751412,
+					"slabPull": 0,
+					"ridgePush": 0.0008311745374292173,
+					"preBrake": 0.0011006283458043584,
+					"brakeDV": 0,
+					"postBrake": 0.0011006283458043584,
+					"csVY": 0.0017025777451801138,
+					"drift": 0.002027351408604497,
+					"holds": 0,
+					"arrests": 0
+				}
+			]
+		},
+		{
+			"nominalMyr": 200,
+			"t": 200.00000000001123,
+			"frame": 4000,
+			"plateCount": 2,
+			"massWeightedDrift": 1.4459901141744769,
+			"plates": [
+				{
+					"c": 0,
+					"cnt": 3479,
+					"mass": 562311.0726204267,
+					"rawFlow": -0.02920763730267595,
+					"slabPull": -0.9234233978035324,
+					"ridgePush": -0.09694471971743202,
+					"preBrake": -1.0495757548236404,
+					"brakeDV": 0,
+					"postBrake": -1.0495757548236404,
+					"csVY": -0.0044645461830222655,
+					"drift": 1.0495852501279896,
+					"holds": 0,
+					"arrests": 0
+				},
+				{
+					"c": 4,
+					"cnt": 604,
+					"mass": 97366.31188988096,
+					"rawFlow": 0.48399788571547053,
+					"slabPull": 2.5589858871523137,
+					"ridgePush": 0.6922546156828816,
+					"preBrake": 3.7352383885506657,
+					"brakeDV": 0,
+					"postBrake": 3.7352383885506657,
+					"csVY": -0.023475744005136016,
+					"drift": 3.735312159627247,
+					"holds": 0,
+					"arrests": 0
+				}
+			]
+		},
+		{
+			"nominalMyr": 300,
+			"t": 300.00000000003394,
+			"frame": 6000,
+			"plateCount": 1,
+			"massWeightedDrift": 2.388222501761482,
+			"plates": [
+				{
+					"c": 0,
+					"cnt": 1097,
+					"mass": 181174.04092179608,
+					"rawFlow": -0.2883645801348792,
+					"slabPull": -2.214198366818323,
+					"ridgePush": 0.11435527515231247,
+					"preBrake": -2.3882076718008896,
+					"brakeDV": 0,
+					"postBrake": -2.3882076718008896,
+					"csVY": -0.008416309835473685,
+					"drift": 2.388222501761482,
+					"holds": 0,
+					"arrests": 0
+				}
+			]
+		},
+		{
+			"nominalMyr": 400,
+			"t": 400.0000000000567,
+			"frame": 8000,
+			"plateCount": 0,
+			"massWeightedDrift": 0,
+			"plates": []
+		},
+		{
+			"nominalMyr": 500,
+			"t": 500.0000000000794,
+			"frame": 10000,
+			"plateCount": 0,
+			"massWeightedDrift": 0,
+			"plates": []
+		},
+		{
+			"nominalMyr": 600,
+			"t": 600.000000000002,
+			"frame": 12000,
+			"plateCount": 1,
+			"massWeightedDrift": 1.1870829084288712,
+			"plates": [
+				{
+					"c": 1,
+					"cnt": 94,
+					"mass": 99317.60412981099,
+					"rawFlow": 0.45532369236668446,
+					"slabPull": 1.4263444112598638,
+					"ridgePush": 0.4947678828832537,
+					"preBrake": 2.376435986509802,
+					"brakeDV": -1.1896080788820926,
+					"postBrake": 1.1868279076277093,
+					"csVY": -0.024603844414679922,
+					"drift": 1.1870829084288712,
+					"holds": 1,
+					"arrests": 1
+				}
+			]
+		}
+	]
+}

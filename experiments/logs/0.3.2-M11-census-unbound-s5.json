@@ -1,0 +1,260 @@
+{
+	"seed": 5,
+	"kyr": 50,
+	"myr": 600,
+	"unbound": true,
+	"depBound": 0,
+	"erosion": true,
+	"fingerprint": 6191250240167390,
+	"elapsed_s": 191.81,
+	"ms_per_frame": 15.984166666666667,
+	"totalFrames": 12000,
+	"framesWithPlates": 11885,
+	"plateFraction": 0.9904166666666666,
+	"lateFrames": 6001,
+	"lateFramesWithPlates": 6001,
+	"latePlateFraction": 1,
+	"allMassDrift": 0.6080143043317268,
+	"lateMassDrift": 1.4067153030297443,
+	"speedBins": [
+		6551,
+		717,
+		1007,
+		2707,
+		4626,
+		704
+	],
+	"speedBinMass_km2Myr": [
+		146292194.57358897,
+		2746053.991299914,
+		5333198.470101707,
+		18259700.041215442,
+		26601975.25559344,
+		1901774.07824211
+	],
+	"lateSpeedBins": [
+		2584,
+		445,
+		750,
+		1744,
+		2188,
+		269
+	],
+	"lateSpeedBinMass_km2Myr": [
+		7175289.5941605335,
+		1610896.3257432277,
+		2105790.8148039877,
+		5682345.017335965,
+		5537116.047400575,
+		762430.9707503805
+	],
+	"slowAttribution": {
+		"holdBrake": 2577,
+		"arrestBrake": 38,
+		"kinematicLow": 4653
+	},
+	"lateSlowAttribution": {
+		"holdBrake": 2318,
+		"arrestBrake": 34,
+		"kinematicLow": 677
+	},
+	"slowEpisodes": {
+		"count": 224,
+		"totalFrames": 6684,
+		"totalMyr": 334.20000000000005,
+		"fractionOfPlateFrames": 0.56238956668069,
+		"maxContinuousFrames": 3673,
+		"maxContinuousMyr": 183.65
+	},
+	"snapshots": [
+		{
+			"nominalMyr": 100,
+			"t": 100.04999999999646,
+			"frame": 2001,
+			"plateCount": 1,
+			"massWeightedDrift": 0.0020802425992306243,
+			"plates": [
+				{
+					"c": 0,
+					"cnt": 5244,
+					"mass": 807982.1711940588,
+					"rawFlow": 0.0003612133338179849,
+					"slabPull": 0,
+					"ridgePush": 0.0008477538386964539,
+					"preBrake": 0.0012089671725144387,
+					"brakeDV": 0,
+					"postBrake": 0.0012089671725144387,
+					"csVY": 0.0016928696486842175,
+					"drift": 0.0020802425992306243,
+					"holds": 0,
+					"arrests": 0
+				}
+			]
+		},
+		{
+			"nominalMyr": 200,
+			"t": 200.00000000001123,
+			"frame": 4000,
+			"plateCount": 2,
+			"massWeightedDrift": 1.4557037742897814,
+			"plates": [
+				{
+					"c": 0,
+					"cnt": 3476,
+					"mass": 561700.036941493,
+					"rawFlow": -0.02943868526360768,
+					"slabPull": -1.116236456423167,
+					"ridgePush": -0.0687446244166761,
+					"preBrake": -1.2144197661034508,
+					"brakeDV": 0,
+					"postBrake": -1.2144197661034508,
+					"csVY": -0.004811274433496637,
+					"drift": 1.2144292966922507,
+					"holds": 0,
+					"arrests": 0
+				},
+				{
+					"c": 3,
+					"cnt": 673,
+					"mass": 104003.37704464087,
+					"rawFlow": 0.35827968301979896,
+					"slabPull": 1.7820652985081478,
+					"ridgePush": 0.6183221154431613,
+					"preBrake": 2.758667096971108,
+					"brakeDV": 0,
+					"postBrake": 2.758667096971108,
+					"csVY": -0.024481142028404818,
+					"drift": 2.7587757208997647,
+					"holds": 0,
+					"arrests": 0
+				}
+			]
+		},
+		{
+			"nominalMyr": 300,
+			"t": 300.00000000003394,
+			"frame": 6000,
+			"plateCount": 1,
+			"massWeightedDrift": 0.001609935681127279,
+			"plates": [
+				{
+					"c": 0,
+					"cnt": 1200,
+					"mass": 198520.11479382828,
+					"rawFlow": -0.21945356749960815,
+					"slabPull": 2.3820863156230403,
+					"ridgePush": 0.09026431842144572,
+					"preBrake": 2.252897066544878,
+					"brakeDV": -2.253053305663335,
+					"postBrake": -0.00015623911845707994,
+					"csVY": 0.001602336492510393,
+					"drift": 0.0016099356811272788,
+					"holds": 1,
+					"arrests": 0
+				}
+			]
+		},
+		{
+			"nominalMyr": 400,
+			"t": 400.0000000000567,
+			"frame": 8000,
+			"plateCount": 1,
+			"massWeightedDrift": 0.017383732489892965,
+			"plates": [
+				{
+					"c": 0,
+					"cnt": 108,
+					"mass": 30444.241062431698,
+					"rawFlow": -0.5765162038755637,
+					"slabPull": 2.961449725592245,
+					"ridgePush": 0.2945352502689438,
+					"preBrake": 2.679468771985625,
+					"brakeDV": -2.6798116810804737,
+					"postBrake": -0.00034290909484866464,
+					"csVY": -0.01738035007221748,
+					"drift": 0.017383732489892965,
+					"holds": 1,
+					"arrests": 0
+				}
+			]
+		},
+		{
+			"nominalMyr": 500,
+			"t": 500.0000000000794,
+			"frame": 10000,
+			"plateCount": 1,
+			"massWeightedDrift": 0.7244197312268441,
+			"plates": [
+				{
+					"c": 2,
+					"cnt": 97,
+					"mass": 54754.90175948835,
+					"rawFlow": -0.22048548445466506,
+					"slabPull": 0.965206368117586,
+					"ridgePush": -0.020334267582199597,
+					"preBrake": 0.7243866160807213,
+					"brakeDV": 0,
+					"postBrake": 0.7243866160807213,
+					"csVY": -0.006926574470465716,
+					"drift": 0.7244197312268441,
+					"holds": 0,
+					"arrests": 0
+				}
+			]
+		},
+		{
+			"nominalMyr": 600,
+			"t": 600.000000000002,
+			"frame": 12000,
+			"plateCount": 3,
+			"massWeightedDrift": 1.5773105875274238,
+			"plates": [
+				{
+					"c": 5,
+					"cnt": 76,
+					"mass": 62593.22556153216,
+					"rawFlow": -0.13542253405723093,
+					"slabPull": -1.2468755495923904,
+					"ridgePush": -0.13437528985780073,
+					"preBrake": -1.5166733735074223,
+					"brakeDV": 0,
+					"postBrake": -1.5166733735074223,
+					"csVY": -0.008073464613946913,
+					"drift": 1.5166948614461833,
+					"holds": 0,
+					"arrests": 0
+				},
+				{
+					"c": 6,
+					"cnt": 77,
+					"mass": 48423.74734468441,
+					"rawFlow": -0.4065447873804289,
+					"slabPull": 5.632744446410987,
+					"ridgePush": 0.47906047698797427,
+					"preBrake": 5.705260136018532,
+					"brakeDV": -3.8320713686077337,
+					"postBrake": 1.8731887674107988,
+					"csVY": -0.02141025797025271,
+					"drift": 1.8733111213838296,
+					"holds": 2,
+					"arrests": 1
+				},
+				{
+					"c": 14,
+					"cnt": 69,
+					"mass": 66399.10086933238,
+					"rawFlow": 0.31015207515706655,
+					"slabPull": -1.324936103710461,
+					"ridgePush": -0.4037624882191332,
+					"preBrake": -1.4185465167725277,
+					"brakeDV": 0,
+					"postBrake": -1.4185465167725277,
+					"csVY": -0.010273850389648141,
+					"drift": 1.418583720564035,
+					"holds": 0,
+					"arrests": 0
+				}
+			]
+		}
+	]
+}

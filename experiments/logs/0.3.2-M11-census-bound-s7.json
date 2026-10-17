@@ -1,0 +1,275 @@
+{
+	"seed": 7,
+	"kyr": 50,
+	"myr": 600,
+	"unbound": false,
+	"depBound": 0.25,
+	"erosion": true,
+	"fingerprint": 1401659456291387,
+	"elapsed_s": 214.868,
+	"ms_per_frame": 17.90566666666667,
+	"totalFrames": 12000,
+	"framesWithPlates": 11885,
+	"plateFraction": 0.9904166666666666,
+	"lateFrames": 6001,
+	"lateFramesWithPlates": 6001,
+	"latePlateFraction": 1,
+	"allMassDrift": 0.6945144317947048,
+	"lateMassDrift": 0.9503068840277421,
+	"speedBins": [
+		6228,
+		1581,
+		1307,
+		3263,
+		3273,
+		1099
+	],
+	"speedBinMass_km2Myr": [
+		137503208.02276954,
+		8485230.186932862,
+		6979537.682297676,
+		16275464.943717001,
+		24135876.528068293,
+		3034570.986391828
+	],
+	"lateSpeedBins": [
+		1656,
+		1135,
+		965,
+		2029,
+		958,
+		92
+	],
+	"lateSpeedBinMass_km2Myr": [
+		9783065.073359812,
+		6302687.0249275835,
+		4584821.203200845,
+		8009623.783329402,
+		4759765.200282596,
+		303763.8019498144
+	],
+	"slowAttribution": {
+		"holdBrake": 2692,
+		"arrestBrake": 48,
+		"kinematicLow": 5069
+	},
+	"lateSlowAttribution": {
+		"holdBrake": 1471,
+		"arrestBrake": 40,
+		"kinematicLow": 1280
+	},
+	"slowEpisodes": {
+		"count": 221,
+		"totalFrames": 7411,
+		"totalMyr": 370.55,
+		"fractionOfPlateFrames": 0.6235591081194783,
+		"maxContinuousFrames": 3338,
+		"maxContinuousMyr": 166.9
+	},
+	"snapshots": [
+		{
+			"nominalMyr": 100,
+			"t": 100.04999999999646,
+			"frame": 2001,
+			"plateCount": 1,
+			"massWeightedDrift": 0.003550283440438875,
+			"plates": [
+				{
+					"c": 0,
+					"cnt": 5211,
+					"mass": 810145.3382800395,
+					"rawFlow": 0.005579190273079619,
+					"slabPull": 0,
+					"ridgePush": -0.0031138709845240477,
+					"preBrake": 0.002465319288555572,
+					"brakeDV": 0,
+					"postBrake": 0.002465319288555572,
+					"csVY": 0.002554743296875509,
+					"drift": 0.003550283440438875,
+					"holds": 0,
+					"arrests": 0
+				}
+			]
+		},
+		{
+			"nominalMyr": 200,
+			"t": 200.00000000001123,
+			"frame": 4000,
+			"plateCount": 4,
+			"massWeightedDrift": 3.252096598964619,
+			"plates": [
+				{
+					"c": 0,
+					"cnt": 691,
+					"mass": 110745.59960027756,
+					"rawFlow": -0.10056210999502141,
+					"slabPull": 1.2336320133670535,
+					"ridgePush": 0.3676169756205259,
+					"preBrake": 1.500686878992558,
+					"brakeDV": 0,
+					"postBrake": 1.500686878992558,
+					"csVY": -0.029163461772935363,
+					"drift": 1.5009702249821633,
+					"holds": 0,
+					"arrests": 0
+				},
+				{
+					"c": 2,
+					"cnt": 105,
+					"mass": 19828.86826233251,
+					"rawFlow": 2.0129012864460685,
+					"slabPull": -5.364103632913189,
+					"ridgePush": -3.2084232460863116,
+					"preBrake": -6.559625592553431,
+					"brakeDV": 6.5494976655110095,
+					"postBrake": -0.010127927042421448,
+					"csVY": 0.1749352965192249,
+					"drift": 0.17522823081468852,
+					"holds": 1,
+					"arrests": 0
+				},
+				{
+					"c": 3,
+					"cnt": 759,
+					"mass": 117099.29421215046,
+					"rawFlow": 0.3081457331290258,
+					"slabPull": -2.316527828847406,
+					"ridgePush": 0.16132200403161417,
+					"preBrake": -1.847060091686766,
+					"brakeDV": 0,
+					"postBrake": -1.847060091686766,
+					"csVY": -0.027977298021818853,
+					"drift": 1.8472719646837406,
+					"holds": 0,
+					"arrests": 0
+				},
+				{
+					"c": 4,
+					"cnt": 1796,
+					"mass": 288284.0458113154,
+					"rawFlow": -0.7497981667024696,
+					"slabPull": 5.507024608141062,
+					"ridgePush": -0.05018436420218547,
+					"preBrake": 4.707042077236407,
+					"brakeDV": 0,
+					"postBrake": 4.707042077236407,
+					"csVY": -0.01485998838717819,
+					"drift": 4.707065533443197,
+					"holds": 0,
+					"arrests": 0
+				}
+			]
+		},
+		{
+			"nominalMyr": 300,
+			"t": 300.00000000003394,
+			"frame": 6000,
+			"plateCount": 2,
+			"massWeightedDrift": 4.584899580892397,
+			"plates": [
+				{
+					"c": 1,
+					"cnt": 208,
+					"mass": 35312.998249094686,
+					"rawFlow": -1.098850995520537,
+					"slabPull": 5.509692292389428,
+					"ridgePush": 2.5045716495382067,
+					"preBrake": 6.915412946407097,
+					"brakeDV": 0,
+					"postBrake": 6.915412946407097,
+					"csVY": 0.005786338431293529,
+					"drift": 6.915415367210226,
+					"holds": 0,
+					"arrests": 0
+				},
+				{
+					"c": 3,
+					"cnt": 351,
+					"mass": 53608.991471008536,
+					"rawFlow": 0.03720042278208351,
+					"slabPull": -2.943829312764949,
+					"ridgePush": -0.1430868663565399,
+					"preBrake": -3.0497157563394057,
+					"brakeDV": 0,
+					"postBrake": -3.0497157563394057,
+					"csVY": -0.01566461270204319,
+					"drift": 3.0497559860677277,
+					"holds": 0,
+					"arrests": 0
+				}
+			]
+		},
+		{
+			"nominalMyr": 400,
+			"t": 400.0000000000567,
+			"frame": 8000,
+			"plateCount": 1,
+			"massWeightedDrift": 1.972072388827918,
+			"plates": [
+				{
+					"c": 0,
+					"cnt": 227,
+					"mass": 64363.94102536647,
+					"rawFlow": -0.483033714413725,
+					"slabPull": -1.3073648193260698,
+					"ridgePush": -0.1816590951269849,
+					"preBrake": -1.9720576288667797,
+					"brakeDV": 0,
+					"postBrake": -1.9720576288667797,
+					"csVY": -0.007629888975922864,
+					"drift": 1.972072388827918,
+					"holds": 0,
+					"arrests": 0
+				}
+			]
+		},
+		{
+			"nominalMyr": 500,
+			"t": 500.0000000000794,
+			"frame": 10000,
+			"plateCount": 1,
+			"massWeightedDrift": 1.485913755125729,
+			"plates": [
+				{
+					"c": 0,
+					"cnt": 259,
+					"mass": 141865.19230435396,
+					"rawFlow": 0.3346032460402115,
+					"slabPull": 1.2785681752920517,
+					"ridgePush": -0.1273256475735919,
+					"preBrake": 1.4858457737586712,
+					"brakeDV": 0,
+					"postBrake": 1.4858457737586712,
+					"csVY": -0.014213524381385002,
+					"drift": 1.485913755125729,
+					"holds": 0,
+					"arrests": 0
+				}
+			]
+		},
+		{
+			"nominalMyr": 600,
+			"t": 600.000000000002,
+			"frame": 12000,
+			"plateCount": 1,
+			"massWeightedDrift": 0.010037736210396959,
+			"plates": [
+				{
+					"c": 0,
+					"cnt": 298,
+					"mass": 195562.49745366705,
+					"rawFlow": -2.8282108526788208,
+					"slabPull": 7.768264605260282,
+					"ridgePush": -0.09321855296984144,
+					"preBrake": 4.84683519961162,
+					"brakeDV": -4.846851353304551,
+					"postBrake": -0.000016153692930487298,
+					"csVY": -0.010037723212348457,
+					"drift": 0.010037736210396959,
+					"holds": 1,
+					"arrests": 0
+				}
+			]
+		}
+	]
+}

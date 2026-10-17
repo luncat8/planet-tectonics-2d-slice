@@ -95,9 +95,17 @@ their M8/M6 heat-bank worlds exactly. With all passes on, the bound world has on
 qualifying plate at each 400/500/600 Myr snapshot, drifting 1.80/5.08/2.99 cm/yr:
 the isolated fixture's late slowdown does not carry to these samples. The unbound
 world itself has a slow plate at 500 Myr; this is not a universal drift or continuous
-residence claim. Next: drive/contact attribution on that slow plate, then a late-drift
-distribution before any general horizon promise. The repair side-effect, two
-non-deposit faces and guard residue remain open.
+residence claim. **M11 (`archive/0.3.2-M11-drift-attribution-report.md`, `-worklog.md`)
+instruments drive and contact projection terms on the unbound s1 slow plate at 500 Myr
+and broadens to a continuous slow-episode census across seeds 1, 3, 5, 7 through 600 Myr.**
+Decomposition reveals that the slow plate (0.011 cm/yr drift) carries a strong -3.49 cm/yr
+drive (-6.74 cm/yr slab pull, +2.43 cm/yr mantle traction) explicitly cancelled by the
+subduction override hold brake (+3.49 cm/yr dv) at two subduction boundaries. The continuous
+census across 8 worlds (all reproducing M6/M8 heat bank fingerprints) shows late drift is
+comparable between bound (1.11 cm/yr) and unbound (1.14 cm/yr); slow episodes make up
+35–60% of late plate-time, with subduction override braking accounting for 30–77% of all
+slow late plates. No constant is tuned. The repair-adjacent heat minority, mantle-cold/mobile-melt-hot
+faces, and contact guard residue remain open.
 
 0.2.0 status: **closed.** M0 (the headless toy box), M1 (vent lifecycle / second clock),
 M2 (stack write-back / visible edifice), M3 (bed-anchored deposits / finite extraction),

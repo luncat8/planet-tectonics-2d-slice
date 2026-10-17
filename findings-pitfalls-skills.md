@@ -1382,3 +1382,25 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   the world's already-banked transfers down to `cF`/`cW`, its held census, spread counters,
   `mantleRoutes`, `minT`/`maxT` and census proves it left the observation alone too. Assert both and
   the new bank can be read as the same run rather than as a new one.
+
+## 0.3.2 M11 — kinematic drive attribution on the slow late plate, and the continuous slow-episode census (archive/0.3.2-M11-drift-attribution-worklog.md)
+
+- **A slow plate is not necessarily an un-driven plate: boundary mechanics can hold active drives.**
+  The unbound s1 slow plate at 500 Myr ($v_{\text{drift}} = 0.011$ cm/yr) has a pre-brake drive of
+  $-3.49$ cm/yr from $-6.74$ cm/yr slab pull and $+2.43$ cm/yr mantle traction. It sits still because
+  it meets two subduction boundaries where it acts as the overriding plate, and `contact.js`'s subduction
+  hold rule explicitly injects an impulse $\Delta v = -v_B = +3.49$ cm/yr canceling its approach into
+  the trench. Always decompose kinematic drives, contact boundary conditions and brake impulses on a
+  slow plate's own frame before inferring missing mantle traction or proposing a drift fix.
+- **Snapshot sampling vs continuous census: point samples amplify episodic variance.**
+  Sampling plate speeds every 100 Myr samples arbitrary phase points of an episodic cycle, yielding
+  divergent snapshot readings (0.01 to 5.08 cm/yr). A continuous frame-by-frame census across 600 Myr
+  reveals that all worlds (bound and unbound, across seeds 1, 3, 5, 7) cycle between mobile drift
+  (1..5+ cm/yr) and stationary override episodes (<0.5 cm/yr), with late mass-weighted drift averaging
+  1.11 cm/yr bound vs 1.14 cm/yr unbound. Slow episodes account for 35–60% of late plate-time, with
+  subduction override braking responsible for 30–77% of all slow-plate instances.
+- **Do not tune physical constants or bounds from late drift counts without cross-seed attribution.**
+  The deposit bound `P.depBound = 0.25` does not cause systematic late plate arrest; bound worlds are
+  faster than unbound on seed 3 (1.125 vs 0.808 cm/yr) and equivalent on seeds 1, 5, 7. Tuning
+  `depBound` from a single-seed snapshot would have corrupted a verified heat remedy to solve a
+  non-existent drift defect.
