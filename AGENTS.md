@@ -181,16 +181,21 @@ core-log-format.js (the shared `pgt-core-log` v2 contract: the fixture round tri
 identities that lock it to the pack fixture, the ported v1 validation law class by class,
 seal/encode/parse, stale-never-current identity, and node/classic-script parity), and
 core-log.js (the §8.5 return path: build/select/commit and the cadence; since 0.4.4 M2 its
-wire half is the shared codec).
+wire half is the shared codec), and
+namespace.js (0.9.0 M0, the C1 audit: the real global set from a bare-VM load — one name per
+engine file, the lexical scope read through the inspector, no self-start, one frame loop per
+host — and the collision check against the globe's page; a new name on either side is a red
+until its expectation table says so in the open).
 Each prints PASS/FAIL and exits non-zero on failure.
 experiments/acceptance.js is a release's whole-series pass: one section per numbered
 acceptance claim, delegating to the owning harness where one exists (its PASS count is
 quoted, never re-measured) and measuring the claims no harness owns. Sampling an invariant
 every frame rather than at the HUD's 2 Hz is what found the two 0.2.0 M5 reds, so long-run
 checks belong here and not in a page harness.
-experiments/isomorphism.js and experiments/upstream-drift.js read the counterpart tree
-($UPSTREAM or a path argument) and report SKIP without one; the drift harness measures
-against the counterpart's branch tip, never against whatever its checkout sits on.
+experiments/isomorphism.js, experiments/upstream-drift.js and namespace.js's section D read
+the counterpart tree ($UPSTREAM or a path argument) and report SKIP without one; the drift
+harness measures against the counterpart's branch tip, and namespace.js at the 0.9.0 pin and
+that tip, never against whatever its checkout sits on.
 experiments/melt-tune-sweep.js (the two melt sources against the crust budget),
 experiments/melt-contact-sweep.js (a melt candidate against the four strict contact legs,
 with the live arc cone beside it — 0.2.3 landed `kMelt` from it),

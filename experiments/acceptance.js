@@ -223,7 +223,7 @@ else {
 	// The rest of the standing log set: the exchange codec, the cut and its page. Not in
 	// §2.5's 0.1.5 list, but they read the same state and a red there is a red here.
 	['checkpoint.js', 'section-pack.js', 'section-seed.js', 'slice-cut.js', 'coupling.js',
-		'coupling-link.js', 'core-log-format.js', 'core-log.js', 'deposits.js', 'port-check.js', 'ore-ui.js',
+		'coupling-link.js', 'core-log-format.js', 'core-log.js', 'deposits.js', 'namespace.js', 'port-check.js', 'ore-ui.js',
 		'pt-ui.js', 'r4-check.js', 'section-bundle.js'].forEach(function (name) { suite(name); });
 	var raster = suite('raster-bench.js', [], 'the body raster inside the 6 ms budget');
 	var bodies = raster.match(/PASS  .*body raster <= 6 ms\s+([0-9.]+) ms/g) || [];
