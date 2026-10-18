@@ -1505,3 +1505,28 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   retiring ghost's `wKeep` shrink to `100 m` before draining puts the Courant number at `7.8` and
   drives `zDyn` to `Infinity` in ~200 frames; a `2 km` floor on `COL.retireStep` finishes the
   hand-back in 6–8 frames while staying well above the stability bound.
+
+## 0.4.4 — writing plans against a counterpart's current commit, and the prerequisite that expired (`archive/0.4.4-agreement-worklog.md`)
+
+- **Re-measure a plan's own "prerequisite" clauses before scoping the work.** `0.4.1-plan.md`
+  §8.6 wrote C1 as future work (one global per file, IIFEs, `start(host)/stop()`), and three
+  release cycles of coupling work landed it piecemeal without anyone updating the clause. The
+  0.9.0 plan was about to schedule a refactor that did not exist to do. Before scoping, run the
+  clause against the tree: a 25-file grep for `else root.` settled it in one command.
+- **A negotiation plan is written from the counterpart's tip, freshly cloned, same session** —
+  never from the last session's memory of it. Their tip was unchanged since the 0.8.3 audit
+  (11 days), but "unchanged" is a measurement (`git log -1` on a fresh clone), not an
+  assumption; the plan pins the hash and the date it was read.
+- **Name the exact sentences each proposal implements.** A P-item that cites the counterpart's
+  own §2.1/§2.2/§5 line it carries out cannot drift into re-litigation; the one deliberate
+  deviation from their sketch (positional beds under a named schema vs named bed objects) is
+  flagged as *the* yes/no question instead of hiding inside a shared shape.
+- **A hold's own re-open clause tells you what to write.** Both 2026-10-16 dispositions said
+  "re-open on a scheduled import or a plan for gate 4". Gate 4 was closed by 0.4.3, so the
+  operative trigger was the schedule — the deliverable is therefore a decision document, not
+  code, and the plan says explicitly which of its milestones are gated on the mirrored record.
+- **Proxy measurements are fine in a plan if the harness that replaces them is a milestone.**
+  The globe's page-global inventory was taken by grepping top-level declarations (a proxy that
+  can miss assignment-shaped exports); the plan's M0 harness (bare-VM load, read the real
+  global set) is named as the authority, and the plan says the proxy is the input, not the
+  proof.

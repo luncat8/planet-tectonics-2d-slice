@@ -24,7 +24,8 @@ The cut itself is `0.4.1-plan.md`. The exchange with `planet-geotectonics` is
 | 0.4.1 | the cut: draw a line on the globe, copy/save, paste/load, reconstruct a section | `0.4.1-plan.md` | 0.4.0's format (`port/slice-format.js`, M0 done) |
 | 0.4.2 | the `pgt-slice-pack` v2 cutover: Phase A landed (staleness ledger, one decode entry, bake retirement); **Phase B-a landed 2026-10-15** (one coordinated port bump — v2 codec + fixture byte-identical with the `61f77aa` handoff, every reader on `SP.decode`, writers on make → seal → encode, the three v1 bundles retired, deposit catalogues relocated to `js/data/`; return package `archive/0.4.2-phase-b-report.md`); **Phase B-b landed 2026-10-15** (the three Earth bundles restored one at a time through the globe's v2 bake CLI at its `9270039`, `source.commit 0b10d685…`, identities `e0147ee8ff63d4d1`/`63825f6abdfde871`, `e0147ee8ff63d4d1`/`a9a17ca6721a9597`, `77ac9f529df0fc55`/`965109ddb61c5870`; `archive/0.4.2-phase-b-b-report.md`, audited byte-for-byte by the globe at its `3c960e7` and answered in `archive/0.4.2-counterpart-audit-response.md`); **Phase C held, not started** — the globe's 0.8 line is complete as shipped (its 0.8.3 §5 completes as planning, so Phase C was never waiting on globe implementation), the block was this side's C-live gate 4 (automatic section plate-topology rebuild after incoming crossings), **satisfied by 0.4.3**, plus a scheduling decision taken negatively on 2026-10-16: no `port/core-log-format.js`, no observation side table, no C0–C4 work, no manifest touch | `0.4.2-plan.md` | globe 0.8.0–0.8.2 handoff (`port/` v2 codec + fixture); globe 0.8.3 gate list for Phase C |
 | 0.4.3 | rebuild section plate membership at coupling import (0.4.2 Phase C, C-live gate 4): **landed** — `COUP.replate` runs at every `COUP.apply`, so a boundary the globe has walked takes its columns with it (8 of 8 replated on the walked-seam fixture, the reported crossing lands on a seam that separates two plates, `bndLost +0`, the plate the columns left keeps its 96 m/Myr instead of a 12 544 m/Myr blend); gap rows of the pack are read from the crust and take the plate they interrupt, not an id of their own; the membership ledger is `S.recon.plate*` and books only what moves — `experiments/coupling.js` sections M and N, 150 checks | `0.4.3-draft.md`, `archive/0.4.3-membership-report.md`, `archive/0.4.3-membership-worklog.md` | 0.4.1 §8 coupling (`js/coupling.js`); `SEED.plates` run rule |
-| 0.9.0 | globe page hosts the section as a library; live sync is C3+C4 | `0.9.0-draft-sync.md`, `0.4.1-plan.md` §8 | 0.4.1 M1–M2; C1 on the column engine |
+| 0.4.4 | the C-return/C-live agreement — **scheduled on this side, awaiting the globe's mirrored record**: the re-open both 2026-10-16 holds named as their trigger. Proposes to the globe (P1–P7): the manual-run core-log import per its 0.8.3 §2.1/§2.2, one coordinated port bump (`port/core-log-format.js` v2 + fixture, self-contained codec, named `section-lith-1` vocabulary, the one deliberate deviation — positional beds under the named schema — flagged for yes/no), the pair gates 1/2/3/6 as two-checkout runs, and the gate-7 C4 review. Written against globe `3c960e7`; no shared byte, no harness, no kernel touched — implementation opens only when both decisions are recorded | `0.4.4-plan.md`, `0.4.4-draft.md`, `archive/0.4.4-agreement-worklog.md` (return package §5) | globe 0.8.3 gate table; 0.4.3's closed gate 4 |
+| 0.9.0 | globe page hosts the section as a library; live sync is C3+C4. **C1 found already in place** at `47ec7b3` (25 engine files, one `COL*` global each, `COLSIM.start(host)/stop()`, no self-start) — the release is audit-and-contract, not refactor: M0 the namespace audit harness (exact global set, bare-VM load, collision check against the pinned globe tree — measured intersection: none, `SlicePack` the one shared name), M1 the host contract (`COLUI.build(host)`, `COUP.apply`, `CLOG.build/json/note`), M2 `library.html` (the dry-run host, headless smoke), M3 the adapter request to the globe (their plan, their ladder — their 0.9.0 is climate), M4 the §8.4 acceptance | `0.9.0-plan.md`, `0.9.0-draft-sync.md`, `0.4.1-plan.md` §8 | 0.4.1 M1–M2; C1 itself is M0–M2; M3+ waits on 0.4.4's answer |
 
 **Particle-page browser check:** the previously outstanding real-browser smoke has now passed
 for both `index.html` and `particles.html` through `file://` in headless Chromium; button, key,
@@ -610,12 +611,17 @@ first two rows still stand as B-a left them. One correction to the ledger's `too
 the frozen pair is not merely "do not extend", it **cannot run** against the v2 codec at all
 (`stamp.js` calls `SP.normalize`/`SP.quantize`, which v2 does not export), so it is a record of
 the 0.4.1 M4 bake and not a fallback — both headers now say so.
-Still open: **Phase C, held** — the globe's 0.8 line is complete as shipped (its 0.8.3 §5
-completes as planning), and its one local block is no longer open: 0.4.3 landed the automatic
-section plate-topology rebuild (gate 4) and `0.4.2-plan.md` §5 says so. What Phase C still
-needs is the globe's explicit agreement on the link ladder and the return channel, plus the
-scheduling decision taken negatively on 2026-10-16. No `port/core-log-format.js`, no observation side table, no
-C0–C4 work, no manifest touch until something is genuinely scheduled.
+Still open: **the agreement, not the evidence.** The globe's 0.8 line is complete as shipped
+(its 0.8.3 §5 completes as planning), and this side's one local block is no longer open: 0.4.3
+landed the automatic section plate-topology rebuild (gate 4) and `0.4.2-plan.md` §5 says so.
+On 2026-10-18 this side took the scheduling decision positively — `0.4.4-plan.md` schedules
+the C-return import (manual rung, per the globe's 0.8.3 §2.1/§2.2) and the C-live pair gates
+1/2/3/6 plus the gate-7 review, with the return package in
+`archive/0.4.4-agreement-worklog.md` §5. What re-opens implementation now is only the globe's
+mirrored decision record; until it lands, the standing rules below apply unchanged. No
+`port/core-log-format.js`, no observation side table, no
+C0–C4 work, no manifest touch until the protocol work is genuinely scheduled on **both**
+sides.
 
 ## 5. Not planned
 

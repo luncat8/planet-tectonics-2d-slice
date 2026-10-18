@@ -214,21 +214,34 @@ term and the ledger gates -- closed at M2, `archive/0.3.1-M2-acceptance-report.m
 the globe's map -> a section here), 0.4.2-plan.md (the pgt-slice-pack v2 cutover, slice side of the globe's
 0.8.0-0.8.2 handoff; Phases A, B-a and B-b are landed — port/ carries only the v2 codec and
 fixture, and the three Earth bundles are restored through the globe's v2 bake CLI at its
-9270039 and audited byte-for-byte on both sides. Phase C is held, not waiting on the globe:
-its 0.8.3 completes as planning; its one local block, C-live gate 4, is satisfied by 0.4.3 —
-the automatic section plate-topology rebuild, `COUP.replate` at every `COUP.apply`,
-`archive/0.4.3-membership-report.md` — so what is left is the globe's agreement on the ladder
-and the return channel plus a scheduling decision taken negatively on 2026-10-16 —
+9270039 and audited byte-for-byte on both sides. Phase C's one local block, C-live gate 4, is
+satisfied by 0.4.3 — the automatic section plate-topology rebuild, `COUP.replate` at every
+`COUP.apply`, `archive/0.4.3-membership-report.md`; the 2026-10-16 negative scheduling
+decision is superseded by 0.4.4's positive one —
 `archive/0.4.2-counterpart-audit-response.md`),
+0.4.4-plan.md (the C-return/C-live agreement — the slice-side scheduling decision both
+2026-10-16 holds named as their re-open trigger; proposes P1–P7 to the globe: the manual-run
+core-log import per its 0.8.3 §2.1/§2.2, one coordinated port bump with a self-contained
+`port/core-log-format.js` v2 and fixture, the pair gates 1/2/3/6 and the gate-7 review.
+Written against globe `3c960e7`; implementation opens only on the globe's mirrored decision
+record — return package `archive/0.4.4-agreement-worklog.md` §5),
+0.9.0-plan.md (C1 namespacing found already in place at 47ec7b3 — 25 engine files, one `COL*`
+global each, `COLSIM.start(host)/stop()`, no self-start — so the release is the M0 namespace
+audit harness, the M1 host contract (`COLUI.build(host)`, `COUP.apply`, `CLOG.build/json/note`),
+the M2 `library.html` dry-run host, the M3 adapter request to the globe, and M4's §8.4
+acceptance; written against globe `3c960e7`, whose 0.9.0 is climate integration, so the
+adapter queues on their ladder),
 0.9.0-draft-sync.md (the integrated globe, later). The
 completed 0.1.8 plan is `archive/0.1.8-plan.md` (collision arrest and orogen memory) and the
 completed 0.2.0 plan is `archive/0.2.0-plan.md` (eruptives, deposits, save/load; the series
 is accepted at M5, `archive/0.2.0-m5-worklog.md`). Drafts are
 0.3.0-draft.md, 0.3.2-draft.md (the light-parcel heat concentration 0.3.1 M2 measured, which
 holds that release's 300 Myr intake back and is what its 600 Myr cell separates),
-0.4.1-draft.md and 0.4.3-draft.md (the decision to freeze the 0.1.x smoothness line at 0.1.13
+0.4.1-draft.md, 0.4.3-draft.md (the decision to freeze the 0.1.x smoothness line at 0.1.13
 and to spend that release on rebuilding the section's plate membership at import instead;
-landed, `archive/0.4.3-membership-worklog.md` and `archive/0.4.3-membership-report.md`).
+landed, `archive/0.4.3-membership-worklog.md` and `archive/0.4.3-membership-report.md`) and
+0.4.4-draft.md (the road to the globe is negotiation, not measurement — the reference for the
+two agreement plans, both written against the globe's then-current commit).
 roadmap.md — which release owns what, the runtime-authority table, what is deferred; each
 release's own plan is still the authority for its milestones.
 
