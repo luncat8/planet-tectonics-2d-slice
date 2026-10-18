@@ -12,7 +12,7 @@
 'use strict';
 var DepositCore = (function () {
 	var node = typeof module !== 'undefined' && module.exports;
-	var DM = node ? require('./data/deposit-models.js') : window.DepositModels;
+	var DM = node ? require('./data/deposit-models.js') : window.COLDEPOSITMODELS;
 
 	var Core = {
 		MAX_DRAWS: 40,          // upstream Deposits.MAX_DRAWS: slots 0..39 of one candidate

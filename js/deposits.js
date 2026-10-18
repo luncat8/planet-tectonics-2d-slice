@@ -6,6 +6,9 @@
 // js/deposit-core.js, extracted verbatim from the counterpart; the priors and the economics
 // scenario are js/data/deposit-models.js and js/data/deposit-economics.js — section-local
 // modules since the v2 cutover (0.4.2-plan.md D2), their values frozen at the old shared pin.
+// They answer to COLDEPOSITMODELS and COLDEPOSITECONOMICS since 0.9.0 M1: a page that loads
+// this engine and the globe's own js/data/deposit-economics.js must not have two files under
+// one name.
 // What this file owns is what the section has and the globe does not: a snapshot on the 1D
 // ring, a tiling along the cut, the plane reduction of an ellipsoid, and drill/probe.
 //
@@ -22,8 +25,8 @@ var Deposits = (function () {
 	var P = node ? require('./params.js') : window.COLP;
 	var S = node ? require('./state.js') : window.COLS;
 	var SP = node ? require('../port/slice-format.js') : window.SlicePack;
-	var DM = node ? require('./data/deposit-models.js') : window.DepositModels;
-	var DE = node ? require('./data/deposit-economics.js') : window.DepositEconomics;
+	var DM = node ? require('./data/deposit-models.js') : window.COLDEPOSITMODELS;
+	var DE = node ? require('./data/deposit-economics.js') : window.COLDEPOSITECONOMICS;
 	var Core = node ? require('./deposit-core.js') : window.COLDEPOSITCORE;
 
 	var KM = 1000;

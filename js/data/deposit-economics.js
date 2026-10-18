@@ -1,3 +1,4 @@
+(function (root) {
 // Versioned economic scenario for the synthetic deposit catalogue (plan 0.6.x §4).
 // All numbers are GAME parameters: they define a plausible screening filter, not a
 // feasibility study. Changing price, recovery, cost or cutoff changes the filter,
@@ -10,7 +11,13 @@
 // a separate penalty per metre of water. Capex is a fixed proxy plus a scale term.
 // A body is “scenario-positive” when net > 0 and ore tonnes exceeds the scale cutoff.
 // Call it scenario-positive, not commercially proven; never NPV.
-var DepositEconomics = {
+//
+// The name is COL* and the file is one IIFE like every engine file: the globe's page defines
+// its own js/data/deposit-economics.js (its v2 scenario) under the bare name
+// `DepositEconomics`, and one document may hold both pages' scripts. Two files under one name
+// is the collision M0 measured and M1 resolved on this side (values unchanged, v1 stays v1).
+'use strict';
+var COLDEPOSITECONOMICS = {
 	version: 1,
 	currency: 'USD',
 	year: 2026,
@@ -27,7 +34,7 @@ var DepositEconomics = {
 	// Depth penalty is applied to burialTopM, water penalty to waterDepthM.
 	// Net = Σ(recoverable metal * payability * price) - oreTonnes*(mining+processing+depth*rate+water*rate) - capex
 	screen: function (body) {
-		var econ = DepositEconomics, ore = body.oreTonnes;
+		var econ = COLDEPOSITECONOMICS, ore = body.oreTonnes;
 		if (!(ore >= econ.minOreTonnes)) return { value: 0, cost: Infinity, capex: econ.capexFixed, net: -Infinity, positive: false, reason: 'below scale cutoff' };
 		var value = 0;
 		for (var i = 0; i < body.commodities.length; i++) {
@@ -52,10 +59,12 @@ var DepositEconomics = {
 		};
 	},
 	describe: function () {
-		var e = DepositEconomics;
+		var e = COLDEPOSITECONOMICS;
 		return e.currency + ' ' + e.year + ' prices Cu $' + e.prices.Cu + '/t Zn $' + e.prices.Zn + '/t Au $' + (e.prices.Au / 1e6).toFixed(1) + 'M/t'
 			+ ' · opex $' + (e.miningCostPerTonneOre + e.processingCostPerTonneOre) + '/t ore + $' + e.depthCostPerMetrePerTonne + '/t/m depth'
 			+ ' · capex $' + (e.capexFixed / 1e6).toFixed(0) + 'M + $' + (e.capexPerMtOre / 1e6).toFixed(0) + 'M/Mt · cutoff ' + (e.minOreTonnes / 1e6).toFixed(1) + ' Mt';
 	}
 };
-if (typeof module !== 'undefined' && module.exports) module.exports = DepositEconomics;
+if (typeof module !== 'undefined' && module.exports) module.exports = COLDEPOSITECONOMICS;
+else root.COLDEPOSITECONOMICS = COLDEPOSITECONOMICS;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

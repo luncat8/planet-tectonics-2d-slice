@@ -27,6 +27,102 @@ function listen(target, type, fn, opts) {
 	UI._listeners.push([target, type, fn, opts]);
 }
 
+// The three named refusals of the UI's own entries (0.9.0 M1's contract): a host element
+// to build into, one that does not carry the chrome yet, and one to bind.
+var NAMED_BUILD = 'COLUI.build needs a host element';
+var NAMED_BUILD_TWICE = 'COLUI.build: the host already carries the chrome';
+var NAMED_INIT = 'COLUI.init needs a host element or document';
+
+// The chrome, as data: [tag, attributes, children], and a string child is a text node.
+// This is the engine's own copy of the page's markup — columns.html keeps the static
+// spelling, and experiments/namespace.js pins the two against each other (the built id
+// set equals the page's), so a control cannot exist in one spelling and not the other.
+// The id set is the contract (0.9.0 M1); the stylesheet is the host's business.
+var CHROME = [
+	['div', { id: 'bar' }, [
+		['label', {}, ['Plates & plumes ',
+			['input', { id: 'sGeo', type: 'range', min: '0', max: '1000', value: '0' }], ' ',
+			['span', { id: 'vGeo' }]]],
+		['label', {}, ['Lava & eruptions ',
+			['input', { id: 'sErupt', type: 'range', min: '0', max: '1000', value: '0' }], ' ',
+			['span', { id: 'vErupt' }]]],
+		['span', { id: 'presets' }, [
+			['button', { 'data-v': 'def', 'aria-pressed': 'true' }, ['default']],
+			['button', { 'data-v': 'ovw', 'aria-pressed': 'false' }, ['overview']],
+			['button', { 'data-v': 'cru', 'aria-pressed': 'false' }, ['crust x10']],
+			['button', { 'data-v': 'bas', 'aria-pressed': 'false' }, ['basin x40']]
+		]],
+		['button', { id: 'bMesh', 'aria-pressed': 'false' }, ['mesh']],
+		['button', { id: 'bDeposits', 'aria-pressed': 'false', 'aria-controls': 'orePanel',
+			title: 'd: live bed-anchored deposits and ranked resources' }, ['deposits']],
+		['label', {}, ['seed ', ['input', { id: 'sSeed', type: 'text', size: '9', spellcheck: 'false',
+			title: 'run seed; Enter rebuilds the planet from it' }]]],
+		['button', { id: 'bSave',
+			title: 'save the runtime state — every typed array and scalar — as a session JSON file' },
+			['save state']],
+		['label', {}, ['load state ', ['input', { id: 'bLoad', type: 'file', accept: '.json,application/json' }]]],
+		['div', { id: 'slice' }, [
+			['label', {}, ['Paste a cut ', ['textarea', { id: 'sText', spellcheck: 'false',
+				placeholder: 'pgt-slice-pack JSON — draw a line on the globe, copy the slice, paste here' }], ' ',
+				['button', { id: 'sPaste' }, ['load']]]],
+			['label', {}, ['Load a cut file ', ['input', { id: 'sFile', type: 'file', accept: '.json,application/json' }]]],
+			['label', {}, ['Cut from ', ['select', { id: 'sPick' }, [['option', { value: '' }]]]]],
+			['button', { id: 'bRaw', 'aria-pressed': 'false',
+				title: 'the cut as the paste said it, before the seeding' }, ['raw cut']],
+			['button', { id: 'bOvl', 'aria-pressed': 'true',
+				title: "the pack's own zM line, and the hatch below the crust where the model starts" }, ['overlay']],
+			['button', { id: 'bRun', 'aria-pressed': 'false',
+				title: 'start the plate clock: the section becomes its own planet from here' }, ['detach and run']],
+			['button', { id: 'sSave',
+				title: 'save current section and runtime state as a session checkpoint' }, ['save session']],
+			['label', {}, ['Load session ', ['input', { id: 'sLoad', type: 'file', accept: '.json,application/json' }]]],
+			['label', {}, ['Core log → globe ',
+				['button', { id: 'sObs',
+					title: 'build the observation log now and place it here (live rungs send it too)' }, ['build']], ' ',
+				['button', { id: 'sObsCopy', title: 'copy the last log for the manual rung' }, ['copy']],
+				['textarea', { id: 'sObsOut', spellcheck: 'false', readonly: '',
+					placeholder: "pgt-core-log JSON — the section's beds as dated observations; the globe never ingests these into a kernel" }]]],
+			['span', { id: 'sMsg', role: 'status' }]
+		]]
+	]],
+	['div', { id: 'stage' }, [
+		['input', { id: 'sVZoom', type: 'range', min: '0', max: '1000', value: '500', title: 'vertical scale' }],
+		['div', { id: 'wrap' }, [
+			['canvas', { id: 'c', width: '1280', height: '560' }],
+			['div', { id: 'hud' }]
+		]],
+		['div', { id: 'axis' }, [
+			['input', { id: 'sHZoom', type: 'range', min: '0', max: '1000', value: '500', title: 'horizontal scale' }],
+			['label', {}, [['input', { id: 'cScale', type: 'checkbox', checked: '' }], ' scale lines']],
+			['span', { id: 'vZoom' }]
+		]]
+	]],
+	['section', { id: 'orePanel', hidden: '', 'aria-label': 'Live deposits and extraction' }, [
+		['div', { id: 'oreLegend' }],
+		['select', { id: 'orePick', size: '6', 'aria-label': 'Deposits ranked by class and remaining tonnage' }],
+		['div', { id: 'oreDetails' }, [
+			['pre', { id: 'oreInfo' }, ['Select a deposit. Mining is an explicit action, never automatic.']],
+			['button', { id: 'oreMine', disabled: '',
+				title: 'remove ten percent of the selected resource from its real host bed' }, ['extract 10%']],
+			['button', { id: 'oreMineAll', disabled: '',
+				title: 'exhaust the selected resource; it cannot regenerate in the same bed' }, ['extract remainder']]
+		]],
+		['span', { id: 'oreStatus', role: 'status' }, ['Game envelopes in a one-metre-deep slice: tonnage is Mt/m, grade is a 0–1 index, not a commodity assay. The 3D snapshot catalogue is separate.']]
+	]],
+	['div', { id: 'help' }, ['drag = pan · wheel = zoom (cursor-anchored, both axes) · left / bottom sliders = one axis at a time · space = pause · g = scale lines · m = mesh (row edges, fan bands, column grid, plate boundaries) · 1-4 = presets · hover = geology probe · d = live deposits / ranked list / extraction · seed field + Enter = new planet from that seed · save / load state = session JSON round trip · in section mode: r = raw cut, o = overlay']]
+];
+
+// One node of the table: the element, its attributes, then its children in order.
+function chromeNode(doc, spec) {
+	var el = doc.createElement(spec[0]), attrs = spec[1] || {}, kids = spec[2] || [], i, k;
+	for (k in attrs) if (Object.prototype.hasOwnProperty.call(attrs, k)) el.setAttribute(k, attrs[k]);
+	for (i = 0; i < kids.length; i++) {
+		if (typeof kids[i] === 'string') el.appendChild(doc.createTextNode(kids[i]));
+		else el.appendChild(chromeNode(doc, kids[i]));
+	}
+	return el;
+}
+
 var UI = {
 	_listeners: [],
 	host: null, doc: null, win: null,
@@ -61,9 +157,21 @@ var UI = {
 		return d < 3600 ? (d / 60).toFixed(1) + ' min/f' : (d / 3600).toFixed(2) + ' h/f';
 	},
 
+	// The chrome, built into a container element: the mount half of the host contract
+	// (0.9.0 M1). The engine owns these controls, so the engine writes them; a host that
+	// wants them hidden wraps the container in CSS, it does not fork the engine.
+	build: function (host) {
+		if (!host || host.nodeType !== 1 || !host.ownerDocument) throw new Error(NAMED_BUILD);
+		if (element(host, 'c')) throw new Error(NAMED_BUILD_TWICE);
+		var doc = host.ownerDocument, i;
+		for (i = 0; i < CHROME.length; i++) host.appendChild(chromeNode(doc, CHROME[i]));
+		return host;
+	},
+
 	init: function (host) {
 		this.stop();
-		this.host = host || root.document;
+		if (!host) throw new Error(NAMED_INIT);
+		this.host = host;
 		this.doc = this.host && this.host.nodeType === 9 ? this.host : this.host && this.host.ownerDocument;
 		this.win = this.doc && this.doc.defaultView ? this.doc.defaultView : root;
 		var self = this;

@@ -28,6 +28,12 @@ var PERF = (typeof module !== 'undefined' && module.exports) ? require('./perf.j
 var node = typeof module !== 'undefined' && module.exports;
 COL.slab = SLAB;
 
+// The host contract's two named refusals (0.9.0 M1): a host that is not a DOM host, and a
+// window, which is a realm and not a container. Both are checked before the running loop
+// is touched, so a refused start leaves the engine exactly as it was.
+var NAMED_HOST = 'COLSIM.start needs a DOM host and requestAnimationFrame';
+var NAMED_WINDOW = 'COLSIM.start does not take a window: the host is a document or an element';
+
 var active = false, activeHost = null, activeWindow = null, frameId = 0;
 
 // --- K9 diagnostic scratch (design §6): allocated once, like every other buffer ----
@@ -39,14 +45,16 @@ var diagCounts = new Int32Array(P.plateCap);
 var diagSeen = new Uint8Array(P.colCap);
 var diagStale = true;
 
+// The host is a document or an element; a window is not one (0.9.0 M1's decision). The
+// engine's controls are page-global ids and it paints into #c inside the host, and a window
+// is a realm, not a container: a foreign page's own #c would answer to the same name.
 function hostDocument(host) {
-	if (!host) return root.document || null;
+	if (!host) return null;
 	if (host.nodeType === 9) return host;
 	return host.ownerDocument || null;
 }
 
-function hostWindow(host, doc) {
-	if (host && host.window === host) return host;
+function hostWindow(doc) {
 	return doc && doc.defaultView ? doc.defaultView : root;
 }
 
@@ -112,12 +120,16 @@ var SIM = {
 	add: function (slot, fn) { this.k[slot] = fn; },
 
 	start: function (host) {
-		if (active && (!host || host === activeHost)) return this;
+		// The host is required and it is named: a refused start changes nothing, so the
+		// checks come before the running loop is touched (0.9.0 M1's contract).
+		if (!host) throw new Error(NAMED_HOST);
+		if (host.window === host) throw new Error(NAMED_WINDOW);
+		if (active && host === activeHost) return this;
 		if (active) this.stop();
-		var target = host || root.document;
+		var target = host;
 		var doc = hostDocument(target);
-		var win = hostWindow(target, doc);
-		if (!doc || !win || !win.requestAnimationFrame) throw new Error('COLSIM.start needs a DOM host and requestAnimationFrame');
+		var win = hostWindow(doc);
+		if (!doc || !win || !win.requestAnimationFrame) throw new Error(NAMED_HOST);
 		if (!hostElement(target, doc, 'c')) throw new Error('COLSIM host is missing the canvas #c');
 		activeHost = target;
 		activeWindow = win;

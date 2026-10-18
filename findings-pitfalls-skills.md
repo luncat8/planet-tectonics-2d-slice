@@ -1588,3 +1588,44 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
 - **"Absent from their tree" needs a file-type scope too.** `git grep SECTION_PACKS` at the pin
   hits five of the globe's markdown plans, which quote our name in prose. A quotation defines
   nothing; the claim is about code (`*.js`, `*.mjs`, `*.html`), and the check says so.
+
+## 0.9.0 M1 — the host contract, and the collision that was closed (`archive/0.9.0-M1-contract-worklog.md`)
+
+- **"Am I in a page?" is the module system's question, not the DOM's.** `page()` read
+  `root.document` on every stop to learn whether the engine's globals were on the global
+  object. The answer is `node ? null : root`: under CommonJS the engine's globals are module
+  locals, outside it they are the realm's. Removing the read took M0's one booked page-name
+  read to zero and turned M2's "the engine never touched `document`" from an allowance into a
+  strict reading. A DOM probe standing in for a module-system fact is a read that will
+  outlive its question.
+- **A refusal that means two different things needs two names.** "This host has no frame
+  clock" and "a window is not a host" are different mistakes, and one message teaches
+  neither. `COLSIM.start does not take a window: the host is a document or an element` says
+  the decision in the refusal, so a host author is not left guessing which mistake they made.
+- **Refuse before the state, not after.** The window and no-host checks run before the
+  running loop is touched, so a refused start leaves a running engine running. A start that
+  stops the loop and then throws is a worse bug than a missing engine.
+- **A contract can be a document the harness reads.** The entry list in `0.9.0-contract.md`
+  *is* the API's test: the harness parses the markdown and checks every name against the
+  loaded engine, so the contract cannot promise what the code does not have. A document that
+  nothing reads is a document that drifts.
+- **Two spellings of one UI need one comparison, not two.** The static page and the built
+  chrome: compare the id set, then each id's tag and its attributes, then the buttons that
+  have no id (the four presets). The id set alone misses the drift that matters — a slider
+  whose `max` moved — and the attribute map has to read bare attributes too (`checked`,
+  `disabled`, `hidden`, `readonly`), or the two spellings differ for a reason no browser
+  would see.
+- **A fake DOM that cannot hold a tree cannot test a builder.** The harness's DOM grew
+  `children`, a real `appendChild`, `createTextNode` and a `querySelector` over the built
+  subtree. Then the built chrome could be walked, compared against the page, and *started
+  on* — the last of those is the check that says the builder's output is a host, not a
+  picture of one.
+- **A rename is a coordination record, not a local edit.** The collision closed by renaming
+  our two frozen deposit modules into `COL*` had to be recorded on both sides (our contract
+  §9, the globe's issue #3), and the harness's `RECORDED` table had to be emptied in the
+  same commit. A table that keeps a resolved entry teaches the next reader that the
+  collision is still open, and the strict check it guards goes quiet.
+- **The recorded-collision table earns its keep by being empty.** The mechanism stays (the
+  next collision is a red, not an exception) and the harness re-measures each entry on every
+  run — so a collision that resolves itself, on either side, turns D red until the record
+  moves with it.

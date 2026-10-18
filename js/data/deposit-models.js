@@ -1,4 +1,10 @@
+(function (root) {
 // Versioned priors of the synthetic deposit catalogue (js/deposits.js, plan 0.6.x).
+//
+// The name is COL* and the file is one IIFE like every engine file, because this module is
+// read at load by js/deposit-core.js and js/deposits.js: a host page loads both this file and
+// the globe's own js/data/deposit-economics.js, and two different files must not answer to
+// one name (0.9.0 M1, the M0-D collision).
 //
 // Every number is a GAME parameter (`status: 'game'`): the orders of magnitude follow the USGS
 // grade-tonnage models listed in data/deposits/SOURCES.md, but no distribution has been fitted
@@ -13,7 +19,8 @@
 // `rockDensity` is t/m3 of the host ore rock, `oreFraction` the share of the ellipsoidal
 // envelope that is ore. `axisRatio` = [b/a, c/a] with a along strike, b down dip and c across.
 // Burial is the depth of the body's top below the solid surface.
-var DepositModels = {
+'use strict';
+var COLDEPOSITMODELS = {
 	version: 1,
 	tileN: 64,        // cube-sphere tiles per face edge: 24576 tiles of ~145 km, level-independent
 	slots: 2,         // candidate bodies per tile and family; acceptance thins them
@@ -61,4 +68,6 @@ var DepositModels = {
 		}
 	]
 };
-if (typeof module !== 'undefined' && module.exports) module.exports = DepositModels;
+if (typeof module !== 'undefined' && module.exports) module.exports = COLDEPOSITMODELS;
+else root.COLDEPOSITMODELS = COLDEPOSITMODELS;
+})(typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this));

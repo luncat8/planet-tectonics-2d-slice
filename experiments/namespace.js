@@ -15,6 +15,9 @@
 //      that moves, loaded the same way. Their set meets ours only where both pages load one
 //      shared file (SlicePack at the pin) and in the collisions recorded below; SECTION_PACKS
 //      stays ours alone.
+//   E. the host contract (0.9.0 M1): every entry the contract names exists in the loaded
+//      engine, the chrome the engine builds carries the page's own ids, tags and attributes,
+//      a window is not a host, and the engine reads no page name off its own global.
 //
 // A global set is two sets. The global object's own properties (var, function, root.X = …) are
 // what Object.keys sees. The global lexical scope (top-level let/const/class) is invisible to
@@ -57,10 +60,12 @@ var ENGINE = {
 	'js/core-log.js': 'COLCORELOG', 'js/render.js': 'COLRENDER', 'js/sim.js': 'COLSIM'
 };
 // the rest of the engine's load set, one name each: the two shared formats (a host page loads
-// each once) and the two deposit modules 0.4.2 D2 moved out of port/ under their old names
+// each once) and the two frozen deposit modules 0.4.2 D2 moved out of port/ — now COL* names
+// like every other file, so the globe's own deposit-economics.js cannot take one of them
+// (0.9.0 M1, the M0-D collision, resolved)
 var READS = {
 	'port/slice-format.js': 'SlicePack', 'port/core-log-format.js': 'CoreLogFormat',
-	'js/data/deposit-models.js': 'DepositModels', 'js/data/deposit-economics.js': 'DepositEconomics'
+	'js/data/deposit-models.js': 'COLDEPOSITMODELS', 'js/data/deposit-economics.js': 'COLDEPOSITECONOMICS'
 };
 // every section bundle registers on this one object
 var BUNDLES = 'SECTION_PACKS';
@@ -68,11 +73,14 @@ var BUNDLES = 'SECTION_PACKS';
 // names both pages define from different files, recorded in the open (0.9.0-plan.md §2 M0): the
 // negotiation input M3 carries. Each is re-measured — still these two files, still different
 // bytes — so a resolution on either side turns D red until this record moves with it.
-var RECORDED = {
-	DepositEconomics: { ours: 'js/data/deposit-economics.js', theirs: 'js/data/deposit-economics.js' }
-};
+// M0 recorded one, DepositEconomics: our frozen v1 scenario and the globe's v2 scenario under
+// one name. M1 resolved it on our side — our two deposit modules are COLDEPOSITMODELS and
+// COLDEPOSITECONOMICS now, values unchanged (0.9.0-contract.md §9) — so the table is empty and
+// the collision check is strict again: the two pages meet in the shared files' names alone.
+var RECORDED = {};
 
 var NAMED = 'COLSIM.start needs a DOM host and requestAnimationFrame';
+var NAMED_WINDOW = 'COLSIM.start does not take a window: the host is a document or an element';
 
 function sorted(a) { return a.slice().sort(); }
 function same(a, b) { return sorted(a).join(' ') === sorted(b).join(' '); }
@@ -250,9 +258,11 @@ var noDom = [
 	['start(window)', function () { SIMA.start(ctxA.sb.window); }],
 	['start(a document whose window has no frame clock)', function () { SIMA.start({ nodeType: 9, defaultView: {} }); }]
 ].map(function (c) { return c[0] + ' → ' + refusal(c[1]); });
-check.ok('COLSIM.start() throws its one named error', noDom[0] === 'start() → Error: ' + NAMED, noDom[0]);
+check.ok('COLSIM.start() with no host throws its one named error', noDom[0] === 'start() → Error: ' + NAMED, noDom[0]);
 check.ok('a host with no DOM or no frame clock gets that same error',
-	noDom.every(function (r) { return r.endsWith(' → Error: ' + NAMED); }), noDom.slice(1).join('; '));
+	noDom[2] === 'start(a document whose window has no frame clock) → Error: ' + NAMED, noDom[2]);
+check.ok('a window is not a host: it is refused by name (0.9.0 M1\'s decision)',
+	noDom[1] === 'start(window) → Error: ' + NAMED_WINDOW, noDom[1]);
 check.ok('a refused start changes nothing: not running, nothing bound, no host kept',
 	SIMA.started === false && UIA._listeners.length === 0 && UIA.host === null);
 var inline = pageScripts(html).filter(function (s) { return s.inline !== undefined; })
@@ -267,14 +277,31 @@ function idsIn(src) {
 	return out;
 }
 function attrsOf(id) {
-	var tag = new RegExp('<\\w+\\b[^>]*\\sid="' + id + '"[^>]*>').exec(html), re = /([\w-]+)="([^"]*)"/g, out = {}, m;
-	while (tag && (m = re.exec(tag[0])) !== null) out[m[1]] = m[2];
-	return out;
+	var p = pageTag(id);
+	return p ? p.attrs : {};
+}
+// a tag, read as a tag: its name and every attribute it carries, quoted or bare (checked,
+// disabled, hidden, readonly). The built chrome is compared with the page on exactly this.
+function parseTag(src) {
+	var m = /^\s*<(\w+)/.exec(src), body = src.replace(/^\s*<\w+/, '').replace(/\/?>\s*$/, ''), out = {}, re, x;
+	re = /([\w-]+)(?:\s*=\s*"([^"]*)")?/g;
+	while ((x = re.exec(body)) !== null) out[x[1]] = x[2] === undefined ? '' : x[2];
+	return { tag: m ? m[1] : '', attrs: out };
+}
+function pageTag(id) {
+	var m = new RegExp('<(\\w+)\\b[^>]*\\sid="' + id + '"[^>]*>').exec(html);
+	return m ? parseTag(m[0]) : null;
 }
 var IDS = idsIn(html);
 var PRESETS = (function () {
 	var block = /\sid="presets"[^>]*>([\s\S]*?)<\/span>/.exec(html), re = /data-v="([^"]+)"/g, out = [], m;
 	while (block && (m = re.exec(block[1])) !== null) out.push(m[1]);
+	return out;
+})();
+// the preset buttons as tags: the built chrome's four buttons are compared with these
+var PRESET_TAGS = (function () {
+	var block = /\sid="presets"[^>]*>([\s\S]*?)<\/span>/.exec(html), re = /<button\b[^>]*>/g, out = [], m;
+	while (block && (m = re.exec(block[1])) !== null) out.push(parseTag(m[0]));
 	return out;
 })();
 
@@ -298,25 +325,37 @@ function makeHost() {
 		targets.push(o);
 		return o;
 	}
-	function element(attrs) {
+	function element(attrs, tag) {
 		return target({
-			attrs: attrs, value: '0', textContent: '', checked: false, hidden: false, disabled: false,
+			attrs: attrs, tag: tag || '', value: '0', textContent: '', children: [],
+			checked: 'checked' in attrs, hidden: 'hidden' in attrs, disabled: 'disabled' in attrs,
 			width: Number(attrs.width) || 0, height: Number(attrs.height) || 0,
 			getAttribute: function (n) { return n in this.attrs ? this.attrs[n] : null; },
 			setAttribute: function (n, v) { this.attrs[n] = String(v); },
-			appendChild: function () {},
+			appendChild: function (child) { this.children.push(child); return child; },
 			getContext: function () { return ctx2d; },
 			getBoundingClientRect: function () { return { left: 0, top: 0, width: this.width, height: this.height }; }
 		});
 	}
+	// the built chrome is a tree, so the harness can walk it: the first element with an id
+	function byId(node, id) {
+		var kids = node.children || [], i, hit;
+		for (i = 0; i < kids.length; i++) {
+			if (kids[i].attrs && kids[i].attrs.id === id) return kids[i];
+			hit = byId(kids[i], id);
+			if (hit) return hit;
+		}
+		return null;
+	}
 	var els = {};
-	IDS.forEach(function (id) { els[id] = element(attrsOf(id)); });
-	var presets = PRESETS.map(function (v) { return element({ 'data-v': v }); });
+	IDS.forEach(function (id) { els[id] = element(attrsOf(id), pageTag(id).tag); });
+	var presets = PRESET_TAGS.map(function (t) { return element(t.attrs, t.tag); });
 	var doc = {
 		nodeType: 9,
 		getElementById: function (id) { return els[id] || null; },
 		querySelectorAll: function (sel) { return sel === '#presets button' ? presets : []; },
-		createElement: function () { return element({}); }
+		createElement: function (tag) { return element({}, tag); },
+		createTextNode: function (text) { return { nodeType: 3, textContent: text }; }
 	};
 	var win = target({
 		document: doc,
@@ -328,6 +367,20 @@ function makeHost() {
 	doc.defaultView = win;
 	return {
 		doc: doc, win: win, frames: frames,
+		// a container element for build(): it owns the document and answers a '#id' query over
+		// whatever was built into it
+		container: function () {
+			var c = element({}, 'div');
+			c.nodeType = 1;
+			c.ownerDocument = doc;
+			c.querySelector = function (sel) { return sel.charAt(0) === '#' ? byId(c, sel.slice(1)) : null; };
+			c.querySelectorAll = function (sel) {
+				if (sel !== '#presets button') return [];
+				var p = byId(c, 'presets');
+				return p ? (p.children || []).filter(function (k) { return k.attrs && k.attrs['data-v']; }) : [];
+			};
+			return c;
+		},
 		now: function () { return clock; },
 		listening: function () { return targets.reduce(function (n, t) { return n + t.listening(); }, 0); },
 		tick: function (n) {
@@ -381,15 +434,99 @@ host.tick(4);
 var second = fingerprint(ctxC.sb);
 check.ok('the restart replays the first start bit for bit: 4 frames, one state', second === first, second);
 SIMC.stop();
-// js/section-pack.js page() reads root.document to learn whether it runs in a page, then uses
-// root, never the document: the one read M2's in-page "never touched document" has to allow
-check.info('page names the engine read off its own global, with the host handed in',
-	tally(ctxC.reads) || 'none');
-// hostDocument() finds a document through nodeType/ownerDocument only, and a window has neither:
-// §1's "a document, a window or an element" does not hold for the window, and M1's contract decides
+// the engine reaches the DOM through its host and nowhere else: it reads no page name off its
+// own global (M1 removed M0's page() probe, which read root.document on every stop)
+check.ok('the engine reads no page name off its own global, with the host handed in',
+	ctxC.reads.length === 0, tally(ctxC.reads) || 'zero reads of ' + PAGE_NAMES.length + ' booked names');
+// a window is not a host, and it is refused by name even with its own document and frame clock
+// in place (0.9.0 M1's decision, 0.9.0-contract.md §1)
 var winHost = makeHost(), asWindow = refusal(function () { SIMC.start(winHost.win); });
 SIMC.stop();
-check.info('a window host, its document and frame clock in place', asWindow);
+check.ok('a window host, its document and frame clock in place, is refused by name',
+	asWindow === 'Error: ' + NAMED_WINDOW, asWindow);
+
+// --- E: the host contract (0.9.0 M1) ------------------------------------------------------
+check.section('E. the host contract: the named entries, the built chrome, the refusals');
+
+// the contract is a document, and its entry list is the adapter's API: every name in it must
+// exist in the loaded engine, so the contract cannot promise what the code does not have
+var contract = fs.readFileSync(path.join(root, '0.9.0-contract.md'), 'utf8');
+var contractBlock = /## 2\. The entries[\s\S]*?```\n([\s\S]*?)```/.exec(contract);
+var entries = contractBlock ? contractBlock[1].split('\n').map(function (l) { return l.trim(); })
+	.filter(function (l) { return l && l[0] !== '#'; }) : [];
+var parsed = entries.map(function (l) {
+	var m = /^([A-Z][A-Za-z0-9_]*)\.([A-Za-z0-9_]+)(\([^)]*\))?\s+(function|receipt|state)$/.exec(l);
+	return m ? { name: m[1] + '.' + m[2], global: m[1], member: m[2], kind: m[3] } : { name: l, bad: true };
+});
+var missing = parsed.filter(function (e) {
+	if (e.bad) return true;
+	var g = ctxPage.sb[e.global];
+	if (!g) return true;
+	var v = g[e.member];
+	if (e.kind === 'function') return typeof v !== 'function';
+	if (e.kind === 'receipt') return typeof v !== 'object';
+	return v === undefined;
+});
+check.ok('every entry the contract names exists in the loaded engine',
+	parsed.length > 0 && missing.length === 0,
+	parsed.length + ' entries' + (missing.length ? '; missing [' + missing.map(function (e) { return e.name; }).join(', ') + ']' : ''));
+
+// the built chrome, walked as a tree: every element with its tag and its attributes
+function walkBuilt(node, parent, out) {
+	var kids = node.children || [], i, kid;
+	for (i = 0; i < kids.length; i++) {
+		kid = kids[i];
+		if (!kid || kid.nodeType === 3) continue;
+		out.push({ id: kid.attrs.id, tag: kid.tag, attrs: kid.attrs, parent: parent });
+		walkBuilt(kid, kid.attrs.id || parent, out);
+	}
+	return out;
+}
+var container = host.container();
+var builtError = refusal(function () { UIC.build(container); });
+var built = walkBuilt(container, null, []);
+var builtIds = built.filter(function (e) { return e.id; }).map(function (e) { return e.id; });
+check.ok('the built chrome\'s id set is the page\'s id set', builtError === 'no refusal' && same(builtIds, IDS),
+	(builtError === 'no refusal' ? '' : builtError + '; ') + builtIds.length + ' ids built, ' + IDS.length + ' in the page' +
+	(same(builtIds, IDS) ? '' : '; extra [' + minus(builtIds, IDS) + '] missing [' + minus(IDS, builtIds) + ']'));
+var drift = built.filter(function (e) {
+	if (!e.id) return false;
+	var p = pageTag(e.id);
+	if (!p) return true;
+	if (p.tag.toLowerCase() !== String(e.tag).toLowerCase()) return true;
+	var keys = Object.keys(p.attrs).sort(), mine = Object.keys(e.attrs).sort();
+	if (keys.join(' ') !== mine.join(' ')) return true;
+	for (var i = 0; i < keys.length; i++) if (p.attrs[keys[i]] !== e.attrs[keys[i]]) return true;
+	return false;
+});
+check.ok('each built control is the page\'s control: the same tag and the same attributes',
+	drift.length === 0, drift.map(function (e) { return e.id; }).join(', ') || builtIds.length + ' controls, tag and attributes equal');
+var builtPresets = built.filter(function (e) { return e.attrs['data-v']; });
+var presetDrift = builtPresets.length !== PRESET_TAGS.length || builtPresets.some(function (e, i) {
+	var p = PRESET_TAGS[i];
+	if (!p) return true;
+	return e.attrs['data-v'] !== p.attrs['data-v'] || e.attrs['aria-pressed'] !== p.attrs['aria-pressed'];
+});
+check.ok('the built preset buttons are the page\'s four, in order', !presetDrift,
+	builtPresets.map(function (e) { return e.attrs['data-v']; }).join('/') + ' against ' + PRESETS.join('/'));
+
+// the built chrome is a host: the engine starts on it and binds it
+var builtHost = host.container();
+UIC.build(builtHost);
+var onBuilt = refusal(function () { SIMC.start(builtHost); });
+check.ok('the built chrome is a working host: start binds it and runs one frame loop',
+	onBuilt === 'no refusal' && SIMC.started && host.frames.size === 1 && host.listening() > 0,
+	onBuilt + '; ' + host.frames.size + ' frame pending, ' + host.listening() + ' listeners');
+SIMC.stop();
+
+check.ok('build refuses a host that is not an element',
+	refusal(function () { UIC.build(null); }) === 'Error: COLUI.build needs a host element',
+	refusal(function () { UIC.build(null); }));
+check.ok('build refuses a host that already carries the chrome',
+	refusal(function () { UIC.build(container); }) === 'Error: COLUI.build: the host already carries the chrome',
+	refusal(function () { UIC.build(container); }));
+check.ok('the built chrome read no page name off the engine\'s global', ctxC.reads.length === 0,
+	tally(ctxC.reads) || 'zero reads of ' + PAGE_NAMES.length + ' booked names');
 
 // --- D: the globe's page ------------------------------------------------------------------
 var up = process.argv[2] || process.env.UPSTREAM || '/tmp/up';

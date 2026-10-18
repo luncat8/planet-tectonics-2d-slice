@@ -20,17 +20,19 @@ var SectionPack = (function () {
 	var CP = (typeof module !== 'undefined' && module.exports) ? require('./checkpoint.js') : window.COLCHECKPOINT;
 	var node = typeof module !== 'undefined' && module.exports;
 
-	function page() { return node || !root.document ? null : root; }
+	// The object that holds the engine's globals: the page's window outside CommonJS, and
+	// nothing under it (there the engine's globals are module locals). No page name is read
+	// to decide it — the engine reaches the DOM only through its host (0.9.0 M1).
+	function page() { return node ? null : root; }
 	// sim.js loads after this file, so the pipeline is resolved at call time (the
 	// checkpoint's own lazy pattern)
 	function sim() { return node ? require('./sim.js') : root.COLSIM; }
 	function hostDocument(host) {
-		if (!host) return root.document || null;
+		if (!host) return null;
 		if (host.nodeType === 9) return host;
 		return host.ownerDocument || null;
 	}
-	function hostWindow(host, doc) {
-		if (host && host.window === host) return host;
+	function hostWindow(doc) {
 		return doc && doc.defaultView ? doc.defaultView : root;
 	}
 	function hostElement(host, id) {
@@ -143,12 +145,12 @@ var SectionPack = (function () {
 
 		// ---------------------------------------------------------------- the URL
 		sectionStart: function (host) {
-			var doc = hostDocument(host || this.host), win = hostWindow(host || this.host, doc);
+			var doc = hostDocument(host || this.host), win = hostWindow(doc);
 			var search = win && win.location ? win.location.search : '';
 			return !!search && /[?&]start=section\b/.test(search);
 		},
 		urlParams: function (host) {
-			var doc = hostDocument(host || this.host), win = hostWindow(host || this.host, doc);
+			var doc = hostDocument(host || this.host), win = hostWindow(doc);
 			var search = win && win.location ? win.location.search : '';
 			var q = {}, s = search ? search.replace(/^\?/, '') : '';
 			if (!s) return q;
@@ -400,10 +402,10 @@ var SectionPack = (function () {
 			this.unlisten();
 			if (this.link) this.link.stop();
 			this.link = null;
-			this.host = host || root.document;
+			this.host = host;
 			this.doc = hostDocument(this.host);
 			if (!this.doc) throw new Error('COLSIM section host needs an owner document');
-			this.win = hostWindow(this.host, this.doc);
+			this.win = hostWindow(this.doc);
 			this.modeRoot = this.host && this.host.nodeType === 9 ? this.doc.body : this.host;
 			this.mode = true;
 			if (this.modeRoot && this.modeRoot.classList) this.modeRoot.classList.add('section-mode');

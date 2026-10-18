@@ -182,10 +182,14 @@ identities that lock it to the pack fixture, the ported v1 validation law class 
 seal/encode/parse, stale-never-current identity, and node/classic-script parity), and
 core-log.js (the §8.5 return path: build/select/commit and the cadence; since 0.4.4 M2 its
 wire half is the shared codec), and
-namespace.js (0.9.0 M0, the C1 audit: the real global set from a bare-VM load — one name per
-engine file, the lexical scope read through the inspector, no self-start, one frame loop per
-host — and the collision check against the globe's page; a new name on either side is a red
-until its expectation table says so in the open).
+namespace.js (0.9.0 M0–M1, the C1 audit and the host contract: the real global set from a
+bare-VM load — one name per engine file, the lexical scope read through the inspector, no
+self-start, one frame loop per host, and no page name read off the engine's own global — the
+collision check against the globe's page, strict: the two pages meet in the shared port/
+names alone, and a new name on either side is a red until its expectation table says so in
+the open; and §E, the contract's own gate: every entry 0.9.0-contract.md names exists in the
+loaded engine, the chrome COLUI.build writes carries the page's own ids, tags and attributes,
+a window is refused by name, and the built chrome is a working host).
 Each prints PASS/FAIL and exits non-zero on failure.
 experiments/acceptance.js is a release's whole-series pass: one section per numbered
 acceptance claim, delegating to the owning harness where one exists (its PASS count is
@@ -246,6 +250,11 @@ audit harness, the M1 host contract (`COLUI.build(host)`, `COUP.apply`, `CLOG.bu
 the M2 `library.html` dry-run host, the M3 adapter request to the globe, and M4's §8.4
 acceptance; written against globe `3c960e7`, whose 0.9.0 is climate integration, so the
 adapter queues on their ladder),
+0.9.0-contract.md (the host contract: what a host page may do with the column engine — the
+shape, the host (a document or an element; a window is refused by name), the twelve named
+entries, mount, start/stop, coupling in, observations out, mode and staleness, and what the
+host must not do. The harness reads its entry list, so the contract and the code cannot
+drift),
 0.9.0-draft-sync.md (the integrated globe, later). The
 completed 0.1.8 plan is `archive/0.1.8-plan.md` (collision arrest and orogen memory) and the
 completed 0.2.0 plan is `archive/0.2.0-plan.md` (eruptives, deposits, save/load; the series
