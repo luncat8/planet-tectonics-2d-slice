@@ -46,8 +46,8 @@ var diagSeen = new Uint8Array(P.colCap);
 var diagStale = true;
 
 // The host is a document or an element; a window is not one (0.9.0 M1's decision). The
-// engine's controls are page-global ids and it paints into #c inside the host, and a window
-// is a realm, not a container: a foreign page's own #c would answer to the same name.
+// chrome keeps its contract ids, resolved inside the handed-in host. Embedded pages that
+// already use those ids can put the mount in a ShadowRoot, as library.html does.
 function hostDocument(host) {
 	if (!host) return null;
 	if (host.nodeType === 9) return host;

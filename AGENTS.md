@@ -246,14 +246,16 @@ both holds lifted and M1/M2 landed — `archive/0.4.4-M1-core-log-codec-worklog.
 gates are the next milestone),
 0.9.0-plan.md (C1 namespacing found already in place at 47ec7b3 — 25 engine files, one `COL*`
 global each, `COLSIM.start(host)/stop()`, no self-start — so the release is the M0 namespace
-audit harness, the M1 host contract (`COLUI.build(host)`, `COUP.apply`, `CLOG.build/json/note`),
-the M2 `library.html` dry-run host, the M3 adapter request to the globe, and M4's §8.4
-acceptance; written against globe `3c960e7`, whose 0.9.0 is climate integration, so the
-adapter queues on their ladder),
+audit harness, the M1 host contract, the M2 `library.html` dry-run host (implemented and
+Node-VM checked; headless-Chromium acceptance still pending), the M3 adapter request to the
+globe, and M4's §8.4 acceptance; written against globe `3c960e7`, whose 0.9.0 is climate
+integration, so the adapter queues on their ladder. M2's record is
+`archive/0.9.0-M2-library-host-worklog.md`),
 0.9.0-contract.md (the host contract: what a host page may do with the column engine — the
-shape, the host (a document or an element; a window is refused by name), the twelve named
-entries, mount, start/stop, coupling in, observations out, mode and staleness, and what the
-host must not do. The harness reads its entry list, so the contract and the code cannot
+shape, document/element host and named window refusal, ShadowRoot-compatible scoped IDs,
+17 named entries, mount, `data-start="section"`/`data-pack` element-host setup,
+start/stop/step, coupling in, observations out, mode and staleness, and what the host must
+not do. The namespace harness reads its entry list, so the contract and the code cannot
 drift),
 0.9.0-draft-sync.md (the integrated globe, later). The
 completed 0.1.8 plan is `archive/0.1.8-plan.md` (collision arrest and orogen memory) and the

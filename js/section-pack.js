@@ -145,23 +145,35 @@ var SectionPack = (function () {
 
 		// ---------------------------------------------------------------- the URL
 		sectionStart: function (host) {
-			var doc = hostDocument(host || this.host), win = hostWindow(doc);
+			var target = host || this.host;
+			// A nested host can opt into section mode without changing its file:// URL. When
+			// `data-start` is present it is authoritative; document hosts keep the query path.
+			if (target && target.dataset && target.dataset.start) return target.dataset.start === 'section';
+			var doc = hostDocument(target), win = hostWindow(doc);
 			var search = win && win.location ? win.location.search : '';
 			return !!search && /[?&]start=section\b/.test(search);
 		},
 		urlParams: function (host) {
-			var doc = hostDocument(host || this.host), win = hostWindow(doc);
+			var target = host || this.host;
+			var doc = hostDocument(target), win = hostWindow(doc);
 			var search = win && win.location ? win.location.search : '';
 			var q = {}, s = search ? search.replace(/^\?/, '') : '';
-			if (!s) return q;
-			var pairs = s.split('&'), i, kv, k, v;
-			for (i = 0; i < pairs.length; i++) {
-				kv = pairs[i].split('=');
-				if (!kv[0]) continue;
-				k = kv[0];
-				v = kv[1] === undefined ? '' : kv[1].replace(/\+/g, '%20');
-				try { q[decodeURIComponent(k)] = decodeURIComponent(v); }
-				catch (e) { q[k] = v; }
+			if (s) {
+				var pairs = s.split('&'), i, kv, k, v;
+				for (i = 0; i < pairs.length; i++) {
+					kv = pairs[i].split('=');
+					if (!kv[0]) continue;
+					k = kv[0];
+					v = kv[1] === undefined ? '' : kv[1].replace(/\+/g, '%20');
+					try { q[decodeURIComponent(k)] = decodeURIComponent(v); }
+					catch (e) { q[k] = v; }
+				}
+			}
+			// Host-owned settings override ambient query values for this element mount while
+			// leaving the document URL unchanged.
+			var options = target && target.dataset, names = ['start', 'pack', 'geo', 'erupt', 'seed'];
+			if (options) for (var j = 0; j < names.length; j++) {
+				if (options[names[j]] !== undefined && options[names[j]] !== '') q[names[j]] = options[names[j]];
 			}
 			return q;
 		},

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Column engine — library host</title>
+<style>
+	:root { color-scheme: dark; }
+	* { box-sizing: border-box; }
+	body { margin: 0; background: #070a11; color: #d6deec; font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+	main { width: min(100%, 1480px); margin: 0 auto; padding: 30px 34px 48px; }
+	header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 26px; }
+	h1 { margin: 3px 0 8px; color: #f0f4fb; font: 600 clamp(26px, 4vw, 40px)/1.1 system-ui, sans-serif; letter-spacing: -0.04em; }
+	h1 span { color: #83d0bd; }
+	p { margin: 0; }
+	.eyebrow { color: #79a89f; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+	.lede { max-width: 760px; color: #94a3b8; }
+	.runtime { flex: 0 0 auto; padding: 8px 11px; border: 1px solid #28354a; border-radius: 999px; color: #a8b6cb; font-size: 11px; }
+	.runtime::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; background: #83d0bd; box-shadow: 0 0 10px #83d0bd66; vertical-align: 1px; }
+	.layout { display: grid; grid-template-columns: minmax(280px, .72fr) minmax(480px, 1.28fr); gap: 14px; align-items: stretch; margin-bottom: 14px; }
+	.panel { min-width: 0; border: 1px solid #263249; border-radius: 12px; background: #0c111b; }
+	.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 17px 19px 12px; }
+	h2 { margin: 0; color: #e5ecf7; font: 600 15px/1.3 system-ui, sans-serif; }
+	.panel-head p { color: #718198; font-size: 10px; }
+	.collision { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px; margin: 0 19px; padding: 13px; border: 1px solid #263249; border-radius: 9px; background: #080c13; }
+	.collision strong { display: block; margin: 3px 0; color: #dfe8f6; font-size: 12px; }
+	.collision small { display: block; max-width: 300px; color: #8391a5; font-size: 10px; line-height: 1.5; }
+	#c { display: block; width: 280px; height: 82px; border: 1px solid #43516a; border-radius: 5px; background: #101827; }
+	.note { padding: 12px 19px 17px; color: #8291a6; font-size: 10px; }
+	code { color: #9cdbc8; }
+	.actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 19px 14px; }
+	button { appearance: none; padding: 7px 10px; border: 1px solid #34445c; border-radius: 6px; background: #141d2b; color: #cbd7e8; font: inherit; font-size: 11px; cursor: pointer; }
+	button:hover:not(:disabled) { border-color: #6a9d94; background: #192a33; color: #eafff8; }
+	button[aria-pressed="true"] { border-color: #4f9284; background: #17332f; color: #c8f3e5; }
+	button:disabled { opacity: .45; cursor: default; }
+	output { display: block; min-height: 38px; margin: 0 19px 13px; padding: 9px 11px; border: 1px solid #29374c; border-radius: 6px; background: #080c13; color: #9fd6b8; font-size: 10px; overflow-wrap: anywhere; }
+	output[data-state="fail"] { border-color: #744047; color: #f09b9b; }
+	.hint { padding: 0 19px 17px; color: #75849a; font-size: 10px; }
+	.hint a { color: #9cdbc8; text-decoration: none; }
+	.hint a:hover { text-decoration: underline; }
+	#library-shell { min-height: 650px; overflow-x: auto; }
+	footer { padding: 16px 2px 0; color: #65748a; font-size: 10px; }
+	@media (max-width: 860px) {
+		main { padding: 22px 16px 36px; }
+		header { flex-direction: column; }
+		.layout { grid-template-columns: 1fr; }
+		.collision { grid-template-columns: 1fr; }
+		#c { width: min(100%, 360px); }
+	}
+</style>
+</head>
+<body>
+<main>
+	<header>
+		<div>
+			<p class="eyebrow">0.9.0 · M2 · local host contract</p>
+			<h1>Column engine <span>library host</span></h1>
+			<p class="lede">A file:// dry run: the engine builds its semantic chrome inside a nested mount, then a small host-side adapter sends one baked Earth snapshot and places the section's reply. Open this file directly; the mount carries its own section settings.</p>
+		</div>
+		<div class="runtime">classic scripts · no build · no server</div>
+	</header>
+
+	<div class="layout">
+		<section class="panel" aria-labelledby="namespace-title">
+			<div class="panel-head">
+				<h2 id="namespace-title">ID namespace proof</h2>
+				<p>host-owned light DOM</p>
+			</div>
+			<div class="collision">
+				<div>
+					<p class="eyebrow">Existing host element</p>
+					<strong>document-level <code>#c</code></strong>
+					<small>This canvas belongs to the host page. The engine's own <code>#c</code> lives in a separate shadow tree.</small>
+				</div>
+				<canvas id="c" width="280" height="82" aria-label="Host-owned canvas used to prove the engine does not capture document-level c"></canvas>
+			</div>
+			<p class="note">The mount is an element inside a ShadowRoot. Its IDs stay unchanged for the engine's scoped selectors, while this page's stylesheet and the existing <code>#c</code> remain outside.</p>
+		</section>
+
+		<section class="panel" aria-labelledby="sequence-title">
+			<div class="panel-head">
+				<h2 id="sequence-title">Dry-run sequence</h2>
+				<p>earth-gc0 → earth-100Ma-gc0</p>
+			</div>
+			<div class="actions">
+				<button id="m2-pause" type="button" aria-pressed="false">Pause globe clock</button>
+				<button id="m2-step" type="button">Step one frame</button>
+				<button id="m2-couple" type="button">Apply 100 Ma snapshot</button>
+				<button id="m2-log" type="button">Build + place core log</button>
+				<button id="m2-stop" type="button">Stop</button>
+				<button id="m2-restart" type="button">Restart</button>
+			</div>
+			<output id="m2-status" role="status" aria-live="polite" data-state="busy">Building the nested host…</output>
+			<p class="hint">The mount supplies <code>data-start="section"</code>, <code>data-pack="earth-gc0"</code> and <code>data-geo="1000"</code>. The primary section is the 0 Ma circle. The second bake uses the same path at 100 Ma, so its coupling message can update the mounted cut without a transport or a network request.</p>
+		</section>
+	</div>
+
+	<section class="panel" aria-label="Mounted column engine">
+		<div class="panel-head">
+			<h2>Mounted engine</h2>
+			<p>COLUI.build(mount) · COLSIM.start(mount)</p>
+		</div>
+		<div id="library-shell"></div>
+	</section>
+	<footer>Host styling is local to this page. The built chrome stays semantic; the engine does not ship or inject a stylesheet.</footer>
+</main>
+
+<script src="port/slice-format.js"></script>
+<script src="port/core-log-format.js"></script>
+<script src="js/params.js"></script>
+<script src="js/rng.js"></script>
+<script src="js/geom.js"></script>
+<script src="js/state.js"></script>
+<script src="js/surface.js"></script>
+<script src="js/columns.js"></script>
+<script src="js/mantle.js"></script>
+<script src="js/slab.js"></script>
+<script src="js/plates.js"></script>
+<script src="js/magma.js"></script>
+<script src="js/erupt.js"></script>
+<script src="js/crust.js"></script>
+<script src="js/ore.js"></script>
+<script src="js/perf.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/data/deposit-models.js"></script>
+<script src="js/data/deposit-economics.js"></script>
+<script src="js/deposit-core.js"></script>
+<script src="js/deposits.js"></script>
+<script src="js/section-seed.js"></script>
+<script src="js/checkpoint.js"></script>
+<script src="js/data/section-earth-gc0.js"></script>
+<script src="js/data/section-earth-100Ma-gc0.js"></script>
+<script src="js/data/section-earth-100Ma-gc1.js"></script>
+<script src="js/section-pack.js"></script>
+<script src="js/coupling.js"></script>
+<script src="js/coupling-link.js"></script>
+<script src="js/core-log.js"></script>
+<script src="js/render.js"></script>
+<script src="js/sim.js"></script>
+<script>
+(function () {
+	'use strict';
+	var PRIMARY_ID = 'earth-gc0', SNAPSHOT_ID = 'earth-100Ma-gc0';
+	var shell = document.getElementById('library-shell');
+	var shadow = shell.attachShadow({ mode: 'open' });
+	var css = document.createElement('style');
+	css.textContent = [
+		':host { display:block; min-width:1310px; color:#9aa7bd; font:12px/1.5 monospace; }',
+		'* { box-sizing:border-box; }',
+		'#bar { width:1310px; padding:8px 0; display:flex; gap:18px; align-items:center; flex-wrap:wrap; }',
+		'#bar label { white-space:nowrap; }',
+		'input[type=range] { width:150px; vertical-align:middle; accent-color:#4f9284; }',
+		'button { background:#121826; color:#9aa7bd; border:1px solid #2a3550; border-radius:3px; font:11px monospace; padding:3px 8px; cursor:pointer; }',
+		'button:hover:not(:disabled) { color:#eafff8; border-color:#4f9284; }',
+		'button[aria-pressed="true"] { background:#16323c; border-color:#3f8f88; color:#d9f7ec; }',
+		'button[disabled] { color:#46536b; border-color:#222a3d; cursor:default; }',
+		'label:has(input:checked) { color:#d9f7ec; }',
+		'#stage { display:grid; grid-template-columns:22px 1282px; grid-template-rows:562px auto; column-gap:6px; row-gap:3px; }',
+		'#sVZoom { grid-area:1 / 1; width:22px; height:562px; margin:0; writing-mode:vertical-lr; direction:rtl; }',
+		'#wrap { grid-area:1 / 2; position:relative; width:1282px; height:562px; }',
+		'#axis { grid-area:2 / 2; display:flex; gap:16px; align-items:center; }',
+		'#sHZoom { width:380px; }',
+		'canvas { display:block; border:1px solid #1c2438; cursor:crosshair; }',
+		'#hud { position:absolute; left:8px; top:8px; white-space:pre; pointer-events:none; color:#9fd6b8; text-shadow:0 0 3px #000; }',
+		'#help { width:1310px; box-sizing:border-box; padding:4px 0 12px 28px; color:#718198; font-size:10px; }',
+		'#slice { display:none; }',
+		'.section-mode #bar > label, .section-mode #presets, .section-mode #bMesh, .section-mode #bSave { display:none; }',
+		'.section-mode #slice { display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap; width:100%; box-sizing:border-box; }',
+		'#slice label { white-space:nowrap; }',
+		'#slice textarea { width:560px; height:42px; background:#0a0f18; color:#9aa7bd; border:1px solid #2a3550; font:10px/1.4 monospace; padding:3px 4px; resize:vertical; }',
+		'#slice input[type=file] { font:11px monospace; color:#9aa7bd; }',
+		'#slice select { background:#121826; color:#9aa7bd; border:1px solid #2a3550; font:11px monospace; }',
+		'#slice #sMsg { white-space:pre-wrap; max-width:1310px; color:#7f8ea8; }',
+		'#slice #sMsg.bad { color:#e08585; }',
+		'#orePanel { width:1282px; margin-left:28px; box-sizing:border-box; padding:10px; border:1px solid #2a3550; background:#0a0f18; }',
+		'#orePanel[hidden] { display:none; }',
+		'#oreLegend { display:flex; gap:18px; flex-wrap:wrap; margin-bottom:6px; }',
+		'#orePick { width:600px; height:140px; background:#121826; color:#dfe7f5; border:1px solid #2a3550; font:11px/1.6 monospace; }',
+		'#oreDetails { display:inline-block; vertical-align:top; margin:0 0 0 14px; width:620px; }',
+		'#oreInfo { white-space:pre-wrap; margin:0 0 8px; color:#9fd6b8; }',
+		'#oreStatus { display:block; margin-top:6px; color:#7f8ea8; }'
+	].join('\n');
+	shadow.appendChild(css);
+	var mount = document.createElement('div');
+	mount.className = 'column-engine-mount';
+	mount.dataset.start = 'section';
+	mount.dataset.pack = PRIMARY_ID;
+	mount.dataset.geo = '1000';
+	shadow.appendChild(mount);
+
+	var status = document.getElementById('m2-status');
+	var foreignCanvas = document.getElementById('c');
+	var foreignContext = foreignCanvas.getContext('2d');
+	foreignContext.fillStyle = '#101827';
+	foreignContext.fillRect(0, 0, foreignCanvas.width, foreignCanvas.height);
+	foreignContext.fillStyle = '#83d0bd';
+	foreignContext.font = '11px monospace';
+	foreignContext.fillText('HOST CANVAS · #c', 12, 28);
+	foreignContext.fillStyle = '#718198';
+	foreignContext.fillText('must remain host-owned', 12, 49);
+
+	var running = false, earthLoaded = false;
+
+	function report(text, failed) {
+		status.textContent = text;
+		status.dataset.state = failed ? 'fail' : 'pass';
+	}
+
+	function sectionMessage() {
+		var panel = mount.querySelector('#sMsg');
+		return panel ? panel.textContent : '';
+	}
+
+	function requireActive() {
+		if (!running || !earthLoaded || !COLSECTION.mode) {
+			throw new Error('the configured Earth section is not active');
+		}
+	}
+
+	function startHost() {
+		COLSIM.start(mount);
+		running = true;
+		var engineCanvas = mount.querySelector('#c');
+		if (!COLSECTION.mode || sectionMessage().indexOf('loaded source L') < 0) {
+			COLSIM.stop(); running = false; earthLoaded = false;
+			throw new Error('COLSIM.start did not load the configured Earth bundle');
+		}
+		if (!engineCanvas || engineCanvas === foreignCanvas || document.getElementById('c') !== foreignCanvas) {
+			COLSIM.stop(); running = false; earthLoaded = false;
+			throw new Error('the host #c escaped its ShadowRoot namespace');
+		}
+		earthLoaded = true;
+		document.getElementById('m2-stop').disabled = false;
+		document.getElementById('m2-restart').disabled = false;
+		document.getElementById('m2-pause').disabled = false;
+		document.getElementById('m2-step').disabled = false;
+		document.getElementById('m2-couple').disabled = false;
+		document.getElementById('m2-log').disabled = false;
+		report('Started in a nested host · ' + PRIMARY_ID + ' via SECTION_PACKS · canvas is tree-scoped', false);
+	}
+
+	function guarded(run) {
+		try { run(); }
+		catch (e) { report('Dry-run failed: ' + e.message, true); }
+	}
+
+	function pauseClock() {
+		requireActive();
+		var primary = SECTION_PACKS[PRIMARY_ID];
+		if (!primary) throw new Error('SECTION_PACKS is missing ' + PRIMARY_ID);
+		var pathChecksum = COLCOUPLING.pathChecksum(primary);
+		COLSECTION.applyClock({
+			pathChecksum: pathChecksum,
+			tMyr: primary.source.tMyr,
+			paused: true,
+			cadenceMyr: COLCOUPLING.CADENCE_MYR
+		}, 'dry-run');
+		if (!COLSECTION.syncPaused) throw new Error('the section did not accept the paused clock');
+		document.getElementById('m2-pause').setAttribute('aria-pressed', 'true');
+		report('Globe stand-in paused · section clock held at the baked snapshot time', false);
+	}
+
+	function setGeologyRate(value) {
+		var slider = mount.querySelector('#sGeo');
+		if (!slider) throw new Error('the built geology slider is missing');
+		slider.value = String(value);
+		slider.dispatchEvent(new Event('input', { bubbles: true }));
+	}
+
+	function stepOnce() {
+		requireActive();
+		if (!COLSECTION.syncPaused) pauseClock();
+		setGeologyRate(1); // the slider's lowest non-zero setting: one small, deterministic frame
+		COLSIM.step();
+		setGeologyRate(0);
+		document.getElementById('m2-pause').setAttribute('aria-pressed', 'true');
+		report('One configured simulation frame · geology returned to pause', false);
+	}
+
+	function applySnapshot() {
+		requireActive();
+		var primary = SECTION_PACKS[PRIMARY_ID], incoming = SECTION_PACKS[SNAPSHOT_ID];
+		if (!primary || !incoming) throw new Error('SECTION_PACKS is missing a baked Earth bundle');
+		var pathChecksum = COLCOUPLING.pathChecksum(primary);
+		if (COLCOUPLING.pathChecksum(incoming) !== pathChecksum) throw new Error('the baked snapshots do not share a path');
+		var message = COLCOUPLING.fromPack(incoming, { pathChecksum: pathChecksum });
+		COLCOUPLING.apply(message);
+		if (!COLCOUPLING.last || COLCOUPLING.last.matched < 1) throw new Error('the coupling apply matched no columns');
+		report('Applied ' + SNAPSHOT_ID + ' through COLCOUPLING.apply · ' + COLCOUPLING.last.matched + ' matched columns', false);
+	}
+
+	function buildObservation() {
+		requireActive();
+		mount.querySelector('#sObs').click();
+		var text = mount.querySelector('#sObsOut').value;
+		if (!text) throw new Error('the core-log field stayed empty');
+		var message = CoreLogFormat.parse(text);
+		if (!message.records.length) throw new Error('the core log has no records');
+		report('Core log built and placed · ' + message.records.length + ' records · ' + message.checksum, false);
+	}
+
+	function stopHost() {
+		COLSIM.stop();
+		running = false; earthLoaded = false;
+		report('Stopped · frame loop cancelled · host controls released', false);
+	}
+
+	function restartHost() {
+		COLSIM.stop();
+		running = false; earthLoaded = false;
+		startHost();
+		document.getElementById('m2-pause').setAttribute('aria-pressed', 'false');
+		report('Restarted · ' + PRIMARY_ID + ' restored in the nested host', false);
+	}
+
+	COLUI.build(mount);
+	document.getElementById('m2-pause').addEventListener('click', function () { guarded(pauseClock); });
+	document.getElementById('m2-step').addEventListener('click', function () { guarded(stepOnce); });
+	document.getElementById('m2-couple').addEventListener('click', function () { guarded(applySnapshot); });
+	document.getElementById('m2-log').addEventListener('click', function () { guarded(buildObservation); });
+	document.getElementById('m2-stop').addEventListener('click', function () { guarded(stopHost); });
+	document.getElementById('m2-restart').addEventListener('click', function () { guarded(restartHost); });
+	window.addEventListener('error', function (event) { report('Browser error: ' + event.message, true); });
+	window.M2_LIBRARY = {
+		mount: mount,
+		shadowRoot: shadow,
+		start: function () { guarded(startHost); },
+		pause: function () { guarded(pauseClock); },
+		step: function () { guarded(stepOnce); },
+		applySnapshot: function () { guarded(applySnapshot); },
+		buildObservation: function () { guarded(buildObservation); },
+		stop: function () { guarded(stopHost); },
+		restart: function () { guarded(restartHost); },
+		status: status
+	};
+	guarded(startHost);
+}());
+</script>
+</body>
+</html>

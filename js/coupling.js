@@ -729,6 +729,19 @@ var COUP = (function () {
 	// passes, stack primitives cannot refuse: growth consolidates at the cap and class removal
 	// takes no more than the aggregate COL.sums just measured.
 	function apply(st, msg, opts) {
+		// The one-argument host contract applies a verified message to the active section.
+		// The three-argument form remains the engine primitive used by the section and the
+		// headless acceptance harnesses; it is intentionally state-explicit.
+		if (arguments.length === 1) {
+			if (!st || typeof st !== 'object' || Array.isArray(st)) {
+				throw new Error('COLCOUPLING.apply(msg) needs a message object');
+			}
+			var section = node ? require('./section-pack.js') : root.COLSECTION;
+			if (!section || typeof section.applyCoupling !== 'function') {
+				throw new Error('COLCOUPLING.apply(msg) needs an active section host');
+			}
+			return section.applyCoupling(JSON.stringify(st), 'host');
+		}
 		opts = opts || {};
 		if (!msg || typeof msg !== 'object') return 'message refused: apply needs a message object';
 		var why = validate(msg);
