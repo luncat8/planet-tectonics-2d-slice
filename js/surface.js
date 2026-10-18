@@ -99,7 +99,10 @@ SURF.morph = function (dt) {
 			zt = S.z[lm] + (S.z[rm] - S.z[lm]) * g;
 			ht = S.hTot[lm] + (S.hTot[rm] - S.hTot[lm]) * g;
 			if (rel >= 1) { S.z[k] = zt; S.hDraw[k] = ht; }
-			else { S.z[k] += (zt - S.z[k]) * rel; S.hDraw[k] += (ht - S.hDraw[k]) * rel; }
+			else {
+				S.z[k] += (zt - S.z[k]) * rel; S.hDraw[k] += (ht - S.hDraw[k]) * rel;
+				if (S.colGhost[k] === 2) { S.z[k] += (zt - S.z[k]) * 0.25; S.hDraw[k] += (ht - S.hDraw[k]) * 0.25; }
+			}
 			// a pinned sliver is a new profile value, so the three gradients that read
 			// it are stale whether or not the erosion pass touched them
 			SURF.slopeDirty[k] = 1;

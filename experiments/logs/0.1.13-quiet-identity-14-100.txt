@@ -1,0 +1,32 @@
+
+contact-audit site bookkeeping
+PASS  event buckets are concrete Set values
+PASS  repeat spacing uses the current event frame
+PASS  the R1 window is anchored at the event, not at its bucket   event at 156.4 km, bucket left edge 0.0 km
+PASS  a standing-needle run counts consecutive frames and resets on a gap   a run of 22 frames reaches 22, a gap resets to 1, a second sample in one frame does not double-count
+INFO  clock scope   combined clocks (K7 write-back included)
+contact audit — seed 14, 100 kyr/frame, 5000 frames (500 Myr), 5.09 ms/frame
+  crust          max 81.2 km   thickest at a contact 81.2 km   collisions 8783 seen; legacy peak/flank 6.03x, legacy 4-of-6 96.5%, contiguous 4-of-6 96.5% of 7697 built samples   draining records 4 live holding 0.0% of the crust, widest run 0.0 columns (oldest 69.0 Myr)
+  R2 legacy peak frame 3498, edge 423, pair 73.0 km / outer flank 12.1 km (6.03x), mean immediate shoulders 59.7 km (1.22x), legacy count 6/6 above outer flank + 2.0 km: 8.5/47.4/53.7/65.5/73.0/65.8/62.8/17.2 km
+  R2 local needle frame 3032, edge 427, pair 58.0 km / highest belt-neighbourhood shoulder 41.7 km (1.39x; max 1.5), local hTot (-3..+4) km: 8.4/23.4/28.8/42.6/58.0/41.7/18.7/13.8
+  R2 legacy width narrowest count 3/6 at frame 898, edge 10, pair/flank 1.45: 8.8/11.1/17.8/29.1/39.4/42.8/42.8/44.7 km
+  R2 contiguous width minimum 3/6 at frame 898, edge 10: 8.8/11.1/17.8/29.1/39.4/42.8/42.8/44.7 km
+  max column     frame 4026, record 216, x 16013.1 km   fel 81.2 km, maf 0.0 km, sed 0.0 km, on a C-C retirement frame: false
+  surface        worst single-frame move 2755 m at frame 1054 x 19076.9 km   mean 4.4 m, 50921 raster samples above 100 m
+  R1 event site  2755 m in an event footprint (accretion, frame 1054 x 19076.9 km) against the quiet-frame yardstick 1466 m (frame 997 x 19057.3 km), ratio 1.88 (max 1.25)
+                 event-frame background (report) 1575 m (frame 4030 x 15890.9 km), worst same-frame pairing (report) 74.08 at frame 1267 (2653 m vs 36 m)
+                 quiet-frame drawn thickness 7.1 km and width 8.2%, 0 quiet records with no counterpart, 0 re-partitioned)
+  columns        worst single-frame drawn-thickness change 7.1 km at frame 1071 x 19059.8 km   worst width change 8.2% at frame 3769   worst local slope 123.1%
+  topology       233 births / 189 deaths (84.40 per 1000 frames, incl. 93 C-C retirements) at 39 repeated birth and 31 repeated death sites (556 columns, 10 plates)
+  stacks         0 column-frames with an inverted bed, 0 column-frames at layerCap
+  quiet-identity 2428986 quiet pairs over 4509 quiet frames (2428986 inside the 10% width exclusion, 0 censored by it)
+    C1 neighbour continuity: 2420582 held, 8404 flanked by a draining record or a sliver, 0 beside a different record
+    frame integrity: 2 of 4509 quiet frames changed their record set behind the event detector (2 without one floor solve, 0 with a different record count) carrying 1083 pairs, 0 of them censored, drawn max 0.8 km, identity-corrected max 758 m; 5493 floor solves in all
+    their own kernel intents: birth 0, consume 0, drain 0, accrete 0; 2 had the event cadence called on them and 0 removed a ghost, the drained sliver marker; first 1840 took 538 records to 538 and 1 ghosts to 1 in 2 floor solves and 1 cadence calls, COL.isNew 0 wide / 0 narrow
+    C2 volume kept to 43.2% worst on the 2420582 certified pairs (frame 3098 x 298.5 km, a column drawn 11.1 km -> 15.9 km), to 7.0% on the 8404 beside a draining record (frame 4026 x 16013.1 km, drawn 81.2 km)
+    territory change on the censored: advection max 0.0 km, floor push max 0.0 km, of the summed share - / -; the width decomposition closes to 0 m over 2420582 pairs, the advection law to 0.0000 m
+    identity-corrected drawn thickness max 9710 m certified (inside the exclusion 9710 m, censored 0 m), 6119 m uncertified (frame 4026 x 16013.1 km at 7.1%); the drawn change the audit reports: 7.1 km / 0.0 km
+    worst identity-corrected row frame 3484 x 16408.8 km: width 34.7 km -> 32.3 km (6.8%), thickness 66.4 km -> 61.6 km, volume 13.6%, fel/maf/sed 9710 m/0 m/0 m
+    drawn surface per record: territory unchanged 1332 m, inside the exclusion 1731 m, censored 0 m (frame -1 x 0.0 km at 0.0%)
+    raster yardstick split: territory unchanged 1271 m, inside the exclusion 1466 m, censored 0 m, uncertified 1238 m, record set changed 149 m (the gate reads 1466 m)
+    exceedance over the 2420582 certified pairs: >10 m 92261, >100 m 35614, >500 m 6565, >1 km 1897, >2 km 540, >5 km 50, >10 km 0 identity-corrected; >10 m 121560, >100 m 41014, >500 m 6416, >1 km 2166, >2 km 714, >5 km 9, >10 km 0 drawn

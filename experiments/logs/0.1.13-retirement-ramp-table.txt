@@ -1,0 +1,69 @@
+1 — the four strict contact legs (base 0.1.12 --drain-event vs Candidate A zDyn ramp vs Candidate B territory hand-back)
+variant        leg        site kind          site yardstick ratio    R3/lim  R2w%  cen  verdict
+0.1.12 base    3000/1/50  sliver retirement  3162      1458  2.17  80.9/81.8  97.6%    0  1 / 13 FAILURES
+0.1.12 base    3000/1/100 sliver retirement  5554      2285  2.43  81.2/83.5  95.6%    0  1 / 13 FAILURES
+0.1.12 base    5000/5/50  sliver retirement  5078      1000  5.08  81.5/81.8  98.3%    0  1 / 13 FAILURES
+0.1.12 base    5000/5/100 sliver retirement  3899      1631  2.39  81.5/83.5  98.0%    0  1 / 13 FAILURES
+A zDyn ramp    3000/1/50  sliver retirement  6409      1932  3.32  80.9/81.8  87.6%    0  2 / 13 FAILURES
+A zDyn ramp    3000/1/100 sliver retirement  4124      2925  1.41  80.7/83.5  93.6%   93  1 / 13 FAILURES
+A zDyn ramp    5000/5/50  accretion          2600      1425  1.82  82.4/81.8  92.5%    0  2 / 13 FAILURES
+A zDyn ramp    5000/5/100 sliver retirement  4451      1503  2.96  80.2/83.5  93.8%    0  1 / 13 FAILURES
+B hand-back    3000/1/50  accretion          2031      1749  1.16  80.4/81.8  96.7%    0  ALL PASS (13 checks)
+B hand-back    3000/1/100 birth              2197      2011  1.09  81.1/83.5  93.5%    0  ALL PASS (13 checks)
+B hand-back    5000/5/50  sliver retirement  1461      1335  1.09  81.7/81.8  99.1%    0  ALL PASS (13 checks)
+B hand-back    5000/5/100 birth              2122      2319  0.92  81.9/83.5  97.3%    0  ALL PASS (13 checks)
+
+2 — 32-world matrix (5000 frames, seeds 1..16 x 50/100 kyr/frame): 0.1.12 --drain-event vs 0.1.13 landed
+sd kyr | 0.1.12 kind        site  yard ratio  maxH | 0.1.13 kind        site  yard ratio      maxH    qDh   qDw cen
+ 1  50 | sliver retirement  3868  1458  2.65  81.7 | accretion          3405  2610  1.30 RED   81.6   10.0   6.9   0
+ 1 100 | sliver retirement  5554  2285  2.43  81.2 | birth              2197  2011  1.09 pass  81.1    9.4   9.8   0
+ 2  50 | sliver retirement  5325   904  5.89  81.4 | birth              2599  1086  2.39 RED   81.3    5.1   5.7   0
+ 2 100 | sliver retirement  5267  2042  2.58  81.4 | sliver retirement  2331  1947  1.20 pass  81.6    7.2   7.7   0
+ 3  50 | sliver retirement  3885   857  4.53  81.1 | birth              2442  1234  1.98 RED   81.0    5.3   8.6   0
+ 3 100 | sliver retirement  3790  1978  1.92  81.7 | birth              2208  2575  0.86 pass  81.7   15.7   7.4   0
+ 4  50 | sliver retirement  4185  1531  2.73  82.0 | birth              2601  1213  2.14 RED   81.2    4.1   6.8   0
+ 4 100 | sliver retirement  2503  1936  1.29  81.1 | accretion          4455  3618  1.23 pass  81.2   13.0   9.9  24
+ 5  50 | sliver retirement  5078  1000  5.08  81.5 | sliver retirement  1461  1335  1.09 pass  81.7    5.3   5.7   0
+ 5 100 | sliver retirement  3899  1631  2.39  81.5 | birth              2122  2319  0.92 pass  81.9   11.3   7.8   0
+ 6  50 | sliver retirement  3284   628  5.23  82.1 | birth              1881  1271  1.48 RED   82.1    4.3   6.9   0
+ 6 100 | sliver retirement  2466  1268  1.94  81.0 | sliver retirement  2151  2297  0.94 pass  81.0    5.1   8.0   0
+ 7  50 | sliver retirement  4874  1069  4.56  80.9 | birth              2554  1941  1.32 RED   80.7    4.2   5.7   0
+ 7 100 | sliver retirement  4705  1997  2.36  81.3 | accretion          3384  2142  1.58 RED   81.7    8.3   9.5   0
+ 8  50 | birth              2523   773  3.26  82.0 | accretion          1692  1319  1.28 RED   82.0    4.8   7.3   0
+ 8 100 | sliver retirement  3506  1977  1.77  81.8 | birth              2664  1514  1.76 RED   81.7    7.4   7.4   0
+ 9  50 | accretion          2109   656  3.21  82.5 | sliver retirement  1511  1241  1.22 pass  82.7    4.3   7.2   0
+ 9 100 | sliver retirement  5120   952  5.38  82.8 | sliver retirement  1923  1673  1.15 pass  82.3    7.3   7.2   0
+10  50 | sliver retirement  4712   899  5.24  81.4 | accretion          2586  1316  1.97 RED   80.9    6.1   7.8   0
+10 100 | sliver retirement  5172  1982  2.61  80.8 | sliver retirement  2405  2663  0.90 pass  81.4    9.3   8.3   0
+11  50 | sliver retirement  5005  1109  4.51  80.7 | birth              2031  1343  1.51 RED   81.2    6.3   8.2   0
+11 100 | sliver retirement  5897  1129  5.22  80.4 | accretion          2196  2208  0.99 pass  81.9    9.4   7.9   0
+12  50 | accretion          2999  1637  1.83  81.6 | birth              1943  1334  1.46 RED   81.9    4.7   6.0   0
+12 100 | sliver retirement  5094  1889  2.70  81.0 | accretion          2237  2642  0.85 pass  81.9   12.4   8.1   0
+13  50 | sliver retirement  4190  1586  2.64  81.0 | birth              2419  1145  2.11 RED   81.4    5.1   6.6   0
+13 100 | sliver retirement  4464  3097  1.44  82.0 | birth              2651  3055  0.87 pass  80.9    6.2   8.3   0
+14  50 | sliver retirement  3045  1279  2.38  81.2 | birth              2474  1608  1.54 RED   81.8    6.7   8.7   0
+14 100 | sliver retirement  4395  2668  1.65  81.1 | accretion          2755  1466  1.88 RED   81.2    7.1   8.2   0
+15  50 | sliver retirement  2426  1433  1.69  82.7 | accretion          1688  1290  1.31 RED   81.6    6.3   7.0   0
+15 100 | sliver retirement  3974  2101  1.89  82.3 | accretion          2012  1849  1.09 pass  82.2   12.4   8.6   0
+16  50 | sliver retirement  4725  1209  3.91  80.6 | birth              1966  2633  0.75 pass  80.8    6.4   7.1   0
+16 100 | sliver retirement  4627  2506  1.85  80.7 | accretion          3285  2711  1.21 pass  80.9   11.4   8.9   0
+
+strict legs: 0.1.12 base 0/4 pass (R1 2.17/2.43/5.08/2.39, R3 80.9..81.5 km); Candidate A zDyn ramp 0/4 pass (R1 3.32/1.41/1.82/2.96, R3 80.2..82.4 km, R2 width 87.6..93.8%); Candidate B territory hand-back 4/4 ALL PASS (R1 1.16/1.09/1.09/0.92, R3 80.4..81.9 km, R2 width 93.5..99.1%, censored 0)
+32-world matrix (5000 frames):
+  R1 site: 0.1.12 2109..5897 m (median 4293) -> 0.1.13 1461..4455 m (median 2284)
+  R1 yardstick: 0.1.12 628..3097 m (median 1495) -> 0.1.13 1086..3618 m (median 1761)
+  R1 ratio: 0.1.12 1.29..5.89 (median 2.63, pass 0/32, retirement loudest on 29) -> 0.1.13 0.75..2.39 (median 1.25, pass 16/32, retirement loudest on 6, retirement over budget on 0)
+  R3 maxH: 0.1.12 80.4..82.8 km (median 81.4) -> 0.1.13 80.7..82.7 km (median 81.6)
+  quiet pairs 79783754 over 150395 quiet frames: C1 held 79332724, flanked by a draining record 451030, beside a different record 0, unmatched 0
+  width decomposition closes to 0..0 m over 79332724 certified pairs; advection law to 0.0000..0.0000 m
+  censored observations: 0.1.12 1 -> 0.1.13 24 across 32 worlds
+  missed frames: 102 (all event-cadence calls 102, drain 0, birth 0, consume 0, accrete 0, ghost changes 0), carrying 25..862 m of the yardstick
+  quiet drawn thickness 4.1..15.7 km (median 6.6), width 5.7..9.9% (median 7.8); identity-corrected certified 3510..18988 m (median 7219), uncertified 475..6119 m (median 1431)
+  raster yardstick split: territory unchanged 609..3333 m, inside the exclusion 676..2697 m, censored 0..3618 m, uncertified 837..3055 m, record set changed 25..862 m (gate reads 1086..3618 m)
+  certified exceedance >10 m     2396691 pairs identity-corrected,   3243008 drawn
+  certified exceedance >100 m     669783 pairs identity-corrected,    732769 drawn
+  certified exceedance >500 m      77950 pairs identity-corrected,     74982 drawn
+  certified exceedance >1 km       19449 pairs identity-corrected,     22061 drawn
+  certified exceedance >2 km        4716 pairs identity-corrected,      5236 drawn
+  certified exceedance >5 km         287 pairs identity-corrected,       169 drawn
+  certified exceedance >10 km         19 pairs identity-corrected,        13 drawn

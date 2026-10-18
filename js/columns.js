@@ -697,11 +697,41 @@ COL.plates = function () {
 	}
 };
 
+// Maximum Voronoi width a retiring sliver (colGhost === 2) releases in one frame:
+// bounded so neither receiving neighbour's width grows by more than alpha(dt) (< 8.25%,
+// inside the 10% re-partition bound at every slider rate), with a 2 km floor so the
+// hand-back finishes in a finite number of frames (0.1.13-plan.md §3.3).
+COL.retireStep = function (st, i, dl, dr, dt) {
+	var n = st.nCol, im = i > 0 ? i - 1 : n - 1, ip = i + 1 < n ? i + 1 : 0, span = dl + dr;
+	if (!(span > 0)) return P.w0;
+	var alpha = 0.0825 * dt / (0.025 + dt);
+	var imm = im > 0 ? im - 1 : n - 1, ipp = ip + 1 < n ? ip + 1 : 0;
+	var dL0 = st.colX[im] - st.colX[imm], dR0 = st.colX[ipp] - st.colX[ip];
+	if (dL0 < 0) dL0 += P.wrap;
+	if (dR0 < 0) dR0 += P.wrap;
+	var wIm = st.colW[im] > 0 ? st.colW[im] : 0.5 * (dL0 + dl);
+	var wIp = st.colW[ip] > 0 ? st.colW[ip] : 0.5 * (dr + dR0);
+	var sIm = dr > 0 ? (alpha * wIm) / (dr / span) : 1e9;
+	var sIp = dl > 0 ? (alpha * wIp) / (dl / span) : 1e9;
+	return Math.max(2000, Math.min(sIm, sIp));
+};
+
 COL.transport = function (st, dt) {
 	if (!(dt > 0)) return;
-	var n = st.nCol, i, oldRight = this.map;
+	this.lastDt = dt;
+	var n = st.nCol, i, j, im, d, gL, min = P.gFloor * P.w0, wVor, step, cur, slot, anyRet = false, oldRight = this.map;
+	for (i = 0; i < n; i++) {
+		if (st.colGhost[i] !== 1) continue;
+		j = (i + 1) % n;
+		im = i > 0 ? i - 1 : n - 1;
+		d = st.colX[j] - st.colX[i]; if (d <= 0) d += P.wrap;
+		gL = st.colX[i] - st.colX[im]; if (gL < 0) gL += P.wrap;
+		if ((gL <= min && (d <= min * 1.0001 || st.colGhost[j])) ||
+			st.edgeRelN[st.colPlate[im] !== st.colPlate[i] ? im : i] > 0) st.colGhost[i] = 2;
+	}
 	for (i = 0; i < n; i++) {
 		st.oldW[i] = st.colW[i];
+		if (st.colGhost[i]) st.layAg[(i + 1) * P.layerCap - 1] = st.colW[i];
 		st.sortOrder[i] = i;
 		st.colX[i] += st.colU[i] * dt;
 		st.colX[i] -= Math.floor(st.colX[i] / P.wrap) * P.wrap;
@@ -726,6 +756,19 @@ COL.transport = function (st, dt) {
 		st.edgeRPlate[i] = -1;
 	}
 	st.widths();
+	for (i = 0; i < n; i++) {
+		if (st.colGhost[i] !== 2) continue;
+		im = i > 0 ? i - 1 : n - 1;
+		j = i + 1 < n ? i + 1 : 0;
+		gL = st.colX[i] - st.colX[im]; if (gL < 0) gL += P.wrap;
+		d = st.colX[j] - st.colX[i]; if (d < 0) d += P.wrap;
+		wVor = 0.5 * (gL + d);
+		step = this.retireStep(st, i, gL, d, dt);
+		slot = (i + 1) * P.layerCap - 1;
+		cur = st.layAg[slot] > 0 && st.layAg[slot] < wVor ? st.layAg[slot] : wVor;
+		if (cur > step) { st.layAg[slot] = Math.max(step, cur - step); anyRet = true; }
+	}
+	if (anyRet) st.widths();
 	// The snapshot of what this frame's geometry was settled under, taken here and not
 	// before the solve: it is indexed by column slot, and the gather above has just
 	// renumbered the slots. It is taken before the classifier runs, so a contact the
@@ -895,8 +938,9 @@ COL.released = function (st, count, k, pre) {
 // at a tenth of the entry speed, so without this a boundary with no meaningful motion
 // spawns and kills a record every few frames, which is the loudest thing the section
 // ever does (0.1.5 M1c).
-COL.intents = function () {
-	var n = S.nCol, i, j, im, d, e, gL, min = P.gFloor * P.w0;
+COL.intents = function (dt) {
+	var n = S.nCol, i, j, im, d, e, gL, min = P.gFloor * P.w0, step, zt;
+	dt = dt > 0 ? dt : (this.lastDt || P.sl.geo / 1e6);
 	this.intent.fill(0, 0, n);
 	this.crush.fill(-1, 0, n);
 	for (i = 0; i < n; i++) {
@@ -906,24 +950,23 @@ COL.intents = function () {
 		if (d <= 0) d += P.wrap;
 		gL = S.colX[i] - S.colX[im];
 		if (gL < 0) gL += P.wrap;
-		// A sliver is retired the moment the trench has closed both its gaps to the
-		// floor: its territory is then two floors wide, and handing that back moves each
-		// neighbour's surface by metres. This is geometry, not a boundary state, so it
-		// is not gated on the classifier's entry terms like the two topology intents.
+		// A sliver is finished when the trench has closed both its gaps to the floor (or
+		// a chain drains from the left), or when its trench gap opens so the zero-crust
+		// marker sits inside a rigid plate stealing width from the column beside it.
+		// Dropping the record in one frame hands 9.4..43.8 km of Voronoi territory back
+		// at once, thinning a thick margin and dropping its drawn surface by up to 5.9 km
+		// (0.1.12 §3). Instead the sliver enters retirement (colGhost = 2), hands its
+		// territory back over frames inside the 10% width bound while SURF.morph walks
+		// its drawn profile onto the chord between its neighbours, and is drained only
+		// once the remaining step and chord residual fit inside one frame (0.1.13 §3.3).
 		if (S.colGhost[i]) {
-			// A sliver that has another sliver on its right is in a pile-up: the trench
-			// has eaten several columns in a row and each of them left a marker here.
-			// The rightmost one waits for its own gaps to close, so without this the
-			// whole chain waits behind it and the markers squeeze the real columns
-			// between them. A chain drains from the left instead.
-			if (gL <= min && (d <= min * 1.0001 || S.colGhost[j])) { this.intent[i] = 3; continue; }
-			// The other way a sliver is finished: its trench gap opens. The plates have
-			// separated, so the sliver marks no trench any more, and what is left is a
-			// zero-crust record inside its own plate stealing width from the column
-			// beside it for as long as that plate lives -- the floor cannot help, because
-			// a plate is rigid and both of them move together. Retire it, and the column
-			// beside it gets its territory back.
-			if (S.edgeRelN[S.colPlate[im] !== S.colPlate[i] ? im : i] > 0) this.intent[i] = 3;
+			if ((gL <= min && (d <= min * 1.0001 || S.colGhost[j])) ||
+				S.edgeRelN[S.colPlate[im] !== S.colPlate[i] ? im : i] > 0) {
+				step = this.retireStep(S, i, gL, d, dt);
+				zt = (gL + d) > 0 ? S.z[im] + (S.z[j] - S.z[im]) * (gL / (gL + d)) : S.z[i];
+				if (S.colW[i] <= step * 1.05 && Math.abs(S.z[i] - zt) <= 500) this.intent[i] = 3;
+				else S.colGhost[i] = 2;
+			}
 			continue;
 		}
 		// Two floors on one column is a configuration the floor cannot satisfy: the
@@ -1277,8 +1320,9 @@ COL.rampZ = function (st) {
 COL.k4 = function (st, dt, t, Tm) {
 	var self = COL;
 	if (!(dt > 0)) return false;
+	self.lastDt = dt;
 	var n = st.nCol, i, j, k, b, count = 0, births = 0, appended = 0, freed = 0, reuse = 0, slot, oldN = n, any = false;
-	self.intents();
+	self.intents(dt);
 	for (i = 0; i < n; i++) if (self.intent[i]) { any = true; break; }
 	if (!any) {
 		for (i = 0; i < n; i++) {

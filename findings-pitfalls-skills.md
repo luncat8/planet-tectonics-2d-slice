@@ -1472,3 +1472,36 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
 - **Diff against the current baseline, not the nearest filename.** `experiments/logs/0.1.9-contact-audit-*.txt`
   are pre-matcher-fix 12-check runs; the 13-check baseline is `0.1.9-quiet-strict-*.txt`, and those have
   no `--detail` block, so only lines 1–21 and the gate lines compare.
+
+## 0.1.13 — the sliver-retirement ramp: why `zDyn` fails on vertex deletion and why `S.oldW` belongs to `COL.k4` (`archive/0.1.13-retirement-ramp-worklog.md`)
+
+- **A birth inserts a vertex on an existing line; a retirement deletes a vertex from a bent one.**
+  `COL.rampZ` works in one frame for a birth because the newborn is placed on the straight chord
+  between its two parents and their widths keep their thicknesses unchanged. When a ghost `G` is
+  deleted in one frame while sitting `9.4 km` from a continental margin `B` (`z_B ≈ +6.5 km`) and
+  `78 km` from an oceanic column `A` (`z_A ≈ −4.6 km`) with `z_G ≈ −1.2..−2.7 km` (`5–7 km` below
+  the chord `AB`, because `edgeRelN` crosses zero 2–3 frames after `COL.consume` resets the new
+  boundary and turns off slab pull), the 2-segment polyline `A → G → B` collapses in one frame to a
+  single segment `A → B`. At the two adjacent 2048-raster samples bracketing `G` and `B`, both
+  post-deletion elevations are linear functions of the single surviving margin elevation `z_new`:
+  holding `z_new = +6.5 km` via `zDyn` (`--retire-ramp`) snaps the chord at `G` upward by `+5.9 to
+  +6.4 km`, and even the minimax optimum over all real `z_new` moves both samples by `>= 3.2 km`
+  (`> 1.25 · quietDz`). Handing the ghost's Voronoi territory (`rel·dr/span`, `rel·dl/span`) back
+  over frames while `SURF.morph` walks `z_G` onto the chord solves both endpoints at once (`4/4`
+  strict legs ALL PASS, `0/32` worlds with an over-budget retirement).
+- **Never repurpose `S.oldW[i]` on a ghost to carry across-frame state.** For an ordinary ghost
+  created by `COL.consume`, `S.colNL[i]` is `0`, so overwriting `S.oldW[i]` after `COL.transport`
+  appears harmless on standalone planet runs. A C4 import (`COUP.apply`, tested in
+  `experiments/coupling.js` Section L) writes beds onto every column in the cut *including* ghosts
+  (`S.colNL[i] = 1`), and `COL.k4` / `COL.drain` multiply `S.layTh` by `S.oldW[i]` to conserve and
+  book that imported rock volume. Overwriting `S.oldW[i]` with the stepped-down `wKeep` leaked
+  `5.33e6 m³` (`1.11e-4` relative) of `fel` when the ghost drained; storing `wKeep` in the ghost's
+  unused top layer-age slot `S.layAg[(i + 1)·P.layerCap − 1]` (`colNL <= 1` vs `layerCap = 96`,
+  moved by `COL.gather` and saved in `Checkpoint` v9) keeps `S.oldW[i]` intact and closes the
+  post-import ledger to `2.50e-14`.
+- **`CRU.zDyn`'s explicit flexure stencil divides by `S.colW[i]`, so a retiring ghost's width needs a
+  floor.** `CRU.faceGap` floors the face gap at `0.5·w0`, which bounds the explicit diffusion rate
+  only while `colW` stays above `2·kFlex·dt·w0 / faceGapMin ≈ 1.6 km` at `100 kyr/frame`. Letting a
+  retiring ghost's `wKeep` shrink to `100 m` before draining puts the Courant number at `7.8` and
+  drives `zDyn` to `Infinity` in ~200 frames; a `2 km` floor on `COL.retireStep` finishes the
+  hand-back in 6–8 frames while staying well above the stability bound.

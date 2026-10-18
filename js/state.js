@@ -296,7 +296,7 @@ S.layout = function () {
 // the territory it takes: with these widths a birth leaves every thickness unchanged, so a
 // rift axis is a valley and not a spike.
 S.widths = function () {
-	var n = this.nCol, i, im, ip, dl, dr;
+	var n = this.nCol, i, im, ip, dl, dr, span, wVor, wKeep, rel;
 	if (n === 0) return;
 	if (n === 1) { this.colW[0] = P.wrap; return; }
 	for (i = 0; i < n; i++) {
@@ -307,6 +307,23 @@ S.widths = function () {
 		if (dl < 0) dl += P.wrap;
 		if (dr < 0) dr += P.wrap;
 		this.colW[i] = 0.5 * (dl + dr);
+	}
+	for (i = 0; i < n; i++) {
+		if (this.colGhost[i] !== 2) continue;
+		im = i > 0 ? i - 1 : n - 1;
+		ip = i + 1 < n ? i + 1 : 0;
+		dl = this.colX[i] - this.colX[im];
+		dr = this.colX[ip] - this.colX[i];
+		if (dl < 0) dl += P.wrap;
+		if (dr < 0) dr += P.wrap;
+		span = dl + dr;
+		wVor = 0.5 * span;
+		wKeep = this.layAg[(i + 1) * P.layerCap - 1];
+		if (!(span > 0 && wKeep > 0 && wKeep < wVor)) continue;
+		rel = wVor - wKeep;
+		this.colW[i] -= rel;
+		this.colW[im] += rel * (dr / span);
+		this.colW[ip] += rel * (dl / span);
 	}
 };
 

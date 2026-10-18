@@ -39,7 +39,7 @@
 // --quiet-identity certifies those omitted pairs by their own conserved volume and territory.
 'use strict';
 var L = require('./lib.js');
-var P = L.mods.params, S = L.mods.state, GEO = L.mods.geom, SIM = L.mods.sim, COL = L.mods.columns, CRU = L.mods.crust;
+var P = L.mods.params, S = L.mods.state, GEO = L.mods.geom, SIM = L.mods.sim, COL = L.mods.columns, CRU = L.mods.crust, SURF = L.mods.surface;
 var R = L.mods.render;
 
 var arg = process.argv.slice(2), flags = [], pos = [];
@@ -59,6 +59,9 @@ var quietTrace = flags.indexOf('--quiet-trace') >= 0;
 // re-sized its territory, and what the drawn change is once the territory change is divided
 // out. Report only; the default run and the strict gates are untouched.
 var quietIdentity = flags.indexOf('--quiet-identity') >= 0;
+// --retire-ramp measures 0.1.13's Candidate A (immediate sliver retirement with COL.rampZ
+// offsetting the absorbing neighbours' zDyn) against the landed territory hand-back.
+var retireRamp = flags.indexOf('--retire-ramp') >= 0;
 var NS = 2048, step = P.wrap / NS;
 // the identity-corrected drawn change's exceedance table, in metres
 var EX_QI = [10, 100, 500, 1000, 2000, 5000, 10000];
@@ -148,24 +151,56 @@ var accPreX = new Float64Array(P.colCap), accSiteX = new Float64Array(P.colCap),
 // footprint is both ends of the merge (measured 3.9 km apart at the crush floor, so the two
 // windows nearly coincide; the survivor's x is still read so the report can name it).
 var accSurvX = new Float64Array(P.colCap);
-// --drain-event counts a sliver retirement as the event it is (0.1.12-plan.md §3). COL.drain
-// runs on the kernel's own intent 3, on a marker whose stack the consume already emptied, so
-// it books no mass: what it does is remove a record and hand its whole Voronoi span to the
-// neighbour that outlives it, which is a change of the drawn section and not a quiet frame.
-// It is a site of its own and not a second death at the trench's site, so R5's birth/death
-// bookkeeping does not read one consumption twice.
+// A sliver retirement is the event it is (0.1.12-plan.md §3, landed in 0.1.13 with no flag).
+// COL.drain runs on the kernel's own intent 3, on a marker whose stack the consume already
+// emptied, so it books no mass: what it does is remove the retired record after its Voronoi
+// span has been handed back, which is a topology event and not a quiet frame. It is a site
+// of its own and not a second death at the trench's site, so R5's birth/death bookkeeping
+// does not read one consumption twice.
 var drainSiteX = new Float64Array(P.colCap), nDrainSite = 0, drain = COL.drain;
-if (flags.indexOf('--drain-event') >= 0) {
-	COL.drain = function (st, c) {
-		if (nDrainSite < P.colCap) drainSiteX[nDrainSite++] = st.colX[c];
-		return drain.call(this, st, c);
+var rampAbsorb = retireRamp ? new Uint8Array(P.colCap) : null;
+var rampPreElev = retireRamp ? new Float64Array(P.colCap) : null;
+if (retireRamp) {
+	COL.retireStep = function () { return P.wrap; };
+	var intentsOrig = COL.intents, rampZOrig = COL.rampZ;
+	COL.intents = function (dt) {
+		intentsOrig.call(this, dt);
+		var n = S.nCol, i, j, im, d, gL, min = P.gFloor * P.w0;
+		for (i = 0; i < n; i++) {
+			if (!S.colGhost[i]) continue;
+			S.colGhost[i] = 1;
+			j = (i + 1) % n; im = i > 0 ? i - 1 : n - 1;
+			d = S.colX[j] - S.colX[i]; if (d <= 0) d += P.wrap;
+			gL = S.colX[i] - S.colX[im]; if (gL < 0) gL += P.wrap;
+			if ((gL <= min && (d <= min * 1.0001 || S.colGhost[j])) ||
+				S.edgeRelN[S.colPlate[im] !== S.colPlate[i] ? im : i] > 0) this.intent[i] = 3;
+		}
+	};
+	COL.rampZ = function (st) {
+		var i, k;
+		rampZOrig.call(this, st);
+		for (i = 0; i < P.colCap; i++) {
+			if (!rampAbsorb[i]) continue;
+			rampAbsorb[i] = 0;
+			k = this.map[i];
+			if (k >= 0 && k < st.nCol && !st.colGhost[k]) st.zDyn[k] += rampPreElev[i] - SURF.elev(k);
+		}
 	};
 }
+COL.drain = function (st, c) {
+	if (retireRamp) {
+		var n = st.nCol, im = c > 0 ? c - 1 : n - 1, ip = c + 1 < n ? c + 1 : 0;
+		if (!st.colGhost[im] && !rampAbsorb[im]) { rampAbsorb[im] = 1; rampPreElev[im] = SURF.elev(im); }
+		if (!st.colGhost[ip] && !rampAbsorb[ip]) { rampAbsorb[ip] = 1; rampPreElev[ip] = SURF.elev(ip); }
+	}
+	if (nDrainSite < P.colCap) drainSiteX[nDrainSite++] = st.colX[c];
+	return drain.call(this, st, c);
+};
 COL.k4 = function (st, dt, t, Tm) {
 	var n = st.nCol, i, j, c, other;
 	nAccSite = 0;
 	nDrainSite = 0;
-	this.intents();
+	this.intents(dt);
 	for (i = 0; i < n; i++) {
 		if (this.intent[i] !== 4) continue;
 		c = this.crush[i];
