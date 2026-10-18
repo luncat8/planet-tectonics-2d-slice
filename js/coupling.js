@@ -33,7 +33,8 @@ var COUP = (function () {
 		matched: 0, freshColumns: 0, retiredColumns: 0,
 		before: 0, after: 0, added: 0, removed: 0,
 		fresh: 0, retired: 0, reconciled: 0, diverged: 0,
-		identityError: 0
+		identityError: 0,
+		plateCrossed: 0, plateAppeared: 0, plateVanished: 0
 	};
 	var slaveW = new Float64Array(P.plateCap);
 	var slaveU = new Float64Array(P.plateCap);
@@ -43,6 +44,21 @@ var COUP = (function () {
 	var priorRight = new Int32Array(P.colCap), priorAge = new Float64Array(P.colCap);
 	var priorSlow = new Float64Array(P.colCap);
 	var liveMsg = null, liveN = 0;
+	// 0.4.3 M1 membership scratch: the run table is column-sized, because a run is at
+	// narrowest one column, and shrinks to plateCap only by the merges that are booked.
+	var midKm = new Float64Array(P.colCap);
+	var wasId = new Int32Array(P.colCap);        // globe plate id per column, before this import
+	var runA = new Int32Array(P.colCap + 1);     // a run is a first column, a length and a globe id
+	var runN = new Int32Array(P.colCap + 1);
+	var runId = new Int32Array(P.colCap + 1);
+	var oldA = new Int32Array(P.colCap + 1);     // the same table for the membership being replaced
+	var oldId = new Int32Array(P.colCap + 1);
+	var gapAt = new Uint8Array(0);               // one flag per plate interval; grows with a message
+	var heirW = new Float64Array(P.plateCap), heirP = new Int32Array(P.plateCap);
+	var shareW = new Float64Array(P.plateCap);
+	var takeU = new Float64Array(P.plateCap), takeUP = new Float64Array(P.plateCap);
+	var takeDmg = new Float64Array(P.plateCap);
+	var wasN = 0;                                // columns the recorded membership covers
 
 	var CRUST_NUMS = ['s0Km', 's1Km', 'hFelM', 'hMafM', 'hSedM', 'ageMyr', 'fert', 'damage'];
 
@@ -375,13 +391,188 @@ var COUP = (function () {
 
 	// The interval that owns an arc point, independent of whether it is close enough to
 	// inherit a stack. A valid table tiles the complete arc, so this always finds one.
-	function intervalAt(msg, midKm, closed) {
-		var rows = msg.crust, wrap = rows[rows.length - 1].s1Km;
-		var x = closed === false ? midKm : midKm - Math.floor(midKm / wrap) * wrap, i;
+	function rowAt(rows, mid, closed) {
+		var wrap = rows[rows.length - 1].s1Km;
+		var x = closed === false ? mid : mid - Math.floor(mid / wrap) * wrap, i;
 		for (i = 0; i < rows.length; i++) {
 			if (x >= rows[i].s0Km && x < rows[i].s1Km) return i;
 		}
 		return rows.length - 1;
+	}
+
+	function intervalAt(msg, mid, closed) { return rowAt(msg.crust, mid, closed); }
+
+	// The seed owns the local plate -> globe id map a cut was laid from; a rebuild keeps it
+	// true, and reads it for the one comparison it cannot make from its own history: the
+	// first import after a layout has no previous membership of this module's to compare with.
+	function seedModule() {
+		return node ? require('./section-seed.js') : root.COLSEED;
+	}
+
+	function dropRun(k, r) {
+		for (var j = k; j + 1 < r; j++) {
+			runA[j] = runA[j + 1];
+			runN[j] = runN[j + 1];
+			runId[j] = runId[j + 1];
+		}
+		return r - 1;
+	}
+
+	// The runs of one id along the cut, as start columns and ids: a plate the line crosses
+	// twice is two of them, which is what "appeared" and "vanished" count.
+	function runsOf(ids, n, at, id) {
+		var r = 0, j;
+		for (j = 0; j < n; j++) {
+			if (r > 0 && ids[j] === id[r - 1]) continue;
+			at[r] = j; id[r] = ids[j]; r++;
+		}
+		return r;
+	}
+
+	function hasId(ids, r, id) {
+		for (var i = 0; i < r; i++) if (ids[i] === id) return true;
+		return false;
+	}
+
+	// The v2 codec canonicalises a gap row's plate id to 0 (SP.setGap), so an interval the cut
+	// left with no crust is a hole the line crossed, not a run of plate 0 inside the plate it
+	// interrupts -- which is what the seed reads from the sample's own `alive` flag (§4.3). A
+	// message carries crust and no flags, so the gap is read from the crust: an interval every
+	// one of whose crust rows is empty. It then takes the id of the nearest interval before it
+	// that does carry crust, wrapping on a closed cut: the seed's carry-forward, at the
+	// message's resolution.
+	function gapTable(msg) {
+		var rows = msg.plates, crust = msg.crust, i, k, r, has;
+		if (gapAt.length < rows.length) gapAt = new Uint8Array(rows.length);
+		for (i = 0; i < rows.length; i++) {
+			has = 0;
+			for (k = 0; k < crust.length && !has; k++) {
+				r = crust[k];
+				if (r.s1Km <= rows[i].s0Km || r.s0Km >= rows[i].s1Km) continue;
+				if (r.hFelM + r.hMafM + r.hSedM > 0) has = 1;
+			}
+			gapAt[i] = has ? 0 : 1;
+		}
+		return gapAt;
+	}
+
+	function carrierId(rows, i, closed) {
+		var n = rows.length, k = i, m;
+		for (m = 0; m < n - 1 && gapAt[k]; m++) {
+			k = closed ? (k + n - 1) % n : k - 1;
+			if (k < 0) break;
+		}
+		return k >= 0 && !gapAt[k] ? rows[k].id : rows[i].id;
+	}
+
+	// 0.4.3 M1: which plate a column belongs to is the globe's to say, not the last cut's.
+	// A plate is one contiguous run of one globe id along the line, so the message that moves
+	// a boundary also moves the columns under it -- by the seed's own rule (0.4.1 §4.3): one
+	// local plate per run of one id, a closed cut's first and last run of one id merged across
+	// its own start, and more runs than plateCap merged narrowest into its wider neighbour and
+	// booked. Without this the edges are the globe's and the columns are the section's, so a
+	// boundary that has walked is drawn inside one of the section's own plates -- where no
+	// boundary can be drawn at all -- and the columns it crossed are dragged at the speed of
+	// a plate that no longer covers them, because `slave` averages the message per existing
+	// plate. Stacks, deposits, vents, ghosts and ribbons are untouched: membership is not
+	// geology, and the crust identity closes because no bed moves.
+	//
+	// `midKm` is the geographic walk `apply` already made; `msg.plates` is validated to tile
+	// the arc, so every column lands in exactly one run and this cannot refuse.
+	function replate(st, msg, n, closed) {
+		var rows = msg.plates, np = st.nPl, r = 0, j, k, c, p, q, id, at, prev, next;
+		var merged = 0, wrapped = 0, crossed = 0, appeared = 0, vanished = 0, gaps = 0, seed, known;
+		var gapAt = gapTable(msg), i;
+		for (i = 0; i < rows.length; i++) if (gapAt[i]) gaps++;
+		for (j = 0; j < n; j++) {
+			i = rowAt(rows, midKm[j], closed);
+			id = gapAt[i] ? carrierId(rows, i, closed) : rows[i].id;
+			if (r > 0 && id === runId[r - 1]) { runN[r - 1]++; continue; }
+			runA[r] = j; runN[r] = 1; runId[r] = id; r++;
+		}
+		if (closed && r > 1 && runId[0] === runId[r - 1]) {
+			runN[r - 1] += runN[0];
+			r = dropRun(0, r);
+			wrapped++;
+		}
+		while (r > P.plateCap && r > 1) {
+			at = 0;
+			for (j = 1; j < r; j++) if (runN[j] < runN[at]) at = j;
+			prev = (at + r - 1) % r;
+			next = (at + 1) % r;
+			if (runN[prev] >= runN[next]) {
+				runN[prev] += runN[at];
+				r = dropRun(at, r);
+			} else {
+				runId[at] = runId[next]; runN[at] += runN[next];
+				r = dropRun(next, r);
+			}
+			merged++;
+		}
+		// What the section had, in the globe's own names: the previous import's record, or
+		// the seed's map on the first one. The section's own events renumber its plates
+		// between imports without naming a globe id for what they made, and those columns
+		// are booked as the difference they are the next time the globe speaks.
+		seed = seedModule();
+		known = wasN === n;
+		if (!known && seed && seed.platesFrom) {
+			for (j = 0; j < n; j++) wasId[j] = seed.platesFrom[st.colPlate[j]];
+			known = true;
+		}
+		if (known) {
+			q = runsOf(wasId, n, oldA, oldId);
+			for (p = 0; p < r; p++) if (!hasId(oldId, q, runId[p])) appeared++;
+			for (p = 0; p < q; p++) if (!hasId(runId, r, oldId[p])) vanished++;
+		}
+		// A plate inherits the speed of the ground it became, taken from the old plate that
+		// owns most of it: a message prescribes kinematics only while it is the live one
+		// (C3, `slave`), and a plate that survives an import is the same plate.
+		for (p = 0; p < r; p++) {
+			heirW[p] = 0; heirP[p] = -1;
+			shareW.fill(0, 0, np);
+			for (k = 0; k < runN[p]; k++) {
+				c = (runA[p] + k) % n;
+				q = st.colPlate[c];
+				if (!(q >= 0 && q < np)) continue;
+				shareW[q] += st.colW[c];
+				if (shareW[q] > heirW[p]) { heirW[p] = shareW[q]; heirP[p] = q; }
+			}
+			takeU[p] = heirP[p] >= 0 ? st.plU[heirP[p]] : 0;
+			takeUP[p] = heirP[p] >= 0 ? st.plUP[heirP[p]] : 0;
+			takeDmg[p] = heirP[p] >= 0 ? st.plDmg[heirP[p]] : 0;
+		}
+		for (p = 0; p < r; p++) {
+			for (k = 0; k < runN[p]; k++) {
+				c = (runA[p] + k) % n;
+				if (known && wasId[c] !== runId[p]) crossed++;
+				st.colPlate[c] = p;
+				wasId[c] = runId[p];
+			}
+			st.plU[p] = takeU[p]; st.plUP[p] = takeUP[p]; st.plDmg[p] = takeDmg[p];
+			if (seed) seed.platesFrom[p] = runId[p];
+		}
+		st.nPl = r;
+		for (j = 0; j < n; j++) st.colU[j] = st.plU[st.colPlate[j]];
+		// The cut may cover only part of the ring: what lies outside it is the hole the seed
+		// made (§4.3), and it takes the first plate of the new numbering rather than an index
+		// the rebuild left behind.
+		for (j = n; j < st.nCol; j++) { st.colPlate[j] = 0; st.colU[j] = 0; }
+		COL.plates();
+		wasN = n;
+		// An import that rebuilds the membership already there is not an event: booking it
+		// would make the same eight cap merges a new line every cadence.
+		if (crossed > 0 || appeared > 0 || vanished > 0) {
+			st.recon.plateImports++;
+			st.recon.plateCrossed += crossed;
+			st.recon.plateAppeared += appeared;
+			st.recon.plateVanished += vanished;
+			st.recon.plateWrap += wrapped;
+			st.recon.plateGap += gaps;
+			st.recon.shortPlateMerge += merged;
+		}
+		last.plateCrossed = crossed;
+		last.plateAppeared = appeared;
+		last.plateVanished = vanished;
 	}
 
 	function resetLast() {
@@ -389,6 +580,7 @@ var COUP = (function () {
 		last.before = 0; last.after = 0; last.added = 0; last.removed = 0;
 		last.fresh = 0; last.retired = 0; last.reconciled = 0; last.diverged = 0;
 		last.identityError = 0;
+		last.plateCrossed = 0; last.plateAppeared = 0; last.plateVanished = 0;
 	}
 
 	function stateError(st, n) {
@@ -574,6 +766,7 @@ var COUP = (function () {
 			w = st.colW[j];
 			if (!(isFinite(w) && w > 0)) return 'message refused: column ' + j + ' has no positive width';
 			mid = (walk + w * 0.5) / KM;
+			midKm[j] = mid;
 			joined[j] = joinTo(msg, mid, cellKm, closed);
 			target[j] = joined[j] >= 0 ? joined[j] : intervalAt(msg, mid, closed);
 			walk += w;
@@ -639,6 +832,9 @@ var COUP = (function () {
 		for (j = 0; j < n; j++) st.wet[j] = st.z[j] < st.seaLevel ? 1 : 0;
 		// Reapply the lid boundary now, without resetting fan anomalies between K1 frames.
 		if (ageChanged) COL.lidFan();
+		// Membership before edges: the seams syncEdges paints have to separate two plates,
+		// and which plates those are is the message's call, not the last cut's.
+		replate(st, msg, n, closed);
 		syncEdges(st, msg, n, closed);
 		last.reconciled = last.added + last.removed;
 		last.identityError = last.before + last.added + last.fresh -

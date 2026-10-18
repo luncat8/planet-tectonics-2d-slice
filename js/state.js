@@ -215,7 +215,17 @@ var S = {
 		diverged: 0,                 // own-kernel change from the previous accepted targets
 		divergedAtImport: 0,         // current own-kernel residual before this reconcile
 		fresh: 0,                    // target volume built where no ancestor is close enough
-		retired: 0                   // old stack volume retired where no descendant is close
+		retired: 0,                  // old stack volume retired where no descendant is close
+		// 0.4.3 M1: the membership ledger. One line per run of one globe id the cut
+		// crosses, so a plate the line enters twice counts twice. Booked only when the
+		// membership actually moves: an import that rebuilds what is already there is
+		// not an event (COUP.replate).
+		plateImports: 0,             // imports that moved at least one column's plate
+		plateCrossed: 0,             // columns an import put on another globe plate
+		plateAppeared: 0,            // globe plates the import names that the section had not
+		plateVanished: 0,            // globe plates the section had that the import drops
+		plateWrap: 0,                // closed cuts whose first and last run are one plate
+		plateGap: 0,                 // plate intervals absorbed because the cut left them no crust
 	},
 	// The active sea datum is zero for a standalone section and follows accepted globe snapshots.
 	seaLevel: 0,

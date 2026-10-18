@@ -172,8 +172,11 @@ M1 tree, base 705f767, because M2 remedied what it traces),
 and the cut in three: experiments/slice-cut.js (the walk, the pack, the resample),
 section-pack.js (the section page: transports, refusals, switches, HUD), section-seed.js (the
 mapping: the z identity, the ledger, the quiet start, the two run modes), checkpoint.js (the
-column-state checkpoint codec and deterministic restore), coupling.js (the envelope, C3/C4 and
-20-import identity), coupling-link.js (the postMessage → localStorage → manual ladder), and
+column-state checkpoint codec and deterministic restore), coupling.js (the envelope, C3/C4,
+the 20-import identity and the plate-membership rebuild — sections M and N: a boundary the
+globe has walked takes its columns with it, an unchanged import changes nothing, the wrap,
+a plate gained and lost, and an open window), coupling-link.js (the postMessage →
+localStorage → manual ladder), and
 core-log.js (the §8.5 return path: the one age convention, the acceptance rules, the cadence).
 Each prints PASS/FAIL and exits non-zero on failure.
 experiments/acceptance.js is a release's whole-series pass: one section per numbered
@@ -212,16 +215,20 @@ the globe's map -> a section here), 0.4.2-plan.md (the pgt-slice-pack v2 cutover
 0.8.0-0.8.2 handoff; Phases A, B-a and B-b are landed — port/ carries only the v2 codec and
 fixture, and the three Earth bundles are restored through the globe's v2 bake CLI at its
 9270039 and audited byte-for-byte on both sides. Phase C is held, not waiting on the globe:
-its 0.8.3 completes as planning, so the open block is this side's C-live gate 4, the automatic
-section plate-topology rebuild, plus a scheduling decision taken negatively on 2026-10-16 —
+its 0.8.3 completes as planning; its one local block, C-live gate 4, is satisfied by 0.4.3 —
+the automatic section plate-topology rebuild, `COUP.replate` at every `COUP.apply`,
+`archive/0.4.3-membership-report.md` — so what is left is the globe's agreement on the ladder
+and the return channel plus a scheduling decision taken negatively on 2026-10-16 —
 `archive/0.4.2-counterpart-audit-response.md`),
 0.9.0-draft-sync.md (the integrated globe, later). The
 completed 0.1.8 plan is `archive/0.1.8-plan.md` (collision arrest and orogen memory) and the
 completed 0.2.0 plan is `archive/0.2.0-plan.md` (eruptives, deposits, save/load; the series
 is accepted at M5, `archive/0.2.0-m5-worklog.md`). Drafts are
 0.3.0-draft.md, 0.3.2-draft.md (the light-parcel heat concentration 0.3.1 M2 measured, which
-holds that release's 300 Myr intake back and is what its 600 Myr cell separates) and
-0.4.1-draft.md.
+holds that release's 300 Myr intake back and is what its 600 Myr cell separates),
+0.4.1-draft.md and 0.4.3-draft.md (the decision to freeze the 0.1.x smoothness line at 0.1.13
+and to spend that release on rebuilding the section's plate membership at import instead;
+landed, `archive/0.4.3-membership-worklog.md` and `archive/0.4.3-membership-report.md`).
 roadmap.md — which release owns what, the runtime-authority table, what is deferred; each
 release's own plan is still the authority for its milestones.
 

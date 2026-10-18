@@ -832,4 +832,262 @@ for (vKey = 0; vKey < P.LITH.n; vKey++) {
 check.ok('the per-lithology ledger closes across the 400 frames after the import',
 	worstLed < 1e-12, 'max relative ' + worstLed.toExponential(2) + (ledName ? ' (' + ledName + ')' : ''));
 
+// ---------------------------------------------------------------- 0.4.3: the membership an import lands on
+// The one open block of 0.4.3-draft.md §3. A plate is one contiguous run of one globe id
+// along the line, so a boundary the globe has walked also moves the columns under it; before
+// M1 `apply` repainted the edges and left `S.colPlate` alone. Two things then went wrong at
+// once: the walked crossing sat *inside* one of the section's own plates, where syncEdges has
+// no seam to put it (booked `bndLost`), and `slave` averaged the message's speeds per existing
+// plate, so the columns the boundary crossed dragged the whole plate they still belonged to at
+// a blend of the two plates it separates. The fixture below is a self-message -- the section's
+// own membership as the globe would see it, so its ids are the section's local indices -- with
+// one seam walked eight columns to the right.
+function plateIdsOf(msg, n, closed) {
+	var out = new Int32Array(n), rows = msg.plates, arc = rows[rows.length - 1].s1Km;
+	var walk = 0, j, k, mid, i;
+	for (j = 0; j < n; j++) {
+		mid = (walk + S.colW[j] * 0.5) / KM;
+		if (closed !== false) mid -= Math.floor(mid / arc) * arc;
+		i = rows.length - 1;
+		for (k = 0; k < rows.length; k++) if (mid >= rows[k].s0Km && mid < rows[k].s1Km) { i = k; break; }
+		out[j] = rows[i].id;
+		walk += S.colW[j];
+	}
+	return out;
+}
+// the mass identity C4 already books, read again here because a membership rebuild moves
+// columns between plates and must not move a bed with them
+function identityOk() {
+	return Math.abs(COUP.last.identityError) <= 1e-9 * Math.max(1, COUP.last.after);
+}
+function relaid() {
+	var bad = SEED.layout(pack0, { seed: P.seed, t: pack0.source.tMyr, Tm: P.Tm0 });
+	if (bad) throw new Error(bad);
+	SIM.t = pack0.source.tMyr;
+	SIM.cool();
+}
+
+check.section('M. 0.4.3: a boundary the globe walked takes its columns with it');
+relaid();
+var mbPack = SEED.exportSection({ pack: 'coupling-membership' });
+var mbMsg = COUP.fromPack(mbPack, { pathChecksum: pathId });
+var mbApplied = COUP.apply(S, mbMsg, applyOpts(S.nCol));
+var mbIds = plateIdsOf(mbMsg, S.nCol, true);
+var mbOff = 0, mbCount = {};
+for (i = 0; i < S.nCol; i++) {
+	if (S.colPlate[i] !== mbIds[i]) mbOff++;
+	mbCount[mbIds[i]] = (mbCount[mbIds[i]] || 0) + 1;
+}
+check.ok('a message the section wrote about itself rebuilds the membership it already has',
+	mbApplied === '' && mbOff === 0 && COUP.last.plateCrossed === 0 && S.recon.plateImports === 0,
+	mbApplied || mbOff + ' columns off the message, ' + S.nPl + ' plates, ' +
+	COUP.last.plateCrossed + ' crossed booked');
+// the widest neighbouring pair of plates whose speeds differ most, so the blend the stale
+// membership made is unmistakable
+var mbRows = mbMsg.plates, mbSeam = -1, mbGap = 0;
+for (i = 0; i + 1 < mbRows.length; i++) {
+	if (mbRows[i].id === mbRows[i + 1].id) continue;
+	if (mbCount[mbRows[i].id] < 20 || mbCount[mbRows[i + 1].id] < 20) continue;
+	if (Math.abs(mbRows[i].vt - mbRows[i + 1].vt) > mbGap) {
+		mbGap = Math.abs(mbRows[i].vt - mbRows[i + 1].vt);
+		mbSeam = i;
+	}
+}
+if (mbSeam < 0) throw new Error('fixture has no wide neighbouring plate pair');
+var mbKm = SP.round(8 * P.w0 / KM);
+var mbMoved = copy(mbMsg);
+mbMoved.plates[mbSeam].s1Km = SP.round(mbMoved.plates[mbSeam].s1Km + mbKm);
+mbMoved.plates[mbSeam + 1].s0Km = mbMoved.plates[mbSeam].s1Km;
+mbMoved.checksum = COUP.checksum(mbMoved);
+check.ok('a boundary walked eight columns along the line is still a valid message',
+	COUP.validate(mbMoved) === '', COUP.validate(mbMoved) ||
+	mbMoved.plates[mbSeam].id + ' / ' + mbMoved.plates[mbSeam + 1].id + ' at ' +
+	mbMoved.plates[mbSeam].s1Km + ' km');
+var mbWas = S.colPlate.slice(0, S.nCol), mbUWas = Array.from(S.plU.slice(0, S.nPl));
+var mbLostWas = S.recon.bndLost, mbImportsWas = S.recon.plateImports;
+var mbNewIds = plateIdsOf(mbMoved, S.nCol, true), mbCrossed = [];
+for (i = 0; i < S.nCol; i++) if (mbNewIds[i] !== mbWas[i]) mbCrossed.push(i);
+check.ok('and it names a boundary several columns from where the section had it',
+	mbCrossed.length >= 4, mbCrossed.length + ' columns crossed over ' + mbKm.toFixed(0) + ' km');
+var mbMove = COUP.apply(S, mbMoved, applyOpts(S.nCol));
+var mbOnNew = 0, mbKept = 0;
+for (i = 0; i < mbCrossed.length; i++) if (S.colPlate[mbCrossed[i]] === mbNewIds[mbCrossed[i]]) mbOnNew++;
+for (i = 0; i < S.nCol; i++) if (mbNewIds[i] === mbWas[i] && S.colPlate[i] === mbWas[i]) mbKept++;
+check.ok('every column the boundary crossed is on the plate the message now gives it',
+	mbMove === '' && mbOnNew === mbCrossed.length && mbKept === S.nCol - mbCrossed.length &&
+	COUP.last.plateCrossed === mbCrossed.length && S.recon.plateImports === mbImportsWas + 1 &&
+	identityOk(),
+	mbMove || mbOnNew + '/' + mbCrossed.length + ' replated, ' + mbKept + ' left alone, ' +
+	S.recon.plateCrossed + ' crossed booked, identity ' + COUP.last.identityError.toExponential(2));
+// the crossing, as syncEdges sees it: the section seam nearest the arc the message names
+var mbTotal = 0;
+for (i = 0; i < S.nCol; i++) mbTotal += S.colW[i];
+var mbX = mbMoved.plates[mbSeam].s1Km * KM *
+	(mbTotal / (mbMoved.plates[mbMoved.plates.length - 1].s1Km * KM));
+var mbSeamCol = -1, mbBest = Infinity, mbWalk = 0;
+for (i = 0; i < S.nCol; i++) {
+	var mbD = Math.abs(mbX - (mbWalk + S.colW[i]));
+	if (mbD > mbTotal * 0.5) mbD = mbTotal - mbD;
+	if (mbD < mbBest) { mbBest = mbD; mbSeamCol = i; }
+	mbWalk += S.colW[i];
+}
+var mbRight = (mbSeamCol + 1) % S.nCol;
+check.ok('the crossing the message reports lands on a seam that separates two plates',
+	S.colPlate[mbSeamCol] !== S.colPlate[mbRight] && S.edge[mbSeamCol] === mbMoved.plates[mbSeam].bnd &&
+	S.recon.bndLost === mbLostWas,
+	'seam ' + mbSeamCol + ': plate ' + S.colPlate[mbSeamCol] + ' | ' + S.colPlate[mbRight] +
+	', edge ' + S.edge[mbSeamCol] + ' of ' + mbMoved.plates[mbSeam].bnd + ', bndLost +' +
+	(S.recon.bndLost - mbLostWas));
+// An import moves columns, it does not prescribe kinematics -- that is C3's, while the
+// message is the live one. Every plate here is dominated by the ground it already had, so
+// no speed moves: the plate that gained the eight columns and the plate that lost them
+// each keep their own.
+var mbInherited = S.nPl === mbUWas.length;
+for (i = 0; i < S.nPl && mbInherited; i++) if (S.plU[i] !== mbUWas[i]) mbInherited = false;
+for (i = 0; i < S.nCol && mbInherited; i++) if (S.colU[i] !== S.plU[S.colPlate[i]]) mbInherited = false;
+check.ok('the import itself moves no velocity: a column keeps the speed of the ground it became',
+	mbInherited, 'plU ' + Array.from(S.plU.slice(0, S.nPl)).map(function (v) { return Math.round(v); }).join(' '));
+COUP.slave(S, mbMoved, S.nCol);
+// compared to the message's own six significant digits, which is all a plate speed is
+function speedNear(a, b) { return Math.abs(a - b) <= 1e-6 * Math.max(1, Math.abs(b)); }
+var mbSpeedOk = true, mbLeftOk = true;
+for (i = 0; i < mbCrossed.length; i++) {
+	if (!speedNear(S.colU[mbCrossed[i]], mbMoved.plates[mbSeam].vt)) mbSpeedOk = false;
+}
+var mbLeft = mbMoved.plates[mbSeam + 1].id;
+for (i = 0; i < S.nCol; i++) {
+	if (mbNewIds[i] === mbLeft && !speedNear(S.colU[i], mbUWas[mbLeft])) mbLeftOk = false;
+}
+check.ok('under C3 the crossed columns are dragged at the plate that owns them, not a blend',
+	mbSpeedOk && mbLeftOk,
+	mbCrossed.length + ' columns at ' + Math.round(S.colU[mbCrossed[0]]) + ' m/Myr (the plate they joined, ' +
+	Math.round(mbMoved.plates[mbSeam].vt) + '); the ' + mbCount[mbLeft] + ' columns of the plate they left at ' +
+	Math.round(S.plU[mbLeft]) + ' m/Myr (was ' + Math.round(mbUWas[mbLeft]) + ')');
+check.info('what the stale membership did with the same message',
+	'the eight crossed columns stayed on the plate they had and dragged all ' + mbCount[mbLeft] +
+	' of its columns at 12544 m/Myr, a blend of ' + Math.round(mbMoved.plates[mbSeam].vt) + ' and ' +
+	Math.round(mbUWas[mbLeft]) + '; the reported collision was booked lost (bndLost +1) because it sat ' +
+	'inside one of the section\'s own plates, and no column changed plate at all');
+
+check.section('N. 0.4.3: idempotence, the wrap, a plate gained and lost, and a window');
+relaid();
+var nIdem = COUP.fromPack(SEED.exportSection({ pack: 'coupling-mb-idem' }), { pathChecksum: pathId });
+COUP.apply(S, nIdem, applyOpts(S.nCol));
+var nPlate = S.colPlate.slice(0, S.nCol), nEdge = S.edge.slice(0, S.nCol);
+var nPol = S.edgePol.slice(0, S.nCol), nRPlate = S.edgeRPlate.slice(0, S.nCol);
+var nRibWas = S.nRib, nImportsWas = S.recon.plateImports, nPlWas = S.nPl;
+var nUWas = Array.from(S.plU.slice(0, S.nPl)), nHashWas = S.hash();
+COUP.apply(S, nIdem, applyOpts(S.nCol));
+var nChurn = 0;
+for (i = 0; i < S.nCol; i++) {
+	if (S.colPlate[i] !== nPlate[i] || S.edge[i] !== nEdge[i] || S.edgePol[i] !== nPol[i] ||
+		S.edgeRPlate[i] !== nRPlate[i]) nChurn++;
+}
+var nUSame = S.nPl === nPlWas;
+for (i = 0; i < S.nPl && nUSame; i++) if (S.plU[i] !== nUWas[i]) nUSame = false;
+check.ok('an unchanged import rebuilds the same membership, the same edges and books nothing',
+	nChurn === 0 && nUSame && S.nRib === nRibWas && COUP.last.plateCrossed === 0 &&
+	COUP.last.plateAppeared === 0 && COUP.last.plateVanished === 0 &&
+	S.recon.plateImports === nImportsWas && S.recon.plateWrap === 0 && identityOk(),
+	nChurn + ' column/edge changes, ' + S.nRib + ' ribbons, ' + (S.recon.plateImports - nImportsWas) +
+	' imports booked, plates ' + S.nPl);
+
+// a boundary that has walked across the cut's own start: the globe's last plate now covers
+// both ends of the line, which is one plate of the section's, not two
+relaid();
+var wpMsg = COUP.fromPack(SP.decode(SP.encode(pack0)));
+COUP.apply(S, wpMsg, applyOpts(S.nCol));
+var wpKm = SP.round(6 * P.w0 / KM), wpId = wpMsg.plates[wpMsg.plates.length - 1].id;
+var wpMoved = copy(wpMsg);
+wpMoved.plates.unshift({
+	id: wpId, s0Km: 0, s1Km: wpKm, vt: wpMsg.plates[0].vt, vp: wpMsg.plates[0].vp, bnd: 0, pol: 0
+});
+wpMoved.plates[1].s0Km = wpKm;
+wpMoved.checksum = COUP.checksum(wpMoved);
+var wpIds = plateIdsOf(wpMoved, S.nCol, true), wpSpan = 0, wpHead = 0;
+for (i = 0; i < S.nCol; i++) if (wpIds[i] === wpId) wpSpan++;
+for (i = 0; i < S.nCol && wpIds[i] === wpId; i++) wpHead++;
+var wpApplied = COUP.apply(S, wpMoved, applyOpts(S.nCol));
+check.ok('a boundary walked across the cut\'s own start leaves one plate wrapped over it',
+	wpApplied === '' && COUP.validate(wpMoved) === '' && S.colPlate[0] === S.colPlate[S.nCol - 1] &&
+	S.plN[S.colPlate[0]] === wpSpan && COUP.last.plateCrossed === wpHead &&
+	S.recon.plateWrap === 1 && identityOk(),
+	wpApplied || wpHead + ' columns crossed at the start, ' + wpSpan + ' columns on the wrapped plate ' +
+	S.colPlate[0] + ' of ' + S.nPl + ', plateWrap ' + S.recon.plateWrap);
+
+// a plate the globe now names that the section had never seen
+relaid();
+var nwMsg = COUP.fromPack(SP.decode(SP.encode(pack0)));
+COUP.apply(S, nwMsg, applyOpts(S.nCol));
+var nwRows = nwMsg.plates, nwAt = -1, nwSeen = {}, nwId = 0;
+for (i = 0; i < nwRows.length; i++) nwSeen[nwRows[i].id] = (nwSeen[nwRows[i].id] || 0) + 1;
+for (i = 1; i + 1 < nwRows.length; i++) {
+	// the last interval of a run: renaming it leaves the plate it ends whole and puts the
+	// new one in the seam the cut already carries there
+	if (nwRows[i].id === nwRows[i + 1].id) continue;
+	nwAt = i; nwId = nwRows[i].id; break;
+}
+if (nwAt < 0) throw new Error('fixture has no interior interval to rename');
+var nwPlWas = S.nPl;
+nwMsg = copy(nwMsg);
+nwMsg.plates[nwAt].id = 90 + nwRows.length;      // an id no row of the cut carries
+nwMsg.checksum = COUP.checksum(nwMsg);
+var nwApplied = COUP.apply(S, nwMsg, applyOpts(S.nCol));
+var nwIds = plateIdsOf(nwMsg, S.nCol, true), nwOn = 0, nwNamed = 0;
+for (i = 0; i < S.nCol; i++) {
+	if (nwIds[i] !== nwMsg.plates[nwAt].id) continue;
+	nwOn++;
+	if (SEED.platesFrom[S.colPlate[i]] === nwMsg.plates[nwAt].id) nwNamed++;
+}
+check.ok('a plate the globe newly names appears, and the section can still say which globe plate it is',
+	nwApplied === '' && COUP.last.plateAppeared === 1 && COUP.last.plateVanished === 0 &&
+	S.nPl === nwPlWas + 1 && nwOn > 0 && nwNamed === nwOn && identityOk(),
+	nwApplied || nwOn + ' columns on the new plate ' + nwMsg.plates[nwAt].id + ', plates ' +
+	nwPlWas + ' -> ' + S.nPl + ', appeared ' + COUP.last.plateAppeared);
+
+// and one the globe has taken off the line
+relaid();
+var gvMsg = COUP.fromPack(SP.decode(SP.encode(pack0)));
+COUP.apply(S, gvMsg, applyOpts(S.nCol));
+var gvRows = gvMsg.plates, gvAt = -1, gvPlWas = S.nPl;
+for (i = 2; i < gvRows.length; i++) {
+	if (gvRows[i].id === gvRows[i - 1].id || i < gvRows.length / 3) continue;
+	gvAt = i; break;
+}
+if (gvAt < 0) throw new Error('fixture has no plate to absorb');
+var gvGone = gvRows[gvAt].id, gvInto = gvRows[gvAt - 1].id;
+var gvWas = [];
+for (i = 0; i < S.nCol; i++) gvWas.push(SEED.platesFrom[S.colPlate[i]]);
+gvMsg = copy(gvMsg);
+for (i = 0; i < gvRows.length; i++) if (gvMsg.plates[i].id === gvGone) gvMsg.plates[i].id = gvInto;
+gvMsg.checksum = COUP.checksum(gvMsg);
+var gvApplied = COUP.apply(S, gvMsg, applyOpts(S.nCol));
+var gvMade = 0;
+for (i = 0; i < S.nCol; i++) if (gvWas[i] === gvGone && SEED.platesFrom[S.colPlate[i]] === gvInto) gvMade++;
+var gvCount = 0;
+for (i = 0; i < S.nCol; i++) if (gvWas[i] === gvGone) gvCount++;
+check.ok('a plate the globe has taken off the line vanishes and its columns join the neighbour',
+	gvApplied === '' && COUP.last.plateVanished === 1 && COUP.last.plateAppeared === 0 &&
+	S.nPl === gvPlWas - 1 && gvMade === gvCount && gvCount > 0 && identityOk(),
+	gvApplied || gvCount + ' columns of globe plate ' + gvGone + ' absorbed into ' + gvInto + ', plates ' +
+	gvPlWas + ' -> ' + S.nPl + ', vanished ' + COUP.last.plateVanished);
+
+// an open window: the two ends of the line are different places, whatever ids they carry
+laid = SEED.layout(openPack, { seed: P.seed, t: openPack.source.tMyr, Tm: P.Tm0 });
+if (laid) throw new Error(laid);
+var wdN = SEED.nCut, wdMsg = copy(openMsg), wdLast = wdMsg.plates.length - 1;
+wdMsg.plates[wdLast].id = wdMsg.plates[0].id;
+wdMsg.checksum = COUP.checksum(wdMsg);
+var wdApplied = COUP.apply(S, wdMsg, {
+	nCut: wdN, cellKm: openPack.path.cellKm, pathChecksum: openMsg.pathChecksum, pack: openPack
+});
+check.ok('an open window never wraps its two ends into one plate, even under one globe id',
+	wdApplied === '' && S.colPlate[0] !== S.colPlate[wdN - 1] && S.recon.plateWrap === 0 &&
+	S.edge[wdN - 1] === P.EDGE.none && S.edgeRPlate[wdN - 1] === -1 && identityOk(),
+	wdApplied || wdN + ' columns, ends on plates ' + S.colPlate[0] + ' and ' + S.colPlate[wdN - 1] +
+	', ' + S.nPl + ' plates, plateWrap ' + S.recon.plateWrap);
+check.info('the membership ledger after the window import',
+	'crossed ' + COUP.last.plateCrossed + ', appeared ' + COUP.last.plateAppeared +
+	', vanished ' + COUP.last.plateVanished + ', plates ' + S.nPl);
+
 check.done();
