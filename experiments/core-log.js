@@ -7,6 +7,7 @@
 'use strict';
 var lib = require('./lib.js'), M = lib.mods, check = lib.check;
 var CLOG = M['core-log'], COUP = M.coupling, SP = require('../port/slice-format.js');
+var CF = require('../port/core-log-format.js');
 var S = M.state, P = M.params, SIM = M.sim, SEED = M['section-seed'], COL = M.columns;
 var FIX = require('./pack-fixture.js');
 var KM = 1000;
@@ -63,10 +64,15 @@ var msg = CLOG.build(S, logOpts());
 check.ok('a seeded section logs every non-empty column',
 	msg && msg.records.length > SEED.nCut * 0.9 && CLOG.validate(msg) === '',
 	(msg ? msg.records.length : 0) + ' records, ' + (msg && CLOG.validate(msg) === '' ? 'valid' : 'invalid'));
-check.ok('the log is a checksummed pgt-core-log naming its cut',
-	msg.format === 'pgt-core-log' && msg.version === 1 &&
+check.ok('the log is a checksummed pgt-core-log v2 naming its cut',
+	msg.format === 'pgt-core-log' && msg.version === 2 &&
+	msg.lithologySchema === 'section-lith-1' &&
 	/^[0-9a-f]{16}$/.test(msg.checksum) && msg.pathChecksum === COUP.pathChecksum(pack0) &&
 	msg.packChecksum === pack0.checksum, 'log ' + msg.checksum + ' for cut ' + pack0.checksum.slice(0, 8));
+check.ok('the section builds against the shared codec, not a private copy',
+	CLOG.FORMAT === CF.FORMAT && CLOG.VERSION === CF.VERSION && CLOG.TH_TOL === CF.TH_TOL &&
+	CF.parse(CLOG.json(msg)).checksum === msg.checksum,
+	'one format, one hash, one set of rules (port/core-log-format.js)');
 check.ok('a JSON round trip is the same log', CLOG.parse(CLOG.json(msg)).checksum === msg.checksum);
 check.ok('every number carries the pack\'s six digits',
 	(function () {
@@ -74,9 +80,11 @@ check.ok('every number carries the pack\'s six digits',
 		for (i = 0; i < msg.records.length; i++) {
 			r = msg.records[i];
 			for (k = 0; k < r.beds.length; k++) {
-				if (r.beds[k][1] !== SP.round(r.beds[k][1]) || r.beds[k][2] !== SP.round(r.beds[k][2])) return false;
+				if (r.beds[k][1] !== SP.round(r.beds[k][1]) || r.beds[k][1] !== CF.round(r.beds[k][1]) ||
+					r.beds[k][2] !== CF.round(r.beds[k][2])) return false;
 			}
-			if (r.sKm !== SP.round(r.sKm) || r.div !== SP.round(r.div)) return false;
+			if (r.sKm !== SP.round(r.sKm) || r.sKm !== CF.round(r.sKm) ||
+				r.div !== CF.round(r.div) || r.hTotM !== CF.round(r.hTotM)) return false;
 		}
 		return true;
 	})());
@@ -187,7 +195,7 @@ function clone(m) { return JSON.parse(JSON.stringify(m)); }
 function refuses(tag, mutate, want) {
 	var m = clone(msg);
 	mutate(m);
-	try { m.checksum = CLOG.checksum(m); } catch (e) { m.checksum = ''; }
+	try { m.checksum = CF.checksum(m); } catch (e) { m.checksum = ''; }
 	var why;
 	try { why = CLOG.validate(m); } catch (e) { why = 'threw: ' + e.message; }
 	check.ok('refuses ' + tag, why !== '' && (!want || why.indexOf(want) >= 0), why || 'accepted');
@@ -213,7 +221,7 @@ check.ok('the same inversion is legal once the lower bed says its top contact is
 		while (r < m.records.length && m.records[r].beds.length < 2) r++;
 		m.records[r].beds[1][2] = m.records[r].beds[0][2] - 5;
 		m.records[r].beds[0][3] |= P.FLAG.intr;
-		m.checksum = CLOG.checksum(m);
+		m.checksum = CF.checksum(m);
 		return CLOG.validate(m) === '';
 	})());
 check.ok('a foreign format string is named, not guessed',
@@ -228,6 +236,12 @@ check.ok('an unsigned log never parses (a checksummed text is the only wire form
 		delete m.checksum;
 		try { CLOG.parse(JSON.stringify(m)); return false; } catch (e) { return /checksum/.test(e.message); }
 	})());
+check.ok('an unknown lithology schema is refused by the shared codec', (function () {
+	var m = clone(msg);
+	m.lithologySchema = 'section-lith-2';
+	m.checksum = CF.checksum(m);
+	return /unknown lithology schema/.test(CLOG.validate(m));
+})());
 check.ok('a stale checksum is a mismatch, whatever else the body says',
 	(function () {
 		var m = clone(msg);

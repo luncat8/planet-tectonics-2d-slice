@@ -1,5 +1,5 @@
 {
-	"$doc": "port/PORT.json — the shared-identical manifest (0.4.0-sync-plan.md §1.2, 0.4.2-plan.md §4 B2). Every file listed here is byte-identical with the counterpart (planet-geotectonics) and asserted by experiments/port-check.js on this side and a matching test on that side. A byte that drifts on one side is a shared file that is no longer shared: the sha256 is the drift gate, not a review. The two deposit catalogues that used to sit here are no longer a shared contract (the globe deleted them upstream before 0.6.3): at this cutover they moved, values frozen, to js/data/deposit-models.js and js/data/deposit-economics.js as ordinary section-local modules (0.4.2-plan.md D2), so this directory contains exactly the files this manifest lists.",
+	"$doc": "port/PORT.json — the shared-identical manifest (0.4.0-sync-plan.md §1.2, 0.4.2-plan.md §4 B2; the second contract added by the 0.4.4 M1 bump). Every file listed here is byte-identical with the counterpart (planet-geotectonics) and asserted by experiments/port-check.js on this side and a matching test on that side. A byte that drifts on one side is a shared file that is no longer shared: the sha256 is the drift gate, not a review. The directory now carries two independently testable contracts — pgt-slice-pack-v2 and pgt-core-log-v2 (slice 0.4.4 §2 P2/P3, answered by globe 0.8.4 §2) — and each file's `what` names its own; the manifest format and version are unchanged because the file list, not the schema, is what grew. The two deposit catalogues that used to sit here are no longer a shared contract (the globe deleted them upstream before 0.6.3): at this cutover they moved, values frozen, to js/data/deposit-models.js and js/data/deposit-economics.js as ordinary section-local modules (0.4.2-plan.md D2).",
 	"format": "pgt-port-manifest",
 	"version": 2,
 	"contract": "pgt-slice-pack-v2",
@@ -7,14 +7,14 @@
 		{
 			"role": "globe-writer",
 			"repo": "luncat8/planet-geotectonics",
-			"commit": "61f77aaad9663a26d0ed18c0504394542a31c036",
-			"note": "the handoff revision fetched and re-verified at 0.4.2 B0 (0.8.1 globe section cutter); its port/ bytes are the ee43f647-era bytes its own manifest pins, so the fixture identities in 0.4.2-plan.md §4 stand"
+			"commit": "4efb8fd401af9f8f632a415cdfa40847403cb623",
+			"note": "the 0.8.4 mirrored decision (accept P1–P7, explicit yes to positional beds) — the globe revision this bump is written against; its port/ bytes are still e5df4575…/ca5e92d7…"
 		},
 		{
 			"role": "section-reader",
 			"repo": "luncat8/planet-tectonics-2d-slice",
-			"commit": "68b6b3d928a7d2fbef2f787c0bec023a1c314de0",
-			"note": "the slice revision this cutover is built on (0.4.2 Phase A: the staleness ledger and the one decode entry the v2 body lands in)"
+			"commit": "51c20c2548ffcd6391ba5428c272375bbdce2d25",
+			"note": "the 0.4.4 scheduling revision this bump is built on (M1; the bump's own commit is its child, so a pin to it would be self-referential)"
 		}
 	],
 	"files": [
@@ -26,7 +26,17 @@
 		{
 			"path": "port/fixtures/slice-pack-v2.json",
 			"sha256": "ca5e92d72611efad4121f1e1f2816f2b728b3c7ca9f2135d65533ebc1a5bd907",
-			"what": "hand-auditable v2 contract fixture: two live plates, all boundary kinds, fractional sea level, one gap and six potentials"
+			"what": "hand-auditable v2 pack contract fixture: two live plates, all boundary kinds, fractional sea level, one gap and six potentials"
+		},
+		{
+			"path": "port/core-log-format.js",
+			"sha256": "5b40383ef9789b989b65f906ae916e422490965a6c338b6e7ce67a19163b409a",
+			"what": "byte-identical pgt-core-log v2 observation codec: self-contained hashing and quantisation, section-lith-1 positional beds, the ported v1 validation law, stale-never-current identity"
+		},
+		{
+			"path": "port/fixtures/core-log-v2.json",
+			"sha256": "56fb124b83eb8e7c062fdd5917186672c49c899160966745abe6196edb2c192b",
+			"what": "the core-log contract fixture: one valid pgt-core-log v2 whose path and full-pack identities are the pack fixture's own, so the two fixtures lock together"
 		}
 	]
 }

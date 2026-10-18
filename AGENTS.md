@@ -177,7 +177,11 @@ the 20-import identity and the plate-membership rebuild — sections M and N: a 
 globe has walked takes its columns with it, an unchanged import changes nothing, the wrap,
 a plate gained and lost, and an open window), coupling-link.js (the postMessage →
 localStorage → manual ladder), and
-core-log.js (the §8.5 return path: the one age convention, the acceptance rules, the cadence).
+core-log-format.js (the shared `pgt-core-log` v2 contract: the fixture round trip, the two
+identities that lock it to the pack fixture, the ported v1 validation law class by class,
+seal/encode/parse, stale-never-current identity, and node/classic-script parity), and
+core-log.js (the §8.5 return path: build/select/commit and the cadence; since 0.4.4 M2 its
+wire half is the shared codec).
 Each prints PASS/FAIL and exits non-zero on failure.
 experiments/acceptance.js is a release's whole-series pass: one section per numbered
 acceptance claim, delegating to the owning harness where one exists (its PASS count is
@@ -201,8 +205,13 @@ experiments/vent-cadence.js (one live leg's eruption cadence: duty, per-life epi
 repose, the starved/maxIdle mechanism columns) is report only the same way.
 
 port/ - files shared byte-identical with planet-geotectonics (0.4.0-sync-plan.md §1.2);
-port/PORT.json is the manifest. They are not in js/ on purpose: experiments/smoke.js asserts
-that columns.html loads every js/*.js exactly once, and a shared format is not a page module.
+port/PORT.json is the manifest. Since the 0.4.4 M1 bump the directory carries two independently
+testable contracts: `pgt-slice-pack-v2` (`slice-format.js` + its fixture) and `pgt-core-log-v2`
+(`core-log-format.js` + its fixture, whose path and full-pack identities are the pack fixture's
+own). They are not in js/ on purpose: experiments/smoke.js asserts that columns.html loads
+every `js/*.js` exactly once, and a shared format is not a page module — but it also asserts
+the directory is the page's load set, so a new `port/*.js` file gets its own `<script>` tag
+(`slice-format.js` first, `core-log-format.js` second).
 
 plans: 0.1.7-plan.md (crust flow-law units and the honest ceiling), 0.1.9-plan.md (the two
 contact measurements: R1's site and background, R2's needle shoulder),
@@ -223,8 +232,9 @@ decision is superseded by 0.4.4's positive one —
 2026-10-16 holds named as their re-open trigger; proposes P1–P7 to the globe: the manual-run
 core-log import per its 0.8.3 §2.1/§2.2, one coordinated port bump with a self-contained
 `port/core-log-format.js` v2 and fixture, the pair gates 1/2/3/6 and the gate-7 review.
-Written against globe `3c960e7`; implementation opens only on the globe's mirrored decision
-record — return package `archive/0.4.4-agreement-worklog.md` §5),
+Globe 0.8.4 (`4efb8fd`, 2026-10-18) accepted P1–P7, P4 an explicit yes to positional beds;
+both holds lifted and M1/M2 landed — `archive/0.4.4-M1-core-log-codec-worklog.md`; M3's pair
+gates are the next milestone),
 0.9.0-plan.md (C1 namespacing found already in place at 47ec7b3 — 25 engine files, one `COL*`
 global each, `COLSIM.start(host)/stop()`, no self-start — so the release is the M0 namespace
 audit harness, the M1 host contract (`COLUI.build(host)`, `COUP.apply`, `CLOG.build/json/note`),
