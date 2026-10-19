@@ -626,6 +626,20 @@ locked) and M2 moved this section's wire half onto the shared codec, so the obse
 page emits are v2. The standing rules below still bind: the globe's observation side table is
 its own, no C0–C4 channel is opened here, and the live bridge waits on the pair gates.
 
+### Hosted section — local readiness, counterpart request
+
+`0.9.0-plan.md` M0–M2 are locally accepted: the host contract and `library.html` dry run
+pass the VM and real Chromium file:// gates (`archive/0.9.0-M2-browser-acceptance-worklog.md`).
+M3's local request is `0.9.0-adapter-request.md`; the globe owns its schedule and adapter,
+not this repository. First arbitrary-pack startup, automated observation acknowledgement,
+and overlay geometry/palette output still require explicit API decisions. No live permission
+or M4 integration acceptance follows from the local host rehearsal.
+
+The 2026-10-19 counterpart read at `c1da62f` confirms all four shared files match, but the
+historical manifest provenance check remains red for the two core-log files absent at
+`4efb8fd`. Coordinated repository-pin/note repair is still required; current-tip byte equality
+is not that repair (`archive/0.9.0-M3-adapter-handoff-worklog.md`).
+
 ## 5. Not planned
 
 - No climate, no eustasy-coupled erosion, no elastic flexure: the globe models those and this

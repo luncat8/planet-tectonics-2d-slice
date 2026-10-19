@@ -247,10 +247,12 @@ gates are the next milestone),
 0.9.0-plan.md (C1 namespacing found already in place at 47ec7b3 — 25 engine files, one `COL*`
 global each, `COLSIM.start(host)/stop()`, no self-start — so the release is the M0 namespace
 audit harness, the M1 host contract, the M2 `library.html` dry-run host (implemented and
-Node-VM checked; headless-Chromium acceptance still pending), the M3 adapter request to the
+Node-VM checked; headless-Chromium acceptance passed; reproducible driver `experiments/library-browser.js`,
+record `archive/0.9.0-M2-browser-acceptance-worklog.md`), the M3 adapter request to the
 globe, and M4's §8.4 acceptance; written against globe `3c960e7`, whose 0.9.0 is climate
 integration, so the adapter queues on their ladder. M2's record is
-`archive/0.9.0-M2-library-host-worklog.md`),
+`archive/0.9.0-M2-library-host-worklog.md`; M3 handoff: `0.9.0-adapter-request.md`,
+prepared locally for counterpart review, not a globe schedule or live permission),
 0.9.0-contract.md (the host contract: what a host page may do with the column engine — the
 shape, document/element host and named window refusal, ShadowRoot-compatible scoped IDs,
 17 named entries, mount, `data-start="section"`/`data-pack` element-host setup,
