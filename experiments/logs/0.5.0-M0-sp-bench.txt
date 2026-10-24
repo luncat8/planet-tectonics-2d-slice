@@ -1,0 +1,198 @@
+0.5.0 M0 — soup bake-off
+INFO  candidate   {"nx":128,"space":"screen","mode":"pbf","sizePolicy":"uniform","drive":100,"inertia":0.98,"pbfIters":2,"mobContrast":0,"substepCap":0.35,"buoyancy":"row","buoySmooth":0,"motionPolicy":"substep","heatMode":"analytic","seed":1}
+INFO  initial plan control   {"nx":128,"space":"screen","mode":"pbf","sizePolicy":"uniform","drive":35,"inertia":0,"pbfIters":2,"mobContrast":4,"substepCap":0.35,"buoyancy":"absolute","buoySmooth":0,"motionPolicy":"substep","heatMode":"explicit","seed":1}
+
+A. correctness fixtures
+PASS  an unclamped position pass can tunnel (the old plan claim is false)   {"crossed":true,"separation":4,"substeps":1,"nonFinite":0}
+PASS  the displacement clamp prevents the same tunnelling fixture   {"crossed":false,"separation":1,"substeps":12,"nonFinite":0}
+PASS  same seed and replay are bitwise deterministic
+PASS  heat-dependent size never edits the material mass book
+PASS  inertia retention is clock-based, not substep-count-based   8.17e-1
+
+B. heat-scheme control at 500 kyr/frame
+explicit	28.00 ms	heat passes 8	residual 1.11e-15
+analytic	16.28 ms	heat passes 1	residual 8.28e-16
+PASS  explicit heat needs extra substeps at the fast clock   k=8
+PASS  analytic pair exchange closes the book in one pair walk   residual 8.28e-16
+
+C. warm kernel cost (best/mean of three batches plus per-frame p50/p95)
+matched 6426 / screen / pbf / uniform
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+6426	5.08	5.31	5.10	6.27	7.68	8	1
+PASS  matched 6426 / screen / pbf / uniform finite and books closed
+matched 6426 / screen / pbf / material
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+6426	5.25	5.37	5.27	6.56	7.04	9	1
+PASS  matched 6426 / screen / pbf / material finite and books closed
+matched 6426 / screen / pbf / heat
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+6426	5.10	5.14	5.10	5.30	7.62	8	1
+PASS  matched 6426 / screen / pbf / heat finite and books closed
+matched 6426 / screen / contact / uniform
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+6426	3.76	3.79	3.77	3.91	7.78	8	1
+PASS  matched 6426 / screen / contact / uniform finite and books closed
+matched 6426 / screen / contact / material
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+6426	3.87	3.90	3.90	4.02	6.13	9	1
+PASS  matched 6426 / screen / contact / material finite and books closed
+matched 6426 / screen / contact / heat
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+6426	3.93	3.97	3.93	4.16	7.81	8	1
+PASS  matched 6426 / screen / contact / heat finite and books closed
+matched 6426 / km / pbf / uniform
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+6426	4.40	4.44	4.38	4.76	7.58	8	1
+PASS  matched 6426 / km / pbf / uniform finite and books closed
+matched 6426 / km / pbf / material
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+6426	4.41	4.52	4.45	4.80	7.09	8	1
+PASS  matched 6426 / km / pbf / material finite and books closed
+matched 6426 / km / pbf / heat
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+6426	4.18	4.19	4.19	4.31	7.82	8	1
+PASS  matched 6426 / km / pbf / heat finite and books closed
+matched 6426 / km / contact / uniform
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+6426	3.19	3.21	3.21	3.41	7.64	8	1
+PASS  matched 6426 / km / contact / uniform finite and books closed
+matched 6426 / km / contact / material
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+6426	3.27	3.30	3.29	3.52	6.24	8	1
+PASS  matched 6426 / km / contact / material finite and books closed
+matched 6426 / km / contact / heat
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+6426	3.00	3.02	3.00	3.19	7.82	8	1
+PASS  matched 6426 / km / contact / heat finite and books closed
+PASS  matched 6426 cost rows use identical native-coverage populations
+matched 28728 / screen / pbf / uniform
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+28728	21.42	21.62	21.41	22.94	7.80	8	1
+PASS  matched 28728 / screen / pbf / uniform finite and books closed
+matched 28728 / screen / pbf / material
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+28728	21.98	25.09	21.96	43.91	7.46	9	1
+PASS  matched 28728 / screen / pbf / material finite and books closed
+matched 28728 / screen / pbf / heat
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+28728	21.17	21.31	21.06	23.95	7.68	8	1
+PASS  matched 28728 / screen / pbf / heat finite and books closed
+matched 28728 / screen / contact / uniform
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+28728	15.61	16.18	15.67	18.44	7.79	8	1
+PASS  matched 28728 / screen / contact / uniform finite and books closed
+matched 28728 / screen / contact / material
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+28728	16.72	16.99	16.69	19.44	6.15	9	1
+PASS  matched 28728 / screen / contact / material finite and books closed
+matched 28728 / screen / contact / heat
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+28728	15.53	15.65	15.57	16.00	7.79	8	1
+PASS  matched 28728 / screen / contact / heat finite and books closed
+matched 28728 / km / pbf / uniform
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+28728	19.82	19.98	20.01	20.28	7.79	8	1
+PASS  matched 28728 / km / pbf / uniform finite and books closed
+matched 28728 / km / pbf / material
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+28728	19.71	19.76	19.67	20.06	6.55	9	1
+PASS  matched 28728 / km / pbf / material finite and books closed
+matched 28728 / km / pbf / heat
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+28728	19.71	20.23	19.80	22.84	7.92	8	1
+PASS  matched 28728 / km / pbf / heat finite and books closed
+matched 28728 / km / contact / uniform
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+28728	14.50	14.75	14.55	17.64	7.89	8	1
+PASS  matched 28728 / km / contact / uniform finite and books closed
+matched 28728 / km / contact / material
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+28728	15.27	15.49	15.12	16.95	6.67	8	1
+PASS  matched 28728 / km / contact / material finite and books closed
+matched 28728 / km / contact / heat
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+28728	13.89	14.04	13.93	14.73	7.92	8	1
+PASS  matched 28728 / km / contact / heat finite and books closed
+PASS  matched 28728 cost rows use identical native-coverage populations
+INFO  display screen   {"n":6426,"width":1280,"height":520,"nonFinite":0,"outsideCenters":0,"rxOverRyMin":0.9953562602906683,"rxOverRyMax":0.9953562602906683,"rxOverRyMean":0.9953562602905357}
+PASS  display screen geometry is finite with contained centers
+INFO  display km   {"n":6426,"width":1280,"height":520,"nonFinite":0,"outsideCenters":0,"rxOverRyMin":0.043372128523534864,"rxOverRyMax":2.2243863716492482,"rxOverRyMean":1.1109475291270223}
+PASS  display km geometry is finite with contained centers
+PASS  screen-space particles are round in the display geometry   0.9954 mean rx/ry
+PASS  km-space control exposes the expected display anisotropy   51.3x range
+native budget 256 / screen / pbf / uniform
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+26624	19.28	19.39	19.24	20.13	7.89	8	1
+PASS  native budget 256 / screen / pbf / uniform finite and books closed
+native budget 256 / screen / contact / uniform
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+26624	14.15	16.02	14.35	21.75	7.92	8	1
+PASS  native budget 256 / screen / contact / uniform finite and books closed
+native budget 512 / screen / pbf / uniform
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+105984	79.97	90.56	84.33	107.69	7.94	8	1
+PASS  native budget 512 / screen / pbf / uniform finite and books closed
+native budget 512 / screen / contact / uniform
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+105984	59.27	59.79	59.01	62.12	7.97	8	1
+PASS  native budget 512 / screen / contact / uniform finite and books closed
+planck-population 31x13 / SP
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+403	0.27	0.27	0.27	0.29	6.80	8	1
+PASS  planck-population 31x13 / SP finite and books closed
+planck-population 50x20 / SP
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+1000	0.67	0.68	0.67	0.71	7.47	8	1
+PASS  planck-population 50x20 / SP finite and books closed
+planck-population 70x28 / SP
+n	ms best	ms mean	ms p50	ms p95	neigh	max neigh	k motion
+1960	1.36	1.37	1.37	1.41	7.62	8	1
+PASS  planck-population 70x28 / SP finite and books closed
+
+D. 500 kyr/frame stability matrix
+PASS  128 / screen / pbf / uniform stable at 500 kyr/frame   kMotion 3, T 0.000..1.000, heat residual 5.41e-16
+PASS  128 / screen / pbf / material stable at 500 kyr/frame   kMotion 5, T 0.000..1.000, heat residual 2.56e-15
+PASS  128 / screen / pbf / heat stable at 500 kyr/frame   kMotion 5, T 0.000..1.000, heat residual 1.72e-15
+PASS  128 / screen / contact / uniform stable at 500 kyr/frame   kMotion 3, T 0.000..1.000, heat residual 5.82e-16
+PASS  128 / screen / contact / material stable at 500 kyr/frame   kMotion 4, T 0.000..1.000, heat residual 2.68e-16
+PASS  128 / screen / contact / heat stable at 500 kyr/frame   kMotion 4, T 0.000..1.000, heat residual 2.91e-16
+PASS  128 / km / pbf / uniform stable at 500 kyr/frame   kMotion 1, T 0.547..1.000, heat residual 1.83e-14
+PASS  128 / km / pbf / material stable at 500 kyr/frame   kMotion 1, T 0.548..1.000, heat residual 1.93e-14
+PASS  128 / km / pbf / heat stable at 500 kyr/frame   kMotion 1, T 0.548..1.000, heat residual 1.99e-14
+PASS  128 / km / contact / uniform stable at 500 kyr/frame   kMotion 1, T 0.547..1.000, heat residual 2.08e-14
+PASS  128 / km / contact / material stable at 500 kyr/frame   kMotion 1, T 0.547..1.000, heat residual 1.76e-14
+PASS  128 / km / contact / heat stable at 500 kyr/frame   kMotion 1, T 0.548..1.000, heat residual 1.99e-14
+PASS  256 / screen / pbf / uniform stable at 500 kyr/frame   kMotion 6, T 0.000..1.000, heat residual 4.53e-17
+PASS  256 / screen / pbf / material stable at 500 kyr/frame   kMotion 6, T 0.000..1.000, heat residual 3.35e-15
+PASS  256 / screen / pbf / heat stable at 500 kyr/frame   kMotion 6, T 0.000..1.000, heat residual 9.56e-16
+PASS  256 / screen / contact / uniform stable at 500 kyr/frame   kMotion 4, T 0.000..1.000, heat residual 1.82e-15
+PASS  256 / screen / contact / material stable at 500 kyr/frame   kMotion 4, T 0.000..1.000, heat residual 2.53e-15
+PASS  256 / screen / contact / heat stable at 500 kyr/frame   kMotion 4, T 0.000..1.000, heat residual 4.02e-15
+PASS  256 / km / pbf / uniform stable at 500 kyr/frame   kMotion 1, T 0.377..1.000, heat residual 3.50e-14
+PASS  256 / km / pbf / material stable at 500 kyr/frame   kMotion 1, T 0.378..1.000, heat residual 3.21e-14
+PASS  256 / km / pbf / heat stable at 500 kyr/frame   kMotion 1, T 0.380..1.000, heat residual 3.37e-14
+PASS  256 / km / contact / uniform stable at 500 kyr/frame   kMotion 1, T 0.375..1.000, heat residual 2.94e-14
+PASS  256 / km / contact / material stable at 500 kyr/frame   kMotion 1, T 0.373..1.000, heat residual 2.61e-14
+PASS  256 / km / contact / heat stable at 500 kyr/frame   kMotion 1, T 0.380..1.000, heat residual 3.35e-14
+
+E. convection behavior
+PBF candidate @ 100 Myr: {"n":6656,"mode":"pbf","space":"screen","sizePolicy":"uniform","heatMode":"analytic","buoyancy":"row","inertia":0.98,"frames":2000,"timeMyr":99.99999999999646,"pairs":20406,"neighbours":6.131610576923077,"maxNeighbours":8,"kMotion":1,"kHeat":1,"kHeatMax":1,"vMax":170.1145330505642,"uMax":464.3490127516816,"wells":6,"tMin":1.0891668986629841e-7,"tMax":0.9997189915881967,"nonFinite":0,"heatResidual":4.974246924529374e-14,"heatAbsolute":0.0000022351741790771484,"heatWallResidual":1.6548566708198308e-13,"massResidual":0,"unsatisfied":6,"maxDensity":0.042024349875000366,"wallClamp":500,"motionClip":0}
+PBF candidate @ 200 Myr: {"n":6656,"mode":"pbf","space":"screen","sizePolicy":"uniform","heatMode":"analytic","buoyancy":"row","inertia":0.98,"frames":4000,"timeMyr":200.00000000001123,"pairs":20250,"neighbours":6.084735576923077,"maxNeighbours":8,"kMotion":1,"kHeat":1,"kHeatMax":1,"vMax":71.66498495423639,"uMax":421.1646860721885,"wells":6,"tMin":1.0891669925727729e-7,"tMax":0.9995606085226382,"nonFinite":0,"heatResidual":4.4519509974537895e-14,"heatAbsolute":0.000002000480890274048,"heatWallResidual":7.129020080063378e-14,"massResidual":0,"unsatisfied":18,"maxDensity":0.03345282707574038,"wallClamp":493,"motionClip":0}
+PBF candidate @ 300 Myr: {"n":6656,"mode":"pbf","space":"screen","sizePolicy":"uniform","heatMode":"analytic","buoyancy":"row","inertia":0.98,"frames":6000,"timeMyr":300.00000000003394,"pairs":20235,"neighbours":6.080228365384615,"maxNeighbours":8,"kMotion":1,"kHeat":1,"kHeatMax":1,"vMax":70.64527666913364,"uMax":160.41209454061573,"wells":5,"tMin":1.0891918216825695e-7,"tMax":0.9994355855567092,"nonFinite":0,"heatResidual":7.511112856039355e-14,"heatAbsolute":0.000003375113010406494,"heatWallResidual":1.0026705008696632e-13,"massResidual":0,"unsatisfied":0,"maxDensity":0.017515824638196342,"wallClamp":504,"motionClip":0}
+PASS  PBF convection leg stays finite with closed books   71.66 km/Myr median peak, 6 median upwellings
+PASS  PBF median peak vertical velocity is in the S1 60..200 km/Myr band   71.66
+PASS  PBF median upwelling count is in the S1 3..6 band   6
+PASS  PBF spends at least two thirds of sampled 100..300 Myr in the cell band   90.2%
+PASS  PBF density residual stays below 10% at 100/200/300 Myr checkpoints   0.042, 0.033, 0.018
+contact control @ 100 Myr: {"n":6656,"mode":"contact","space":"screen","sizePolicy":"uniform","heatMode":"analytic","buoyancy":"row","inertia":0.98,"frames":2000,"timeMyr":99.99999999999646,"pairs":19237,"neighbours":5.7803485576923075,"maxNeighbours":8,"kMotion":1,"kHeat":1,"kHeatMax":1,"vMax":498.0759624622624,"uMax":656.9925791113565,"wells":9,"tMin":1.0892637476200485e-7,"tMax":0.9997179677356309,"nonFinite":0,"heatResidual":1.5109275033257974e-14,"heatAbsolute":6.789341568946838e-7,"heatWallResidual":8.36093142038184e-14,"massResidual":0,"unsatisfied":0,"maxDensity":0,"wallClamp":134,"motionClip":0}
+PASS  contact control remains a valid measurement
+PASS  like-for-like contact control misses the preregistered S1 fluid bands   498.08 km/Myr, 9 wells
+INFO  contact selection control   498.08 km/Myr, 9 upwellings, 6.75 ms/frame; PBF 6.56 ms/frame
+candidate 50 Myr control @ 50 Myr: {"n":6656,"mode":"pbf","space":"screen","sizePolicy":"uniform","heatMode":"analytic","buoyancy":"row","inertia":0.98,"frames":1000,"timeMyr":49.9999999999993,"pairs":20538,"neighbours":6.171274038461538,"maxNeighbours":8,"kMotion":1,"kHeat":1,"kHeatMax":1,"vMax":56.041251764852404,"uMax":530.2440283261967,"wells":6,"tMin":1.089167090018531e-7,"tMax":0.9998377757153244,"nonFinite":0,"heatResidual":3.627055049136002e-16,"heatAbsolute":1.6298145055770874e-8,"heatWallResidual":5.844049817693012e-15,"massResidual":0,"unsatisfied":296,"maxDensity":0.09198707577146137,"wallClamp":523,"motionClip":0}
+PASS  candidate default-flip control remains a valid measurement   61.43 km/Myr, 6.5 wells, 5.62 ms/frame
+noInertia 50 Myr control @ 50 Myr: {"n":6656,"mode":"pbf","space":"screen","sizePolicy":"uniform","heatMode":"analytic","buoyancy":"row","inertia":0,"frames":1000,"timeMyr":49.9999999999993,"pairs":21053,"neighbours":6.326021634615385,"maxNeighbours":8,"kMotion":4,"kHeat":1,"kHeatMax":1,"vMax":92.83919894751989,"uMax":621.5293463604758,"wells":8,"tMin":1.1221675057088804e-7,"tMax":0.9998340349237255,"nonFinite":0,"heatResidual":6.549425117297009e-15,"heatAbsolute":2.942979335784912e-7,"heatWallResidual":3.1164412936359105e-14,"massResidual":0,"unsatisfied":4439,"maxDensity":0.1751091056327443,"wallClamp":1771,"motionClip":0}
+PASS  noInertia default-flip control remains a valid measurement   91.86 km/Myr, 8 wells, 13.60 ms/frame
+originalMobility 50 Myr control @ 50 Myr: {"n":6656,"mode":"pbf","space":"screen","sizePolicy":"uniform","heatMode":"analytic","buoyancy":"row","inertia":0.98,"frames":1000,"timeMyr":49.9999999999993,"pairs":20317,"neighbours":6.104867788461538,"maxNeighbours":8,"kMotion":3,"kHeat":1,"kHeatMax":1,"vMax":262.7484693515453,"uMax":1447.5851306833283,"wells":4,"tMin":5.758344763949926e-7,"tMax":0.9998377456459561,"nonFinite":0,"heatResidual":8.43549374284773e-15,"heatAbsolute":3.7904828786849976e-7,"heatWallResidual":4.903914345699247e-14,"massResidual":0,"unsatisfied":101,"maxDensity":0.053001480033389115,"wallClamp":1806,"motionClip":0}
+PASS  originalMobility default-flip control remains a valid measurement   195.73 km/Myr, 5 wells, 13.18 ms/frame
+
+ALL PASS (78 checks)

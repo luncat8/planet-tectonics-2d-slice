@@ -1,0 +1,42 @@
+{
+  "format": "planck-smoke-v2",
+  "rows": [
+    {
+      "bodies": 400,
+      "vel": 8,
+      "pos": 3,
+      "msBest": 1.14142649,
+      "msMean": 1.2406211266666667,
+      "nonFinite": 0,
+      "escaped": 0
+    },
+    {
+      "bodies": 1000,
+      "vel": 8,
+      "pos": 3,
+      "msBest": 4.598308716666667,
+      "msMean": 8.54635061111111,
+      "nonFinite": 0,
+      "escaped": 0
+    },
+    {
+      "bodies": 4000,
+      "vel": 8,
+      "pos": 3,
+      "msBest": 28.582364525000003,
+      "msMean": 65.65689733333333,
+      "nonFinite": 0,
+      "escaped": 0
+    },
+    {
+      "bodies": 4000,
+      "vel": 4,
+      "pos": 2,
+      "msBest": 42.353051925,
+      "msMean": 70.82519991666668,
+      "nonFinite": 0,
+      "escaped": 0
+    }
+  ],
+  "valid": true
+}

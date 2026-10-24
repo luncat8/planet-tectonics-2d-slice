@@ -1,0 +1,43 @@
+{
+  "format": "planck-look-v1",
+  "rows": [
+    {
+      "msBest": 1.3284676833333333,
+      "msMean": 1.374981861111111,
+      "diag": {
+        "bodies": 403,
+        "steps": 420,
+        "nonFinite": 0,
+        "escaped": 0,
+        "vMax": 1.0563787972677496,
+        "wells": 4
+      }
+    },
+    {
+      "msBest": 3.6780033666666667,
+      "msMean": 3.862768188888889,
+      "diag": {
+        "bodies": 1000,
+        "steps": 420,
+        "nonFinite": 0,
+        "escaped": 0,
+        "vMax": 1.1010897382157034,
+        "wells": 13
+      }
+    },
+    {
+      "msBest": 10.980262166666668,
+      "msMean": 12.73947956111111,
+      "diag": {
+        "bodies": 1960,
+        "steps": 420,
+        "nonFinite": 0,
+        "escaped": 0,
+        "vMax": 2.7135903170291567,
+        "wells": 16
+      }
+    }
+  ],
+  "valid": true,
+  "convects": true
+}

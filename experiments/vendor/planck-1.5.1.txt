@@ -1,0 +1,8 @@
+planck.js 1.5.1 (Box2D 2.4 port in TypeScript/JS), MIT, (c) Ali Shakiba et al.
+https://github.com/piqnt/planck.js  (reference only; no page depends on this file)
+
+Vendored from the npm dist tarball (sha512-x3nHPSyoNTAxN0v8UXrSwP0XVTG0e7JCENBVZljZ8PZOjbOo7aRHq2+fy+DOREDhfW52aq5GiwgIm+m8kIErKQ==),
+file dist/planck.min.js, 297211 bytes. Despite the package's "engines: node >= 24"
+field, the UMD dist loads under node 22 (experiments/planck-smoke.js proves it and
+exits non-zero if it ever stops). Used only by 0.5.0 M0's bake-off as the Box2D
+reference leg; the pages never load it.

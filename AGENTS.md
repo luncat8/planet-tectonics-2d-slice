@@ -269,7 +269,14 @@ holds that release's 300 Myr intake back and is what its 600 Myr cell separates)
 and to spend that release on rebuilding the section's plate membership at import instead;
 landed, `archive/0.4.3-membership-worklog.md` and `archive/0.4.3-membership-report.md`) and
 0.4.4-draft.md (the road to the globe is negotiation, not measurement — the reference for the
-two agreement plans, both written against the globe's then-current commit).
+two agreement plans, both written against the globe's then-current commit),
+0.5.0-plan.md (two FFT-free convection engines, planned not started: hybrid.html — grid
+magma, particle crust, links on/off; soup.html — all particles, linkless magma, linked
+crust with cracks and melt as strength; shared js/pc/ substrate — phase law with the
+load-pressure solidus option, pool, bond law, option registry, scenarios S1-S4; frame cost
+and visual gameplay over precision; every request-named decision gets a default, a GUI
+option and an overturning measurement — experiments/planck-smoke.js is the Box2D leg's,
+against the vendored experiments/vendor/planck-1.5.1.min.js the pages never load).
 roadmap.md — which release owns what, the runtime-authority table, what is deferred; each
 release's own plan is still the authority for its milestones.
 
