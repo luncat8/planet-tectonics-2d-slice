@@ -69,6 +69,17 @@ var SectionPack = (function () {
 	// lith colours: the section's stack order, top-down (sediment on felsic on mafic), the
 	// same families RNDR.LITH_RGB draws for the engine (sed / fel / maf).
 	var LITHE = ['#cbb591', '#dca58c', '#464b52'];
+	// 0.9.0 A1 overlay palettes: the lith table is RNDR.LITH_RGB, the host table is the
+	// section's own classification (SP.HOSTS order), so globe strip and section view agree
+	// by construction. Both are CSS hex strings the globe draws directly.
+	var LITH_RGB = [[205, 185, 145], [220, 165, 140], [70, 75, 82], [165, 150, 130], [140, 60, 45], [195, 85, 60]];
+	var HOST_RGB = [[16, 20, 28], [42, 90, 138], [203, 181, 145], [140, 90, 47], [232, 216, 168]];
+	function toHex(rgb) {
+		function h(v) { var s = v.toString(16); return s.length === 1 ? '0' + s : s; }
+		return '#' + h(rgb[0]) + h(rgb[1]) + h(rgb[2]);
+	}
+	var LITH_PALETTE = LITH_RGB.map(toHex);
+	var HOST_PALETTE = HOST_RGB.map(toHex);
 	// boundary tick colours: the map's legend (open yellow, subduct red, transform white,
 	// collide purple) so a cut reads the same on both pages.
 	var BND_RGB = { 2: '#e8c84a', 3: '#e05555', 4: '#b06ae0', 1: '#c8c8c8' };
@@ -887,6 +898,50 @@ var SectionPack = (function () {
 			for (i = 0; i < L.length; i++) s += (i ? '\n' : '') + L[i];
 			if (this.world && g) s += '\n' + g.COLUI.hudText();
 			this.hudEl.textContent = s;
+		},
+
+		// 0.9.0 A1 — the cut-plane overlay export (§3.3): a read-only view of the section's
+		// current crust as the globe draws it. No geometry leaves the section — the globe
+		// places each segment with SlicePack.directionAt(path, sKm) and MapView.project.
+		// A fresh plain object per call; null when no reconstructed world is active.
+		overlay: function () {
+			if (!this.pack || !this.world) return null;
+			var pack = this.pack, n, i, j;
+			try { n = SEED.window ? SEED.nCut : S.nCol; } catch (e) { n = S.nCol; }
+			if (!n) return null;
+			var pathChecksum = '', packChecksum = pack.checksum || '';
+			try {
+				var coup = coupling();
+				if (coup && coup.pathChecksum) pathChecksum = coup.pathChecksum(pack);
+				else if (SP.pathChecksum) pathChecksum = SP.pathChecksum(pack.path);
+			} catch (e2) {}
+			var scale = 1;
+			try { scale = SEED.scale || 1; } catch (e3) {}
+			var LC = P.layerCap, KM2 = 1000;
+			var palette = { lith: LITH_PALETTE.slice(), host: HOST_PALETTE.slice() };
+			var segments = [];
+			var walk = 0, runLith = -1, runHost = -1, runKm = 0;
+			for (j = 0; j < n; j++) {
+				var sKm = walk / (scale * KM2);
+				// dominant lith in this column: thickest bed
+				var b = j * LC, nl = S.colNL[j], bestTh = -1, bestLi = 0, k;
+				for (k = 0; k < nl; k++) {
+					var th = S.layTh[b + k];
+					if (th > bestTh) { bestTh = th; bestLi = S.layLi[b + k]; }
+				}
+				if (bestTh < 0) bestLi = 0;
+				// host from current column thicknesses
+				var host = 0;
+				try { host = SP.hostCode(S.hFel[j], S.hMaf[j], S.hSed[j]); } catch (e4) {}
+				if (host < 0 || host >= HOST_PALETTE.length) host = 0;
+				if (bestLi < 0 || bestLi >= LITH_PALETTE.length) bestLi = 0;
+				if (segments.length === 0 || bestLi !== runLith || host !== runHost) {
+					segments.push({ sKm: sKm, lith: bestLi, host: host });
+					runLith = bestLi; runHost = host; runKm = sKm;
+				}
+				walk += S.colW[j] || P.w0;
+			}
+			return { pathChecksum: pathChecksum, packChecksum: packChecksum, palette: palette, segments: segments };
 		},
 
 		exportWorld: function (opts) {

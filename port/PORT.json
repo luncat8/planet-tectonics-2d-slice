@@ -7,14 +7,14 @@
 		{
 			"role": "globe-writer",
 			"repo": "luncat8/planet-geotectonics",
-			"commit": "4efb8fd401af9f8f632a415cdfa40847403cb623",
-			"note": "the 0.8.4 mirrored decision (accept P1–P7, explicit yes to positional beds) — the globe revision this bump is written against; its port/ bytes are still e5df4575…/ca5e92d7…"
+			"commit": "c1da62fe6b141b57fe130caefe27f3ea796b2bf6",
+			"note": "globe revision where all four shared files first stand byte-identical (the 0.8.4 M1 core-log bump); the 0.8.5 A0 repair commit is its descendant, so a pin to the repair itself would be self-referential"
 		},
 		{
 			"role": "section-reader",
 			"repo": "luncat8/planet-tectonics-2d-slice",
-			"commit": "51c20c2548ffcd6391ba5428c272375bbdce2d25",
-			"note": "the 0.4.4 scheduling revision this bump is built on (M1; the bump's own commit is its child, so a pin to it would be self-referential)"
+			"commit": "5fae205ef16dd1a75857ad68db28d75648b01f19",
+			"note": "the slice v2 cutover (their 0.4.4 M1+M2): the core-log port bump and the section's adoption; all four files byte-identical at this revision"
 		}
 	],
 	"files": [

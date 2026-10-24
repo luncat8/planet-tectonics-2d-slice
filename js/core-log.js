@@ -141,10 +141,82 @@ var CLOG = (function () {
 		CLOG.lastEmitted = 0;
 	}
 
+	// The active-host exporter (§3.5, A1): the due log for the mounted section, or null.
+	// It is the zero-argument spelling of build+json — the low-level pair stays engine-internal.
+	// The host is responsible for calling note() iff the globe filed the text, per the
+	// commit-on-acceptance rule (§8.5) the answer re-states: current → note(), stale after
+	// confirmation → note(), foreign/refused → no note() and the log stays due.
+	function exportActive() {
+		var sec = node ? null : root.COLSECTION;
+		if (!sec) {
+			try { sec = require('./section-pack.js'); } catch (e) { sec = null; }
+			if (!sec && typeof module !== 'undefined' && module.exports) {
+				try { sec = require('../js/section-pack.js'); } catch (ee) {}
+			}
+		}
+		if (!sec || !sec.pack || !sec.world) return null;
+		var pack = sec.pack;
+		var coup = node ? null : root.COLCOUPLING;
+		if (!coup) {
+			try { coup = require('./coupling.js'); } catch (e1) { coup = null; }
+		}
+		var SP = node ? null : root.SlicePack;
+		if (!SP) {
+			try { SP = require('../port/slice-format.js'); } catch (e2) { SP = null; }
+		}
+		var pathChecksum = '', packChecksum = pack.checksum || '';
+		try {
+			if (coup && coup.pathChecksum) pathChecksum = coup.pathChecksum(pack);
+			else if (SP && SP.pathChecksum) pathChecksum = SP.pathChecksum(pack.path);
+		} catch (e3) { return null; }
+		var arcKm = pack.path ? pack.path.arcKm : 0;
+		var tMyr = 0, epochMa = 0;
+		if (pack.source) epochMa = pack.source.epochMa || 0;
+		try {
+			var g = (function () {
+				if (node) return null;
+				return root;
+			})();
+			var sim = g && g.COLSIM ? g.COLSIM : null;
+			if (sim && isFinite(sim.t)) tMyr = sim.t;
+			else if (pack.source && isFinite(pack.source.tMyr)) tMyr = pack.source.tMyr;
+		} catch (e4) {}
+		var n = State.nCol;
+		try {
+			var seed = node ? require('./section-seed.js') : root.COLSEED;
+			if (seed && seed.window) n = seed.nCut;
+		} catch (e5) {}
+		var msg;
+		try {
+			msg = build(State, {
+				n: n, arcKm: arcKm,
+				pathChecksum: pathChecksum, packChecksum: packChecksum,
+				tMyr: tMyr, epochMa: epochMa
+			});
+		} catch (e6) { return null; }
+		if (!msg) return null;
+		var text;
+		try { text = json(msg); } catch (e7) { return null; }
+		return { text: text, pathChecksum: pathChecksum, packChecksum: packChecksum };
+	}
+
+
+	// A1: import a core-log text returned by exportActive and check its identity
+	// against the currently mounted pack. Returns { status: 'current' | 'stale' | 'foreign', reason }.
+	function importText(text) {
+		if (typeof text !== 'string') return { status: 'foreign', reason: 'not a string' };
+		var msg;
+		try { msg = CF.parse(text); } catch (e) { return { status: 'foreign', reason: e.message }; }
+		if (!sec || !sec.pack) return { status: 'foreign', reason: 'no mounted pack' };
+		var artifact = { pathChecksum: sec.packChecksum, arcKm: sec.pack.path ? sec.pack.path.arcKm : 0 };
+		return CF.identity(msg, artifact);
+	}
 	return {
 		FORMAT: FORMAT, VERSION: VERSION, TH_TOL: TH_TOL, DEFAULT_THRESHOLD: DEFAULT_THRESHOLD,
 		validate: validate, json: json, parse: parse,
 		build: build, note: note, reset: reset, columnDiv: columnDiv, strataOK: strataOK,
+		exportActive: exportActive,
+		importText: importText,
 		lastEmitted: 0
 	};
 })();

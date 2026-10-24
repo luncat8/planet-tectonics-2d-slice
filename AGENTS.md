@@ -255,7 +255,7 @@ integration, so the adapter queues on their ladder. M2's record is
 prepared locally for counterpart review, not a globe schedule or live permission),
 0.9.0-contract.md (the host contract: what a host page may do with the column engine — the
 shape, document/element host and named window refusal, ShadowRoot-compatible scoped IDs,
-17 named entries, mount, `data-start="section"`/`data-pack` element-host setup,
+20 named entries (17 + 3 A1 amendments: loadPack, exportActive, overlay), mount, `data-start="section"`/`data-pack` element-host setup,
 start/stop/step, coupling in, observations out, mode and staleness, and what the host must
 not do. The namespace harness reads its entry list, so the contract and the code cannot
 drift),
