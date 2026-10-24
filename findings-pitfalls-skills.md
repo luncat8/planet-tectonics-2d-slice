@@ -1629,3 +1629,37 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   next collision is a red, not an exception) and the harness re-measures each entry on every
   run — so a collision that resolves itself, on either side, turns D red until the record
   moves with it.
+
+## 0.5.0 M1 — gating a GUI bar, a three-state gate, and a transplant claim (`archive/0.5.0-M1-report.md`)
+
+- **Read the bar out of the HTML, not out of the script.** The registry/page parity harness
+  (`experiments/pc-opt.js`) regex-reads each page's own `<input data-pc-opt>`, `<button
+  data-pc-opt>` and `<select data-pc-opt>` and compares id, kind, min/max/step/values and
+  default against the registry table. Doing it that way found two defects a VM run would have
+  hidden: the two `solidusOf` selects listed `load` before `depth` (so the first `<option>`
+  was not the default the page claimed) and the S1 preset named a knob that is not on the
+  hybrid's registry at all. The tab order of `<option>` elements is part of what a reader sees.
+- **A scenario gate needs three states, not two.** A boolean gate on a skeleton engine either
+  lies green or fails for absence. `pc/scenario.js` marks a gate **pending with a reason**
+  when the engine does not declare the feature (`features.lid` etc.) or when a reading is not
+  finite, and the harness proves the other direction with a synthetic engine whose readings
+  satisfy (or deliberately miss) the bands. A release checklist can then count pending lines
+  and cannot confuse them with passes.
+- **Live vs staged, and what the bar shows.** A reset-scope option (particle size, the
+  coordinate space, the bond layout) must not change the running state, but a click that
+  visibly does nothing reads as a bug. Keep two readings — `get()` for the engine and
+  `shown()` for the control, with `commit()` at the next planet — and gate both in the boot
+  harness. Toggling off `get()` made every reset toggle look broken.
+- **Verify a "transplant" claim number by number before writing it down.** 0.5.0's plan listed
+  `eps0` 0.05 among the constants transplanted from 0.3; 0.3 has no `eps0` at all (its elastic
+  bound was implicit in the cluster projection). One `grep` would have caught it. A new
+  constant is fine — it just has to be named as new, or the next milestone calibrates a
+  number nobody ever measured.
+- **Compare units at the comparison, not at the reading.** S1's velocity band is cm/yr in the
+  plan and every engine reading is km/Myr. The first version of the gate compared 71.7 km/Myr
+  against a 60–200 "band" and passed — for the wrong reason (it is a 6–20 cm/yr band). Write
+  the conversion into the expression (`6 / CM_YR`) so the band and the reading cannot drift.
+- **`byT(byH(H))` is not bitwise and never was.** 0.3's two mappings are exact inverses only to
+  one ulp in the mushy interval, because `byT` recomputes the melt fraction from T. Gate what
+  holds — same numbers as 0.3's own round trip, plus the measured ulp — instead of a bitwise
+  claim that would fail on a correct transplant.

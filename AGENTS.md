@@ -51,7 +51,16 @@ pages (one engine per page, no build, file:// safe):
 - index.html - primary entry, the particle engine (js/pt/*); particles.html is a byte-identical
 mirror of it, so a descriptive URL cannot go stale. experiments/pt-ui.js gates the parity.
 - columns.html - the column engine (js/*), the earlier work; its own plans are 0.1.x and 0.2.x.
-The pages cross-link each other; keep the mirror in sync when editing index.html.
+- hybrid.html - the hybrid engine of the 0.5.0 line (js/pc/* + js/hy/*): the mantle liquid is
+cells, the crust is particles, `links` on/off. M1 skeleton: the mesh and the parcel pool, no
+solver yet.
+- soup.html - the soup engine of the same line (js/pc/* + js/sp/*): everything is particles,
+the mantle is linkless, the crust is linked with cracks and melt as strength. M1 skeleton: the
+selected 6,656-parcel warped lattice, no solver yet.
+The pages cross-link each other; keep the mirror in sync when editing index.html. The 0.5.0
+pages share `js/pc/page.js` instead of a mirror: each engine never starts itself, the page
+ends with `PCPAGE.start(ENGINE)`, and a second start is refused — so there is no second URL to
+keep byte-identical.
 
 harnesses (node, no runner script): experiments/pt-ui.js (page wiring, particle),
 experiments/smoke.js + view-check.js (column engine), experiments/contact-audit.js (column
@@ -270,13 +279,17 @@ and to spend that release on rebuilding the section's plate membership at import
 landed, `archive/0.4.3-membership-worklog.md` and `archive/0.4.3-membership-report.md`) and
 0.4.4-draft.md (the road to the globe is negotiation, not measurement — the reference for the
 two agreement plans, both written against the globe's then-current commit),
-0.5.0-plan.md (two FFT-free convection engines, planned not started: hybrid.html — grid
-magma, particle crust, links on/off; soup.html — all particles, linkless magma, linked
-crust with cracks and melt as strength; shared js/pc/ substrate — phase law with the
-load-pressure solidus option, pool, bond law, option registry, scenarios S1-S4; frame cost
-and visual gameplay over precision; every request-named decision gets a default, a GUI
-option and an overturning measurement — experiments/planck-smoke.js is the Box2D leg's,
-against the vendored experiments/vendor/planck-1.5.1.min.js the pages never load).
+0.5.0-plan.md (two FFT-free convection engines, M0 bake-off and M1 substrate landed:
+hybrid.html — grid magma, particle crust, links on/off; soup.html — all particles, linkless
+magma, linked crust with cracks and melt as strength; shared js/pc/ substrate — phase law with
+the load-pressure solidus option, pool made for each engine's own SoA, bond law, 27-entry
+option registry, scenarios S1-S4, the shared page shell; frame cost and visual gameplay over
+precision; every request-named decision gets a default, a GUI option and an overturning
+measurement — experiments/planck-smoke.js is the Box2D leg's, against the vendored
+experiments/vendor/planck-1.5.1.min.js the pages never load. The 0.5.0 harnesses are
+`experiments/pc-{phase,pool,bond,opt,scenario,boot,look}.js` plus `pc-check.js`, the M1
+acceptance pass that delegates them; `experiments/sp-bench.js` + `sp-prototype.js` are M0's
+kernel bake-off and the numbers `0.5.0-plan.md` §6 quotes).
 roadmap.md — which release owns what, the runtime-authority table, what is deferred; each
 release's own plan is still the authority for its milestones.
 

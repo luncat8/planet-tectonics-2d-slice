@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>planet tectonics — hybrid engine</title>
+<style>
+	body { margin: 0; background: #05070c; color: #9aa7bd; font: 12px/1.5 monospace; display: flex; flex-direction: column; align-items: center; }
+	#bar { width: 1282px; box-sizing: border-box; padding: 6px 0; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+	#bar label { white-space: nowrap; }
+	#bar .grp { display: inline-flex; gap: 10px; align-items: center; flex-wrap: wrap; padding-right: 8px; border-right: 1px solid #1c2438; }
+	#bar .grp:last-child { border-right: none; }
+	input[type=range] { width: 96px; vertical-align: middle; }
+	select { background: #121826; color: #9aa7bd; border: 1px solid #2a3550; font: 11px monospace; padding: 1px 2px; }
+	button { background: #121826; color: #9aa7bd; border: 1px solid #2a3550; font: 11px monospace; padding: 1px 7px; cursor: pointer; }
+	button:hover { color: #dfe7f5; }
+	/* the state lives in aria-pressed, set by pc/opt.js from the registry, so the switch,
+	   the screen reader and this rule read the same attribute */
+	button[aria-pressed="true"] { background: #16323c; border-color: #3f8f88; color: #d9f7ec; }
+	button[aria-pressed="true"]:hover { background: #1c4150; color: #f2fffb; }
+	canvas { display: block; border: 1px solid #1c2438; cursor: crosshair; }
+	#wrap { position: relative; width: 1282px; height: 562px; }
+	#hud { position: absolute; left: 8px; top: 8px; white-space: pre; pointer-events: none; color: #9fd6b8; text-shadow: 0 0 3px #000; }
+	#keys { color: #55637d; font-size: 11px; padding: 4px 0 12px; width: 1282px; box-sizing: border-box; }
+	#keys a { color: #7f8ea8; text-decoration: none; }
+	#keys a:hover { color: #dfe7f5; text-decoration: underline; }
+</style>
+</head>
+<body>
+<!-- 0.5.0 M1 skeleton: the bar is the whole option registry this engine sees (pc/opt.js
+     is the table of record; experiments/pc-opt.js fails if this markup drifts from it).
+     Every control names its entry in data-pc-opt, so the harness can read the bar the way
+     a browser shows it instead of trusting the script. -->
+<div id="bar">
+	<span class="grp">
+		<label>clock <input type="range" data-pc-opt="clock" min="5" max="500" step="5" value="50"> <span data-pc-val="clock">50</span></label>
+		<label>scenario <select data-pc-opt="scenario">
+			<option value="S1" selected>S1</option><option value="S2">S2</option>
+			<option value="S3">S3</option><option value="S4">S4</option>
+		</select></label>
+	</span>
+	<span class="grp">
+		<button id="bPause" aria-pressed="false">pause</button>
+		<button id="bStep">step</button>
+		<button id="bReset">reset</button>
+		<button id="bNew">new planet</button>
+	</span>
+	<span class="grp">
+		<button data-pc-scenario="S1">S1 convection</button>
+		<button data-pc-scenario="S2">S2 melting</button>
+		<button data-pc-scenario="S3">S3 eruption</button>
+		<button data-pc-scenario="S4">S4 unpressurize</button>
+	</span>
+	<span class="grp">
+		<label>size <input type="range" data-pc-opt="partSize" min="0.5" max="2" step="0.1" value="1"> <span data-pc-val="partSize">1</span></label>
+		<label>hot shrink <input type="range" data-pc-opt="sizeByHeat" min="0" max="0.5" step="0.05" value="0"> <span data-pc-val="sizeByHeat">0</span></label>
+		<button data-pc-opt="sizeByMaterial" aria-pressed="true">material size</button>
+		<button data-pc-opt="links" aria-pressed="true">links</button>
+	</span>
+	<span class="grp">
+		<label>inertia <input type="range" data-pc-opt="inertia" min="0" max="0.99" step="0.01" value="0"> <span data-pc-val="inertia">0</span></label>
+		<label>substep <input type="range" data-pc-opt="substepCap" min="0.1" max="0.5" step="0.05" value="0.35"> <span data-pc-val="substepCap">0.35</span></label>
+		<label>mobility <input type="range" data-pc-opt="mobContrast" min="0" max="8" step="1" value="4"> <span data-pc-val="mobContrast">4</span></label>
+		<label>sweeps <input type="range" data-pc-opt="projIters" min="8" max="40" step="2" value="20"> <span data-pc-val="projIters">20</span></label>
+		<label>advect <select data-pc-opt="advect">
+			<option value="donor" selected>donor</option><option value="maccormack">maccormack</option>
+		</select></label>
+	</span>
+	<span class="grp">
+		<label>yield x <input type="range" data-pc-opt="yieldRate" min="0.25" max="4" step="0.25" value="1"> <span data-pc-val="yieldRate">1</span></label>
+		<label>damage x <input type="range" data-pc-opt="kDamage" min="0.25" max="4" step="0.25" value="1"> <span data-pc-val="kDamage">1</span></label>
+		<label>heal x <input type="range" data-pc-opt="tauHeal" min="0.25" max="4" step="0.25" value="1"> <span data-pc-val="tauHeal">1</span></label>
+		<label>solidus <select data-pc-opt="solidusOf">
+			<option value="depth">depth</option><option value="load" selected>load</option>
+		</select></label>
+	</span>
+	<span class="grp">
+		<button data-pc-opt="markers" aria-pressed="true">markers</button>
+		<button data-pc-opt="melt" aria-pressed="true">melt</button>
+		<button data-pc-opt="crust" aria-pressed="true">crust</button>
+		<button data-pc-opt="relief" aria-pressed="true">relief</button>
+		<button data-pc-opt="ruler" aria-pressed="true">ruler</button>
+		<button data-pc-opt="bonds" aria-pressed="true">bonds web</button>
+	</span>
+</div>
+<div id="wrap">
+	<canvas id="c" width="1280" height="560"></canvas>
+	<div id="hud"></div>
+</div>
+<div id="keys">
+	space pause &middot; . step &middot; r reset &middot; n new planet &middot; 1-4 scenarios &middot; M1 skeleton: the cell mesh and the parcel pool, no solver yet &middot; the liquid is cells, the crust is particles, the load-pressure solidus is shared &middot; <a href="index.html">particle engine &rarr;</a> &middot; <a href="soup.html">soup engine &rarr;</a> &middot; <a href="columns.html">column engine &rarr;</a>
+</div>
+<!-- classic scripts, no build, file:// safe. The engines never start themselves: this page
+     boots its own through PCPAGE.start, and pc/page.js refuses a second loop. -->
+<script src="js/perf.js"></script>
+<script src="js/pc/params.js"></script>
+<script src="js/pc/phase.js"></script>
+<script src="js/pc/bond.js"></script>
+<script src="js/pc/pool.js"></script>
+<script src="js/pc/opt.js"></script>
+<script src="js/pc/scenario.js"></script>
+<script src="js/pc/page.js"></script>
+<script src="js/hy/hy.js"></script>
+<script>PCPAGE.start(HY);</script>
+</body>
+</html>
