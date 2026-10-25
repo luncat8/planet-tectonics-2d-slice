@@ -24,7 +24,10 @@ section('A. the law\'s constants are 0.3\'s, bitwise');
 [
 	['meltSurf'], ['meltSup'], ['meltOnset'], ['meltGap'], ['meltLat'], ['meltWF'], ['meltWW'],
 	['meltDrop'], ['meltInvLam'], ['meltU0'], ['meltDeep'],
-	['wrap'], ['depth'], ['yLin']
+	['wrap'], ['depth'], ['yLin'],
+	// M2's additions: the convection pair and the initial-condition family, gated the
+	// same way the moment HY's liquid started reading them
+	['kappa'], ['Ra'], ['RaK'], ['skin'], ['icAmp'], ['icMode'], ['icBand'], ['icBandMax']
 ].forEach(function (row) {
 	var k = row[0];
 	check.ok('pc/params ' + k + ' equals js/pt/params ' + k, PCP[k] === PTP[k],

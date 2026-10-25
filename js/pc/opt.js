@@ -73,7 +73,7 @@
 		// ---- the hybrid's own ------------------------------------------------------------
 		{ id: 'projIters', engine: 'hy', kind: 'range', min: 8, max: 40, step: 2, def: 20,
 			live: true, owner: '§4.3', label: 'sweeps',
-			note: 'red-black projection sweeps; the projection is deliberately not converged' },
+			note: 'red-black sweeps per frame, split between the viscous relaxation and the pressure projection; neither is converged, both are warm-started' },
 		{ id: 'advect', engine: 'hy', kind: 'enum', values: ['donor', 'maccormack'],
 			def: 'donor', live: true, owner: '§4.3', label: 'advect',
 			note: 'donor is conservative and diffusive; MacCormack is the sharpness option' },

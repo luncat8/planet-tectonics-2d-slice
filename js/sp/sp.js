@@ -85,12 +85,16 @@
 		reset: function (seed) {
 			this.init();
 			this.seed = seed === undefined ? this.seed : seed;
+			// the phase law reads its pressure source off the shared PCP word, so the
+			// engine's own option has to be written there before anything equilibrates
+			PCP.solidusOf = this.opts.get('solidusOf');
 			var nx = this.defaults.nx, rows = this.defaults.rows;
 			var scale = this.defaults.scale, S = this.alloc(this.defaults.cap);
 			var etaBot = Math.asinh(PCP.depth / PCP.yLin);
 			var height = etaBot * scale, dx = PCP.wrap / nx, dw = height / rows;
-			var phase = TAU * (this.seed * 0.6180339887498949 % 1);
-			var i, j, p = 0, x, w, eta, y, T, f, m;
+			var wave = new Float64Array(nx), i, j, p = 0, x, w, eta, y, T, f, m;
+			PCP.icDraw(this.seed);
+			for (i = 0; i < nx; i++) wave[i] = PCP.icWave((i + 0.5) * dx);
 			S.etaBot = etaBot; S.scale = scale; S.height = height;
 			S.dx = dx; S.dw = dw; S.nx = nx; S.rows = rows;
 			S.space = this.opts.get('space');
@@ -105,8 +109,7 @@
 					x = (i + 0.5) * dx;
 					p = this.pool.admit(S, PCP.PH.crust);
 					if (p < 0) break;
-					T = 1 - Math.exp(-y / 80) + 0.02 * Math.sin(Math.PI * f) *
-						Math.cos(4 * TAU * x / PCP.wrap + phase);
+					T = 1 - Math.exp(-y / PCP.skin) + PCP.icAmp * Math.sin(Math.PI * f) * wave[i];
 					T = T < 0 ? 0 : (T > 1 ? 1 : T);
 					S.x[p] = x; S.w[p] = w; S.y[p] = y; S.col[p] = i;
 					S.m[p] = m;

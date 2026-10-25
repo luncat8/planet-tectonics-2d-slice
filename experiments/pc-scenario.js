@@ -1,13 +1,16 @@
-// pc-scenario.js — 0.5.0 M1's third gate (0.5.0-plan.md §3.6, §9 M1): the four scenarios run
-// against an engine through one interface, and a gate's three states mean what they say.
+// pc-scenario.js — 0.5.0 M1's third gate, extended at M2 (0.5.0-plan.md §3.6, §9): the four
+// scenarios run against an engine through one interface, and a gate's three states mean
+// what they say.
 //
 // Two things are under test and only one of them is about the engines. First, the harness: a
 // scenario must sample on its own cadence (S1's 41 samples from 100 to 300 Myr), reset with
 // the seed it was given, apply its preset, and summarise the readings it collected. Second,
-// honesty: at M1 both engines are skeletons with no declared features, so all sixteen gates
-// must read **pending with a reason** — never pass. The fixture proves the other direction too
-// by running a synthetic engine whose readings satisfy the gates and one whose readings do not,
-// so a green line cannot come from a gate that is wired to nothing.
+// honesty: a gate reads **pending with a reason** until its engine declares the feature —
+// never pass. At M1 both engines were skeletons and all sixteen gates were pending; at M2
+// HY declares flow and the thermal lid, so its three S1 gates must read pass on a real
+// 300 Myr leg while its S2-S4 gates (and all of SP's) still read pending. The fixture proves
+// the other direction too by running a synthetic engine whose readings satisfy the gates and
+// one whose readings do not, so a green line cannot come from a gate that is wired to nothing.
 //
 // Run: node experiments/pc-scenario.js
 'use strict';
@@ -71,21 +74,40 @@ function goodReading(id) {
 	};
 }
 
-check.section('A. at M1 both engines are skeletons, so every gate is pending');
-['hy', 'sp'].forEach(function (which) {
-	var engine = which === 'hy' ? HY : SP;
-	engine.init();
-	PCSCEN.ids.forEach(function (id) {
-		var r = PCSCEN.run(engine, id, { seed: 3 });
-		check.ok(which + ' ' + id + ' (' + r.title + '): all gates pending, none passed',
-			r.gates.length > 0 && count(r.gates, 'pending') === r.gates.length &&
-			r.passed === 0 && r.failed === 0,
-			r.gates.map(function (g) { return g.status; }).join(','));
-		check.ok(which + ' ' + id + ' says why it is pending',
-			r.gates.every(function (g) { return /no .* yet|no reading/.test(g.detail); }),
-			r.gates[0].detail);
-		check.ok(which + ' ' + id + ' reports itself incomplete', r.complete === false);
-	});
+check.section('A. gates are pending until their feature exists — and pass once it does');
+// HY at M2: the liquid exists, so S1 runs for real (seed 1, the S1 family's own seed) and
+// must pass outright; S2-S4 wait on the crust (M3) and must stay pending. Those three legs
+// run at the 500 kyr clock because pending-ness is a property of the feature table, and
+// the engine's fluid substep rule makes the trajectory the same one at a tenth of the
+// frames. SP is still a skeleton, so all four of its scenarios stay pending cheaply.
+HY.init();
+var hyS1 = PCSCEN.run(HY, 'S1', { seed: 1 });
+check.ok('hy S1 (convection): all three gates pass on a real 300 Myr leg',
+	hyS1.passed === 3 && hyS1.failed === 0 && hyS1.pending === 0,
+	hyS1.gates.map(function (g) { return g.status + ' ' + g.detail; }).join(' | '));
+check.ok('hy S1 still reports itself incomplete (the crust is M3)', hyS1.complete === false);
+['S2', 'S3', 'S4'].forEach(function (id) {
+	var r = PCSCEN.run(HY, id, { seed: 3, options: { clock: 500 } });
+	check.ok('hy ' + id + ' (' + r.title + '): all gates pending, none passed',
+		r.gates.length > 0 && count(r.gates, 'pending') === r.gates.length &&
+		r.passed === 0 && r.failed === 0,
+		r.gates.map(function (g) { return g.status; }).join(','));
+	check.ok('hy ' + id + ' says why it is pending',
+		r.gates.every(function (g) { return /no .* yet|no reading/.test(g.detail); }),
+		r.gates[0].detail);
+	check.ok('hy ' + id + ' reports itself incomplete', r.complete === false);
+});
+SP.init();
+PCSCEN.ids.forEach(function (id) {
+	var r = PCSCEN.run(SP, id, { seed: 3 });
+	check.ok('sp ' + id + ' (' + r.title + '): all gates pending, none passed',
+		r.gates.length > 0 && count(r.gates, 'pending') === r.gates.length &&
+		r.passed === 0 && r.failed === 0,
+		r.gates.map(function (g) { return g.status; }).join(','));
+	check.ok('sp ' + id + ' says why it is pending',
+		r.gates.every(function (g) { return /no .* yet|no reading/.test(g.detail); }),
+		r.gates[0].detail);
+	check.ok('sp ' + id + ' reports itself incomplete', r.complete === false);
 });
 
 check.section('B. the sampler: cadence, seed, preset and the clock');

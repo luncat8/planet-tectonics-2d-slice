@@ -27,6 +27,24 @@
 		kyrMin: 5, kyrMax: 500,      // kyr/frame, slider range
 		flightDtMax: 0.05,           // Myr, the airborne pass's own clamp (0.3 flight rule)
 
+		// convection (0.3-plan §4.1): the same diffusivity and Rayleigh number, so the
+		// demonstration band S1 gates on is the same physical claim in both lines. HY
+		// reads RaK as its buoyancy coefficient (§4.3 of the 0.5.0 plan); SP's pair
+		// exchange is calibrated against kappa by its own fixture (M4).
+		kappa: 31.56,                // km2/Myr, thermal diffusivity (1e-6 m2/s)
+		Ra: 1e6,                     // Rayleigh number of the demonstration run
+
+		// initial condition (0.3's 'cool' family): a hot planet under a cold skin, with
+		// the perturbation's energy spread over a seeded band of wavenumbers so the box
+		// is not icMode exact copies of one cell. On a cell grid nothing else breaks
+		// that symmetry -- there is no marker jitter -- so the band is load-bearing
+		// here in a way it was not in 0.3.
+		skin: 80,                    // km, e-folding depth of the cold skin
+		icAmp: 0.02,                 // perturbation amplitude, fraction of the drop
+		icMode: 4,                   // the carrier wavenumber: one cell per ~4000 km
+		icBand: 0.6,                 // energy fraction spread over wavenumbers 1..icBandMax
+		icBandMax: 12,
+
 		// phase law (0.3-plan §3, P3.1): the solidus is anchored at the surface, at the deep
 		// margin and at the onset depth. js/pt/params.js derives the rest; so does this file,
 		// with the same expressions in the same order, which is what makes the transplant
@@ -105,8 +123,43 @@
 		PCP.PH_FLY[ph.air] = 1;
 	}());
 
-	// 1 cm/yr in km/Myr, the one place the two velocity units meet (the HUD reads cm/yr).
+	// the buoyancy coefficient of the vorticity form, lap(omega) = -RaK dT/dx, derived
+	// with 0.3's own expression so the two lines' Ra is one number said two ways.
+	PCP.RaK = PCP.Ra * PCP.kappa / (PCP.depth * PCP.depth * PCP.depth);
+
+	// multiply a km/Myr velocity by this to read it in cm/yr (1 km/Myr = 0.1 cm/yr):
+	// the one place the two velocity units meet, because the HUD reads cm/yr.
 	PCP.cmYr = 0.1;
+
+	// The seeded perturbation band of the initial condition (0.3 state.js band(), the
+	// same LCG and normalisation): icDraw(seed) once at reset, icWave(x) per column.
+	// Reset-time only; the scratch lives here because both engines seed the same
+	// family of planets and a second copy of the draw would drift.
+	PCP.icDraw = function (seed) {
+		var K = PCP.icBandMax, k, a, sum = 0;
+		var rnd = (seed * 7919 + 1) & 0x7fffffff;
+		var ph = 2 * Math.PI * ((seed * 0.6180339887498949) % 1);
+		if (!PCP._icA) { PCP._icA = new Float64Array(K + 1); PCP._icP = new Float64Array(K + 1); }
+		PCP._icPh = ph;
+		for (k = 1; k <= K; k++) {
+			rnd = (Math.imul(rnd, 1103515245) + 12345) & 0x7fffffff;
+			a = 0.25 + rnd / 0x7fffffff;
+			rnd = (Math.imul(rnd, 1103515245) + 12345) & 0x7fffffff;
+			PCP._icA[k] = a;
+			PCP._icP[k] = ph + 2 * Math.PI * rnd / 0x7fffffff;
+			sum += a * a;
+		}
+		a = Math.sqrt(PCP.icBand / sum);
+		for (k = 1; k <= K; k++) PCP._icA[k] *= a;
+	};
+	PCP.icWave = function (x) {
+		var k, w = Math.sqrt(1 - PCP.icBand) *
+			Math.cos(2 * Math.PI * PCP.icMode * x / PCP.wrap + PCP._icPh);
+		for (k = 1; k <= PCP.icBandMax; k++) {
+			w += PCP._icA[k] * Math.cos(2 * Math.PI * k * x / PCP.wrap + PCP._icP[k]);
+		}
+		return w;
+	};
 
 	if (typeof module !== 'undefined' && module.exports) module.exports = PCP;
 	else root.PCP = PCP;

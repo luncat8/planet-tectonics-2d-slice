@@ -52,8 +52,8 @@ pages (one engine per page, no build, file:// safe):
 mirror of it, so a descriptive URL cannot go stale. experiments/pt-ui.js gates the parity.
 - columns.html - the column engine (js/*), the earlier work; its own plans are 0.1.x and 0.2.x.
 - hybrid.html - the hybrid engine of the 0.5.0 line (js/pc/* + js/hy/*): the mantle liquid is
-cells, the crust is particles, `links` on/off. M1 skeleton: the mesh and the parcel pool, no
-solver yet.
+cells, the crust is particles, `links` on/off. M2: the liquid convects (S1 green) on a
+tanh two-sided mesh; the parcel pool is still empty — the crust skin is M3.
 - soup.html - the soup engine of the same line (js/pc/* + js/sp/*): everything is particles,
 the mantle is linkless, the crust is linked with cracks and melt as strength. M1 skeleton: the
 selected 6,656-parcel warped lattice, no solver yet.
@@ -287,8 +287,11 @@ option registry, scenarios S1-S4, the shared page shell; frame cost and visual g
 precision; every request-named decision gets a default, a GUI option and an overturning
 measurement — experiments/planck-smoke.js is the Box2D leg's, against the vendored
 experiments/vendor/planck-1.5.1.min.js the pages never load. The 0.5.0 harnesses are
-`experiments/pc-{phase,pool,bond,opt,scenario,boot,look}.js` plus `pc-check.js`, the M1
-acceptance pass that delegates them; `experiments/sp-bench.js` + `sp-prototype.js` are M0's
+`experiments/pc-{phase,pool,bond,opt,scenario,boot,look}.js` plus `pc-check.js`, the
+acceptance pass that delegates them (extended per milestone; M2 adds the owner harnesses
+`experiments/hy-conv.js` — S1, both ledgers, replay, the booked MacCormack clamp — and
+`experiments/hy-bench.js` — integrated frame cost and the 512x48 ladder row);
+`experiments/sp-bench.js` + `sp-prototype.js` are M0's
 kernel bake-off and the numbers `0.5.0-plan.md` §6 quotes).
 roadmap.md — which release owns what, the runtime-authority table, what is deferred; each
 release's own plan is still the authority for its milestones.

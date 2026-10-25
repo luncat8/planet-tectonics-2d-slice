@@ -1,4 +1,5 @@
-// pc-look.js — 0.5.0 M1: render both page skeletons through their own draw path into PNGs.
+// pc-look.js — 0.5.0 M1, extended at M2: render both pages through their own draw path into
+// PNGs (the soup's skeleton lattice; the hybrid's cell field after 100 Myr of convection).
 //
 // The pages cannot be screenshotted from node, so this fixture supplies a tiny software 2D
 // context (fillRect, paths, text, putImageData, scaled drawImage) and calls the engines' real
@@ -156,10 +157,11 @@ function canvasStub(surface) {
 	return el;
 }
 
-function render(engine, ctx) {
+function render(engine, ctx, frames) {
+	var i;
 	engine.init();
 	engine.reset(1);
-	engine.step(0);
+	for (i = 0; i < (frames || 1); i++) engine.step(0);
 	engine.draw(ctx, W, H);
 	PCPAGE.chrome(ctx, W, H);
 }
@@ -189,18 +191,21 @@ check.ok('the ruler drew its kilometre labels', s1.texts.some(function (t) {
 png.write(path.join(outDir, '0.5.0-M1-soup.png'), W, H, s1.px);
 console.log('INFO  wrote ' + path.join(outDir, '0.5.0-M1-soup.png'));
 
-check.section('B. the hybrid skeleton draws its cell field');
+check.section('B. the hybrid draws its convecting cell field at 100 Myr');
 var s2 = new Surface(W, H);
 global.document = { createElement: function () { return canvasStub(s2); } };
-render(HY, s2.context());
+render(HY, s2.context(), 2000);
 s2._flush();
 var st2 = stats(s2);
 check.ok('the raster covers the box', st2.nonBg > 100000, st2.nonBg + ' lit pixels');
 check.ok('the cells span the palette', st2.colors > 10, st2.colors + ' distinct colours');
+check.ok('the picture is a convecting state, not the initial condition',
+	Math.abs(HY.read('time') - 100) < 1e-6 && HY.read('wells') >= 2 && HY.read('peakV') > 10,
+	HY.read('wells') + ' wells at ' + HY.read('peakV').toFixed(1) + ' km/Myr');
 check.ok('the hybrid drew no parcels and says so in its hud',
 	HY.read('population') === 0 && /parcels 0/.test(HY.hud()));
-png.write(path.join(outDir, '0.5.0-M1-hybrid.png'), W, H, s2.px);
-console.log('INFO  wrote ' + path.join(outDir, '0.5.0-M1-hybrid.png'));
+png.write(path.join(outDir, '0.5.0-M2-hybrid.png'), W, H, s2.px);
+console.log('INFO  wrote ' + path.join(outDir, '0.5.0-M2-hybrid.png'));
 
 check.section('C. the two images are not the same picture');
 var i, diff = 0;

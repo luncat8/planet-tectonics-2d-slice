@@ -1,6 +1,6 @@
-// pc-check.js — 0.5.0 M1's acceptance pass: it runs the six owner harnesses as children and
-// quotes their counts rather than re-measuring them, the way pt-p3-check.js and pt-p4-check.js
-// do for the 0.3 line (0.5.0-plan.md §9 M1, §10).
+// pc-check.js — the 0.5.0 acceptance pass (M1's, extended per milestone): it runs the owner
+// harnesses as children and quotes their counts rather than re-measuring them, the way
+// pt-p3-check.js and pt-p4-check.js do for the 0.3 line (0.5.0-plan.md §9, §10).
 //
 // Run: node experiments/pc-check.js
 'use strict';
@@ -14,14 +14,16 @@ var OWNERS = [
 	['pc-pool.js', 'the pool: transactions conserve, ids never reuse, a full pool defers'],
 	['pc-bond.js', 'the bond law transplant: 0.3\'s mu, the age hysteresis, the mean excess'],
 	['pc-opt.js', 'the option registry and both bars, entry for entry, plus the presets'],
-	['pc-scenario.js', 'S1-S4 through one interface; every gate pending on a skeleton'],
+	['pc-scenario.js', 'S1-S4 through one interface; pending until a feature exists, then measured'],
 	['pc-boot.js', 'both pages boot in a DOM, one frame loop, the bar drives the engines'],
-	['pc-look.js', 'both skeletons render through their own draw path (writes PNGs)']
+	['pc-look.js', 'both engines render through their own draw path (writes PNGs)'],
+	['hy-conv.js', 'HY\'s liquid: S1 green, both books close, the replay is bitwise'],
+	['hy-bench.js', 'HY\'s cost: the integrated frame and the ladder row, measured']
 ];
 
 var total = 0, failed = 0, i, row, out, m, passed;
 
-check.section('0.5.0 M1 — the shared substrate and both page skeletons');
+check.section('0.5.0 M2 — HY\'s liquid on the M1 substrate');
 
 for (i = 0; i < OWNERS.length; i++) {
 	row = OWNERS[i];

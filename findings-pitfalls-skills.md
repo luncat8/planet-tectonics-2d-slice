@@ -1663,3 +1663,39 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   one ulp in the mushy interval, because `byT` recomputes the melt fraction from T. Gate what
   holds — same numbers as 0.3's own round trip, plus the measured ulp — instead of a bitwise
   claim that would fail on a correct transplant.
+
+## 0.5.0 M2 — an iterative Stokes solver on a stretched cell mesh (`archive/0.5.0-M2-report.md`)
+
+- **Never put `grad p` in a steady predictor's source.** Solving `lap u* = mob(F - grad p_old)`
+  to near-completion each frame and then projecting is geometrically unstable, mobility-weighted
+  or not (field values multiplied ~1000x a frame here): the correction potential and the
+  momentum pressure do not even share units, so `p += dp` mixes two quantities. The stable
+  pairing is the plain fractional step — predictor `lap u* = mob F` with no pressure at all,
+  projection `lap p = div u*`, `u -= grad p` — whose fixed point *is* the Stokes velocity for
+  constant mobility because the Laplacian and the projection commute. Check a splitting's
+  fixed point and its units before its sweep counts.
+- **A cell mesh must resolve both boundary layers; markers hide this, cells cannot.** On 0.3's
+  one-sided asinh rows the 570 km bottom cell conducted 1.4% of the surface heat flux into the
+  box (measured wall rates 102 vs 7484 km2 H/Myr), so the planet free-cooled through its own
+  resistor. 0.3 never notices because markers gather sub-cell against the wall and carry their
+  heat through the fat cell. Before trusting a transplanted mesh, print both wall fluxes: a
+  two-order split is the mesh, not the physics. Building every operator coefficient from actual
+  y differences made the fix (tanh rows fine at both walls) a mesh-data change, not a solver
+  rewrite — worth doing even when the first mesh is uniform.
+- **Convert a reference number at its own depth, and anchor a band on a shipped run.** S1's
+  first velocity floor (6 cm/yr) came from `pt-conv`'s printed column, calibrated for a
+  1000 km-deep box; at 2900 km the same flow reads 3.45x slower (0.3's plan says so in its
+  units note). The shipped 0.3 planet on the scenario's own IC/clock/seed reads a 33 km/Myr
+  median. One headless run of the existing engine settled what the band could honestly ask;
+  tuning the new engine up to the unconverted figure would have been calibrating to a typo.
+- **An unconverged projection makes dt a stability parameter again.** Flux-form transport with
+  a 40%-divergent warm-started field compresses H by ~(div · dt) per step: nothing at 50 kyr,
+  a self-feeding blowup in four frames at 500 (overshoot -> buoyancy -> more divergence).
+  Substepping the whole fluid step at 0.3's 50 kyr `dtFluidMax` contract fixes it and makes
+  sweeps-per-Myr clock-invariant as a side effect — the 500 and 50 kyr clocks then land on the
+  same trajectory.
+- **A limiter's clamp is a transfer; book it or it is a sink.** Donor-MacCormack's corrector
+  conserves exactly, but clamping it to the donor stencil removed 43% of the gross wall heat
+  throughput over 100 Myr — invisible until the ledger was read against the walls. Booking the
+  clamp as its own ledger line keeps the book exact and prints the option's price next to its
+  sharpness.
