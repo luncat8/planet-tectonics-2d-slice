@@ -71,7 +71,9 @@ Surface.prototype._flush = function () {
 // the subset of CanvasRenderingContext2D the two engines and pc/page.js use
 Surface.prototype.context = function () {
 	var self = this, cur = [255, 255, 255, 1], style = '#ffffff', stroke = [255, 255, 255, 1];
-	var pathPts = [];
+	var pathPts = [], pathArcs = [];
+	var gAlpha = 1, alphaStack = [];
+	var lineW = 1, lineCap = 'butt';
 	var ctx = {
 		canvas: { width: self.width, height: self.height },
 		createImageData: function (w, h) {
@@ -86,50 +88,138 @@ Surface.prototype.context = function () {
 			var sw = src.width, sh = src.height, sx, sy, px = src._imgdata;
 			if (!px || !sw || !sh) return;
 			dw = dw === undefined ? sw : dw; dh = dh === undefined ? sh : dh;
+			// respect globalAlpha blended via cur alpha already; drawImage ignores gAlpha separately
+			var ga = this.globalAlpha !== undefined ? this.globalAlpha : gAlpha;
 			for (sy = 0; sy < dh; sy++) for (sx = 0; sx < dw; sx++) {
 				var ux = Math.floor(sx * sw / dw), uy = Math.floor(sy * sh / dh);
 				var o = (uy * sw + ux) * 4;
-				self._blend(dx + sx, dy + sy, [px[o], px[o + 1], px[o + 2], px[o + 3] / 255]);
+				var a = (px[o + 3] / 255) * ga;
+				if (a <= 0) continue;
+				self._blend(dx + sx, dy + sy, [px[o], px[o + 1], px[o + 2], a]);
 			}
 			self.calls++;
 		},
 		fillRect: function (x, y, w, h) {
-			var i, j;
+			var i, j, ca = [cur[0], cur[1], cur[2], cur[3] * gAlpha];
+			// gradient fallback: if fillStyle was a gradient object, use its average
+			if (cur.length === 0) ca = [14, 18, 34, 0.12 * gAlpha];
 			for (j = 0; j < Math.max(1, Math.round(h)); j++) {
-				for (i = 0; i < Math.max(1, Math.round(w)); i++) self._blend(x + i, y + j, cur);
+				for (i = 0; i < Math.max(1, Math.round(w)); i++) self._blend(x + i, y + j, ca);
 			}
 			self.calls++;
 		},
-		beginPath: function () { pathPts.length = 0; },
+		beginPath: function () { pathPts.length = 0; pathArcs.length = 0; },
 		moveTo: function (x, y) { pathPts.push([x, y, 0]); },
 		lineTo: function (x, y) { pathPts.push([x, y, 1]); },
+		closePath: function () {},
+		arc: function (x, y, r) { pathArcs.push({ x: x, y: y, r: r }); },
+		ellipse: function (x, y, rx, ry) { pathArcs.push({ x: x, y: y, r: Math.max(rx, ry) }); },
+		fill: function () {
+			var ca = [cur[0], cur[1], cur[2], cur[3] * gAlpha];
+			if (pathArcs.length) {
+				for (var ai = 0; ai < pathArcs.length; ai++) {
+					var ar = pathArcs[ai];
+					var rr = Math.ceil(ar.r);
+					for (var dy = -rr; dy <= rr; dy++) for (var dx = -rr; dx <= rr; dx++) {
+						if (dx * dx + dy * dy <= ar.r * ar.r + 0.5) self._blend(ar.x + dx, ar.y + dy, ca);
+					}
+				}
+			} else if (pathPts.length > 2) {
+				// polygon fill (relief horizon) — approximate as scanline fill of its bbox
+				// with a soft color: we fill the upper sky region defined by the path's minY
+				var minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity;
+				for (var pi = 0; pi < pathPts.length; pi++) {
+					if (pathPts[pi][1] < minY) minY = pathPts[pi][1];
+					if (pathPts[pi][1] > maxY) maxY = pathPts[pi][1];
+					if (pathPts[pi][0] < minX) minX = pathPts[pi][0];
+					if (pathPts[pi][0] > maxX) maxX = pathPts[pi][0];
+				}
+				// only fill if it's the sky polygon (spans full width)
+				if (maxX - minX > self.width * 0.8) {
+					var y0 = Math.round(minY), y1 = Math.round(Math.min(maxY, self.height));
+					for (var yy = y0; yy < y1; yy++) for (var xx = 0; xx < self.width; xx++) self._blend(xx, yy, ca);
+				}
+			}
+			pathPts.length = 0; pathArcs.length = 0;
+			self.calls++;
+		},
 		stroke: function () {
 			var i, a, b, n;
+			var sa = [stroke[0], stroke[1], stroke[2], stroke[3] * gAlpha];
+			if (pathArcs.length) {
+				for (var ai2 = 0; ai2 < pathArcs.length; ai2++) {
+					var ar2 = pathArcs[ai2];
+					var circ = Math.ceil(2 * Math.PI * ar2.r);
+					for (var k2 = 0; k2 < circ; k2++) {
+						var ang = (k2 / circ) * 2 * Math.PI;
+						self._blend(ar2.x + Math.cos(ang) * ar2.r, ar2.y + Math.sin(ang) * ar2.r, sa);
+					}
+				}
+				pathArcs.length = 0; pathPts.length = 0;
+				self.calls++;
+				return;
+			}
 			for (i = 1; i < pathPts.length; i++) {
 				a = pathPts[i - 1]; b = pathPts[i];
 				if (!b[2]) continue;
 				n = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]));
 				for (var k = 0; k <= n; k++) {
 					self._blend(a[0] + (b[0] - a[0]) * k / (n || 1),
-						a[1] + (b[1] - a[1]) * k / (n || 1), stroke);
+						a[1] + (b[1] - a[1]) * k / (n || 1), sa);
 				}
 			}
 			self.calls++;
 		},
+		createLinearGradient: function () {
+			var g = { _stops: [] };
+			g.addColorStop = function (o, c) { this._stops.push([o, c]); };
+			return g;
+		},
+		createRadialGradient: function () {
+			var g = { _stops: [] };
+			g.addColorStop = function (o, c) { this._stops.push([o, c]); };
+			return g;
+		},
 		fillText: function (text) { self.texts.push(String(text)); self.calls++; },
 		measureText: function (t) { return { width: String(t).length * 6 }; },
-		save: function () {}, restore: function () {},
+		save: function () { alphaStack.push(gAlpha); },
+		restore: function () { if (alphaStack.length) gAlpha = alphaStack.pop(); },
 		setTransform: function () {}, translate: function () {}, scale: function () {},
 		clearRect: function () { self.img.data.fill(0); },
-		imageSmoothingEnabled: false
+		imageSmoothingEnabled: false,
+		lineWidth: 1,
+		lineCap: 'butt',
+		globalAlpha: 1
 	};
+	Object.defineProperty(ctx, 'globalAlpha', {
+		get: function () { return gAlpha; },
+		set: function (v) { gAlpha = Number(v); }
+	});
 	Object.defineProperty(ctx, 'fillStyle', {
 		get: function () { return style; },
-		set: function (v) { style = v; cur = parseColor(v); }
+		set: function (v) {
+			style = v;
+			if (typeof v === 'string') cur = parseColor(v);
+			else if (v && v._stops && v._stops.length) cur = parseColor(v._stops[0][1]);
+			else cur = [14, 18, 34, 0.2];
+			// bake current globalAlpha into cur? we do it in draw calls via gAlpha
+		}
 	});
 	Object.defineProperty(ctx, 'strokeStyle', {
 		get: function () { return style; },
-		set: function (v) { stroke = parseColor(v); }
+		set: function (v) {
+			if (typeof v === 'string') stroke = parseColor(v);
+			else if (v && v._stops && v._stops.length) stroke = parseColor(v._stops[0][1]);
+			else stroke = [255, 255, 255, 0.5];
+		}
+	});
+	Object.defineProperty(ctx, 'lineWidth', {
+		get: function () { return lineW; },
+		set: function (v) { lineW = v; }
+	});
+	Object.defineProperty(ctx, 'lineCap', {
+		get: function () { return lineCap; },
+		set: function (v) { lineCap = v; }
 	});
 	return ctx;
 };

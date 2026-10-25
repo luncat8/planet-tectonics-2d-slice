@@ -1554,9 +1554,10 @@
 		},
 
 		_field: null,
+		_drawOrder: null,
 		draw: function (ctx, w, h) {
 			var M = this.M, S = this.S, pad = 0.05, hh = h * (1 - 2 * pad), img, small, k, t, i, j, sj, ml;
-			ctx.fillStyle = '#05070c';
+			ctx.fillStyle = '#060a14';
 			ctx.fillRect(0, 0, w, h);
 			if (!M) return;
 			if (!this._field) {
@@ -1583,19 +1584,43 @@
 					t = M.T[sj * M.nx + (k - j * M.nx)];
 					ml = showMelt ? M.melt[sj * M.nx + (k - j * M.nx)] : 0;
 					i = 4 * k;
-					img.data[i] = Math.round(30 + 225 * t + ml * (255 - (30 + 225 * t)));
-					img.data[i + 1] = Math.round(20 + 90 * t + ml * (230 - (20 + 90 * t)));
-					img.data[i + 2] = Math.round(150 - 110 * t + ml * (120 - (150 - 110 * t)));
+					// desaturated mantle glow: keep contrast but let pebbles dominate
+					var rr = 30 + 225 * t + ml * (255 - (30 + 225 * t));
+					var gg = 20 + 90 * t + ml * (230 - (20 + 90 * t));
+					var bb = 150 - 110 * t + ml * (120 - (150 - 110 * t));
+					// soften saturation slightly for hydrogel aesthetic
+					var lum = 0.2126 * rr + 0.7152 * gg + 0.0722 * bb;
+					var desat = 0.22;
+					rr = lum * desat + rr * (1 - desat);
+					gg = lum * desat + gg * (1 - desat);
+					bb = lum * desat + bb * (1 - desat);
+					img.data[i] = Math.round(rr * 0.55 + 14);
+					img.data[i + 1] = Math.round(gg * 0.55 + 10);
+					img.data[i + 2] = Math.round(bb * 0.60 + 16);
 					img.data[i + 3] = 255;
 				}
 				this._sctx.putImageData(img, 0, 0);
-				ctx.imageSmoothingEnabled = false;
+				ctx.imageSmoothingEnabled = true;
+				ctx.globalAlpha = 0.52;
 				ctx.drawImage(small, 0, h * pad, w, hh);
+				ctx.globalAlpha = 1;
 			}
 
+			// subtle mantle vignette — deepens bottom without hard edge
+			if (ctx.createLinearGradient) {
+				var grad = ctx.createLinearGradient(0, h * pad, 0, h * pad + hh);
+				if (grad && grad.addColorStop) {
+					grad.addColorStop(0, 'rgba(6,10,20,0)');
+					grad.addColorStop(0.72, 'rgba(6,10,20,0)');
+					grad.addColorStop(1, 'rgba(6,10,20,0.55)');
+					ctx.fillStyle = grad;
+					ctx.fillRect(0, h * pad, w, hh);
+				}
+			}
+
+			// relief horizon — filled translucent pile + crisp line
 			if (this.opts.get('relief')) {
-				ctx.strokeStyle = 'rgba(130,210,245,0.65)';
-				ctx.lineWidth = 1;
+				ctx.save();
 				ctx.beginPath();
 				for (i = 0; i < M.nx; i++) {
 					var px = M.cx[i] * w / M.wrap;
@@ -1604,53 +1629,156 @@
 					var py = h * pad + (etaS / etaMax) * hh;
 					if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
 				}
+				// close to top to fill sky above pile
+				ctx.lineTo(w, h * pad);
+				ctx.lineTo(0, h * pad);
+				ctx.closePath();
+				ctx.fillStyle = 'rgba(18,26,44,0.55)';
+				ctx.fill();
+				ctx.beginPath();
+				for (i = 0; i < M.nx; i++) {
+					var px2 = M.cx[i] * w / M.wrap;
+					var ySurf2 = -M.zh[i];
+					var etaS2 = ySurf2 >= 0 ? Math.asinh(ySurf2 / M.yLin) : -Math.asinh(-ySurf2 / M.yLin);
+					var py2 = h * pad + (etaS2 / etaMax) * hh;
+					if (i === 0) ctx.moveTo(px2, py2); else ctx.lineTo(px2, py2);
+				}
+				ctx.strokeStyle = 'rgba(150,210,255,0.75)';
+				ctx.lineWidth = 1.2;
 				ctx.stroke();
+				// soft glow under horizon
+				ctx.strokeStyle = 'rgba(100,180,255,0.18)';
+				ctx.lineWidth = 6;
+				ctx.stroke();
+				ctx.restore();
 			}
 
 			if (S && S.n > 0 && this.opts.get('bonds') && this.opts.get('links')) {
-				ctx.strokeStyle = 'rgba(210,235,255,0.35)';
-				ctx.lineWidth = 1;
-				ctx.beginPath();
-				var p, q, b0, counts = S.counts, slot = S.slot, order = S.order;
+				// dense bond web — all near neighbours that are bonded, not just one per column
+				var counts = S.counts, slot = S.slot, order = S.order;
+				var rangeX = 0.70 * M.dx, rangeY = this.cfg.bondRangeY;
+				ctx.save();
+				ctx.lineCap = 'round';
 				for (i = 0; i < M.nx; i++) {
-					b0 = slot[i] - counts[i];
-					if (counts[i] < 2) continue;
-					p = order[b0];
-					q = order[b0 + 1];
-					if (p < S.n && q < S.n && S.e[p] <= etaMax && S.e[q] <= etaMax) {
-						ctx.moveTo(S.x[p] * w / M.wrap, h * pad + (S.e[p] / etaMax) * hh);
-						ctx.lineTo(S.x[q] * w / M.wrap, h * pad + (S.e[q] / etaMax) * hh);
+					var b0 = slot[i] - counts[i];
+					var ip = i + 1 < M.nx ? i + 1 : 0;
+					var b1 = slot[ip] - counts[ip];
+					for (var kk = 0; kk < counts[i]; kk++) {
+						var p = order[b0 + kk];
+						if (S.e[p] > etaMax) continue;
+						var muP = S.mu[p] * (1 - S.dmg[p]);
+						if (muP < 0.18) continue;
+						// same column neighbours ahead
+						for (var c = kk + 1; c < Math.min(counts[i], kk + 8); c++) {
+							var q = order[b0 + c];
+							if (S.e[q] > etaMax) continue;
+							var muQ = S.mu[q] * (1 - S.dmg[q]);
+							if (muQ < 0.18) continue;
+							var dxp = S.x[q] - S.x[p];
+							if (dxp < -rangeX || dxp > rangeX) continue;
+							var dyp = S.y[q] - S.y[p];
+							if (dyp < -rangeY || dyp > rangeY) continue;
+							var mu = muP < muQ ? muP : muQ;
+							var a = 0.10 + 0.35 * mu;
+							ctx.strokeStyle = 'rgba(190,230,255,' + a.toFixed(3) + ')';
+							ctx.lineWidth = 0.9 + mu * 0.8;
+							ctx.beginPath();
+							ctx.moveTo(S.x[p] * w / M.wrap, h * pad + (S.e[p] / etaMax) * hh);
+							ctx.lineTo(S.x[q] * w / M.wrap, h * pad + (S.e[q] / etaMax) * hh);
+							ctx.stroke();
+						}
+						// next column
+						for (var c2 = 0; c2 < Math.min(counts[ip], 8); c2++) {
+							var q2 = order[b1 + c2];
+							if (S.e[q2] > etaMax) continue;
+							var muQ2 = S.mu[q2] * (1 - S.dmg[q2]);
+							if (muQ2 < 0.18) continue;
+							var dxp2 = S.x[q2] - S.x[p];
+							if (dxp2 > 0.5 * M.wrap) dxp2 -= M.wrap;
+							else if (dxp2 < -0.5 * M.wrap) dxp2 += M.wrap;
+							if (dxp2 < -rangeX || dxp2 > rangeX) continue;
+							var dyp2 = S.y[q2] - S.y[p];
+							if (dyp2 < -rangeY || dyp2 > rangeY) continue;
+							var mu2 = muP < muQ2 ? muP : muQ2;
+							var a2 = 0.10 + 0.35 * mu2;
+							ctx.strokeStyle = 'rgba(190,230,255,' + a2.toFixed(3) + ')';
+							ctx.lineWidth = 0.9 + mu2 * 0.8;
+							ctx.beginPath();
+							ctx.moveTo(S.x[p] * w / M.wrap, h * pad + (S.e[p] / etaMax) * hh);
+							ctx.lineTo(S.x[q2] * w / M.wrap, h * pad + (S.e[q2] / etaMax) * hh);
+							ctx.stroke();
+						}
 					}
 				}
-				ctx.stroke();
+				ctx.restore();
 			}
 
 			if (S && S.n > 0 && this.opts.get('markers')) {
 				var showCrust = this.opts.get('crust');
 				var shrink = this.opts.get('sizeByHeat');
-				var p, ph, eta, px, py, r, mu;
-				for (p = 0; p < S.n; p++) {
-					eta = S.e[p];
+				// sort deep→shallow for correct translucent overlap (back-to-front)
+				var orderIdx = this._drawOrder;
+				if (!orderIdx || orderIdx.length !== S.n) orderIdx = this._drawOrder = new Int32Array(S.cap);
+				for (var idx = 0; idx < S.n; idx++) orderIdx[idx] = idx;
+				// insertion sort by eta is cheap for n~2k? use built-in sort on slice for simplicity
+				var tmp = Array.prototype.slice.call(orderIdx.subarray(0, S.n));
+				tmp.sort(function (a, b) { return S.e[b] - S.e[a]; });
+				for (var sIdx = 0; sIdx < S.n; sIdx++) orderIdx[sIdx] = tmp[sIdx];
+
+				var pxPerKm = w / M.wrap;
+				var dxPx = M.dx * pxPerKm;
+				for (var oi = 0; oi < S.n; oi++) {
+					var p = orderIdx[oi];
+					var eta = S.e[p];
 					if (eta > etaMax) continue;
-					px = S.x[p] * w / M.wrap;
-					py = h * pad + (eta / etaMax) * hh;
-					t = S.T[p]; ml = S.melt[p]; ph = S.ph[p];
-					r = Math.max(1, Math.round(1.6 * (S.rScale[p] || 1) * (1 - shrink * t)));
+					var px = S.x[p] * w / M.wrap;
+					var py = h * pad + (eta / etaMax) * hh;
+					t = S.T[p]; ml = S.melt[p]; var ph = S.ph[p];
+					var baseR = dxPx * 0.62 * (S.rScale[p] || 1) * (1 - 0.35 * shrink * t);
+					if (baseR < 2.0) baseR = 2.0;
+					if (baseR > dxPx * 1.15) baseR = dxPx * 1.15;
+					var r = baseR;
+					var fill, strokeA = 0.18, alpha = 0.86;
 					if (ph === PCP.PH.air) {
-						ctx.fillStyle = '#ffe878';
+						fill = 'rgba(255,232,120,' + alpha + ')';
+						strokeA = 0.35;
 					} else if (ph === PCP.PH.dep) {
-						ctx.fillStyle = showCrust ? '#d98c52' : '#ff9848';
+						// hydrogel deposit: warm amber, translucent
+						var depR = showCrust ? 217 : 255, depG = showCrust ? 140 : 152, depB = showCrust ? 82 : 72;
+						fill = 'rgba(' + depR + ',' + depG + ',' + depB + ',' + (0.78 + 0.12 * t) + ')';
 					} else if (showCrust) {
-						mu = S.mu[p] * (1 - S.dmg[p]);
-						ctx.fillStyle = 'rgb(' +
-							Math.round(90 + 90 * (1 - mu) + 60 * ml) + ',' +
-							Math.round(115 + 75 * mu) + ',' +
-							Math.round(135 + 85 * mu) + ')';
+						var mu = S.mu[p] * (1 - S.dmg[p]);
+						var rr = Math.round(88 + 88 * (1 - mu) + 66 * ml + 22 * t);
+						var gg = Math.round(118 + 62 * mu + 18 * ml);
+						var bb = Math.round(142 + 68 * mu - 28 * ml);
+						// hydrogel tint: slightly desaturated, translucent
+						fill = 'rgba(' + rr + ',' + gg + ',' + bb + ',' + alpha + ')';
 					} else {
-						ctx.fillStyle = 'rgb(' + Math.round(60 + 190 * t) + ',' +
-							Math.round(50 + 100 * t) + ',' + Math.round(160 - 110 * t) + ')';
+						var rr2 = Math.round(60 + 190 * t);
+						var gg2 = Math.round(50 + 100 * t);
+						var bb2 = Math.round(160 - 110 * t);
+						fill = 'rgba(' + rr2 + ',' + gg2 + ',' + bb2 + ',' + alpha + ')';
 					}
-					ctx.fillRect(px - r, py - r, 2 * r, 2 * r);
+					// main pebble body
+					ctx.beginPath();
+					ctx.arc(px, py, r, 0, Math.PI * 2);
+					ctx.fillStyle = fill;
+					ctx.fill();
+					// subtle outer rim — defines packed contact
+					ctx.strokeStyle = 'rgba(255,255,255,' + strokeA + ')';
+					ctx.lineWidth = 0.85;
+					ctx.stroke();
+					// inner highlight — hydrogel specular
+					ctx.beginPath();
+					ctx.arc(px - r * 0.32, py - r * 0.32, r * 0.38, 0, Math.PI * 2);
+					ctx.fillStyle = 'rgba(255,255,255,' + (0.16 + 0.14 * (1 - t)).toFixed(3) + ')';
+					ctx.fill();
+					// inner shadow for volume
+					ctx.beginPath();
+					ctx.arc(px + r * 0.18, py + r * 0.18, r * 0.72, 0, Math.PI * 2);
+					ctx.strokeStyle = 'rgba(0,10,30,0.10)';
+					ctx.lineWidth = 0.7;
+					ctx.stroke();
 				}
 			}
 		}

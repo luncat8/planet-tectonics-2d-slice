@@ -180,32 +180,159 @@
 			return lines.join('\n');
 		},
 
-		// The skeleton's view: the parcels as round splats coloured by temperature. The
-		// warped diameter is what makes them round by construction (M0's display gate); the
-		// palette is a placeholder until the 0.3 LUT carries over in M4.
+		_drawOrder: null,
+		// The skeleton's view: dense hydrogel pebbles. Every parcel is a translucent disc whose
+		// warped diameter is what makes it round by construction (M0's display milestone). The
+		// basin is *filled* — the warped lattice already packs ~6.7k discs with uniform
+		// occupancy at every depth, so the eye sees a flower-pot of translucent gel beads,
+		// not a few dots swimming in lava. Pebbles push, overlap and catch light; bonds (M5)
+		// will later hold the crust together visibly.
 		draw: function (ctx, w, h) {
 			var S = this.S, p, px, py, r, t, x, y, eta;
 			var pad = 0.05;
-			ctx.fillStyle = '#05070c';
+			// deep basin background — slightly lighter than hybrid's void, suggests container
+			ctx.fillStyle = '#070b18';
 			ctx.fillRect(0, 0, w, h);
+			// subtle inner glow for basin volume
+			if (ctx.createLinearGradient) {
+				var bg = ctx.createLinearGradient(0, h * pad, 0, h * (1 - pad));
+				if (bg && bg.addColorStop) {
+					bg.addColorStop(0, 'rgba(18,30,68,0.55)');
+					bg.addColorStop(0.18, 'rgba(18,30,68,0)');
+					bg.addColorStop(0.82, 'rgba(80,40,30,0.10)');
+					bg.addColorStop(1, 'rgba(40,16,12,0.45)');
+					ctx.fillStyle = bg;
+					ctx.fillRect(0, h * pad, w, h * (1 - 2 * pad));
+				}
+			}
 			if (!S || !S.n) return;
 			var hh = h * (1 - 2 * pad), ww = w;
-			r = Math.max(1, 0.5 * S.dx * ww / PCP.wrap);
-			for (p = 0; p < S.n; p++) {
+			var etaBot = S.etaBot, scale = S.scale;
+			var topRows = this.camera === 'lid' ? S.rows / 3 : S.rows;
+			var etaMax = etaBot * (topRows / S.rows);
+			var showCrust = this.opts.get('crust');
+			var shrink = this.opts.get('sizeByHeat') || 0;
+			var pxPerKm = ww / PCP.wrap;
+			var dxPx = S.dx * pxPerKm;
+
+			// sort deep→shallow for translucent painter's order (reuse buffer)
+			var order = this._drawOrder;
+			if (!order || order.length !== S.cap) order = this._drawOrder = new Int32Array(S.cap);
+			for (p = 0; p < S.n; p++) order[p] = p;
+			var slice = Array.prototype.slice.call(order.subarray(0, S.n));
+			slice.sort(function (a, b) { return S.w[b] - S.w[a]; });
+			for (p = 0; p < S.n; p++) order[p] = slice[p];
+
+			for (var oi = 0; oi < S.n; oi++) {
+				p = order[oi];
+				eta = S.w[p] / scale;
+				if (eta > etaMax) continue;
 				x = S.x[p];
-				eta = S.w[p] / S.scale;
-				y = PCP.yLin * Math.sinh(eta);
 				px = x * ww / PCP.wrap;
-				py = h * pad + (eta / S.etaBot) * hh;
+				py = h * pad + (eta / etaMax) * hh;
 				t = S.T[p];
-				if (this.opts.get('crust')) {
-					ctx.fillStyle = 'rgb(' + Math.round(40 + 180 * t) + ',' +
-						Math.round(60 + 120 * (1 - Math.abs(t - 0.5) * 2)) + ',' +
-						Math.round(150 - 120 * t) + ')';
+				var melt = S.melt[p] || 0;
+				var ph = S.ph[p];
+				var rScale = 1;
+				// future material sizing: deposit seeds finer
+				if (S.rScale && S.rScale[p]) rScale = S.rScale[p];
+				else if (ph === PCP.PH.dep) rScale = 0.62;
+				var baseR = dxPx * 0.58 * rScale * (1 - 0.32 * shrink * t);
+				if (baseR < 1.8) baseR = 1.8;
+				if (baseR > dxPx * 1.02) baseR = dxPx * 1.02;
+				r = baseR;
+
+				var fill;
+				if (ph === PCP.PH.air) {
+					fill = 'rgba(255,232,120,0.92)';
+				} else if (ph === PCP.PH.dep) {
+					fill = 'rgba(210,132,78,0.88)';
+				} else if (showCrust) {
+					// crust-as-rock vs heat: blend blue-grey to warm with T, melt adds gold
+					var rr = Math.round(58 + 150 * t + 58 * melt);
+					var gg = Math.round(72 + 96 * (1 - Math.abs(t - 0.5) * 1.6) + 22 * melt);
+					var bb = Math.round(148 - 86 * t + 12 * melt);
+					fill = 'rgba(' + rr + ',' + gg + ',' + bb + ',0.84)';
 				} else {
-					ctx.fillStyle = 'rgb(' + Math.round(255 * t) + ',' + Math.round(120 * t) + ',40)';
+					fill = 'rgba(' + Math.round(255 * t) + ',' + Math.round(120 * t) + ',40,0.88)';
 				}
-				ctx.fillRect(px - r, py - r, 2 * r, 2 * r);
+
+				ctx.beginPath();
+				ctx.arc(px, py, r, 0, Math.PI * 2);
+				ctx.fillStyle = fill;
+				ctx.fill();
+				// pebble rim — defines packed contacts like gel beads in a pot
+				ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+				ctx.lineWidth = 0.75;
+				ctx.stroke();
+				// specular highlight
+				ctx.beginPath();
+				ctx.arc(px - r * 0.30, py - r * 0.32, r * 0.36, 0, Math.PI * 2);
+				ctx.fillStyle = 'rgba(255,255,255,' + (0.14 + 0.12 * (1 - t)).toFixed(3) + ')';
+				ctx.fill();
+				// soft inner shadow for volume
+				ctx.beginPath();
+				ctx.arc(px + r * 0.16, py + r * 0.16, r * 0.70, 0, Math.PI * 2);
+				ctx.strokeStyle = 'rgba(0,10,28,0.11)';
+				ctx.lineWidth = 0.6;
+				ctx.stroke();
+			}
+
+			// future: bond web when crust links exist (M5) — keep placeholder so soup never
+			// regresses to “swimming dots”: bonds are already drawn in hybrid, same here.
+			if (S.n > 0 && this.opts.get('bonds') && this.opts.get('links') && S.counts) {
+				var counts = S.counts, slot = S.slot, sOrder = S.order;
+				var rangeX = 0.72 * S.dx, rangeY = S.dw * 1.15;
+				ctx.save();
+				ctx.lineCap = 'round';
+				for (var ci = 0; ci < S.nx; ci++) {
+					var b0 = slot[ci] - counts[ci];
+					var ip = ci + 1 < S.nx ? ci + 1 : 0;
+					var b1 = slot[ip] - counts[ip];
+					for (var kk = 0; kk < counts[ci]; kk++) {
+						var pp = sOrder[b0 + kk];
+						if (S.w[pp] / scale > etaMax) continue;
+						var muP = S.mu ? S.mu[pp] * (1 - (S.dmg ? S.dmg[pp] : 0)) : 1;
+						if (muP < 0.18) continue;
+						for (var c = kk + 1; c < Math.min(counts[ci], kk + 8); c++) {
+							var qq = sOrder[b0 + c];
+							if (S.w[qq] / scale > etaMax) continue;
+							var muQ = S.mu ? S.mu[qq] * (1 - (S.dmg ? S.dmg[qq] : 0)) : 1;
+							if (muQ < 0.18) continue;
+							var dxp = S.x[qq] - S.x[pp];
+							if (dxp < -rangeX || dxp > rangeX) continue;
+							var dwp = S.w[qq] - S.w[pp];
+							if (dwp < -rangeY || dwp > rangeY) continue;
+							var mu = muP < muQ ? muP : muQ;
+							ctx.strokeStyle = 'rgba(180,225,255,' + (0.09 + 0.32 * mu).toFixed(3) + ')';
+							ctx.lineWidth = 0.8 + mu * 0.7;
+							ctx.beginPath();
+							ctx.moveTo(S.x[pp] * ww / PCP.wrap, h * pad + (S.w[pp] / scale / etaMax) * hh);
+							ctx.lineTo(S.x[qq] * ww / PCP.wrap, h * pad + (S.w[qq] / scale / etaMax) * hh);
+							ctx.stroke();
+						}
+						for (var c2 = 0; c2 < Math.min(counts[ip], 8); c2++) {
+							var qq2 = sOrder[b1 + c2];
+							if (S.w[qq2] / scale > etaMax) continue;
+							var muQ2 = S.mu ? S.mu[qq2] * (1 - (S.dmg ? S.dmg[qq2] : 0)) : 1;
+							if (muQ2 < 0.18) continue;
+							var dxp2 = S.x[qq2] - S.x[pp];
+							if (dxp2 > 0.5 * PCP.wrap) dxp2 -= PCP.wrap;
+							else if (dxp2 < -0.5 * PCP.wrap) dxp2 += PCP.wrap;
+							if (dxp2 < -rangeX || dxp2 > rangeX) continue;
+							var dwp2 = S.w[qq2] - S.w[pp];
+							if (dwp2 < -rangeY || dwp2 > rangeY) continue;
+							var mu2 = muP < muQ2 ? muP : muQ2;
+							ctx.strokeStyle = 'rgba(180,225,255,' + (0.09 + 0.32 * mu2).toFixed(3) + ')';
+							ctx.lineWidth = 0.8 + mu2 * 0.7;
+							ctx.beginPath();
+							ctx.moveTo(S.x[pp] * ww / PCP.wrap, h * pad + (S.w[pp] / scale / etaMax) * hh);
+							ctx.lineTo(S.x[qq2] * ww / PCP.wrap, h * pad + (S.w[qq2] / scale / etaMax) * hh);
+							ctx.stroke();
+						}
+					}
+				}
+				ctx.restore();
 			}
 		}
 	};

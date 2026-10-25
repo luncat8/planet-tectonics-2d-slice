@@ -71,12 +71,20 @@ function bootHybrid() {
 	}
 	var ctx = {
 		calls: [],
-		fillStyle: '', strokeStyle: '', font: '', lineWidth: 1, imageSmoothingEnabled: true,
+		fillStyle: '', strokeStyle: '', font: '', lineWidth: 1, imageSmoothingEnabled: true, globalAlpha: 1, lineCap: 'butt',
 		fillRect: function (x, y, w, h) { this.calls.push(['fillRect', x, y, w, h]); },
 		beginPath: function () { this.calls.push(['beginPath']); },
 		moveTo: function (x, y) { this.calls.push(['moveTo', x, y]); },
 		lineTo: function (x, y) { this.calls.push(['lineTo', x, y]); },
+		closePath: function () { this.calls.push(['closePath']); },
+		arc: function (x, y, r) { this.calls.push(['arc', x, y, r]); },
+		ellipse: function (x, y, rx, ry) { this.calls.push(['ellipse', x, y, rx, ry]); },
+		fill: function () { this.calls.push(['fill']); },
 		stroke: function () { this.calls.push(['stroke']); },
+		save: function () { this.calls.push(['save']); },
+		restore: function () { this.calls.push(['restore']); },
+		createLinearGradient: function () { return { addColorStop: function () {} }; },
+		createRadialGradient: function () { return { addColorStop: function () {} }; },
 		fillText: function (t, x, y) { this.calls.push(['fillText', t, x, y]); },
 		drawImage: function () { this.calls.push(['drawImage']); }
 	};
