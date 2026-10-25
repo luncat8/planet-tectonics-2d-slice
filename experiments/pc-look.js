@@ -191,7 +191,7 @@ check.ok('the ruler drew its kilometre labels', s1.texts.some(function (t) {
 png.write(path.join(outDir, '0.5.0-M1-soup.png'), W, H, s1.px);
 console.log('INFO  wrote ' + path.join(outDir, '0.5.0-M1-soup.png'));
 
-check.section('B. the hybrid draws its convecting cell field at 100 Myr');
+check.section('B. the hybrid draws its convecting cell field and crust skin at 100 Myr');
 var s2 = new Surface(W, H);
 global.document = { createElement: function () { return canvasStub(s2); } };
 render(HY, s2.context(), 2000);
@@ -202,10 +202,11 @@ check.ok('the cells span the palette', st2.colors > 10, st2.colors + ' distinct 
 check.ok('the picture is a convecting state, not the initial condition',
 	Math.abs(HY.read('time') - 100) < 1e-6 && HY.read('wells') >= 2 && HY.read('peakV') > 10,
 	HY.read('wells') + ' wells at ' + HY.read('peakV').toFixed(1) + ' km/Myr');
-check.ok('the hybrid drew no parcels and says so in its hud',
-	HY.read('population') === 0 && /parcels 0/.test(HY.hud()));
-png.write(path.join(outDir, '0.5.0-M2-hybrid.png'), W, H, s2.px);
-console.log('INFO  wrote ' + path.join(outDir, '0.5.0-M2-hybrid.png'));
+check.ok('the hybrid draws its crust parcels and reports them in its hud',
+	HY.read('population') > 1000 && /M3 liquid \+ crust/.test(HY.hud()),
+	'parcels ' + HY.read('population'));
+png.write(path.join(outDir, '0.5.0-M3-hybrid.png'), W, H, s2.px);
+console.log('INFO  wrote ' + path.join(outDir, '0.5.0-M3-hybrid.png'));
 
 check.section('C. the two images are not the same picture');
 var i, diff = 0;

@@ -61,12 +61,14 @@
 		// The strength pass: age hysteresis, the anneal, and mu. `sol` is the phase mask of
 		// the parcels that may carry bonds (PCP.PH_SOLID by default). A parcel that cannot
 		// carry bonds — airborne, or SP's mobile melt — reads zero and its clock restarts.
+		// `sHeal` is the optional registry multiplier on tauHeal (1 by default).
 		// No-op at dt <= 0: a paused frame reports, it does not age or weld anything.
-		settle: function (S, dt, sol) {
+		settle: function (S, dt, sol, sHeal) {
 			if (!(dt > 0) || !S.n) return;
 			var p, T, d, a, heat, weld;
 			var n = S.n, ph = S.ph, y = S.y, age = S.age, dmg = S.dmg, mu = S.mu;
 			var melt = S.melt, mask = sol || PCP.PH_SOLID, solid, m;
+			var tauH = (sHeal === undefined || sHeal === 1) ? PCP.tauHeal : PCP.tauHeal * sHeal;
 			for (p = 0; p < n; p++) {
 				solid = ph ? mask[ph[p]] : 1;
 				if (!solid) { age[p] = 0; dmg[p] = 0; mu[p] = 0; continue; }
@@ -77,7 +79,7 @@
 				else if (T <= PCP.TLock) {
 					age[p] += dt;
 					if (d > 0) {
-						d -= dt / PCP.tauHeal;
+						d -= dt / tauH;
 						dmg[p] = d < 0 ? 0 : d;
 					}
 				}
@@ -90,17 +92,20 @@
 
 		// The failure pass, applied after a pair walk so the walk itself stays read-only and
 		// order-independent. pLoad is the pair walk's summed excess load per parcel and pCnt
-		// the number of pairs it is a sum over; the mean is what the law charges.
-		damage: function (S, dt) {
+		// the number of pairs it is a sum over; the mean is what the law charges. `sYield`
+		// and `sDmg` are the optional registry multipliers on yieldRate and kDamage.
+		damage: function (S, dt, sYield, sDmg) {
 			if (!(dt > 0) || !S.n || !S.pLoad) return;
 			var p, mean, add;
 			var n = S.n, pLoad = S.pLoad, pCnt = S.pCnt, dmg = S.dmg, mu = S.mu;
+			var yR = (sYield === undefined || sYield === 1) ? PCP.yieldRate : PCP.yieldRate * sYield;
+			var kD = (sDmg === undefined || sDmg === 1) ? PCP.kDamage : PCP.kDamage * sDmg;
 			for (p = 0; p < n; p++) {
 				if (!(pCnt[p] > 0)) { pLoad[p] = 0; pCnt[p] = 0; continue; }
 				mean = pLoad[p] / pCnt[p];
-				add = mean - PCP.yieldRate * mu[p];
+				add = mean - yR * mu[p];
 				if (add > 0) {
-					mean = dmg[p] + PCP.kDamage * add * dt;
+					mean = dmg[p] + kD * add * dt;
 					dmg[p] = mean > 1 ? 1 : mean;
 				}
 				pLoad[p] = 0; pCnt[p] = 0;

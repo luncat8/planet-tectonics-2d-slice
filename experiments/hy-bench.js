@@ -17,12 +17,13 @@ function timeFrames(frames) {
 
 HY.init();
 
-check.section('A. the default rung, integrated');
+check.section('A. the default rung, integrated (M3 liquid + crust)');
 HY.reset(1);
 timeFrames(100);                       // warm: spin-up sweeps are not the steady cost
 var ms = timeFrames(300);
 check.ok('256x24 integrated frame is inside the 8 ms target', ms < 8,
-	ms.toFixed(2) + ' ms/frame (flow + transport + equil + diag, no draw)');
+	ms.toFixed(2) + ' ms/frame (flow + transport + crust + transact + diag, no draw), ' +
+	HY.read('population') + ' parcels');
 check.ok('the timed state is a convecting one', HY.M.d.peakV > 10,
 	'peak ' + HY.M.d.peakV.toFixed(1) + ' km/Myr, k ' + HY.read('substeps'));
 
@@ -33,10 +34,15 @@ var msFlow = Number(process.hrtime.bigint() - t0) / 1e6 / 300;
 t0 = process.hrtime.bigint();
 for (i = 0; i < 300; i++) HY.transport(0.05);
 var msTr = Number(process.hrtime.bigint() - t0) / 1e6 / 300;
+t0 = process.hrtime.bigint();
+for (i = 0; i < 300; i++) { HY.crust(0.05); HY.transactions(0.05); HY.emitVents(0.05); }
+var msCrust = Number(process.hrtime.bigint() - t0) / 1e6 / 300;
 check.info('equil + flow', msFlow.toFixed(2) + ' ms of ' + ms.toFixed(2));
-check.info('transport (advect + conduct + equil per substep)', msTr.toFixed(2) + ' ms');
-check.ok('the flow solve is the frame\'s centre of mass', msFlow > msTr,
-	'flow ' + msFlow.toFixed(2) + ' vs transport ' + msTr.toFixed(2));
+check.info('transport (advect + conduct per substep)', msTr.toFixed(2) + ' ms');
+check.info('crust + transact + vent (H4-H6 per substep)', msCrust.toFixed(2) + ' ms');
+check.ok('the flow solve is the frame\'s centre of mass', msFlow > msTr && msFlow > msCrust,
+	'flow ' + msFlow.toFixed(2) + ' vs transport ' + msTr.toFixed(2) +
+	' vs crust ' + msCrust.toFixed(2));
 
 check.section('C. the sweep budget and the sharpness option, priced');
 [8, 40].forEach(function (sw) {

@@ -52,7 +52,7 @@ var wallNet = HY.read('wallNet'), wallGross = HY.read('wallGross');
 var resid = (stock - stock0 - wallNet) / wallGross;
 check.ok('heat ledger closes (stock change is the walls)', Math.abs(resid) < 5e-5,
 	'residual/gross ' + resid.toExponential(2));
-check.ok('cell mass is the exact wrap x depth partition',
+check.ok('total mass (cells + parcels) is the exact wrap x depth partition',
 	Math.abs(HY.read('mass') - PCP.wrap * PCP.depth) / (PCP.wrap * PCP.depth) < 1e-12,
 	HY.read('mass').toExponential(6) + ' km2');
 check.ok('temperature stayed in bounds', bounded(),
@@ -61,7 +61,9 @@ check.ok('the projection\'s divergence budget is small at the end of the leg',
 	HY.read('div') < 0.05, (100 * HY.read('div')).toFixed(2) + '% of peak strain');
 check.ok('Nu is in the convecting range', HY.read('nu') > 5 && HY.read('nu') < 100,
 	'Nu ' + HY.read('nu').toFixed(1));
-check.ok('no parcels exist yet (the skin is M3)', HY.read('population') === 0);
+check.ok('crust parcel population stays inside the M3 budget',
+	HY.read('population') >= 1000 && HY.read('population') <= 4000,
+	'parcels ' + HY.read('population'));
 check.ok('equilibrium melt exists where the geotherm crosses the solidus',
 	HY.read('meltMass') > 0, HY.read('meltMass').toExponential(2) + ' km2');
 

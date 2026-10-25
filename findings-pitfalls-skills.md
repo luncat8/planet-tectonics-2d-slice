@@ -1699,3 +1699,32 @@ thickness taper; a binary 0→35 km felsic jump creates artificial continent wal
   throughput over 100 Myr — invisible until the ledger was read against the walls. Booking the
   clamp as its own ledger line keeps the book exact and prints the option's price next to its
   sharpness.
+
+## 0.5.0 M3 — the particle crust skin and two-book transactions (`archive/0.5.0-M3-report.md`)
+
+- **Close the barotropic + continuity gauge when cells can lose mass.** Flux-form advection of
+  a specific quantity (`H' = (m H - dt div(F_H)) / m`) is only TVD/monotone when `div(m_0 u) = 0`.
+  When M2's cells had fixed mass `m_0`, a ~4.9% projection residual only nudged `H` slightly;
+  once M3's H5 transactions depleted shallow cell mass (`m < m_0`) at upwelling stagnation
+  points, dividing the uncancelled `div(m_0 u) H` by `m` amplified `H` every substep and blew
+  up at `clock = 500`. Removing the residual barotropic column flux `(colU[i] - uBar) / depth`
+  from `u` and integrating `v` downward from `v[0] = 0` at the end of `project(dt)` is one
+  `O(nx · ny)` pass that drops discrete cell divergence from `4.9e-2` to `~2e-14` while
+  keeping the RBGS rotational flow intact.
+- **Never evaluate pair strain rate inside the loop that applies elastic spring velocities.**
+  In a single-pass pair walk, adding bond spring forces to `vx, vy` of pair `(p, q)` feeds
+  those corrective spring velocities into the next neighbour pair `(p, r)`'s relative-velocity
+  `load` calculation, shattering all bonds in a few frames. Separate `bondWalk` into Pass 1
+  (read-only kinematic strain rate from flow + buoyancy velocities -> `pLoad, pCnt`), then
+  `PCBOND.damage` and `PCBOND.settle`, then Pass 2 (elastic spring impulses).
+- **Check solidus depression weights before seeding initial crust composition.** `PCP.meltWW`
+  is `20` (not `2.0`), so `cW = 0.02` depresses the solidus by `0.40` and puts the surface
+  solidus (`0.33`) below `TLock = 0.35`, melting the skin on contact. `cF = 0.15, cW = 0.01`
+  gives `0.23` depression (`TSol ~ 0.55` at surface, `~0.60` in the `100–180 km` subduction
+  window), keeping the surface skin solid while subducting slabs shed partial melt in the
+  window and assimilate below `180 km`.
+- **Hoist typed arrays out of hot pair loops.** Accessing `S.x[p]` through a 35-property
+  state object inside nested spatial-hash pair loops cost ~3 ms/frame; hoisting typed-array
+  references (`sx = S.x`, `sy = S.y`, ...) and tracking `S.firstAir` cut the M3 crust step in
+  half (`2.98 ms/frame` integrated at `256x24`).
+

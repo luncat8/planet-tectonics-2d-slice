@@ -1,5 +1,5 @@
-// pc-scenario.js — 0.5.0 M1's third gate, extended at M2 (0.5.0-plan.md §3.6, §9): the four
-// scenarios run against an engine through one interface, and a gate's three states mean
+// pc-scenario.js — 0.5.0 M1's third gate, extended at M2 and M3 (0.5.0-plan.md §3.6, §9): the
+// four scenarios run against an engine through one interface, and a gate's three states mean
 // what they say.
 //
 // Two things are under test and only one of them is about the engines. First, the harness: a
@@ -7,10 +7,10 @@
 // the seed it was given, apply its preset, and summarise the readings it collected. Second,
 // honesty: a gate reads **pending with a reason** until its engine declares the feature —
 // never pass. At M1 both engines were skeletons and all sixteen gates were pending; at M2
-// HY declares flow and the thermal lid, so its three S1 gates must read pass on a real
-// 300 Myr leg while its S2-S4 gates (and all of SP's) still read pending. The fixture proves
-// the other direction too by running a synthetic engine whose readings satisfy the gates and
-// one whose readings do not, so a green line cannot come from a gate that is wired to nothing.
+// HY declared flow and the thermal lid (S1); at M3 HY is complete and passes all twelve
+// gates across S1-S4 (while SP's four scenarios still read pending until M4-M5). The fixture
+// proves the other direction too by running a synthetic engine whose readings satisfy the
+// gates and one whose readings do not, so a green line cannot come from a gate wired to nothing.
 //
 // Run: node experiments/pc-scenario.js
 'use strict';
@@ -75,27 +75,22 @@ function goodReading(id) {
 }
 
 check.section('A. gates are pending until their feature exists — and pass once it does');
-// HY at M2: the liquid exists, so S1 runs for real (seed 1, the S1 family's own seed) and
-// must pass outright; S2-S4 wait on the crust (M3) and must stay pending. Those three legs
-// run at the 500 kyr clock because pending-ness is a property of the feature table, and
-// the engine's fluid substep rule makes the trajectory the same one at a tenth of the
-// frames. SP is still a skeleton, so all four of its scenarios stay pending cheaply.
+// HY at M3: both the liquid (M2) and the crust (M3) exist, so all four scenarios run for
+// real and pass every gate, and each reports complete === true. S1 and S3 run at the 500 kyr
+// clock here (their full 50 kyr legs run in hy-conv.js and hy-erupt.js); S4 runs both its
+// depth-solidus negative control and its load-solidus leg. SP is still a skeleton, so all
+// four of its scenarios stay pending cheaply.
 HY.init();
-var hyS1 = PCSCEN.run(HY, 'S1', { seed: 1 });
-check.ok('hy S1 (convection): all three gates pass on a real 300 Myr leg',
-	hyS1.passed === 3 && hyS1.failed === 0 && hyS1.pending === 0,
-	hyS1.gates.map(function (g) { return g.status + ' ' + g.detail; }).join(' | '));
-check.ok('hy S1 still reports itself incomplete (the crust is M3)', hyS1.complete === false);
-['S2', 'S3', 'S4'].forEach(function (id) {
-	var r = PCSCEN.run(HY, id, { seed: 3, options: { clock: 500 } });
-	check.ok('hy ' + id + ' (' + r.title + '): all gates pending, none passed',
-		r.gates.length > 0 && count(r.gates, 'pending') === r.gates.length &&
-		r.passed === 0 && r.failed === 0,
-		r.gates.map(function (g) { return g.status; }).join(','));
-	check.ok('hy ' + id + ' says why it is pending',
-		r.gates.every(function (g) { return /no .* yet|no reading/.test(g.detail); }),
-		r.gates[0].detail);
-	check.ok('hy ' + id + ' reports itself incomplete', r.complete === false);
+var hyS4Ctrl = PCSCEN.run(HY, 'S4', { seed: 1, options: { solidusOf: 'depth' } });
+PCSCEN.ids.forEach(function (id) {
+	var opts = { seed: 1 };
+	if (id === 'S1' || id === 'S3') opts.options = { clock: 500 };
+	if (id === 'S4') opts.control = hyS4Ctrl.summary.pulsePeak;
+	var r = PCSCEN.run(HY, id, opts);
+	check.ok('hy ' + id + ' (' + r.title + '): all ' + r.gates.length + ' gates pass',
+		r.passed === r.gates.length && r.failed === 0 && r.pending === 0,
+		r.gates.map(function (g) { return g.status + ' ' + g.detail; }).join(' | '));
+	check.ok('hy ' + id + ' reports itself complete at M3', r.complete === true);
 });
 SP.init();
 PCSCEN.ids.forEach(function (id) {

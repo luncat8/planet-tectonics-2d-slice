@@ -79,6 +79,19 @@
 					el.addEventListener('click', function () { self.preset(el.getAttribute('data-pc-scenario')); });
 				}(els[i]));
 			}
+			if (this.canvas) {
+				this.canvas.addEventListener('click', function (ev) {
+					if (!self.engine || self.engine.tool !== 'unload' || !self.engine.unload) return;
+					var rect = self.canvas.getBoundingClientRect
+						? self.canvas.getBoundingClientRect()
+						: { left: 0, width: self.canvas.width || PCP.cw };
+					var fx = ((ev && ev.clientX !== undefined ? ev.clientX - rect.left : 0.5 * rect.width) /
+						(rect.width || PCP.cw));
+					if (!(fx >= 0 && fx <= 1)) fx = 0.5;
+					self.engine.unload(fx * PCP.wrap);
+					self.hud();
+				});
+			}
 			this.markPause();
 		},
 
@@ -126,19 +139,21 @@
 		// the same thing on both pages.
 		chrome: function (ctx, w, h) {
 			var etaBot = Math.asinh(PCP.depth / PCP.yLin), hh = h * (1 - 2 * PAD);
-			var i, y, py;
-			ctx.strokeStyle = 'rgba(120,150,200,0.18)';
-			ctx.fillStyle = 'rgba(154,167,189,0.75)';
-			ctx.font = '10px monospace';
-			ctx.lineWidth = 1;
-			for (i = 0; i < RULER.length; i++) {
-				y = RULER[i];
-				py = Math.round(h * PAD + (Math.asinh(y / PCP.yLin) / etaBot) * hh) + 0.5;
-				ctx.beginPath();
-				ctx.moveTo(0, py);
-				ctx.lineTo(w, py);
-				ctx.stroke();
-				ctx.fillText(y + ' km', 4, py - 3);
+			var i, y, py, showRuler = !this.opts || this.opts.get('ruler');
+			if (showRuler) {
+				ctx.strokeStyle = 'rgba(120,150,200,0.18)';
+				ctx.fillStyle = 'rgba(154,167,189,0.75)';
+				ctx.font = '10px monospace';
+				ctx.lineWidth = 1;
+				for (i = 0; i < RULER.length; i++) {
+					y = RULER[i];
+					py = Math.round(h * PAD + (Math.asinh(y / PCP.yLin) / etaBot) * hh) + 0.5;
+					ctx.beginPath();
+					ctx.moveTo(0, py);
+					ctx.lineTo(w, py);
+					ctx.stroke();
+					ctx.fillText(y + ' km', 4, py - 3);
+				}
 			}
 			// the surface and the CMB are the two edges
 			ctx.strokeStyle = 'rgba(159,214,184,0.35)';

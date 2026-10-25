@@ -85,6 +85,7 @@
 		reset: function (seed) {
 			this.init();
 			this.seed = seed === undefined ? this.seed : seed;
+			this.opts.commit();
 			// the phase law reads its pressure source off the shared PCP word, so the
 			// engine's own option has to be written there before anything equilibrates
 			PCP.solidusOf = this.opts.get('solidusOf');
@@ -150,7 +151,15 @@
 		},
 
 		applyPreset: function (preset) {
+			var k;
 			this.opts.set('clock', preset.clock);
+			if (preset.options) {
+				for (k in preset.options) {
+					try { this.opts.set(k, preset.options[k], true); } catch (e) {}
+				}
+			}
+			if (preset.camera) this.camera = preset.camera;
+			this.tool = preset.tool || null;
 			return this;
 		},
 

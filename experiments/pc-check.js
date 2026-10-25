@@ -18,12 +18,16 @@ var OWNERS = [
 	['pc-boot.js', 'both pages boot in a DOM, one frame loop, the bar drives the engines'],
 	['pc-look.js', 'both engines render through their own draw path (writes PNGs)'],
 	['hy-conv.js', 'HY\'s liquid: S1 green, both books close, the replay is bitwise'],
-	['hy-bench.js', 'HY\'s cost: the integrated frame and the ladder row, measured']
+	['hy-bench.js', 'HY\'s cost: the integrated frame and the ladder row, measured'],
+	['hy-ledger.js', 'HY\'s two-book ledger: H5/H6 transactions close on cells and parcels'],
+	['hy-crust.js', 'HY\'s crust: S2/S4 green, links on/off, partSize, load-back stability'],
+	['hy-erupt.js', 'HY\'s eruption: S3 green, roof seal/damage, ballistic flight, welding'],
+	['hy-ui.js', 'hybrid.html chrome: every option, overlay toggle, key, and S4 click tool']
 ];
 
 var total = 0, failed = 0, i, row, out, m, passed;
 
-check.section('0.5.0 M2 — HY\'s liquid on the M1 substrate');
+check.section('0.5.0 M3 — HY\'s liquid + crust on the M1 substrate');
 
 for (i = 0; i < OWNERS.length; i++) {
 	row = OWNERS[i];
